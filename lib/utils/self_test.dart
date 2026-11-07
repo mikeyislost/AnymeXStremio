@@ -35,6 +35,7 @@ import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/services/commentum_service.dart';
 import 'package:anymex/utils/color_extractor.dart';
 import 'package:anymex/utils/updater.dart';
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show DeviceOrientation;
