@@ -261,7 +261,7 @@ class NewEpisodeReleaseCard extends StatelessWidget {
                                 value: latest > 0 ? (watched / latest).clamp(0.0, 1.0) : 0.05,
                                 minHeight: 7,
                                 color: colorScheme.primary,
-                                backgroundColor: colorScheme.onSurface.withOpacity(0.1),
+                                backgroundColor: colorScheme.onSurface.withValues(alpha: 0.1),
                               ),
                             ),
                           ],

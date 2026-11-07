@@ -400,7 +400,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Divider(
-                color: colors.outlineVariant.withOpacity(0.45),
+                color: colors.outlineVariant.withValues(alpha: 0.45),
                 thickness: 1,
               ),
             ),
@@ -456,7 +456,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: colors.onSurface.withOpacity(0.45),
+                  color: colors.onSurface.withValues(alpha: 0.45),
                 ),
               ),
             ),
@@ -496,12 +496,12 @@ class _ContributorsPageState extends State<ContributorsPage> {
             borderRadius: BorderRadius.circular(20),
             color: colors.surfaceContainerHighest.opaque(0.4),
             border: Border.all(
-              color: colors.outlineVariant.withOpacity(0.45),
+              color: colors.outlineVariant.withValues(alpha: 0.45),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: colors.shadow.withOpacity(0.15),
+                color: colors.shadow.withValues(alpha: 0.15),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -532,7 +532,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            colors.surfaceContainerHighest.withOpacity(0.45),
+                            colors.surfaceContainerHighest.withValues(alpha: 0.45),
                           ],
                         ),
                       ),
@@ -552,7 +552,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                           shape: BoxShape.circle,
                           color: colors.surfaceContainerHighest,
                           border: Border.all(
-                            color: colors.primary.withOpacity(0.45),
+                            color: colors.primary.withValues(alpha: 0.45),
                             width: 2,
                           ),
                         ),
@@ -599,7 +599,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                         style: TextStyle(
                           fontSize: 11,
                           height: 1.4,
-                          color: colors.onSurface.withOpacity(0.7),
+                          color: colors.onSurface.withValues(alpha: 0.7),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -611,7 +611,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: colors.primary.withOpacity(0.2),
+                            color: colors.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: AnymeXText(
@@ -684,7 +684,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                 borderRadius: BorderRadius.circular(14),
                 color: colors.surfaceContainerLow.opaque(0.5),
                 border: Border.all(
-                  color: colors.outlineVariant.withOpacity(0.35),
+                  color: colors.outlineVariant.withValues(alpha: 0.35),
                   width: 1,
                 ),
               ),
@@ -756,7 +756,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
-                        color: colors.primary.withOpacity(0.15),
+                        color: colors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: AnymeXText(
@@ -777,7 +777,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: colors.primary.withOpacity(0.15),
+                        color: colors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: AnymeXText(
@@ -794,7 +794,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                   Icon(
                     Icons.chevron_right_rounded,
                     size: 18,
-                    color: colors.onSurface.withOpacity(0.35),
+                    color: colors.onSurface.withValues(alpha: 0.35),
                   ),
                 ],
               ),
@@ -833,7 +833,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                         borderRadius: BorderRadius.circular(14),
                         color: colors.surfaceContainerLow.opaque(0.5),
                         border: Border.all(
-                          color: colors.outlineVariant.withOpacity(0.35),
+                          color: colors.outlineVariant.withValues(alpha: 0.35),
                           width: 1,
                         ),
                       ),
@@ -869,7 +869,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                                   member.role,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: colors.onSurface.withOpacity(0.6),
+                                    color: colors.onSurface.withValues(alpha: 0.6),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -880,7 +880,7 @@ class _ContributorsPageState extends State<ContributorsPage> {
                           Icon(
                             Icons.chevron_right_rounded,
                             size: 18,
-                            color: colors.onSurface.withOpacity(0.35),
+                            color: colors.onSurface.withValues(alpha: 0.35),
                           ),
                         ],
                       ),

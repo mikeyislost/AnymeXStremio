@@ -109,16 +109,16 @@ class AnymeXDialog extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: translucent
-                        ? context.colors.surfaceContainer.withOpacity(0.5)
+                        ? context.colors.surfaceContainer.withValues(alpha: 0.5)
                         : context.colors.surfaceContainer,
                     borderRadius: BorderRadius.circular(radius),
                     border: Border.all(
-                      color: context.colors.onSurface.withOpacity(0.08),
+                      color: context.colors.onSurface.withValues(alpha: 0.08),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 25,
                         offset: const Offset(0, 8),
                       ),
@@ -202,7 +202,7 @@ class AnymeXDialog extends StatelessWidget {
                                             border: Border.all(
                                               color: context
                                                   .colors.onSurface
-                                                  .withOpacity(0.04),
+                                                  .withValues(alpha: 0.04),
                                               width: 1,
                                             ),
                                           ),
@@ -239,7 +239,7 @@ class AnymeXDialog extends StatelessWidget {
                                               ? context.colors.primary
                                               : context.colors
                                                   .surfaceContainerHighest
-                                                  .withOpacity(0.4),
+                                                  .withValues(alpha: 0.4),
                                           borderRadius:
                                               BorderRadius.horizontal(
                                             left: Radius.circular(
@@ -254,7 +254,7 @@ class AnymeXDialog extends StatelessWidget {
                                                   BoxShadow(
                                                     color: context
                                                         .colors.primary
-                                                        .withOpacity(0.15),
+                                                        .withValues(alpha: 0.15),
                                                     blurRadius: 10,
                                                     offset:
                                                         const Offset(0, 4),
@@ -268,7 +268,7 @@ class AnymeXDialog extends StatelessWidget {
                                           color: isConfirmEnabled
                                               ? context.colors.onPrimary
                                               : context.colors.onSurface
-                                                  .withOpacity(0.4),
+                                                  .withValues(alpha: 0.4),
                                           variant: TextVariant.bold,
                                         ),
                                       ),

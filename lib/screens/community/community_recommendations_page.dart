@@ -310,10 +310,10 @@ class _CommunityRecommendationsPageState
                     Icon(Icons.filter_list_off_rounded,
                         size: 48,
                         color:
-                            context.colors.onSurfaceVariant.withOpacity(0.5)),
+                            context.colors.onSurfaceVariant.withValues(alpha: 0.5)),
                     const SizedBox(height: 12),
                     AnymeXText('No recommendations found',
-                      color: context.colors.onSurfaceVariant.withOpacity(0.7),
+                      color: context.colors.onSurfaceVariant.withValues(alpha: 0.7),
                       variant: TextVariant.semiBold,
                     ),
                   ],
@@ -530,15 +530,15 @@ class _AuthorBadge extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 100),
         padding: const EdgeInsets.only(left: 3, right: 10, top: 3, bottom: 3),
         decoration: BoxDecoration(
-          color: theme.colorScheme.secondaryContainer.withOpacity(0.85),
+          color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(50),
           border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.15),
+            color: theme.colorScheme.outline.withValues(alpha: 0.15),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -601,7 +601,7 @@ class _VoteBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceContainerLowest.opaque(0.6),
         border: Border(
-          top: BorderSide(color: colors.outline.withOpacity(0.08)),
+          top: BorderSide(color: colors.outline.withValues(alpha: 0.08)),
         ),
       ),
       child: isLoading
@@ -631,7 +631,7 @@ class _VoteBar extends StatelessWidget {
                   Container(
                     width: 1,
                     height: 14,
-                    color: colors.outline.withOpacity(0.12),
+                    color: colors.outline.withValues(alpha: 0.12),
                   ),
                   Expanded(
                     child: _VoteBtn(
@@ -773,15 +773,15 @@ class _ReasonCountBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(left: 4, right: 8, top: 4, bottom: 4),
       decoration: BoxDecoration(
-        color: theme.colorScheme.tertiaryContainer.withOpacity(0.9),
+        color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(50),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.15),
+          color: theme.colorScheme.outline.withValues(alpha: 0.15),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -984,7 +984,7 @@ class _SeeAllListTile extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: colors.secondaryContainer.withOpacity(0.7),
+                            color: colors.secondaryContainer.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(

@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'dart:io' show ZLibCodec;
 import 'dart:typed_data';
 
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
 
 class WatchedBitField {
   final List<String> videoIds;

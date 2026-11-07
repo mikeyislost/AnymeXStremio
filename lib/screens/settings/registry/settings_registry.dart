@@ -11,7 +11,7 @@ import 'package:anymex/screens/settings/sub_settings/settings_donation.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_downloads.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_extensions.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_logs.dart';
-import 'package:anymex/screens/settings/sub_settings/settings_self_test.dart';
+import 'package:anymex/plus/settings_self_test.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_network.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_performance.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_player.dart';

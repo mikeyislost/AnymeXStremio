@@ -1,12 +1,12 @@
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/storage/anymex_cache_manager.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/models/Service/online_service.dart';
 import 'package:anymex/screens/anime/widgets/comments/widgets/leaderboard_sheet.dart';
 import 'package:anymex/screens/profile/widgets/decoration_closet_sheet.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_anilist_api.dart';
-import 'package:anymex/screens/stremio/stremio_account_page.dart';
+import 'package:anymex/plus/stremio/ui/stremio_account_page.dart';
 import 'package:anymex/services/commentum_service.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';

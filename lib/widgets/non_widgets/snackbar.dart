@@ -326,17 +326,17 @@ class _SnackBarWidgetState extends State<_SnackBarWidget>
             color: _bgColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: cs.outline.withOpacity(0.1),
+              color: cs.outline.withValues(alpha: 0.1),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
               BoxShadow(
-                color: _accentColor.withOpacity(0.06),
+                color: _accentColor.withValues(alpha: 0.06),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -367,7 +367,7 @@ class _SnackBarWidgetState extends State<_SnackBarWidget>
             _IconBubble(
               icon: widget.icon!,
               color: _accentColor,
-              bgColor: _accentColor.withOpacity(0.12),
+              bgColor: _accentColor.withValues(alpha: 0.12),
             ),
             const SizedBox(width: 12),
           ],
@@ -395,7 +395,7 @@ class _SnackBarWidgetState extends State<_SnackBarWidget>
                   overflow: TextOverflow.ellipsis,
                   style: widget.theme.textTheme.bodySmall?.copyWith(
                     color: cs.onSurface
-                        .withOpacity(widget.title != null ? 0.65 : 0.85),
+                        .withValues(alpha: widget.title != null ? 0.65 : 0.85),
                     height: 1.4,
                   ),
                 ),
@@ -410,13 +410,13 @@ class _SnackBarWidgetState extends State<_SnackBarWidget>
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: cs.onSurface.withOpacity(0.07),
+                  color: cs.onSurface.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.close_rounded,
                   size: 15,
-                  color: cs.onSurface.withOpacity(0.5),
+                  color: cs.onSurface.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -445,15 +445,15 @@ class _SnackBarWidgetState extends State<_SnackBarWidget>
           height: 3,
           child: Stack(
             children: [
-              Container(color: _accentColor.withOpacity(0.08)),
+              Container(color: _accentColor.withValues(alpha: 0.08)),
               FractionallySizedBox(
                 widthFactor: _progressAnimation.value,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        _accentColor.withOpacity(0.9),
-                        _accentColor.withOpacity(0.4),
+                        _accentColor.withValues(alpha: 0.9),
+                        _accentColor.withValues(alpha: 0.4),
                       ],
                     ),
                   ),
@@ -527,7 +527,7 @@ class _ArcTimerPainter extends CustomPainter {
     final radius = (size.width / 2) - 2.5;
 
     final trackPaint = Paint()
-      ..color = color.withOpacity(0.12)
+      ..color = color.withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;

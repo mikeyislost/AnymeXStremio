@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/models/Media/media.dart';
@@ -14,79 +13,9 @@ import 'package:anymex/utils/deeplink.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/logger.dart';
 import 'package:anymex/utils/notification_image_helper.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-
-  final data = message.data;
-  final title = data['title'] as String? ?? 'Notification';
-  final body = data['body'] as String? ?? '';
-  final actorAvatar = data['actor_avatar'] as String?;
-  final channelId = data['channel_id'] as String? ?? 'comments';
-
-  final localNotifications = FlutterLocalNotificationsPlugin();
-
-  const androidSettings =
-      AndroidInitializationSettings('@drawable/ic_stat_anymex');
-  const iosSettings = DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-  );
-  const settings = InitializationSettings(
-    android: androidSettings,
-    iOS: iosSettings,
-  );
-  await localNotifications.initialize(settings);
-
-  ByteArrayAndroidBitmap? avatarBitmap;
-  if (actorAvatar != null && actorAvatar.isNotEmpty) {
-    try {
-      final httpClient = HttpClient();
-      final request = await httpClient.getUrl(Uri.parse(actorAvatar));
-      final response = await request.close();
-      final bytes = <int>[];
-      await for (final chunk in response) {
-        bytes.addAll(chunk);
-      }
-      final uint8list = Uint8List.fromList(bytes);
-      httpClient.close();
-      avatarBitmap = ByteArrayAndroidBitmap(uint8list);
-    } catch (_) {}
-  }
-
-  final androidDetails = AndroidNotificationDetails(
-    channelId,
-    _getChannelName(channelId),
-    importance: _getChannelImportance(channelId),
-    priority: Priority.high,
-    icon: '@drawable/ic_stat_anymex',
-    largeIcon: avatarBitmap,
-    playSound: true,
-    enableVibration: true,
-  );
-
-  await localNotifications.show(
-    message.hashCode,
-    title,
-    body,
-    NotificationDetails(
-      android: androidDetails,
-      iOS: const DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      ),
-    ),
-    payload: jsonEncode(data),
-  );
-}
 
 String _getChannelName(String channelId) {
   switch (channelId) {
@@ -127,9 +56,10 @@ Importance _getChannelImportance(String channelId) {
 class NotificationService extends GetxController {
   static NotificationService get instance => Get.find<NotificationService>();
 
-  FirebaseMessaging? _firebaseMessaging;
   FlutterLocalNotificationsPlugin? _localNotifications;
 
+  /// Push (Firebase) was removed in AnymeX+: a sideloaded build can't
+  /// receive pushes, so there is never a push token. Kept for callers.
   final RxnString fcmToken = RxnString(null);
   final RxBool notificationsEnabled = true.obs;
 
@@ -142,17 +72,12 @@ class NotificationService extends GetxController {
   }
 
   Future<void> _init() async {
+    // Local notifications (downloads, airing alerts) only; this version of
+    // the notifications plugin supports Android, iOS and macOS.
+    if (!Platform.isAndroid && !Platform.isIOS && !Platform.isMacOS) return;
     try {
-      if (Firebase.apps.isEmpty) {
-        Logger.i('NotificationService: Firebase not initialized, skipping');
-        return;
-      }
-
-      _firebaseMessaging = FirebaseMessaging.instance;
       _localNotifications = FlutterLocalNotificationsPlugin();
-
       await _setupLocalNotifications();
-      await _setupFirebaseMessaging();
       await _requestPermission();
     } catch (e) {
       Logger.e('NotificationService init error: $e');
@@ -250,81 +175,36 @@ class NotificationService extends GetxController {
     }
   }
 
-  Future<void> _setupFirebaseMessaging() async {
-    final fm = _firebaseMessaging;
-    if (fm == null) return;
-
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-
-    try {
-      final initialMessage = await fm.getInitialMessage();
-      if (initialMessage != null) {
-        _handleMessageOpenedApp(initialMessage);
-      }
-    } catch (e) {
-      Logger.e('Error getting initial message: $e');
-    }
-
-    fm.onTokenRefresh.listen((newToken) {
-      Logger.i('FCM token refreshed');
-      fcmToken.value = newToken;
-      _registerTokenWithBackend(newToken);
-    });
-  }
-
   Future<void> _requestPermission() async {
-    final fm = _firebaseMessaging;
-    if (fm == null) return;
-
+    final local = _localNotifications;
+    if (local == null) return;
     try {
-      final settings = await fm.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-
-      final authorized =
-          settings.authorizationStatus == AuthorizationStatus.authorized;
-      final provisional =
-          settings.authorizationStatus == AuthorizationStatus.provisional;
-      notificationsEnabled.value = authorized || provisional;
-
-      if (notificationsEnabled.value) {
-        final token = await fm.getToken();
-        if (token != null) {
-          fcmToken.value = token;
-          Logger.i('FCM token obtained: ${token.substring(0, 20)}...');
-          _registerTokenWithBackend(token);
-        }
+      bool? granted;
+      if (Platform.isIOS) {
+        granted = await local
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      } else if (Platform.isMacOS) {
+        granted = await local
+            .resolvePlatformSpecificImplementation<
+                MacOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      } else if (Platform.isAndroid) {
+        granted = await local
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
       }
+      notificationsEnabled.value = granted ?? true;
     } catch (e) {
       Logger.e('Error requesting notification permission: $e');
     }
   }
 
-  void _handleForegroundMessage(RemoteMessage message) {
-    // Foreground visuals are owned by the in-app top banner (FcmService).
-    // Posting a system notification here as well would show every push
-    // twice (banner + heads-up). Background/killed pushes still arrive
-    // through the OS tray via the `notification` payload in the message.
-    refreshUnreadCount();
-  }
-
   /// Entry point for in-app banner taps and FCM opened-app events.
   void navigateFromPush(Map<String, dynamic> data) {
     onNotificationTap?.call();
-    _navigateFromNotification(data);
-  }
-
-  void _handleMessageOpenedApp(RemoteMessage message) {
-    Logger.i('Notification tapped: ${message.data}');
-    onNotificationTap?.call();
-    final data = Map<String, dynamic>.from(message.data);
-    if (!data.containsKey('url') && message.notification?.android?.link != null) {
-      data['url'] = message.notification!.android!.link;
-    }
     _navigateFromNotification(data);
   }
 
@@ -487,21 +367,6 @@ class NotificationService extends GetxController {
       }
     } catch (e) {
       Logger.i('Error refreshing unread count: $e');
-    }
-  }
-
-  Future<void> _registerTokenWithBackend(String token) async {
-    try {
-      if (Get.isRegistered<CommentumService>()) {
-        final service = Get.find<CommentumService>();
-        await service.registerFcmToken(token);
-        Logger.i('FCM token registered with backend');
-      } else {
-        Logger.i(
-            'CommentumService not yet registered, token will be registered later');
-      }
-    } catch (e) {
-      Logger.e('Failed to register FCM token: $e');
     }
   }
 

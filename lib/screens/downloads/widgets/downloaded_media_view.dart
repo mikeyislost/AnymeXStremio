@@ -463,7 +463,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
             Divider(
               height: 3,
               indent: 108,
-              color: theme.outlineVariant.withOpacity(0.2),
+              color: theme.outlineVariant.withValues(alpha: 0.2),
             ),
         ],
       );
@@ -487,7 +487,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
             Divider(
               height: 3,
               indent: 108,
-              color: theme.outlineVariant.withOpacity(0.2),
+              color: theme.outlineVariant.withValues(alpha: 0.2),
             ),
         ],
       );
@@ -503,7 +503,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.surfaceContainer.withOpacity(0.25),
+        color: theme.surfaceContainer.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(16),
       ),
       margin: const EdgeInsets.all(10),
@@ -554,12 +554,12 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                     : Container(
                         width: 88,
                         height: 124,
-                        color: theme.surfaceContainer.withOpacity(0.4),
+                        color: theme.surfaceContainer.withValues(alpha: 0.4),
                         child: Icon(
                           _isManga
                               ? HugeIcons.strokeRoundedBook02
                               : HugeIcons.strokeRoundedPlay,
-                          color: theme.onSurface.withOpacity(0.2),
+                          color: theme.onSurface.withValues(alpha: 0.2),
                           size: 24,
                         ),
                       ),
@@ -573,7 +573,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: theme.primaryContainer.withOpacity(0.4),
+                        color: theme.primaryContainer.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: AnymeXText(
@@ -666,22 +666,22 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: theme.surfaceContainer.withOpacity(0.2),
+        color: theme.surfaceContainer.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.outlineVariant.withOpacity(0.15)),
+        border: Border.all(color: theme.outlineVariant.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Icon(
             HugeIcons.strokeRoundedDownload04,
             size: 14,
-            color: theme.primary.withOpacity(0.7),
+            color: theme.primary.withValues(alpha: 0.7),
           ),
           const SizedBox(width: 8),
           AnymeXText(
             _isManga ? 'Downloaded Chapters' : 'Downloaded Episodes',
             style: TextStyle(
-              color: theme.onSurface.withOpacity(0.7),
+              color: theme.onSurface.withValues(alpha: 0.7),
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.4,
@@ -692,13 +692,13 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: theme.primary.withOpacity(0.1),
+                color: theme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: AnymeXText(
                 '$count',
                 style: TextStyle(
-                  color: theme.primary.withOpacity(0.8),
+                  color: theme.primary.withValues(alpha: 0.8),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -721,18 +721,18 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
       child: Container(
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: theme.surfaceContainer.withOpacity(0.35),
+          color: theme.surfaceContainer.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: danger
-                ? theme.error.withOpacity(0.3)
-                : theme.outlineVariant.withOpacity(0.2),
+                ? theme.error.withValues(alpha: 0.3)
+                : theme.outlineVariant.withValues(alpha: 0.2),
           ),
         ),
         child: Icon(
           icon,
           size: 17,
-          color: danger ? theme.error : theme.onSurface.withOpacity(0.7),
+          color: danger ? theme.error : theme.onSurface.withValues(alpha: 0.7),
         ),
       ),
     );
@@ -753,9 +753,9 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color: theme.primary.withOpacity(0.12),
+          color: theme.primary.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.primary.withOpacity(0.3)),
+          border: Border.all(color: theme.primary.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -780,8 +780,8 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: bound > 0
-                      ? theme.primary.withOpacity(0.25)
-                      : theme.surfaceContainer.withOpacity(0.5),
+                      ? theme.primary.withValues(alpha: 0.25)
+                      : theme.surfaceContainer.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: AnymeXText(
@@ -789,7 +789,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                   style: TextStyle(
                     color: bound > 0
                         ? theme.primary
-                        : theme.onSurface.withOpacity(0.5),
+                        : theme.onSurface.withValues(alpha: 0.5),
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                   ),
@@ -806,14 +806,14 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.15), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 0.5),
       ),
       child: AnymeXText(
         text,
         style: TextStyle(
-          color: color.withOpacity(0.85),
+          color: color.withValues(alpha: 0.85),
           fontSize: 9.5,
           fontWeight: FontWeight.w600,
         ),
@@ -843,7 +843,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.surfaceContainer.withOpacity(0.4),
+        color: theme.surfaceContainer.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(10),
@@ -883,7 +883,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                                     height: 68,
                                     decoration: BoxDecoration(
                                       color: theme.surfaceContainer
-                                          .withOpacity(0.5),
+                                          .withValues(alpha: 0.5),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Center(
@@ -891,7 +891,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                                         episode.number,
                                         style: TextStyle(
                                           color:
-                                              theme.onSurface.withOpacity(0.3),
+                                              theme.onSurface.withValues(alpha: 0.3),
                                           fontSize: 16,
                                           fontWeight: FontWeight.w800,
                                         ),
@@ -902,14 +902,14 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                           Positioned.fill(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.15),
+                                color: Colors.black.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Center(
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.45),
+                                    color: Colors.black.withValues(alpha: 0.45),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -928,7 +928,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.75),
+                                color: Colors.black.withValues(alpha: 0.75),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: AnymeXText(
@@ -956,7 +956,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                                   value: progress,
                                   minHeight: 3,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.2),
+                                      Colors.white.withValues(alpha: 0.2),
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                       theme.primary),
                                 ),
@@ -976,7 +976,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                                   : 'Episode ${episode.number}',
                               style: TextStyle(
                                 color: isWatched
-                                    ? theme.onSurface.withOpacity(0.4)
+                                    ? theme.onSurface.withValues(alpha: 0.4)
                                     : theme.onSurface,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -1064,14 +1064,14 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
               const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.delete_rounded, size: 16),
-                color: theme.error.withOpacity(0.85),
+                color: theme.error.withValues(alpha: 0.85),
                 onPressed: onDelete,
                 style: IconButton.styleFrom(
-                  backgroundColor: theme.error.withOpacity(0.06),
+                  backgroundColor: theme.error.withValues(alpha: 0.06),
                   padding: const EdgeInsets.all(8),
                   minimumSize: const Size(36, 36),
                   side: BorderSide(
-                    color: theme.error.withOpacity(0.18),
+                    color: theme.error.withValues(alpha: 0.18),
                     width: 1,
                   ),
                   shape: RoundedRectangleBorder(
@@ -1088,13 +1088,13 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: theme.onSurface.withOpacity(0.04),
+                color: theme.onSurface.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: AnymeXText(
                 episode.episode.desc!,
                 style: TextStyle(
-                  color: theme.onSurface.withOpacity(0.55),
+                  color: theme.onSurface.withValues(alpha: 0.55),
                   fontSize: 11.5,
                   height: 1.3,
                 ),
@@ -1140,7 +1140,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.surfaceContainer.withOpacity(0.4),
+        color: theme.surfaceContainer.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(10),
@@ -1161,7 +1161,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                         width: 52,
                         height: 76,
                         decoration: BoxDecoration(
-                          color: theme.surfaceContainer.withOpacity(0.5),
+                          color: theme.surfaceContainer.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(10),
                           image: firstImageFile != null
                               ? DecorationImage(
@@ -1175,7 +1175,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                                 child: Icon(
                                   HugeIcons.strokeRoundedBook02,
                                   size: 24,
-                                  color: theme.primary.withOpacity(0.4),
+                                  color: theme.primary.withValues(alpha: 0.4),
                                 ),
                               )
                             : null,
@@ -1260,14 +1260,14 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
               const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.delete_rounded, size: 16),
-                color: theme.error.withOpacity(0.85),
+                color: theme.error.withValues(alpha: 0.85),
                 onPressed: onDelete,
                 style: IconButton.styleFrom(
-                  backgroundColor: theme.error.withOpacity(0.06),
+                  backgroundColor: theme.error.withValues(alpha: 0.06),
                   padding: const EdgeInsets.all(8),
                   minimumSize: const Size(36, 36),
                   side: BorderSide(
-                    color: theme.error.withOpacity(0.18),
+                    color: theme.error.withValues(alpha: 0.18),
                     width: 1,
                   ),
                   shape: RoundedRectangleBorder(
@@ -1292,13 +1292,13 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
             Icon(
               HugeIcons.strokeRoundedDownload04,
               size: 36,
-              color: theme.onSurface.withOpacity(0.12),
+              color: theme.onSurface.withValues(alpha: 0.12),
             ),
             const SizedBox(height: 14),
             AnymeXText(
               'Nothing downloaded yet',
               style: TextStyle(
-                color: theme.onSurface.withOpacity(0.5),
+                color: theme.onSurface.withValues(alpha: 0.5),
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
@@ -1308,7 +1308,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
             AnymeXText(
               'Media you download will appear here.',
               style: TextStyle(
-                color: theme.onSurface.withOpacity(0.28),
+                color: theme.onSurface.withValues(alpha: 0.28),
                 fontSize: 13,
               ),
             ),
@@ -1334,7 +1334,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: theme.primary.withOpacity(0.35),
+              color: theme.primary.withValues(alpha: 0.35),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -1361,7 +1361,7 @@ class _DownloadedMediaViewState extends State<DownloadedMediaView> {
                 AnymeXText(
                   subtitle,
                   style: TextStyle(
-                    color: theme.onPrimary.withOpacity(0.7),
+                    color: theme.onPrimary.withValues(alpha: 0.7),
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),

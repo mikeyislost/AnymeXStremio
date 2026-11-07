@@ -153,7 +153,7 @@ class DesktopProfileHeader extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            context.theme.colorScheme.surface.withOpacity(0.3),
+                            context.theme.colorScheme.surface.withValues(alpha: 0.3),
                           ],
                         ),
                       ),
@@ -193,7 +193,7 @@ class DesktopProfileHeader extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 10, left: 10),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.4),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
@@ -267,12 +267,12 @@ class DesktopProfileHeader extends StatelessWidget {
                                   color: context.theme.colorScheme.onSurface,
                                   shadows: [
                                     Shadow(
-                                      color: Colors.black.withOpacity(0.7),
+                                      color: Colors.black.withValues(alpha: 0.7),
                                       blurRadius: 12,
                                       offset: const Offset(0, 2),
                                     ),
                                     Shadow(
-                                      color: Colors.black.withOpacity(0.4),
+                                      color: Colors.black.withValues(alpha: 0.4),
                                       blurRadius: 24,
                                       offset: const Offset(0, 4),
                                     ),
@@ -290,7 +290,7 @@ class DesktopProfileHeader extends StatelessWidget {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.4),
+                                        color: Colors.black.withValues(alpha: 0.4),
                                         borderRadius: BorderRadius.circular(
                                           20,
                                         ),
@@ -340,9 +340,7 @@ class DesktopProfileHeader extends StatelessWidget {
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: Colors.black.withOpacity(
-                                                0.4,
-                                              ),
+                                              color: Colors.black.withValues(alpha: 0.4),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                             ),
@@ -376,9 +374,7 @@ class DesktopProfileHeader extends StatelessWidget {
                                           vertical: 4,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(
-                                            0.4,
-                                          ),
+                                          color: Colors.black.withValues(alpha: 0.4),
                                           borderRadius: BorderRadius.circular(
                                             20,
                                           ),
@@ -474,7 +470,7 @@ class DesktopProfileHeader extends StatelessWidget {
                                               decoration: BoxDecoration(
                                                 color: context.theme.colorScheme
                                                     .onSurfaceVariant
-                                                    .withOpacity(0.3),
+                                                    .withValues(alpha: 0.3),
                                                 borderRadius:
                                                     BorderRadius.circular(2),
                                               ),
@@ -668,7 +664,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
       leading: Container(
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: context.theme.colorScheme.surface.withOpacity(0.5),
+          color: context.theme.colorScheme.surface.withValues(alpha: 0.5),
           shape: BoxShape.circle,
         ),
         child: IconButton(
@@ -681,7 +677,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
           Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: context.theme.colorScheme.surface.withOpacity(0.5),
+              color: context.theme.colorScheme.surface.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -693,7 +689,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
         Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: context.theme.colorScheme.surface.withOpacity(0.5),
+            color: context.theme.colorScheme.surface.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
           child: IconButton(
@@ -705,7 +701,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
         Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: context.theme.colorScheme.surface.withOpacity(0.5),
+            color: context.theme.colorScheme.surface.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
           child: IconButton(
@@ -730,7 +726,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
                             height: 4,
                             decoration: BoxDecoration(
                               color: context.theme.colorScheme.onSurfaceVariant
-                                  .withOpacity(0.3),
+                                  .withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -881,7 +877,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: Container(
-                    color: context.theme.colorScheme.surface.withOpacity(0.2),
+                    color: context.theme.colorScheme.surface.withValues(alpha: 0.2),
                   ),
                 ),
               ),
@@ -893,7 +889,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      context.theme.colorScheme.surface.withOpacity(0.8),
+                      context.theme.colorScheme.surface.withValues(alpha: 0.8),
                       context.theme.colorScheme.surface,
                     ],
                     stops: const [0.0, 0.85, 1.0],
@@ -992,7 +988,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.4),
+                                  color: Colors.black.withValues(alpha: 0.4),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -1026,7 +1022,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.4),
+                                    color: Colors.black.withValues(alpha: 0.4),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(
@@ -1056,7 +1052,7 @@ class MobileProfileHeaderSliver extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.4),
+                                    color: Colors.black.withValues(alpha: 0.4),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(

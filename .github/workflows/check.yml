@@ -1,0 +1,84 @@
+name: Check (no release)
+
+# Pushes to wip/* branches (and manual runs) only check the code: install
+# packages, analyze the whole project, run the unit tests and save the
+# resolved package versions (pubspec.lock) as a download. Nothing is built
+# or released, so it's safe for trying changes before they go to beta.
+#
+# To update packages: Actions → "Check (no release)" → Run workflow with
+# "upgrade" ticked. It runs `flutter pub upgrade` and prints the new
+# pubspec.lock to commit.
+on:
+  push:
+    branches: ["wip/**"]
+  workflow_dispatch:
+    inputs:
+      upgrade:
+        description: "Update packages to the newest allowed versions"
+        type: boolean
+        default: false
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.41.6"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Create placeholder .env
+        run: touch .env
+
+      - name: Install packages
+        run: |
+          if [ "${{ inputs.upgrade }}" = "true" ]; then
+            flutter pub upgrade
+          else
+            flutter pub get
+          fi
+
+      - name: Show pubspec.lock
+        run: |
+          echo "----- pubspec.lock -----"
+          cat pubspec.lock
+          echo "----- end pubspec.lock -----"
+
+      - name: Save pubspec.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: pubspec-lock
+          path: pubspec.lock
+
+      - name: Analyze whole project
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analyze.txt 2>&1
+          CODE=$?
+          tail -n 5 analyze.txt
+          echo "errors: $(grep -c '^  error •' analyze.txt) · warnings: $(grep -c '^warning •\|^  warning •' analyze.txt) · infos: $(grep -c '^   info •\|^  info •' analyze.txt)"
+          grep '^  error •' analyze.txt | head -n 80
+          exit $CODE
+
+      - name: Save analyze report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-report
+          path: analyze.txt
+
+      - name: Unit tests
+        if: always()
+        run: |
+          python3 scripts/test_versions.py
+          if [ -d test ]; then flutter test --reporter expanded; else echo "No tests"; fi

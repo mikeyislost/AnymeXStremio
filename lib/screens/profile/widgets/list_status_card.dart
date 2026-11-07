@@ -48,7 +48,7 @@ class ListStatusCard extends StatelessWidget {
         color: context.theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(isDesktop ? 16 : 12),
         border: Border.all(
-          color: context.theme.colorScheme.outlineVariant.withOpacity(0.3),
+          color: context.theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
       padding: EdgeInsets.all(isDesktop ? 20 : 12),
@@ -138,7 +138,7 @@ class ListStatusCard extends StatelessWidget {
                             fontSize: isDesktop ? 15 : 13,
                             fontFamily: 'Linotte',
                             fontWeight: FontWeight.bold,
-                            color: count > 0 ? color : color.withOpacity(0.5),
+                            color: count > 0 ? color : color.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -148,7 +148,7 @@ class ListStatusCard extends StatelessWidget {
                         height: isDesktop ? 24 : 14,
                         thickness: 0.5,
                         color: context.theme.colorScheme.outlineVariant
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                       ),
                   ],
                 ),

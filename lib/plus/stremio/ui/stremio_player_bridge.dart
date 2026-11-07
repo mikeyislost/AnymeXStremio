@@ -1,8 +1,8 @@
 // Glue between Stremio content and AnymeX's existing player (WatchScreen).
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/isar_models/track.dart' as model;
 import 'package:anymex/database/isar_models/video.dart' as model;
@@ -154,6 +154,27 @@ class StremioPlayerBridge {
 
   /// Used by the player when switching episodes on Stremio media: fetches the
   /// new episode's streams and orders them so the best match comes first.
+  /// Stremio (type, video id) for an episode, or null when it has none.
+  static (String, String)? _streamTarget(anymex.Media media, Episode episode) {
+    final parsed = StremioIds.parse(media.id);
+    if (parsed != null) {
+      final (t, metaId) = parsed;
+      final link = episode.link;
+      return (t, (link != null && link.isNotEmpty) ? link : metaId);
+    }
+    final link = episode.link;
+    if (link == null || link.isEmpty) return null;
+    return (StremioIds.typeForVideoId(link), link);
+  }
+
+  /// Finds [episode]'s streams in the background (the next episode while
+  /// the current one plays), so it starts without the usual wait.
+  static void prefetchEpisode(anymex.Media media, Episode episode) {
+    final target = _streamTarget(media, episode);
+    if (target == null) return;
+    StremioService.to.prefetchStreams(target.$1, target.$2);
+  }
+
   static Future<List<model.Video>> videosForEpisode(
     anymex.Media media,
     Episode episode, {

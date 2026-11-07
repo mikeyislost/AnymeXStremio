@@ -174,7 +174,7 @@ class NotificationScreen extends GetView<NotificationController> {
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? colorScheme.onPrimary.withOpacity(0.25)
+                      ? colorScheme.onPrimary.withValues(alpha: 0.25)
                       : colorScheme.primary,
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -206,7 +206,7 @@ class NotificationScreen extends GetView<NotificationController> {
                 Icon(
                   Icons.lock_outline_rounded,
                   size: 56,
-                  color: colorScheme.primary.withOpacity(0.6),
+                  color: colorScheme.primary.withValues(alpha: 0.6),
                 ),
                 const SizedBox(height: 16),
                 const AnymeXText(
@@ -306,7 +306,7 @@ class NotificationScreen extends GetView<NotificationController> {
                                 Icons.notifications_off_outlined,
                                 size: 56,
                                 color: colorScheme.onSurfaceVariant
-                                    .withOpacity(0.4),
+                                    .withValues(alpha: 0.4),
                               ),
                               const SizedBox(height: 16),
                               AnymeXText(
@@ -1315,7 +1315,7 @@ class _AvatarWithBadge extends StatelessWidget {
                   width: 2,
                 ),
                 shadow: BoxShadow(
-                  color: badgeColor.withOpacity(0.4),
+                  color: badgeColor.withValues(alpha: 0.4),
                   blurRadius: 4,
                   spreadRadius: 1,
                 ),
@@ -1442,7 +1442,7 @@ class _AnilistNotificationCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: badgeColor.withOpacity(0.12),
+                        color: badgeColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: AnymeXText(

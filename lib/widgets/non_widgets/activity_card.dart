@@ -172,7 +172,7 @@ class _ActivityCardState extends State<ActivityCard> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -296,7 +296,7 @@ class _ActivityCardState extends State<ActivityCard> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -332,7 +332,7 @@ class _ActivityCardState extends State<ActivityCard> {
                   Divider(
                     height: 1,
                     color: dragContext.theme.colorScheme.outlineVariant
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                   ),
                   Expanded(
                     child: ListView.builder(
@@ -393,8 +393,8 @@ class _ActivityCardState extends State<ActivityCard> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        context.theme.colorScheme.surface.withOpacity(0.92),
-                        context.theme.colorScheme.surface.withOpacity(0.4),
+                        context.theme.colorScheme.surface.withValues(alpha: 0.92),
+                        context.theme.colorScheme.surface.withValues(alpha: 0.4),
                         Colors.transparent,
                       ],
                     ),
@@ -524,7 +524,7 @@ class _ActivityCardState extends State<ActivityCard> {
     final activity = widget.activity;
     final isListActivity =
         activity.type == 'ANIME_LIST' || activity.type == 'MANGA_LIST';
-    final subtleText = context.theme.colorScheme.onSurface.withOpacity(0.7);
+    final subtleText = context.theme.colorScheme.onSurface.withValues(alpha: 0.7);
 
     return InkWell(
       onTap: widget.onTap,
@@ -535,11 +535,11 @@ class _ActivityCardState extends State<ActivityCard> {
           color: context.theme.colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: context.theme.colorScheme.outlineVariant.withOpacity(0.22),
+            color: context.theme.colorScheme.outlineVariant.withValues(alpha: 0.22),
           ),
           boxShadow: [
             BoxShadow(
-              color: context.theme.colorScheme.shadow.withOpacity(0.06),
+              color: context.theme.colorScheme.shadow.withValues(alpha: 0.06),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -571,8 +571,8 @@ class _ActivityCardState extends State<ActivityCard> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          context.theme.colorScheme.surface.withOpacity(0.42),
-                          context.theme.colorScheme.surface.withOpacity(0.10),
+                          context.theme.colorScheme.surface.withValues(alpha: 0.42),
+                          context.theme.colorScheme.surface.withValues(alpha: 0.10),
                         ],
                         stops: const [0.0, 0.52],
                       ),
@@ -591,8 +591,8 @@ class _ActivityCardState extends State<ActivityCard> {
                         end: Alignment.centerRight,
                         colors: [
                           Colors.transparent,
-                          context.theme.colorScheme.surface.withOpacity(0.20),
-                          context.theme.colorScheme.surface.withOpacity(0.48),
+                          context.theme.colorScheme.surface.withValues(alpha: 0.20),
+                          context.theme.colorScheme.surface.withValues(alpha: 0.48),
                         ],
                         stops: const [0.26, 0.64, 1.0],
                       ),
@@ -610,7 +610,7 @@ class _ActivityCardState extends State<ActivityCard> {
                         center: const Alignment(0.42, -0.05),
                         radius: 0.95,
                         colors: [
-                          context.theme.colorScheme.surface.withOpacity(0.22),
+                          context.theme.colorScheme.surface.withValues(alpha: 0.22),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 1.0],
@@ -756,7 +756,7 @@ class _ActivityCardState extends State<ActivityCard> {
                               width: 4,
                               decoration: BoxDecoration(
                                 color: context.theme.colorScheme.primary
-                                    .withOpacity(0.5),
+                                    .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
@@ -814,7 +814,7 @@ class _ActivityCardState extends State<ActivityCard> {
                                         fontWeight: FontWeight.w500,
                                         color: context
                                             .theme.colorScheme.onSurface
-                                            .withOpacity(0.9),
+                                            .withValues(alpha: 0.9),
                                       ),
                                     ),
                                   ],
@@ -1027,10 +1027,10 @@ class _ActivityActionChip extends StatelessWidget {
             child: Ink(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withOpacity(0.34),
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.34),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: colorScheme.outlineVariant.withOpacity(0.32),
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.32),
                 ),
               ),
               child: Row(
@@ -1082,10 +1082,10 @@ class _ActivityAnilistCardState extends State<_ActivityAnilistCard> {
             width: 260,
             decoration: BoxDecoration(
               color: context.theme.colorScheme.surfaceContainerHighest
-                  .withOpacity(0.42),
+                  .withValues(alpha: 0.42),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: context.theme.colorScheme.outlineVariant.withOpacity(0.22),
+                color: context.theme.colorScheme.outlineVariant.withValues(alpha: 0.22),
               ),
             ),
           );
@@ -1120,15 +1120,15 @@ class _ActivityAnilistCardState extends State<_ActivityAnilistCard> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: context.theme.colorScheme.surfaceContainerHighest
-                  .withOpacity(0.52),
+                  .withValues(alpha: 0.52),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color:
-                    context.theme.colorScheme.outlineVariant.withOpacity(0.28),
+                    context.theme.colorScheme.outlineVariant.withValues(alpha: 0.28),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: context.theme.colorScheme.shadow.withOpacity(0.05),
+                  color: context.theme.colorScheme.shadow.withValues(alpha: 0.05),
                   blurRadius: 14,
                   offset: const Offset(0, 5),
                 ),

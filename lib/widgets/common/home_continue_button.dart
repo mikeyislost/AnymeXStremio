@@ -204,7 +204,7 @@ class _HomeContinueWatchingBarState extends State<HomeContinueWatchingBar> {
                       minHeight: 8,
                       color: theme.colorScheme.primary,
                       backgroundColor:
-                          theme.colorScheme.onSurface.withOpacity(0.1),
+                          theme.colorScheme.onSurface.withValues(alpha: 0.1),
                     ),
                   ),
                 ],

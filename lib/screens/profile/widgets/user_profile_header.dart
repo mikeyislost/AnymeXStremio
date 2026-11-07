@@ -134,7 +134,7 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            context.theme.colorScheme.surface.withOpacity(0.3),
+                            context.theme.colorScheme.surface.withValues(alpha: 0.3),
                           ],
                         ),
                       ),
@@ -168,7 +168,7 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                         padding: const EdgeInsets.only(top: 10, left: 10),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.4),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(
@@ -248,13 +248,13 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                         shadows: [
                                           Shadow(
                                             color:
-                                                Colors.black.withOpacity(0.7),
+                                                Colors.black.withValues(alpha: 0.7),
                                             blurRadius: 12,
                                             offset: const Offset(0, 2),
                                           ),
                                           Shadow(
                                             color:
-                                                Colors.black.withOpacity(0.4),
+                                                Colors.black.withValues(alpha: 0.4),
                                             blurRadius: 24,
                                             offset: const Offset(0, 4),
                                           ),
@@ -284,7 +284,7 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.4),
+                                          color: Colors.black.withValues(alpha: 0.4),
                                           borderRadius:
                                               BorderRadius.circular(20),
                                         ),
@@ -320,7 +320,7 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                                 horizontal: 10, vertical: 4),
                                             decoration: BoxDecoration(
                                               color:
-                                                  Colors.black.withOpacity(0.4),
+                                                  Colors.black.withValues(alpha: 0.4),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                             ),
@@ -362,7 +362,7 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                               horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
                                             color:
-                                                Colors.black.withOpacity(0.4),
+                                                Colors.black.withValues(alpha: 0.4),
                                             borderRadius:
                                                 BorderRadius.circular(20),
                                           ),
@@ -447,7 +447,7 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                               decoration: BoxDecoration(
                                                 color: context.theme.colorScheme
                                                     .onSurfaceVariant
-                                                    .withOpacity(0.3),
+                                                    .withValues(alpha: 0.3),
                                                 borderRadius:
                                                     BorderRadius.circular(2),
                                               ),
@@ -566,11 +566,11 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                               ? const Color(0xFFE85D75)
                                               : context.theme.colorScheme
                                                   .primaryContainer
-                                                  .withOpacity(0.4))
+                                                  .withValues(alpha: 0.4))
                                           : (widget.isFollowingUser == true
                                               ? context
                                                   .theme.colorScheme.primary
-                                              : Colors.black.withOpacity(0.4)),
+                                              : Colors.black.withValues(alpha: 0.4)),
                                       borderRadius: BorderRadius.circular(10),
                                       border: _isFollowHovered
                                           ? Border.all(
@@ -579,7 +579,7 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                                       ? const Color(0xFFE85D75)
                                                       : context.theme
                                                           .colorScheme.primary
-                                                          .withOpacity(0.5),
+                                                          .withValues(alpha: 0.5),
                                             )
                                           : null,
                                       boxShadow: _isFollowHovered
@@ -588,10 +588,10 @@ class _UserProfileHeaderState extends State<UserProfileHeader> {
                                                 color: widget.isFollowingUser ==
                                                         true
                                                     ? const Color(0xFFE85D75)
-                                                        .withOpacity(0.3)
+                                                        .withValues(alpha: 0.3)
                                                     : context.theme.colorScheme
                                                         .primary
-                                                        .withOpacity(0.3),
+                                                        .withValues(alpha: 0.3),
                                                 blurRadius: 10,
                                                 spreadRadius: 1,
                                               ),

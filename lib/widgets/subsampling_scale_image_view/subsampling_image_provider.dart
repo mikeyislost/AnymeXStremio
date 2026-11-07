@@ -232,7 +232,7 @@ class _SubsamplingImageProviderState extends State<SubsamplingImageProvider> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: colors.error.withOpacity(0.12),
+                color: colors.error.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -347,7 +347,7 @@ class _SliderSection extends StatelessWidget {
                   thumbShape: SliderComponentShape.noThumb,
                   trackShape: const IOSSliderTrackShape(),
                   activeTrackColor: Colors.white,
-                  inactiveTrackColor: Colors.white.withOpacity(0.2),
+                  inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
                   overlayColor: Colors.transparent,
                 ),
                 child: Slider(

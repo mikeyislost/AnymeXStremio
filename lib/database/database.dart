@@ -18,7 +18,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../widgets/non_widgets/snackbar.dart';
 import '../main.dart';
-import 'package:anymex/utils/app_channel.dart';
+import 'package:anymex/plus/app_channel.dart';
 
 class Database {
   Isar _openIsar(Directory dir) {

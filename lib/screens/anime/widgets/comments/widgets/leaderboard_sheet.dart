@@ -226,7 +226,7 @@ class _LeaderboardSheetState extends State<LeaderboardSheet> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 12),
                   color: nameplateImg != null
-                      ? Colors.black.withOpacity(0.55)
+                      ? Colors.black.withValues(alpha: 0.55)
                       : Colors.transparent,
                   child: SafeArea(
                     top: false,
@@ -388,7 +388,7 @@ class _LeaderboardSheetState extends State<LeaderboardSheet> {
             child: AnymeXContainer(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               color: nameplateImg != null
-                  ? Colors.black.withOpacity(0.52)
+                  ? Colors.black.withValues(alpha: 0.52)
                   : Colors.transparent,
               child: Row(
                 children: [

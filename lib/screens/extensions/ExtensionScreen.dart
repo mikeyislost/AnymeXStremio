@@ -288,34 +288,34 @@ class _ExtensionScreenState extends State<ExtensionScreen>
               decoration: InputDecoration(
                 hintText: 'Search extensions...',
                 hintStyle: TextStyle(
-                  color: context.colors.onSurface.withOpacity(0.4),
+                  color: context.colors.onSurface.withValues(alpha: 0.4),
                   fontSize: 14,
                   fontFamily: 'Linotte',
                 ),
                 prefixIcon: Icon(
                   Icons.search_rounded,
-                  color: context.colors.onSurface.withOpacity(0.45),
+                  color: context.colors.onSurface.withValues(alpha: 0.45),
                   size: 20,
                 ),
                 filled: true,
                 fillColor:
-                    context.colors.surfaceContainerHighest.withOpacity(0.4),
+                    context.colors.surfaceContainerHighest.withValues(alpha: 0.4),
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide(
-                      color: context.colors.outline.withOpacity(0.1)),
+                      color: context.colors.outline.withValues(alpha: 0.1)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide(
-                      color: context.colors.outline.withOpacity(0.15)),
+                      color: context.colors.outline.withValues(alpha: 0.15)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide(
-                      color: context.colors.primary.withOpacity(0.5),
+                      color: context.colors.primary.withValues(alpha: 0.5),
                       width: 1.5),
                 ),
               ),
@@ -332,14 +332,14 @@ class _ExtensionScreenState extends State<ExtensionScreen>
                   width: 48,
                   decoration: BoxDecoration(
                     color: active
-                        ? context.colors.primary.withOpacity(0.12)
+                        ? context.colors.primary.withValues(alpha: 0.12)
                         : context.colors.surfaceContainerHighest
-                            .withOpacity(0.4),
+                            .withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: active
-                          ? context.colors.primary.withOpacity(0.35)
-                          : context.colors.outline.withOpacity(0.15),
+                          ? context.colors.primary.withValues(alpha: 0.35)
+                          : context.colors.outline.withValues(alpha: 0.15),
                     ),
                   ),
                   child: IconButton(
@@ -349,7 +349,7 @@ class _ExtensionScreenState extends State<ExtensionScreen>
                       size: 20,
                       color: active
                           ? context.colors.primary
-                          : context.colors.onSurface.withOpacity(0.55),
+                          : context.colors.onSurface.withValues(alpha: 0.55),
                     ),
                     tooltip: 'Select Language',
                     padding: EdgeInsets.zero,

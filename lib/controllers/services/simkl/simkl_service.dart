@@ -37,7 +37,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:anymex/controllers/network/network_manager.dart';
 import 'package:anymex/controllers/services/simkl/simkl_api.dart';
-import 'package:anymex/controllers/services/simkl/simkl_auth_v2.dart';
+import 'package:anymex/plus/simkl_auth_v2.dart';
 
 enum SimklSearchCategory { anime, movie, show }
 

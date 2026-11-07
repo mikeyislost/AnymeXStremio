@@ -7,7 +7,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:http/http.dart' as http;
 
 class StremioApiException implements Exception {

@@ -183,7 +183,7 @@ class _TapZoneSettingsScreenState extends State<TapZoneSettingsScreen> {
               aspectRatio: 9 / 16,
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ClipRRect(
@@ -228,7 +228,7 @@ class VisualZoneEditor extends StatelessWidget {
             color: theme.colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.2),
+              color: theme.colorScheme.primary.withValues(alpha: 0.2),
               width: 1,
             ),
           ),
@@ -241,7 +241,7 @@ class VisualZoneEditor extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -349,13 +349,13 @@ class VisualZoneEditor extends StatelessWidget {
         return Stack(
           children: [
             
-            Container(color: Colors.black.withOpacity(0.05)),
+            Container(color: Colors.black.withValues(alpha: 0.05)),
             
             // elegant feel ahhh
             Positioned.fill(
               child: CustomPaint(
                 painter: _GridPainter(
-                   color: Theme.of(context).dividerColor.withOpacity(0.05),
+                   color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -380,9 +380,9 @@ class VisualZoneEditor extends StatelessWidget {
                   child: Container(
                     margin: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                         width: 1,
                       ),
                       borderRadius: BorderRadius.circular(16),
@@ -458,10 +458,10 @@ class _ElegantSegmentedControl extends StatelessWidget {
       height: 50,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.2),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withOpacity(0.05),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
         ),
       ),
       child: LayoutBuilder(
@@ -483,7 +483,7 @@ class _ElegantSegmentedControl extends StatelessWidget {
                     borderRadius: BorderRadius.circular(21),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       )
@@ -509,7 +509,7 @@ class _ElegantSegmentedControl extends StatelessWidget {
                                 size: 18,
                                 color: isSelected 
                                   ? Theme.of(context).colorScheme.onPrimary 
-                                  : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                  : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                               ),
                               child: item.icon,
                             ),
@@ -522,7 +522,7 @@ class _ElegantSegmentedControl extends StatelessWidget {
                                 fontFamily: 'Linotte',
                                 color: isSelected 
                                     ? Theme.of(context).colorScheme.onPrimary 
-                                    : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                    : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                               ),
                               child: AnymeXText(item.title),
                             ),

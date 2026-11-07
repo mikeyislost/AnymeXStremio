@@ -131,7 +131,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (_) => _AddRepoDialog(
         type: _tab,
         colors: context.colors,
@@ -232,9 +232,9 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
             height: 46,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest.withOpacity(0.4),
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colors.outline.withOpacity(0.1)),
+              border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
             ),
             child: Stack(children: [
               AnimatedAlign(
@@ -250,7 +250,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                            color: colors.secondary.withOpacity(0.3),
+                            color: colors.secondary.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 2))
                       ],
@@ -337,9 +337,9 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
             height: 54,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest.withOpacity(0.4),
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colors.outline.withOpacity(0.1)),
+              border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
             ),
             child: Stack(children: [
               AnimatedAlign(
@@ -355,7 +355,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                            color: colors.primary.withOpacity(0.3),
+                            color: colors.primary.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 2))
                       ],
@@ -538,7 +538,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: colors.errorContainer.withOpacity(0.2),
+                color: colors.errorContainer.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
@@ -663,7 +663,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
         decoration: BoxDecoration(
           color: colors.surfaceContainerLow.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: colors.outlineVariant.withOpacity(0.5)),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -902,7 +902,7 @@ class _AddRepoDialogState extends State<_AddRepoDialog> {
               hintText: 'https://raw.githubusercontent.com/...',
               hintStyle: TextStyle(
                   fontSize: 12,
-                  color: c.onSurfaceVariant.withOpacity(0.6),
+                  color: c.onSurfaceVariant.withValues(alpha: 0.6),
                   height: 1.5),
               contentPadding: const EdgeInsets.all(14),
               filled: true,
@@ -912,7 +912,7 @@ class _AddRepoDialogState extends State<_AddRepoDialog> {
                   borderSide: BorderSide.none),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: c.outlineVariant.withOpacity(0.6))),
+                  borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: 0.6))),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: c.primary, width: 1.5)),

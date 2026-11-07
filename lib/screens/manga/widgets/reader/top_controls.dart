@@ -113,7 +113,7 @@ class ReaderTopControls extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.15)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
           ),
           child: Row(
             children: [
@@ -126,7 +126,7 @@ class ReaderTopControls extends StatelessWidget {
                       : (controller.currentPageIndex.value /
                           controller.pageList.length),
                   strokeWidth: 2,
-                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                 ),
               ),
               const SizedBox(width: 8),
@@ -153,7 +153,7 @@ class ReaderTopControls extends StatelessWidget {
                     AnymeXText(
                       'Chapter ${_formatNumber(controller.currentChapter.value?.number)} of ${controller.chapterList.length}',
                       style: TextStyle(
-                        color: context.colors.onSurface.withOpacity(0.7),
+                        color: context.colors.onSurface.withValues(alpha: 0.7),
                         fontSize: 10,
                       ),
                     ),
@@ -311,7 +311,7 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: colors.primaryContainer.withOpacity(0.4),
+                    color: colors.primaryContainer.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: AnymeXText(
@@ -377,7 +377,7 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                   hintText: 'Search chapters...',
                   hintStyle: TextStyle(
                     fontSize: 13,
-                    color: colors.onSurface.withOpacity(0.45),
+                    color: colors.onSurface.withValues(alpha: 0.45),
                   ),
                   prefixIcon: Icon(
                     IconlyLight.search,
@@ -389,7 +389,7 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                           icon: Icon(
                             Icons.cancel_rounded,
                             size: 16,
-                            color: colors.onSurface.withOpacity(0.5),
+                            color: colors.onSurface.withValues(alpha: 0.5),
                           ),
                           onPressed: () {
                             _searchController.clear();
@@ -403,17 +403,17 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   filled: true,
-                  fillColor: colors.surfaceContainerHighest.withOpacity(0.35),
+                  fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.35),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: colors.onSurface.withOpacity(0.08),
+                      color: colors.onSurface.withValues(alpha: 0.08),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: colors.primary.withOpacity(0.4),
+                      color: colors.primary.withValues(alpha: 0.4),
                     ),
                   ),
                 ),
@@ -431,10 +431,10 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                         children: [
                           Icon(Icons.search_off_rounded,
                               size: 40,
-                              color: colors.onSurface.withOpacity(0.4)),
+                              color: colors.onSurface.withValues(alpha: 0.4)),
                           const SizedBox(height: 8),
                           AnymeXText('No chapters found',
-                            color: colors.onSurface.withOpacity(0.6),
+                            color: colors.onSurface.withValues(alpha: 0.6),
                           ),
                         ],
                       ),
@@ -505,13 +505,13 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: isCurrent
-                  ? colors.primary.withOpacity(0.12)
-                  : colors.surfaceContainerHighest.withOpacity(0.3),
+                  ? colors.primary.withValues(alpha: 0.12)
+                  : colors.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isCurrent
-                    ? colors.primary.withOpacity(0.4)
-                    : colors.onSurface.withOpacity(0.08),
+                    ? colors.primary.withValues(alpha: 0.4)
+                    : colors.onSurface.withValues(alpha: 0.08),
               ),
             ),
             child: Row(
@@ -522,7 +522,7 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                   decoration: BoxDecoration(
                     color: isCurrent
                         ? colors.primary
-                        : colors.primaryContainer.withOpacity(0.4),
+                        : colors.primaryContainer.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: AnymeXText(
@@ -574,13 +574,13 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
           duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
             color: isCurrent
-                ? colors.primary.withOpacity(0.15)
-                : colors.surfaceContainerHighest.withOpacity(0.3),
+                ? colors.primary.withValues(alpha: 0.15)
+                : colors.surfaceContainerHighest.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isCurrent
-                  ? colors.primary.withOpacity(0.4)
-                  : colors.onSurface.withOpacity(0.08),
+                  ? colors.primary.withValues(alpha: 0.4)
+                  : colors.onSurface.withValues(alpha: 0.08),
             ),
           ),
           child: Column(
@@ -606,8 +606,8 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                       fontSize: 10,
                       fontFamily: 'Linotte',
                       color: isCurrent
-                          ? colors.primary.withOpacity(0.8)
-                          : colors.onSurface.withOpacity(0.5),
+                          ? colors.primary.withValues(alpha: 0.8)
+                          : colors.onSurface.withValues(alpha: 0.5),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

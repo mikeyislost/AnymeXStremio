@@ -32,7 +32,7 @@ void showCharacterStaffSheet(BuildContext context,
   Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder(
       opaque: false,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       barrierDismissible: true,
       transitionDuration: const Duration(milliseconds: 300),
       reverseTransitionDuration: const Duration(milliseconds: 300),
@@ -229,7 +229,7 @@ class _CharacterStaffSheetContentState
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: theme.onSurface.withOpacity(0.2),
+                          color: theme.onSurface.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -262,7 +262,7 @@ class _CharacterStaffSheetContentState
                                   borderRadius: BorderRadius.circular(18),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color: Colors.black.withValues(alpha: 0.3),
                                       blurRadius: 10,
                                       offset: const Offset(0, 5),
                                     ),
@@ -333,7 +333,7 @@ class _CharacterStaffSheetContentState
                                         AnymeXText(nativeName,
                                           size: 16,
                                           color:
-                                              theme.onSurface.withOpacity(0.7),
+                                              theme.onSurface.withValues(alpha: 0.7),
                                           variant: TextVariant.semiBold,
                                         ),
                                       ],
@@ -375,14 +375,14 @@ class _CharacterStaffSheetContentState
                                             horizontal: 16, vertical: 8),
                                         decoration: BoxDecoration(
                                             color: isFav.value
-                                                ? Colors.red.withOpacity(0.2)
+                                                ? Colors.red.withValues(alpha: 0.2)
                                                 : theme.surfaceContainerHighest
-                                                    .withOpacity(0.5),
+                                                    .withValues(alpha: 0.5),
                                             borderRadius:
                                                 BorderRadius.circular(12),
                                             border: Border.all(
                                               color: isFav.value
-                                                  ? Colors.red.withOpacity(0.5)
+                                                  ? Colors.red.withValues(alpha: 0.5)
                                                   : Colors.transparent,
                                               width: 1,
                                             )),
@@ -457,7 +457,7 @@ class _CharacterStaffSheetContentState
                         height: 1,
                         indent: 20,
                         endIndent: 20,
-                        color: theme.onSurface.withOpacity(0.1)),
+                        color: theme.onSurface.withValues(alpha: 0.1)),
                     const SizedBox(height: 20),
                     if (isLoading)
                       const Padding(
@@ -754,7 +754,7 @@ class _CharacterStaffSheetContentState
                                                       vertical: 2),
                                                   decoration: BoxDecoration(
                                                     color: theme.primary
-                                                        .withOpacity(0.2),
+                                                        .withValues(alpha: 0.2),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             4),
@@ -830,7 +830,7 @@ class _CharacterStaffSheetContentState
                                                     color: showOnlyOnList.value
                                                         ? theme.primary
                                                         : theme.onSurface
-                                                            .withOpacity(0.4),
+                                                            .withValues(alpha: 0.4),
                                                     width: 2,
                                                   ),
                                                   color: showOnlyOnList.value
@@ -847,7 +847,7 @@ class _CharacterStaffSheetContentState
                                           AnymeXText("On My List",
                                             size: 14,
                                             color: theme.onSurface
-                                                .withOpacity(0.7),
+                                                .withValues(alpha: 0.7),
                                             variant: TextVariant.bold,
                                           ),
                                         ],
@@ -873,7 +873,7 @@ class _CharacterStaffSheetContentState
                                             ? "No media found on your list"
                                             : "No media found",
                                         variant: TextVariant.semiBold,
-                                        color: theme.onSurface.withOpacity(0.5),
+                                        color: theme.onSurface.withValues(alpha: 0.5),
                                       ),
                                     ),
                                   );
@@ -911,7 +911,7 @@ class _CharacterStaffSheetContentState
                                             Expanded(
                                                 child: Divider(
                                                     color: theme.primary
-                                                        .withOpacity(0.3))),
+                                                        .withValues(alpha: 0.3))),
                                             Padding(
                                               padding:
                                                   const EdgeInsets.symmetric(
@@ -925,7 +925,7 @@ class _CharacterStaffSheetContentState
                                             Expanded(
                                                 child: Divider(
                                                     color: theme.primary
-                                                        .withOpacity(0.3))),
+                                                        .withValues(alpha: 0.3))),
                                           ],
                                         ),
                                       ),
@@ -946,7 +946,7 @@ class _CharacterStaffSheetContentState
                                                 Expanded(
                                                     child: Divider(
                                                         color: theme.primary
-                                                            .withOpacity(0.3))),
+                                                            .withValues(alpha: 0.3))),
                                                 Padding(
                                                   padding: const EdgeInsets
                                                       .symmetric(
@@ -960,7 +960,7 @@ class _CharacterStaffSheetContentState
                                                 Expanded(
                                                     child: Divider(
                                                         color: theme.primary
-                                                            .withOpacity(0.3))),
+                                                            .withValues(alpha: 0.3))),
                                               ],
                                             ),
                                           ),
@@ -1039,7 +1039,7 @@ class _CharacterStaffSheetContentState
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.9),
+                              Colors.black.withValues(alpha: 0.9),
                             ],
                           ),
                           borderRadius: const BorderRadius.vertical(
@@ -1163,7 +1163,7 @@ class _CharacterStaffSheetContentState
                                 gradient: LinearGradient(
                                   colors: [
                                     Colors.transparent,
-                                    Colors.black.withOpacity(0.8),
+                                    Colors.black.withValues(alpha: 0.8),
                                     Colors.black,
                                   ],
                                   begin: Alignment.topCenter,
@@ -1186,7 +1186,7 @@ class _CharacterStaffSheetContentState
                                     Shadow(
                                       offset: const Offset(0, 1),
                                       blurRadius: 3.0,
-                                      color: Colors.black.withOpacity(0.8),
+                                      color: Colors.black.withValues(alpha: 0.8),
                                     ),
                                   ],
                                 ),
@@ -1202,7 +1202,7 @@ class _CharacterStaffSheetContentState
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.6),
+                              color: Colors.black.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
@@ -1288,7 +1288,7 @@ class _CharacterStaffSheetContentState
           styleSheet: MarkdownStyleSheet(
             p: TextStyle(
               fontSize: 14,
-              color: theme.onSurface.withOpacity(0.8),
+              color: theme.onSurface.withValues(alpha: 0.8),
               fontFamily: 'Linotte',
             ),
             strong: TextStyle(
@@ -1315,7 +1315,7 @@ class _CharacterStaffSheetContentState
         styleSheet: MarkdownStyleSheet(
           p: TextStyle(
             fontSize: 14,
-            color: theme.onSurface.withOpacity(0.8),
+            color: theme.onSurface.withValues(alpha: 0.8),
             fontFamily: 'Linotte',
           ),
           strong: TextStyle(
@@ -1366,10 +1366,10 @@ class _SpoilerWidgetState extends State<SpoilerWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color:
-                    theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.1),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
                 ),
               ),
               child: MarkdownBody(
@@ -1378,7 +1378,7 @@ class _SpoilerWidgetState extends State<SpoilerWidget> {
                 styleSheet: MarkdownStyleSheet(
                   p: TextStyle(
                     fontSize: 14,
-                    color: theme.colorScheme.onSurface.withOpacity(0.8),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                     fontFamily: 'Linotte',
                   ),
                   strong: TextStyle(

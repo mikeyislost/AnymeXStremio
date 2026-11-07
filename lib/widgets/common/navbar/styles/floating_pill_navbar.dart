@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:anymex/plus/maybe_blur.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/utils/theme_extensions.dart';
@@ -149,10 +150,8 @@ class _FloatingPillNavBarState extends State<_FloatingPillNavBar>
             borderRadius: borderRadius,
             child: Obx(() {
               final isTranslucent = translucent.value;
-              return BackdropFilter(
-                filter: isTranslucent
-                    ? ImageFilter.blur(sigmaX: 25, sigmaY: 25)
-                    : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+              return MaybeBlur(
+                sigma: isTranslucent ? 25 : 0,
                 child: Container(
                   decoration: BoxDecoration(
                     color: isTranslucent

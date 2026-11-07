@@ -344,7 +344,7 @@ class _DiscordLoginPageState extends State<DiscordLoginPage> {
                 color: const Color(0xFF2B2D31),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

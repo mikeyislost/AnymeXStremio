@@ -288,13 +288,15 @@ class BlurredContainer extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: blurIntensity,
-                  sigmaY: blurIntensity,
+              // AnymeX+: no blur layer at all when blur is 0.
+              if (blurIntensity > 0)
+                BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: blurIntensity,
+                    sigmaY: blurIntensity,
+                  ),
+                  child: Container(),
                 ),
-                child: Container(),
-              ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: children,

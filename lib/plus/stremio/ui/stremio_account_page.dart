@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:anymex/controllers/services/stremio/stremio_api.dart';
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/stremio_api.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/controllers/services/storage/anymex_cache_manager.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';

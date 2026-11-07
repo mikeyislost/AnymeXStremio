@@ -18,7 +18,7 @@ void showStudioDetailsSheet(
   Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder(
       opaque: false,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       barrierDismissible: true,
       transitionDuration: const Duration(milliseconds: 300),
       reverseTransitionDuration: const Duration(milliseconds: 300),
@@ -141,7 +141,7 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: theme.onSurface.withOpacity(0.2),
+                      color: theme.onSurface.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -202,13 +202,13 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                                   horizontal: 16, vertical: 8),
                               decoration: BoxDecoration(
                                   color: isFav.value
-                                      ? Colors.red.withOpacity(0.2)
+                                      ? Colors.red.withValues(alpha: 0.2)
                                       : theme.surfaceContainerHighest
-                                          .withOpacity(0.5),
+                                          .withValues(alpha: 0.5),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: isFav.value
-                                        ? Colors.red.withOpacity(0.5)
+                                        ? Colors.red.withValues(alpha: 0.5)
                                         : Colors.transparent,
                                     width: 1,
                                   )),
@@ -243,7 +243,7 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                   height: 1,
                   indent: 20,
                   endIndent: 20,
-                  color: theme.onSurface.withOpacity(0.1),
+                  color: theme.onSurface.withValues(alpha: 0.1),
                 ),
                 if (_isLoading)
                   const Padding(
@@ -315,7 +315,7 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                         border: Border.all(
                           color: showOnlyOnList.value
                               ? theme.primary
-                              : theme.onSurface.withOpacity(0.4),
+                              : theme.onSurface.withValues(alpha: 0.4),
                           width: 2,
                         ),
                         color: showOnlyOnList.value
@@ -329,7 +329,7 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                     const SizedBox(width: 10),
                     AnymeXText("On My List",
                       size: 14,
-                      color: theme.onSurface.withOpacity(0.7),
+                      color: theme.onSurface.withValues(alpha: 0.7),
                       variant: TextVariant.bold,
                     ),
                   ],
@@ -346,7 +346,7 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                       ? "No media found on your list"
                       : "No media found",
                   variant: TextVariant.semiBold,
-                  color: theme.onSurface.withOpacity(0.5),
+                  color: theme.onSurface.withValues(alpha: 0.5),
                 ),
               ),
             )
@@ -365,7 +365,7 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                       children: [
                         Expanded(
                             child:
-                                Divider(color: theme.primary.withOpacity(0.3))),
+                                Divider(color: theme.primary.withValues(alpha: 0.3))),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: AnymeXText("$year (${mediaList.length})",
@@ -376,7 +376,7 @@ class _StudioDetailsSheetContentState extends State<StudioDetailsSheetContent> {
                         ),
                         Expanded(
                             child:
-                                Divider(color: theme.primary.withOpacity(0.3))),
+                                Divider(color: theme.primary.withValues(alpha: 0.3))),
                       ],
                     ),
                   ),

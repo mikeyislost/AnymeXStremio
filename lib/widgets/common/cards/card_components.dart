@@ -160,7 +160,7 @@ class MediaBadge extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: isBlurred
-                ? context.colors.surfaceContainer.withOpacity(0.6)
+                ? context.colors.surfaceContainer.withValues(alpha: 0.6)
                 : theme.colorScheme.primary,
             borderRadius: BorderRadius.circular(20),
           ),

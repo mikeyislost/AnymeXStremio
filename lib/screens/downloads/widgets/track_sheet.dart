@@ -200,7 +200,7 @@ class _TrackSheetState extends State<_TrackSheet> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: theme.onSurface.withOpacity(0.5),
+                            color: theme.onSurface.withValues(alpha: 0.5),
                             fontSize: 11,
                           ),
                         ),
@@ -221,7 +221,7 @@ class _TrackSheetState extends State<_TrackSheet> {
             ),
             Divider(
                 height: 1,
-                color: theme.outlineVariant.withOpacity(0.2)),
+                color: theme.outlineVariant.withValues(alpha: 0.2)),
             if (loggedTrackers.isEmpty)
               _buildNoTrackersState(theme)
             else if (_searchingTracker != null)
@@ -247,7 +247,7 @@ class _TrackSheetState extends State<_TrackSheet> {
             AnymeXText(
               'Logged-in tracking services',
               style: TextStyle(
-                color: theme.onSurface.withOpacity(0.5),
+                color: theme.onSurface.withValues(alpha: 0.5),
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.4,
@@ -269,7 +269,7 @@ class _TrackSheetState extends State<_TrackSheet> {
               'A single media can be tracked on all logged-in services at once. '
               'Progress is pushed to every bound service in parallel.',
               style: TextStyle(
-                color: theme.onSurface.withOpacity(0.4),
+                color: theme.onSurface.withValues(alpha: 0.4),
                 fontSize: 11,
                 height: 1.4,
               ),
@@ -292,12 +292,12 @@ class _TrackSheetState extends State<_TrackSheet> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.surfaceContainer.withOpacity(0.3),
+        color: theme.surfaceContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: bound
-              ? Color(tracker.color).withOpacity(0.4)
-              : theme.outlineVariant.withOpacity(0.2),
+              ? Color(tracker.color).withValues(alpha: 0.4)
+              : theme.outlineVariant.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -343,14 +343,14 @@ class _TrackSheetState extends State<_TrackSheet> {
                             const SizedBox(width: 6),
                             Icon(Icons.edit_rounded,
                                 size: 11,
-                                color: theme.onSurface.withOpacity(0.3)),
+                                color: theme.onSurface.withValues(alpha: 0.3)),
                           ],
                         ),
                         const SizedBox(height: 2),
                         AnymeXText(
                           _formatBindingSummary(b),
                           style: TextStyle(
-                            color: theme.onSurface.withOpacity(0.55),
+                            color: theme.onSurface.withValues(alpha: 0.55),
                             fontSize: 11,
                           ),
                         ),
@@ -372,7 +372,7 @@ class _TrackSheetState extends State<_TrackSheet> {
                       AnymeXText(
                         'Not tracked',
                         style: TextStyle(
-                          color: theme.onSurface.withOpacity(0.4),
+                          color: theme.onSurface.withValues(alpha: 0.4),
                           fontSize: 11,
                         ),
                       ),
@@ -386,13 +386,13 @@ class _TrackSheetState extends State<_TrackSheet> {
                 IconButton(
                   tooltip: 'Edit',
                   icon: Icon(Icons.edit_rounded,
-                      size: 18, color: theme.primary.withOpacity(0.8)),
+                      size: 18, color: theme.primary.withValues(alpha: 0.8)),
                   onPressed: () => _showEditDialog(context, theme, tracker, b),
                 ),
                 IconButton(
                   tooltip: 'Unbind',
                   icon: Icon(Icons.link_off_rounded,
-                      size: 18, color: theme.error.withOpacity(0.7)),
+                      size: 18, color: theme.error.withValues(alpha: 0.7)),
                   onPressed: () => _unbind(b),
                 ),
               ],
@@ -510,10 +510,10 @@ class _TrackSheetState extends State<_TrackSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               decoration: BoxDecoration(
-                color: theme.surfaceContainer.withOpacity(0.3),
+                color: theme.surfaceContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: theme.outlineVariant.withOpacity(0.15)),
+                    color: theme.outlineVariant.withValues(alpha: 0.15)),
               ),
               child: Row(
                 children: categories.map((c) {
@@ -534,12 +534,12 @@ class _TrackSheetState extends State<_TrackSheet> {
                             horizontal: 8, vertical: 7),
                         decoration: BoxDecoration(
                           color: selected
-                              ? Color(tracker.color).withOpacity(0.18)
+                              ? Color(tracker.color).withValues(alpha: 0.18)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(7),
                           border: Border.all(
                             color: selected
-                                ? Color(tracker.color).withOpacity(0.4)
+                                ? Color(tracker.color).withValues(alpha: 0.4)
                                 : Colors.transparent,
                           ),
                         ),
@@ -551,7 +551,7 @@ class _TrackSheetState extends State<_TrackSheet> {
                                 size: 12,
                                 color: selected
                                     ? Color(tracker.color)
-                                    : theme.onSurface.withOpacity(0.5)),
+                                    : theme.onSurface.withValues(alpha: 0.5)),
                             const SizedBox(width: 5),
                             Flexible(
                               child: AnymeXText(
@@ -561,7 +561,7 @@ class _TrackSheetState extends State<_TrackSheet> {
                                   fontWeight: FontWeight.w700,
                                   color: selected
                                       ? Color(tracker.color)
-                                      : theme.onSurface.withOpacity(0.6),
+                                      : theme.onSurface.withValues(alpha: 0.6),
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -598,11 +598,11 @@ class _TrackSheetState extends State<_TrackSheet> {
               decoration: InputDecoration(
                 hintText: 'Search ${tracker.label} for "${widget.title}"…',
                 hintStyle: TextStyle(
-                    color: theme.onSurface.withOpacity(0.4), fontSize: 13),
+                    color: theme.onSurface.withValues(alpha: 0.4), fontSize: 13),
                 prefixIcon: Icon(Icons.search_rounded,
-                    size: 20, color: theme.onSurface.withOpacity(0.5)),
+                    size: 20, color: theme.onSurface.withValues(alpha: 0.5)),
                 filled: true,
-                fillColor: theme.surfaceContainer.withOpacity(0.4),
+                fillColor: theme.surfaceContainer.withValues(alpha: 0.4),
                 isDense: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -622,18 +622,18 @@ class _TrackSheetState extends State<_TrackSheet> {
                         style: TextStyle(
                             fontSize: 11, fontWeight: FontWeight.w700)),
                     selected: _showAdult,
-                    selectedColor: theme.error.withOpacity(0.25),
+                    selectedColor: theme.error.withValues(alpha: 0.25),
                     checkmarkColor: theme.error,
                     labelStyle: TextStyle(
                       color: _showAdult
                           ? theme.error
-                          : theme.onSurface.withOpacity(0.6),
+                          : theme.onSurface.withValues(alpha: 0.6),
                     ),
-                    backgroundColor: theme.surfaceContainer.withOpacity(0.3),
+                    backgroundColor: theme.surfaceContainer.withValues(alpha: 0.3),
                     side: BorderSide(
                       color: _showAdult
-                          ? theme.error.withOpacity(0.4)
-                          : theme.outlineVariant.withOpacity(0.2),
+                          ? theme.error.withValues(alpha: 0.4)
+                          : theme.outlineVariant.withValues(alpha: 0.2),
                     ),
                     showCheckmark: false,
                     avatar: Icon(
@@ -643,7 +643,7 @@ class _TrackSheetState extends State<_TrackSheet> {
                       size: 13,
                       color: _showAdult
                           ? theme.error
-                          : theme.onSurface.withOpacity(0.4),
+                          : theme.onSurface.withValues(alpha: 0.4),
                     ),
                     onSelected: (_) => _toggleAdult(tracker),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -656,7 +656,7 @@ class _TrackSheetState extends State<_TrackSheet> {
                         ? 'Showing all titles (incl. 18+)'
                         : 'Hiding 18+ content',
                     style: TextStyle(
-                      color: theme.onSurface.withOpacity(0.4),
+                      color: theme.onSurface.withValues(alpha: 0.4),
                       fontSize: 11,
                     ),
                   ),
@@ -677,7 +677,7 @@ class _TrackSheetState extends State<_TrackSheet> {
                             'No results. Try searching by title.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: theme.onSurface.withOpacity(0.4),
+                              color: theme.onSurface.withValues(alpha: 0.4),
                               fontSize: 12,
                             ),
                           ),
@@ -745,9 +745,9 @@ class _TrackSheetState extends State<_TrackSheet> {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.surfaceContainer.withOpacity(0.25),
+        color: theme.surfaceContainer.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.outlineVariant.withOpacity(0.15)),
+        border: Border.all(color: theme.outlineVariant.withValues(alpha: 0.15)),
       ),
       child: ListTile(
         contentPadding:
@@ -765,9 +765,9 @@ class _TrackSheetState extends State<_TrackSheet> {
               : Container(
                   width: 44,
                   height: 62,
-                  color: theme.surfaceContainer.withOpacity(0.5),
+                  color: theme.surfaceContainer.withValues(alpha: 0.5),
                   child: Icon(Icons.movie_outlined,
-                      size: 20, color: theme.onSurface.withOpacity(0.3)),
+                      size: 20, color: theme.onSurface.withValues(alpha: 0.3)),
                 ),
         ),
         title: AnymeXText(
@@ -785,12 +785,12 @@ class _TrackSheetState extends State<_TrackSheet> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-              color: theme.onSurface.withOpacity(0.5), fontSize: 11),
+              color: theme.onSurface.withValues(alpha: 0.5), fontSize: 11),
         ),
         trailing: FilledButton.tonal(
           onPressed: () => _pickResult(tracker, r),
           style: FilledButton.styleFrom(
-            backgroundColor: Color(tracker.color).withOpacity(0.15),
+            backgroundColor: Color(tracker.color).withValues(alpha: 0.15),
             foregroundColor: Color(tracker.color),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             minimumSize: const Size(0, 34),
@@ -808,7 +808,7 @@ class _TrackSheetState extends State<_TrackSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.login_rounded,
-              size: 36, color: theme.onSurface.withOpacity(0.3)),
+              size: 36, color: theme.onSurface.withValues(alpha: 0.3)),
           const SizedBox(height: 14),
           AnymeXText(
             'No tracking service connected',
@@ -824,7 +824,7 @@ class _TrackSheetState extends State<_TrackSheet> {
             'to track this media.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: theme.onSurface.withOpacity(0.5),
+              color: theme.onSurface.withValues(alpha: 0.5),
               fontSize: 12,
               height: 1.4,
             ),

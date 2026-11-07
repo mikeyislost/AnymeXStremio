@@ -52,14 +52,14 @@ class MinimalEpisodeWidget extends StatelessWidget {
             color: isSelected
                 ? colors.primaryContainer.opaque(0.4, iReallyMeanIt: true)
                 : (isFiller
-                    ? Colors.orange.withOpacity(0.12)
+                    ? Colors.orange.withValues(alpha: 0.12)
                     : colors.surfaceContainerHighest.opaque(0.35, iReallyMeanIt: true)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
                   ? colors.primary.opaque(0.5, iReallyMeanIt: true)
                   : (isFiller
-                      ? Colors.orange.withOpacity(0.3)
+                      ? Colors.orange.withValues(alpha: 0.3)
                       : colors.onSurface.opaque(0.08, iReallyMeanIt: true)),
             ),
           ),
@@ -113,7 +113,7 @@ class MinimalEpisodeWidget extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: progress,
                     strokeWidth: 2.0,
-                    backgroundColor: colors.primary.withOpacity(0.15),
+                    backgroundColor: colors.primary.withValues(alpha: 0.15),
                     color: colors.primary,
                   ),
                 ),

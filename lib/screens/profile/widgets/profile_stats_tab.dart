@@ -64,10 +64,10 @@ class _ProfileStatsTabState extends State<ProfileStatsTab> {
             height: 50,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.2),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(25),
               border: Border.all(
-                color: Theme.of(context).dividerColor.withOpacity(0.05),
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
               ),
             ),
             child: Row(
@@ -98,13 +98,13 @@ class _ProfileStatsTabState extends State<ProfileStatsTab> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: selected
-                          ? colorScheme.primary.withOpacity(0.15)
+                          ? colorScheme.primary.withValues(alpha: 0.15)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: selected
-                            ? colorScheme.primary.withOpacity(0.3)
-                            : colorScheme.outlineVariant.withOpacity(0.3),
+                            ? colorScheme.primary.withValues(alpha: 0.3)
+                            : colorScheme.outlineVariant.withValues(alpha: 0.3),
                       ),
                     ),
                     alignment: Alignment.center,
@@ -114,7 +114,7 @@ class _ProfileStatsTabState extends State<ProfileStatsTab> {
                           selected ? TextVariant.semiBold : TextVariant.regular,
                       color: selected
                           ? colorScheme.primary
-                          : colorScheme.onSurface.withOpacity(0.6),
+                          : colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 );
@@ -354,7 +354,7 @@ class _ProfileStatsTabState extends State<ProfileStatsTab> {
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: c.primary.withOpacity(0.3),
+                      color: c.primary.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     )
@@ -369,7 +369,7 @@ class _ProfileStatsTabState extends State<ProfileStatsTab> {
               fontWeight: FontWeight.w600,
               fontFamily: 'Linotte',
               color:
-                  selected ? c.onPrimary : c.onSurfaceVariant.withOpacity(0.7),
+                  selected ? c.onPrimary : c.onSurfaceVariant.withValues(alpha: 0.7),
             ),
             child: AnymeXText(label),
           ),
@@ -599,9 +599,9 @@ class _ProfileStatsTabState extends State<ProfileStatsTab> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: color.withOpacity(0.2)),
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -613,7 +613,7 @@ class _ProfileStatsTabState extends State<ProfileStatsTab> {
                     const SizedBox(width: 8),
                     AnymeXText(_getLabel(items[i]),
                         size: 13,
-                        color: color.withOpacity(0.8),
+                        color: color.withValues(alpha: 0.8),
                         variant: TextVariant.semiBold),
                   ],
                 ),

@@ -155,10 +155,10 @@ class _FeatureCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withOpacity(0.3),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: cs.outline.withOpacity(0.12),
+          color: cs.outline.withValues(alpha: 0.12),
           width: 1,
         ),
       ),
@@ -177,7 +177,7 @@ class _FeatureCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: effectiveAccent.withOpacity(0.12),
+                    color: effectiveAccent.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -198,7 +198,7 @@ class _FeatureCard extends StatelessWidget {
                 AnymeXText(
                   description,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant.withOpacity(0.8),
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.8),
                     height: 1.3,
                   ),
                   maxLines: isFullWidth ? 2 : 3,

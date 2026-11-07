@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:anymex/utils/abi_checker.dart';
 import 'package:anymex/utils/logger.dart';
-import 'package:anymex/utils/app_channel.dart';
+import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_button.dart';

@@ -1,5 +1,5 @@
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
-import 'package:anymex/screens/stremio/stremio_widgets.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/details_page.dart';
 import 'package:anymex/screens/manga/details_page.dart';

@@ -103,7 +103,7 @@ class _AnnouncementSheetState extends State<AnnouncementSheet> {
           height: MediaQuery.sizeOf(context).height * 0.85,
           color: colors.surface,
           radius: 24,
-          border: Border.all(color: colors.outline.withOpacity(0.1)),
+          border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +113,7 @@ class _AnnouncementSheetState extends State<AnnouncementSheet> {
                   width: 36,
                   height: 3.5,
                   margin: const EdgeInsets.only(bottom: 14),
-                  color: colors.onSurface.withOpacity(0.15),
+                  color: colors.onSurface.withValues(alpha: 0.15),
                   radius: 10,
                 ),
               ),
@@ -123,7 +123,7 @@ class _AnnouncementSheetState extends State<AnnouncementSheet> {
                     width: 38,
                     height: 38,
                     shape: BoxShape.circle,
-                    color: Colors.orange.withOpacity(0.15),
+                    color: Colors.orange.withValues(alpha: 0.15),
                     alignment: Alignment.center,
                     child: const Icon(
                       Icons.campaign_rounded,
@@ -207,39 +207,39 @@ class _AnnouncementSheetState extends State<AnnouncementSheet> {
             children: [
               if ((announcement.authorName ?? '').isNotEmpty) ...[
                 Icon(Icons.person_outline_rounded,
-                    size: 14, color: colors.onSurface.withOpacity(0.5)),
+                    size: 14, color: colors.onSurface.withValues(alpha: 0.5)),
                 const SizedBox(width: 4),
                 AnymeXText(
                   announcement.authorName!,
                   size: 12,
-                  color: colors.onSurface.withOpacity(0.6),
+                  color: colors.onSurface.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 6),
                 AnymeXText('•',
-                    size: 12, color: colors.onSurface.withOpacity(0.4)),
+                    size: 12, color: colors.onSurface.withValues(alpha: 0.4)),
                 const SizedBox(width: 6),
               ],
               Icon(Icons.schedule_rounded,
-                  size: 14, color: colors.onSurface.withOpacity(0.5)),
+                  size: 14, color: colors.onSurface.withValues(alpha: 0.5)),
               const SizedBox(width: 4),
               AnymeXText(
                 announcement.publishedAt != null
                     ? timeago.format(announcement.publishedAt!)
                     : '',
                 size: 12,
-                color: colors.onSurface.withOpacity(0.6),
+                color: colors.onSurface.withValues(alpha: 0.6),
               ),
               const SizedBox(width: 6),
               AnymeXText('•',
-                  size: 12, color: colors.onSurface.withOpacity(0.4)),
+                  size: 12, color: colors.onSurface.withValues(alpha: 0.4)),
               const SizedBox(width: 6),
               Icon(Icons.visibility_outlined,
-                  size: 14, color: colors.onSurface.withOpacity(0.5)),
+                  size: 14, color: colors.onSurface.withValues(alpha: 0.5)),
               const SizedBox(width: 4),
               AnymeXText(
                 '${announcement.viewCount}',
                 size: 12,
-                color: colors.onSurface.withOpacity(0.6),
+                color: colors.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -285,7 +285,7 @@ class _AnnouncementSheetState extends State<AnnouncementSheet> {
   Widget _chip(BuildContext context, String label, Color color, IconData icon) {
     return AnymeXContainer(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      color: color.withOpacity(0.12),
+      color: color.withValues(alpha: 0.12),
       radius: 20,
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -340,7 +340,7 @@ class _AnnouncementSheetState extends State<AnnouncementSheet> {
               child: Column(
                 children: [
                   Icon(Icons.campaign_outlined,
-                      size: 44, color: colors.onSurface.withOpacity(0.3)),
+                      size: 44, color: colors.onSurface.withValues(alpha: 0.3)),
                   const SizedBox(height: 12),
                   const AnymeXText('Announcement unavailable', size: 16,
                       variant: TextVariant.semiBold),
@@ -350,7 +350,7 @@ class _AnnouncementSheetState extends State<AnnouncementSheet> {
                         ? 'Could not load this announcement. Check your connection and try again.'
                         : 'This announcement is no longer available.',
                     size: 12,
-                    color: colors.onSurface.withOpacity(0.6),
+                    color: colors.onSurface.withValues(alpha: 0.6),
                     textAlign: TextAlign.center,
                   ),
                   if (_loadFailed) ...[

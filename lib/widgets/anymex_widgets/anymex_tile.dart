@@ -217,7 +217,7 @@ class AnymeXTile extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: primary.withOpacity(0.12),
+              color: primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: AnymeXText(
@@ -297,7 +297,7 @@ class AnymeXTile extends StatelessWidget {
               border: Border.all(
                 color: selected
                     ? colors.primary
-                    : colors.onSurface.withOpacity(0.24),
+                    : colors.onSurface.withValues(alpha: 0.24),
                 width: 2,
               ),
               color: selected ? colors.primary : Colors.transparent,
@@ -363,7 +363,7 @@ class AnymeXTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color:
-                    value ? colors.primary : colors.onSurface.withOpacity(0.24),
+                    value ? colors.primary : colors.onSurface.withValues(alpha: 0.24),
                 width: 2,
               ),
               color: value ? colors.primary : Colors.transparent,

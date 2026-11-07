@@ -354,7 +354,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                       AnymeXText(
                         'Otaku Rank Level',
                         size: 10,
-                        color: context.colors.onSurfaceVariant.withOpacity(0.5),
+                        color: context.colors.onSurfaceVariant.withValues(alpha: 0.5),
                       ),
                     ],
                   ),
@@ -364,7 +364,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: context.colors.primary.withOpacity(0.1),
+                  color: context.colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: AnymeXText(
@@ -384,13 +384,13 @@ class _UserStatsPageState extends State<UserStatsPage> {
                 'Level Progress',
                 size: 11,
                 variant: TextVariant.semiBold,
-                color: context.colors.onSurfaceVariant.withOpacity(0.8),
+                color: context.colors.onSurfaceVariant.withValues(alpha: 0.8),
               ),
               AnymeXText(
                 '${hours.toStringAsFixed(1)}h / ${nextMaxHours}h',
                 size: 11,
                 variant: TextVariant.semiBold,
-                color: context.colors.onSurfaceVariant.withOpacity(0.6),
+                color: context.colors.onSurfaceVariant.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -400,7 +400,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: context.colors.primary.withOpacity(0.08),
+              backgroundColor: context.colors.primary.withValues(alpha: 0.08),
               valueColor: AlwaysStoppedAnimation<Color>(context.colors.primary),
             ),
           ),
@@ -483,7 +483,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
         ImageButton(
           buttonText: favorite.title,
           backgroundColor:
-              context.colors.surfaceContainerLowest.withOpacity(0.2),
+              context.colors.surfaceContainerLowest.withValues(alpha: 0.2),
           subText: 'FAVORITE • $timeStr spent',
           tagIcon: IconlyLight.bookmark,
           backgroundImage: favorite.poster ?? '',
@@ -522,13 +522,13 @@ class _UserStatsPageState extends State<UserStatsPage> {
             children: [
               Icon(icon,
                   size: 10,
-                  color: context.colors.onSurfaceVariant.withOpacity(0.5)),
+                  color: context.colors.onSurfaceVariant.withValues(alpha: 0.5)),
               const SizedBox(width: 4),
               Expanded(
                 child: AnymeXText(
                   title,
                   size: 9,
-                  color: context.colors.onSurfaceVariant.withOpacity(0.5),
+                  color: context.colors.onSurfaceVariant.withValues(alpha: 0.5),
                   maxLines: 1,
                 ),
               ),
@@ -548,8 +548,8 @@ class _UserStatsPageState extends State<UserStatsPage> {
 
   Widget _buildHeatmapSection(BuildContext context) {
     final primary = context.colors.primary;
-    final emptyColor = context.colors.surfaceContainerHighest.withOpacity(0.3);
-    final subtleText = context.colors.onSurfaceVariant.withOpacity(0.5);
+    final emptyColor = context.colors.surfaceContainerHighest.withValues(alpha: 0.3);
+    final subtleText = context.colors.onSurfaceVariant.withValues(alpha: 0.5);
 
     final Map<int, int> levelMap = {};
     final Map<int, int> amountMap = {};
@@ -729,7 +729,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                                     } else {
                                       final opacity =
                                           0.15 + (level / 10.0) * 0.85;
-                                      cellColor = primary.withOpacity(opacity);
+                                      cellColor = primary.withValues(alpha: opacity);
                                     }
 
                                     final tooltipText =
@@ -757,7 +757,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                                             border: Border.all(
                                               color: context
                                                   .colors.outlineVariant
-                                                  .withOpacity(0.3),
+                                                  .withValues(alpha: 0.3),
                                             ),
                                           ),
                                           textStyle: TextStyle(
@@ -849,7 +849,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                 AnymeXText(
                   'No activity',
                   size: 11,
-                  color: context.colors.onSurfaceVariant.withOpacity(0.5),
+                  color: context.colors.onSurfaceVariant.withValues(alpha: 0.5),
                 )
               else
                 AnymeXText(
@@ -915,13 +915,13 @@ class _UserStatsPageState extends State<UserStatsPage> {
                   Icon(
                     IconlyLight.activity,
                     size: 40,
-                    color: context.colors.onSurfaceVariant.withOpacity(0.2),
+                    color: context.colors.onSurfaceVariant.withValues(alpha: 0.2),
                   ),
                   const SizedBox(height: 8),
                   AnymeXText(
                     'No logged stats yet. Start watching/reading!',
                     size: 12,
-                    color: context.colors.onSurfaceVariant.withOpacity(0.4),
+                    color: context.colors.onSurfaceVariant.withValues(alpha: 0.4),
                   ),
                 ],
               ),
@@ -1008,7 +1008,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                                     '${item.type.capitalizeFirst} • Interacted: ${item.interactionCount} times',
                                     size: 11,
                                     color: context.colors.onSurfaceVariant
-                                        .withOpacity(0.6),
+                                        .withValues(alpha: 0.6),
                                   ),
                                 ],
                               ),
@@ -1017,7 +1017,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                             Icon(
                               IconlyLight.arrowRight2,
                               color: context.colors.onSurfaceVariant
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                               size: 16,
                             ),
                           ],
@@ -1062,7 +1062,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
               child: AnymeXText(
                 'No insights available yet. Add items to your library!',
                 size: 12,
-                color: context.colors.onSurfaceVariant.withOpacity(0.4),
+                color: context.colors.onSurfaceVariant.withValues(alpha: 0.4),
               ),
             ),
           )
@@ -1143,7 +1143,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                       AnymeXText(
                         '${entry.value} ${entry.value == 1 ? "title" : "titles"}',
                         size: 11,
-                        color: context.colors.onSurfaceVariant.withOpacity(0.6),
+                        color: context.colors.onSurfaceVariant.withValues(alpha: 0.6),
                       ),
                     ],
                   ),
@@ -1153,7 +1153,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                     child: LinearProgressIndicator(
                       value: percent,
                       minHeight: 6,
-                      backgroundColor: context.colors.primary.withOpacity(0.08),
+                      backgroundColor: context.colors.primary.withValues(alpha: 0.08),
                       valueColor:
                           AlwaysStoppedAnimation<Color>(context.colors.primary),
                     ),

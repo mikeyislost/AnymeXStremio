@@ -240,6 +240,21 @@ class StremioMetaPreview {
           : _strList(json['genre']),
     );
   }
+
+  /// Same shape fromJson reads (used for the device copy of home rows).
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type,
+        'name': name,
+        if (poster != null) 'poster': poster,
+        'posterShape': posterShape,
+        if (background != null) 'background': background,
+        if (logo != null) 'logo': logo,
+        if (description != null) 'description': description,
+        if (releaseInfo != null) 'releaseInfo': releaseInfo,
+        if (imdbRating != null) 'imdbRating': imdbRating,
+        'genres': genres,
+      };
 }
 
 class StremioVideo {

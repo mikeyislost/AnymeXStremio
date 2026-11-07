@@ -1,7 +1,7 @@
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
-import 'package:anymex/screens/stremio/stremio_account_page.dart';
-import 'package:anymex/screens/stremio/stremio_widgets.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/ui/stremio_account_page.dart';
+import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_chip.dart';
@@ -250,14 +250,29 @@ class StremioCatalogCarousel extends StatefulWidget {
 class _StremioCatalogCarouselState extends State<StremioCatalogCarousel> {
   List<StremioMetaPreview>? _items;
 
+  bool _fresh = false;
+
   @override
   void initState() {
     super.initState();
-    StremioService.to.api
-        .catalog(widget.addon, widget.catalog, extra: widget.extra)
+    final service = StremioService.to;
+    // Show the row saved last time straight away, then the fresh one.
+    service
+        .savedCatalog(widget.addon, widget.catalog, extra: widget.extra)
+        .then((saved) {
+      if (mounted && !_fresh && saved != null && saved.isNotEmpty) {
+        setState(() => _items = saved);
+      }
+    }, onError: (_) {});
+    service
+        .catalogWithSave(widget.addon, widget.catalog, extra: widget.extra)
         .then((v) => v, onError: (_) => <StremioMetaPreview>[])
         .then((v) {
-      if (mounted) setState(() => _items = v);
+      if (!mounted) return;
+      _fresh = true;
+      // Keep the saved row if the addon came back empty this time.
+      if (v.isEmpty && (_items?.isNotEmpty ?? false)) return;
+      setState(() => _items = v);
     });
   }
 

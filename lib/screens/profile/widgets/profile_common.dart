@@ -96,7 +96,7 @@ class PlaceholderTab extends StatelessWidget {
               icon,
               size: 48,
               color:
-                  context.theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+                  context.theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             AnymeXText(
@@ -114,7 +114,7 @@ class PlaceholderTab extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 color:
-                    context.theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    context.theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -315,7 +315,7 @@ class ProfileDesktopTabs extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: context.theme.colorScheme.outlineVariant.withOpacity(0.3),
+              color: context.theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
             ),
           ),
         ),

@@ -132,11 +132,31 @@ class ExternalFontLoader {
   };
 
   static Future<void> loadAllFonts() async {
-    for (String font in fonts) {
-      await loadFont(font);
-    }
+    await ensureBundledFonts();
+    await loadStartupFonts();
+  }
+
+  /// Fonts the UI may need on the first frame: the app font you downloaded
+  /// or imported in settings.
+  static Future<void> loadStartupFonts() async {
     await loadAllCustomFonts();
     await loadAllDownloadedAppFonts();
+  }
+
+  static Future<void>? _bundledFonts;
+
+  /// The bundled subtitle/reader fonts (Bahnschrift, Cinecaption, Tahoma,
+  /// Anime Ace; about 2.3 MB). Only subtitles and the reader use them, so
+  /// they load in the background after launch instead of before the first
+  /// screen. Safe to call many times; they load once.
+  static Future<void> ensureBundledFonts() {
+    return _bundledFonts ??= () async {
+      for (final font in fonts) {
+        try {
+          await loadFont(font);
+        } catch (_) {}
+      }
+    }();
   }
 
   static Future<Directory> getAppFontsDirectory() async {

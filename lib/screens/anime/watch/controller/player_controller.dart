@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:anymex_extension_runtime_bridge/Services/Aniyomi/Models/Source.dart';
 
+import 'package:anymex/utils/external_font_loader.dart';
 import 'package:anymex/controllers/discord/discord_rpc.dart';
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
 import 'package:anymex/controllers/stats/stats_tracker.dart';
@@ -46,8 +47,8 @@ import 'package:anymex/utils/string_extensions.dart';
 import 'package:anymex/utils/subtitle_pre_translator.dart';
 import 'package:anymex/utils/subtitle_translator.dart';
 import 'package:anymex/controllers/services/torrent/torrent_service.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
-import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/ui/stremio_player_bridge.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_titlebar.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_toast.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
@@ -75,6 +76,23 @@ extension PlayerControllerExtensions on PlayerController {
     final index =
         episodeList.indexWhere((e) => e.isSameEpisode(currentEpisode.value));
     return index > 0;
+  }
+
+  /// In the last few minutes of a Stremio episode, find the next episode's
+  /// streams in the background so it starts sooner.
+  void _maybePrefetchNextEpisode(Duration pos) {
+    final total = episodeDuration.value;
+    if (total.inSeconds < 60) return;
+    if (total - pos > const Duration(minutes: 4)) return;
+    final isStremio = StremioIds.isStremioMediaId(anilistData.id) ||
+        currentEpisode.value.source == 'Stremio';
+    if (!isStremio) return;
+    final next = nextEpisode;
+    if (next == null) return;
+    final key = '${anilistData.id}#${next.link ?? next.number}';
+    if (_prefetchedFor == key) return;
+    _prefetchedFor = key;
+    StremioPlayerBridge.prefetchEpisode(anilistData, next);
   }
 
   Episode? get nextEpisode {
@@ -382,6 +400,9 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
   final RxBool isOrientationLocked = false.obs;
   StreamSubscription? _accelerometerSub;
 
+  /// AnymeX+: the next episode whose streams were already looked up.
+  String? _prefetchedFor;
+
   final Rx<BoxFit> videoFit = Rx<BoxFit>(BoxFit.contain);
   final RxBool isLocked = false.obs;
   final Rx<int?> videoHeight = Rx<int?>(null);
@@ -395,6 +416,8 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
   @override
   void onInit() {
     super.onInit();
+    // Subtitle fonts load in the background after launch; make sure.
+    ExternalFontLoader.ensureBundledFonts();
     PlayerController.initializePlayerControlsIfNeeded(settings);
     WidgetsBinding.instance.addObserver(this);
     _initDatabaseVars();
@@ -650,6 +673,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     PipController.setAutoEnter(enabled: false);
     _accelerometerSub?.cancel();
+    _orientationLockWorker?.dispose();
     if (Platform.isAndroid) {
       try {
         settingsController.applyDisplayRefreshMode();
@@ -732,7 +756,6 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
   Future<void> _initOrientations() async {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _initPhysicalOrientationListener();
 
     if (Platform.isAndroid || Platform.isIOS) {
       final defaultMode = playerSettings.defaultOrientation;
@@ -751,6 +774,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
         _applyOrientation(orientation);
       }
     }
+    _initPhysicalOrientationListener();
   }
 
   /// Accelerometer tilt → landscape side. AnymeX+: for the same tilt iOS
@@ -759,11 +783,30 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
   DeviceOrientation _landscapeForTilt(bool positiveX) =>
       landscapeForTilt(positiveX, ios: Platform.isIOS);
 
+  Worker? _orientationLockWorker;
+
+  /// AnymeX+: the motion sensor only runs while rotation is unlocked (it's
+  /// only used to follow the phone's tilt) and is read a few times a
+  /// second instead of continuously.
   void _initPhysicalOrientationListener() {
     if (!Platform.isAndroid && !Platform.isIOS) return;
+    _orientationLockWorker?.dispose();
+    _orientationLockWorker = ever(isOrientationLocked, (bool locked) {
+      locked ? _stopTiltSensor() : _startTiltSensor();
+    });
+    if (!isOrientationLocked.value) _startTiltSensor();
+  }
+
+  void _stopTiltSensor() {
+    _accelerometerSub?.cancel();
+    _accelerometerSub = null;
+  }
+
+  void _startTiltSensor() {
+    if (_accelerometerSub != null) return;
     try {
-      _accelerometerSub = accelerometerEvents
-          .throttleTime(const Duration(milliseconds: 250))
+      _accelerometerSub = accelerometerEventStream(
+              samplingPeriod: const Duration(milliseconds: 300))
           .listen((event) {
         final x = event.x;
         final y = event.y;
@@ -807,7 +850,8 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
   Future<DeviceOrientation> _getClosestLandscapeOrientation() async {
     try {
-      final samples = await accelerometerEvents
+      final samples = await accelerometerEventStream(
+              samplingPeriod: SensorInterval.gameInterval)
           .take(4)
           .timeout(
             const Duration(milliseconds: 250),
@@ -853,13 +897,8 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
   void toggleOrientation() {
     isOrientationLocked.value = !isOrientationLocked.value;
     if (!isOrientationLocked.value) {
-      final p = physicalOrientation.value;
-      final usable = p == DeviceOrientation.landscapeLeft ||
-          p == DeviceOrientation.landscapeRight ||
-          playerSettings.defaultOrientation == 'auto_full';
-      if (usable && currentOrientation.value != p) {
-        _applyOrientation(p);
-      }
+      // The tilt sensor restarts on unlock and turns the picture to match
+      // the phone with its first reading.
       snackBar('Orientation Unlocked');
     } else {
       snackBar('Orientation Locked');
@@ -1306,6 +1345,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
           position: pos,
           duration: episodeDuration.value,
         );
+        _maybePrefetchNextEpisode(pos);
       }
 
       if (isPlaying.value) {

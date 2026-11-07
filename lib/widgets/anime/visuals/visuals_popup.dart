@@ -390,7 +390,7 @@ class _VisualsPopupState extends State<VisualsPopup> {
                   10, MediaQuery.paddingOf(context).top + 10, 10, 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                  colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -407,13 +407,13 @@ class _VisualsPopupState extends State<VisualsPopup> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(30),
                           border:
-                              Border.all(color: Colors.white.withOpacity(0.1)),
+                              Border.all(color: Colors.white.withValues(alpha: 0.1)),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 10,
                             )
                           ]),
@@ -446,13 +446,13 @@ class _VisualsPopupState extends State<VisualsPopup> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(100),
                         border:
-                            Border.all(color: Colors.white.withOpacity(0.15)),
+                            Border.all(color: Colors.white.withValues(alpha: 0.15)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 20,
                             spreadRadius: 2,
                           )
@@ -500,7 +500,7 @@ class _VisualsPopupState extends State<VisualsPopup> {
         width: 50,
         height: 50,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white),
@@ -518,16 +518,16 @@ class _VisualsPopupState extends State<VisualsPopup> {
         padding: EdgeInsets.symmetric(
             horizontal: isSelected ? 20 : 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? brandColor : Colors.white.withOpacity(0.1),
+          color: isSelected ? brandColor : Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(40),
           border: Border.all(
               color: isSelected
-                  ? brandColor.withOpacity(0.5)
+                  ? brandColor.withValues(alpha: 0.5)
                   : Colors.transparent),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: brandColor.withOpacity(0.6),
+                    color: brandColor.withValues(alpha: 0.6),
                     blurRadius: 20,
                     spreadRadius: 2,
                   )

@@ -8,7 +8,6 @@ environment:
     flutter: ">=3.0.0"
 
 dependencies:
-    algorithmic: ^0.0.11
     blur: ^4.0.0
     cached_network_image: ^3.4.1
     carousel_slider: ^5.0.0
@@ -16,9 +15,8 @@ dependencies:
     device_info_plus: ^11.2.2
     dio: ^5.8.0+1
     dynamic_color: ^1.7.0
-    expandable_page_view: ^1.0.17
     extended_image: ^10.0.1
-    flutter_tts: any
+    flutter_tts: ^4.2.5
     file_picker: ^8.1.7
     flutter:
         sdk: flutter
@@ -32,12 +30,8 @@ dependencies:
     flutter_native_splash: ^2.4.4
     flutter_web_auth_2: 5.0.3 
     get: ^4.7.3
-    grouped_list: ^6.0.0
-    hive: ^2.2.3
-    hive_flutter: ^1.1.0
-    html: any
+    html: ^0.15.7
     http: ^1.2.2
-    http_interceptor: ^2.0.0
     rhttp:
       path: packages/rhttp
     hugeicons: ^0.0.7
@@ -46,11 +40,9 @@ dependencies:
     iconsax: ^0.0.8
     install_plugin: ^2.1.0
     intl: ^0.20.1
-    kenburns_nullsafety: ^1.0.1
-    subtitle: any
+    subtitle: ^0.2.0
     cross_platform_video_thumbnails: ^0.1.0
 
-    outlined_text: ^1.0.1
     protobuf: ^5.0.0
     fixnum: ^1.1.1
     media_kit:
@@ -69,9 +61,9 @@ dependencies:
             ref: main
             path: ./libs/universal/media_kit_libs_video
 
-    package_info_plus: any
+    package_info_plus: ^8.3.1
     path: ^1.9.0
-    path_provider: any
+    path_provider: ^2.1.6
     permission_handler: ^11.3.1
     provider: ^6.1.2
     scrollable_positioned_list: ^0.3.8
@@ -79,18 +71,17 @@ dependencies:
     smooth_page_indicator: ^1.2.0+3
     super_sliver_list: ^0.4.1
     share_plus: ^11.0.0
-    url_launcher: any
+    url_launcher: ^6.3.3
     volume_controller: ^3.4.0
     wakelock_plus: 1.3.3
     screen_brightness: ^2.1.7
     window_manager: ^0.4.3
     app_links: ^6.4.0
-    preload_page_view: ^0.2.0
-    flutter_displaymode: any
-    flutter_media_session: any
+    flutter_displaymode: ^0.7.0
+    flutter_media_session: ^3.0.9
 
-    archive: any
-    image: any
+    archive: ^4.6.0
+    image: ^4.12.0
     image_scaler: ^0.0.2
     flutter_widget_from_html: ^0.15.3
     timeago: ^3.7.1
@@ -98,22 +89,19 @@ dependencies:
     fuzzywuzzy: ^1.2.0
     expressive_loading_indicator: ^0.0.1
     photo_view: ^0.15.0
-    rxdart: any
-    ffi: any
-    win32: any
+    rxdart: ^0.28.0
+    ffi: ^2.2.0
+    win32: ^5.15.0
     isar_community: 3.3.0-dev.3
     isar_community_flutter_libs: 3.3.0-dev.3
     sensors_plus: ^7.0.0
     dart_discord_presence: ^1.2.0
-    firebase_core: ^4.4.0
-    firebase_analytics: ^12.1.1
-    firebase_messaging: ^16.6.0
     flutter_local_notifications: ^17.2.2
     background_downloader: ^9.5.2
     auto_size_text: ^3.0.0
     vibration: ^3.1.5
     palette_generator: ^0.3.3+7
-    pointycastle: any
+    pointycastle: ^3.9.1
     # better_player_plus: any
     marquee: ^2.3.0
     anymex_extension_runtime_bridge:
@@ -122,15 +110,13 @@ dependencies:
             ref: main    
         # path: ../AnymeXExtensionRuntimeBridge
     
-    jxl_coder: ^0.1.0
-    thanos_snap_effect: ^0.0.9
     code_assets: ^1.2.1
     hooks: ^2.0.2
     native_toolchain_c: ^0.19.2
     socket_io_client: ^3.1.1
-    crypto: any
-    flutter_cache_manager: any
-    encrypt: any
+    crypto: ^3.0.8
+    flutter_cache_manager: ^3.5.0
+    encrypt: ^5.0.3
     material3_expressive_loading_indicator: ^0.1.2
     dlna_dart: ^0.1.1
     xml: ^6.5.0
@@ -219,9 +205,6 @@ flutter_native_splash:
 
 flutter:
     uses-material-design: true
-
-    shaders:
-        - packages/thanos_snap_effect/shader/thanos_snap_effect.glsl
 
     assets:
         - assets/images/

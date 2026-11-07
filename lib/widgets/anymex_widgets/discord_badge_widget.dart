@@ -92,9 +92,9 @@ class DiscordBadgeWidget extends StatelessWidget {
                 width: 64,
                 height: 64,
                 shape: BoxShape.circle,
-                color: badge.badgeColor.withOpacity(0.12),
+                color: badge.badgeColor.withValues(alpha: 0.12),
                 border: Border.all(
-                  color: badge.badgeColor.withOpacity(0.35),
+                  color: badge.badgeColor.withValues(alpha: 0.35),
                   width: 2,
                 ),
                 padding: const EdgeInsets.all(12),
@@ -123,10 +123,10 @@ class DiscordBadgeWidget extends StatelessWidget {
               const SizedBox(height: 8),
               AnymeXContainer(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                color: badge.badgeColor.withOpacity(0.15),
+                color: badge.badgeColor.withValues(alpha: 0.15),
                 radius: 12,
                 border: Border.all(
-                  color: badge.badgeColor.withOpacity(0.3),
+                  color: badge.badgeColor.withValues(alpha: 0.3),
                 ),
                 child: AnymeXText(
                   badge.id.toUpperCase(),

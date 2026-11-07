@@ -174,7 +174,7 @@ class _RecommendSheetState extends State<RecommendSheet> {
             height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: colors.onSurfaceVariant.withOpacity(0.3),
+              color: colors.onSurfaceVariant.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -377,7 +377,7 @@ class _RecommendSheetState extends State<RecommendSheet> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: colors.onSurfaceVariant.withOpacity(0.3),
+                      color: colors.onSurfaceVariant.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -583,7 +583,7 @@ class _RecommendSheetState extends State<RecommendSheet> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: colors.onSurfaceVariant.withOpacity(0.3),
+                      color: colors.onSurfaceVariant.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -830,9 +830,9 @@ class _RecommendSheetState extends State<RecommendSheet> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colors.primaryContainer.withOpacity(0.3),
+                color: colors.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.primary.withOpacity(0.3)),
+                border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -948,7 +948,7 @@ class _RecommendSheetState extends State<RecommendSheet> {
                     color: colors.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: colors.outlineVariant.withOpacity(0.5)),
+                        color: colors.outlineVariant.withValues(alpha: 0.5)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1090,7 +1090,7 @@ class _RecommendSheetState extends State<RecommendSheet> {
               hintStyle:
                   TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
               filled: true,
-              fillColor: colors.surfaceContainerHighest.withOpacity(0.3),
+              fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: colors.outlineVariant),

@@ -1,4 +1,4 @@
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'dart:convert';
 import 'dart:math' show min;
 

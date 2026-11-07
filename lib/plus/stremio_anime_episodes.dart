@@ -7,8 +7,8 @@ import 'dart:math';
 
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/database/isar_models/episode.dart';
@@ -16,11 +16,11 @@ import 'package:anymex/database/isar_models/offline_media.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/screens/anime/widgets/episode_range.dart';
-import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
+import 'package:anymex/plus/movie_watch_card.dart';
 import 'package:anymex/screens/anime/widgets/track_dialog.dart';
-import 'package:anymex/screens/stremio/stremio_details_page.dart'
+import 'package:anymex/plus/stremio/ui/stremio_details_page.dart'
     show StremioStreamsSheet;
-import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
+import 'package:anymex/plus/stremio/ui/stremio_player_bridge.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/string_extensions.dart';
 import 'package:anymex/utils/theme_extensions.dart';

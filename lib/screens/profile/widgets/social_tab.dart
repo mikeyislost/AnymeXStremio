@@ -250,7 +250,7 @@ class SocialTabState extends State<SocialTab> {
                 _socialSubTab == 0 ? 'Not following anyone' : 'No followers',
                 style: TextStyle(
                   color: context.theme.colorScheme.onSurfaceVariant
-                      .withOpacity(0.6),
+                      .withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -314,9 +314,9 @@ class SocialTabState extends State<SocialTab> {
                                   end: Alignment.centerRight,
                                   colors: [
                                     context.theme.colorScheme.surface
-                                        .withOpacity(0.9),
+                                        .withValues(alpha: 0.9),
                                     context.theme.colorScheme.surface
-                                        .withOpacity(0.4),
+                                        .withValues(alpha: 0.4),
                                     Colors.transparent,
                                   ],
                                 ),
@@ -401,7 +401,7 @@ class SocialTabState extends State<SocialTab> {
                             vertical: 10, horizontal: 6),
                         decoration: BoxDecoration(
                           color: context.theme.colorScheme.surfaceContainerHigh
-                              .withOpacity(0.45),
+                              .withValues(alpha: 0.45),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Column(
@@ -451,7 +451,7 @@ class SocialTabState extends State<SocialTab> {
                 style: TextStyle(
                   fontSize: 12,
                   color: context.theme.colorScheme.onSurfaceVariant
-                      .withOpacity(0.6),
+                      .withValues(alpha: 0.6),
                 ),
               ),
             ),

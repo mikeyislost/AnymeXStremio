@@ -429,12 +429,12 @@ class _TracksPopupContentState extends State<_TracksPopupContent> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 48, color: cs.onSurface.withOpacity(0.3)),
+          Icon(icon, size: 48, color: cs.onSurface.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           AnymeXText(
             message,
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: cs.onSurface.withOpacity(0.5),
+              color: cs.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],

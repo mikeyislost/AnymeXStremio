@@ -9,7 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:anymex/utils/app_channel.dart';
+import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/controllers/discord/discord_rpc.dart';
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
 import 'package:anymex/controllers/settings/settings.dart';
@@ -19,18 +19,18 @@ import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart'
     show landscapeForTilt;
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
-import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
-import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
-import 'package:anymex/screens/stremio/stremio_widgets.dart'
+import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/stremio/ui/stremio_player_bridge.dart';
+import 'package:anymex/plus/stremio/ui/stremio_widgets.dart'
     show stremioEpisodeLabel;
 import 'package:anymex/utils/logger.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
-import 'package:anymex/controllers/services/simkl/simkl_auth_v2.dart';
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
-import 'package:anymex/screens/stremio/stremio_info_tab.dart';
-import 'package:anymex/controllers/services/stremio/watched_bitfield.dart';
+import 'package:anymex/plus/simkl_auth_v2.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/ui/stremio_info_tab.dart';
+import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/controllers/services/torrent/torrent_service.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
 import 'package:anymex/database/kv_helper.dart';

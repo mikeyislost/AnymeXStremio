@@ -22,8 +22,8 @@ import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/ui_extensions/sizing.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:anymex/screens/anime/widgets/episode_list_builder.dart';
-import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/screens/manga/reading_page.dart';
 import 'package:anymex/screens/novel/reader/novel_reader.dart';
 import 'package:anymex/screens/manga/widgets/track_dialog.dart';
@@ -1251,7 +1251,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                             minHeight: 8,
                             color: theme.colorScheme.primary,
                             backgroundColor:
-                                theme.colorScheme.onSurface.withOpacity(0.1),
+                                theme.colorScheme.onSurface.withValues(alpha: 0.1),
                           ),
                         ),
                       ],

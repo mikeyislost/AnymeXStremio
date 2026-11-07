@@ -270,7 +270,7 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                     width: 40,
                     margin: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -323,7 +323,7 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
                             fillColor: Theme.of(context)
                                 .colorScheme
                                 .surfaceContainerHighest
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                             contentPadding: const EdgeInsets.symmetric(
                                 vertical: 0, horizontal: 15),
                             border: OutlineInputBorder(
@@ -384,7 +384,7 @@ class _ChapterListSheetState extends State<ChapterListSheet> {
 
     return Container(
       color: isCurrent
-          ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
           : null,
       child: ListTile(
         contentPadding:

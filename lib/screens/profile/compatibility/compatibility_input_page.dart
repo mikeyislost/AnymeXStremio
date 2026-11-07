@@ -954,7 +954,7 @@ class _CompatibilityInputPageState extends State<CompatibilityInputPage> {
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                       child: Container(
-                        color: Colors.black.withOpacity(0.35),
+                        color: Colors.black.withValues(alpha: 0.35),
                         child: const Center(
                           child: AnymeXProgressIndicator(),
                         ),

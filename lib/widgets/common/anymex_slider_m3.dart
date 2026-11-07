@@ -35,9 +35,9 @@ class AnymeXSliderM3Theme {
     final resolvedActive = activeColor ?? scheme.primary;
     return AnymeXSliderM3Theme(
       activeColor: resolvedActive,
-      inactiveColor: inactiveColor ?? resolvedActive.withOpacity(0.2),
+      inactiveColor: inactiveColor ?? resolvedActive.withValues(alpha: 0.2),
       secondaryActiveColor:
-          secondaryActiveColor ?? resolvedActive.withOpacity(0.4),
+          secondaryActiveColor ?? resolvedActive.withValues(alpha: 0.4),
       height: height,
       trackHeight: trackHeight,
       outerRadius: outerRadius,

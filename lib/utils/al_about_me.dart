@@ -273,13 +273,13 @@ class _AnilistAboutMeState extends State<AnilistAboutMe> {
                       'padding': '8px 12px',
                       'margin': '4px 0',
                       'background-color': _toRgba(
-                        context.theme.colorScheme.primary.withOpacity(0.07),
+                        context.theme.colorScheme.primary.withValues(alpha: 0.07),
                       ),
                     },
                   'hr' => {
                       'border': 'none',
                       'border-bottom':
-                          '1px solid ${_toRgba(context.theme.colorScheme.outlineVariant.withOpacity(0.5))}',
+                          '1px solid ${_toRgba(context.theme.colorScheme.outlineVariant.withValues(alpha: 0.5))}',
                       'margin': '12px 0',
                     },
                   _ => const {},
@@ -551,11 +551,11 @@ class _AnilistMediaCardState extends State<_AnilistMediaCard> {
                   height: isDesktop ? 120 : 100,
                   decoration: BoxDecoration(
                     color: context.theme.colorScheme.surfaceContainerHighest
-                        .withOpacity(0.5),
+                        .withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: context.theme.colorScheme.outlineVariant
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -599,7 +599,7 @@ class _AnilistMediaCardState extends State<_AnilistMediaCard> {
                                   fontSize: isDesktop ? 13 : 12,
                                   color: context
                                       .theme.colorScheme.onSurfaceVariant
-                                      .withOpacity(0.8),
+                                      .withValues(alpha: 0.8),
                                 ),
                               ),
                             ],

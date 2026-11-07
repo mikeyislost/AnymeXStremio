@@ -1,6 +1,6 @@
-import 'package:anymex/utils/app_channel.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
-import 'package:anymex/screens/stremio/stremio_home_page.dart';
+import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
@@ -29,7 +29,6 @@ import 'package:anymex/controllers/sync/gist_sync_controller.dart';
 import 'package:anymex/controllers/theme.dart';
 import 'package:anymex/controllers/ui/greeting.dart';
 import 'package:anymex/database/database.dart';
-import 'package:anymex/firebase_options.dart';
 import 'package:anymex/screens/anime/home_page.dart';
 import 'package:anymex/screens/anime/widgets/comments/controller/comment_preloader.dart';
 import 'package:anymex/screens/extensions/ExtensionScreen.dart';
@@ -43,8 +42,6 @@ import 'package:anymex/widgets/common/lazy_indexed_stack.dart';
 import 'package:anymex/widgets/common/media_mode_selector.dart';
 import 'package:anymex/widgets/common/home_continue_button.dart';
 import 'package:anymex/controllers/media_mode_controller.dart';
-import 'package:anymex/services/fcm_service.dart'
-    hide firebaseMessagingBackgroundHandler;
 import 'package:anymex/services/commentum_service.dart';
 import 'package:anymex/controllers/watchium/watchium_service.dart';
 import 'package:anymex/utils/logger.dart';
@@ -65,9 +62,6 @@ import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/non_widgets/settings_sheet.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:app_links/app_links.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -83,8 +77,6 @@ import 'package:window_manager/window_manager.dart';
 
 late Isar isar;
 final appLinks = AppLinks();
-
-FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
 class MyHttpoverrides extends HttpOverrides {
   @override
@@ -168,25 +160,21 @@ void main(List<String> args) async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    await safeCall(() => ExternalFontLoader.loadAllFonts(),
-        errorMessage: 'Failed to load external fonts');
-
     await Logger.init();
 
-    await safeCall(() => Rhttp.init(),
-        errorMessage: 'Failed to initialize Rhttp');
-
-    await safeCall(() => dotenv.load(fileName: ".env"),
-        errorMessage: 'Failed to load .env file');
-
-    if (!Platform.isLinux) {
-      await safeCall(
-          () => Firebase.initializeApp(
-                options: DefaultFirebaseOptions.currentPlatform,
-              ),
-          errorMessage: 'Failed to initialize Firebase');
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    }
+    // These don't depend on each other, so they run at the same time
+    // instead of one after another before the first screen.
+    await Future.wait([
+      safeCall(() => ExternalFontLoader.loadStartupFonts(),
+          errorMessage: 'Failed to load app fonts'),
+      safeCall(() => Rhttp.init(), errorMessage: 'Failed to initialize Rhttp'),
+      safeCall(() => dotenv.load(fileName: ".env"),
+          errorMessage: 'Failed to load .env file'),
+      safeCall(() => initializeDateFormatting(),
+          errorMessage: 'Failed to initialize date formatting'),
+      safeCall(() => MediaKit.ensureInitialized(),
+          errorMessage: 'Failed to initialize MediaKit'),
+    ]);
 
     if (Platform.isWindows || Platform.isLinux) {
       await safeCall(() {
@@ -212,12 +200,6 @@ void main(List<String> args) async {
 
     await safeCall(() => initDeepLinkListener(args),
         errorMessage: 'Failed to initialize deep link listener');
-
-    await safeCall(() => initializeDateFormatting(),
-        errorMessage: 'Failed to initialize date formatting');
-
-    await safeCall(() => MediaKit.ensureInitialized(),
-        errorMessage: 'Failed to initialize MediaKit');
 
     await safeCall(() async {
       if (!Platform.isAndroid && !Platform.isIOS) {
@@ -247,6 +229,12 @@ void main(List<String> args) async {
         child: const MainApp(),
       ),
     );
+
+    // Subtitle/reader fonts load after the first frame (the player also
+    // asks for them when it opens).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ExternalFontLoader.ensureBundledFonts();
+    });
   }, (error, stackTrace) async {
     Logger.e("CRASH: $error");
     Logger.e("STACK: $stackTrace");
@@ -279,14 +267,14 @@ void _initializeGetxController() async {
     Get.put(TrackBindingController());
     Get.put(GreetingController());
     Get.put(CommentumService());
-    Get.put(CommentPreloader());
-    Get.put(WatchiumService(), permanent: true);
-    Get.put(GistSyncController(), permanent: true);
-    Get.put(DownloadController(), permanent: true);
+    // Created the first time something uses them.
+    Get.lazyPut(() => CommentPreloader(), fenix: true);
+    Get.lazyPut(() => StatsTracker(), fenix: true);
+    // Watch parties, Gist sync and downloads start right after the first
+    // frame (see _startDeferredServices) instead of before it.
     Get.put(NotificationService(), permanent: true);
     Get.put(AnilistNotificationService(), permanent: true);
     Get.put(NotificationController(), permanent: true);
-    Get.put(StatsTracker());
     Get.lazyPut(() => CacheController());
     Get.lazyPut(() => MediaModeController());
     Get.lazyPut(() => DownloadSearchController());
@@ -294,6 +282,27 @@ void _initializeGetxController() async {
 
   await safeCall(() => StorageManagerService().enforceImageCacheLimit(),
       errorMessage: 'Failed to enforce image cache limit');
+}
+
+/// Services that do real work when they start (the download isolate pool
+/// and resuming downloads, Gist sync's GitHub calls, the watch-party
+/// socket) but aren't needed for the first screen. They start right after
+/// the first frame, while the splash screen shows.
+bool _deferredServicesStarted = false;
+void _startDeferredServices() {
+  if (_deferredServicesStarted) return;
+  _deferredServicesStarted = true;
+  safeCall(() {
+    if (!Get.isRegistered<DownloadController>()) {
+      Get.put(DownloadController(), permanent: true);
+    }
+    if (!Get.isRegistered<GistSyncController>()) {
+      Get.put(GistSyncController(), permanent: true);
+    }
+    if (!Get.isRegistered<WatchiumService>()) {
+      Get.put(WatchiumService(), permanent: true);
+    }
+  }, errorMessage: 'Failed to start background services');
 }
 
 class MainApp extends StatefulWidget {
@@ -349,6 +358,7 @@ class _MainAppState extends State<MainApp> {
     focusNode = FocusNode();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startDeferredServices();
       if (mounted) {
         precacheImage(const AssetImage('assets/images/bg_glass.webp'), context);
         final customBg = Get.find<Settings>().liquidBackgroundPath;
@@ -357,13 +367,6 @@ class _MainAppState extends State<MainApp> {
         }
       }
     });
-
-    if (!Platform.isLinux) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        safeCall(() => FcmService.init(),
-            errorMessage: 'Failed to initialize FCM');
-      });
-    }
 
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {

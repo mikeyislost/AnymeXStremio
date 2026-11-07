@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:anymex/utils/self_test.dart';
+import 'package:anymex/plus/self_test.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_button.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_linear_indicator.dart';

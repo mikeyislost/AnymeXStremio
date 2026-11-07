@@ -53,9 +53,9 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
   Widget build(BuildContext context) {
     final primary = context.theme.colorScheme.primary;
     final emptyColor =
-        context.theme.colorScheme.surfaceContainerHighest.withOpacity(0.3);
+        context.theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
     final subtleText =
-        context.theme.colorScheme.onSurfaceVariant.withOpacity(0.5);
+        context.theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5);
 
     
     final Map<int, int> levelMap = {};
@@ -148,7 +148,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
         color: context.theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: context.theme.colorScheme.outlineVariant.withOpacity(0.3),
+          color: context.theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
         ),
       ),
       padding: const EdgeInsets.all(14),
@@ -229,7 +229,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
                                   cellColor = emptyColor;
                                 } else {
                                   final opacity = 0.15 + (level / 10.0) * 0.85;
-                                  cellColor = primary.withOpacity(opacity);
+                                  cellColor = primary.withValues(alpha: opacity);
                                 }
 
                                 final tooltipText =
@@ -251,7 +251,7 @@ class _ActivityHeatmapState extends State<ActivityHeatmap> {
                                         border: Border.all(
                                           color: context
                                               .theme.colorScheme.outlineVariant
-                                              .withOpacity(0.3),
+                                              .withValues(alpha: 0.3),
                                         ),
                                       ),
                                       textStyle: TextStyle(

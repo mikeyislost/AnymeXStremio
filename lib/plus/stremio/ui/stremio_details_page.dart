@@ -2,19 +2,19 @@
 // page: MediaHeader, the Info/Watch bottom bar, the continue button, the
 // user's episode card style and AnymeX's section panels.
 
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
-import 'package:anymex/controllers/services/stremio/watched_bitfield.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/widgets/comments/comments_section.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
-import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
-import 'package:anymex/screens/stremio/stremio_info_tab.dart';
-import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
-import 'package:anymex/screens/stremio/stremio_widgets.dart';
+import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/stremio/ui/stremio_info_tab.dart';
+import 'package:anymex/plus/stremio/ui/stremio_player_bridge.dart';
+import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anime/media_header.dart';

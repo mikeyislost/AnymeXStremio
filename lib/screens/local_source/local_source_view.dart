@@ -1324,7 +1324,7 @@ class _WatchOfflineState extends State<WatchOffline> {
         borderRadius: BorderRadius.circular(12),
         fallback: Container(
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(

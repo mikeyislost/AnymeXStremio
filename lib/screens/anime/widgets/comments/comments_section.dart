@@ -1986,13 +1986,13 @@ class _CommentSectionState extends State<CommentSection>
             fit: BoxFit.cover,
           ),
           border: Border.all(
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withValues(alpha: 0.12),
             width: 0.8,
           ),
         ),
         child: AnymeXContainer(
           padding: const EdgeInsets.all(10),
-          color: Colors.black.withOpacity(0.55),
+          color: Colors.black.withValues(alpha: 0.55),
           child: commentContent,
         ),
       );
@@ -2377,7 +2377,7 @@ class _CommentSectionState extends State<CommentSection>
           borderRadius: BorderRadius.circular(24),
           color: colorScheme.surfaceContainerHigh,
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.2),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -2390,7 +2390,7 @@ class _CommentSectionState extends State<CommentSection>
                     width: 40,
                     height: 40,
                     borderRadius: BorderRadius.circular(12),
-                    color: colorScheme.primary.withOpacity(0.12),
+                    color: colorScheme.primary.withValues(alpha: 0.12),
                     child: Center(
                       child: Icon(Icons.edit_outlined,
                           color: colorScheme.primary, size: 22),
@@ -2465,7 +2465,7 @@ class _CommentSectionState extends State<CommentSection>
           borderRadius: BorderRadius.circular(24),
           color: colorScheme.surfaceContainerHigh,
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.2),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -2478,7 +2478,7 @@ class _CommentSectionState extends State<CommentSection>
                     width: 40,
                     height: 40,
                     borderRadius: BorderRadius.circular(12),
-                    color: colorScheme.error.withOpacity(0.12),
+                    color: colorScheme.error.withValues(alpha: 0.12),
                     child: Center(
                       child: Icon(Icons.delete_outline_rounded,
                           color: colorScheme.error, size: 22),
@@ -2550,7 +2550,7 @@ class _CommentSectionState extends State<CommentSection>
           borderRadius: BorderRadius.circular(24),
           color: colorScheme.surfaceContainerHigh,
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.2),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -2563,7 +2563,7 @@ class _CommentSectionState extends State<CommentSection>
                     width: 40,
                     height: 40,
                     borderRadius: BorderRadius.circular(12),
-                    color: colorScheme.error.withOpacity(0.12),
+                    color: colorScheme.error.withValues(alpha: 0.12),
                     child: Center(
                       child: Icon(Icons.flag_outlined,
                           color: colorScheme.error, size: 22),
@@ -2800,7 +2800,7 @@ class _CommentSectionState extends State<CommentSection>
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Divider(
-        color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
         height: 1,
       ),
     );
@@ -2823,7 +2823,7 @@ class _CommentSectionState extends State<CommentSection>
             AnymeXContainer(
               width: 40,
               height: 40,
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
               child: Icon(icon, color: color, size: 20),
             ),
@@ -3213,10 +3213,10 @@ class _CommentSectionState extends State<CommentSection>
                         AnymeXContainer(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 4),
-                          color: _getRoleColor(role).withOpacity(0.15),
+                          color: _getRoleColor(role).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _getRoleColor(role).withOpacity(0.3),
+                            color: _getRoleColor(role).withValues(alpha: 0.3),
                           ),
                           child: AnymeXText(
                             role.toUpperCase(),
@@ -3413,7 +3413,7 @@ class _CommentSectionState extends State<CommentSection>
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 6, vertical: 2),
                                           color: colorScheme.error
-                                              .withOpacity(0.1),
+                                              .withValues(alpha: 0.1),
                                           borderRadius:
                                               BorderRadius.circular(4),
                                           child: AnymeXText('DELETED',
@@ -3427,7 +3427,7 @@ class _CommentSectionState extends State<CommentSection>
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 6, vertical: 2),
                                           color: colorScheme.primary
-                                              .withOpacity(0.1),
+                                              .withValues(alpha: 0.1),
                                           borderRadius:
                                               BorderRadius.circular(4),
                                           child: AnymeXText('COMMENT',
@@ -3453,7 +3453,7 @@ class _CommentSectionState extends State<CommentSection>
                                       size: 13,
                                       color: deleted
                                           ? colorScheme.onSurfaceVariant
-                                              .withOpacity(0.5)
+                                              .withValues(alpha: 0.5)
                                           : colorScheme.onSurface,
                                       maxLines: 4,
                                       overflow: TextOverflow.ellipsis,
@@ -3630,7 +3630,7 @@ class _CommentSectionState extends State<CommentSection>
                           AnymeXContainer(
                             width: 32,
                             height: 32,
-                            color: actionColor.withOpacity(0.1),
+                            color: actionColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             child:
                                 Icon(actionIcon, size: 16, color: actionColor),
@@ -3679,7 +3679,7 @@ class _CommentSectionState extends State<CommentSection>
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurfaceVariant
-                                        .withOpacity(0.7),
+                                        .withValues(alpha: 0.7),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -3702,7 +3702,7 @@ class _CommentSectionState extends State<CommentSection>
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurfaceVariant
-                                      .withOpacity(0.6),
+                                      .withValues(alpha: 0.6),
                                   fontStyle: FontStyle.italic,
                                   maxLines: null,
                                 ),
@@ -3761,10 +3761,10 @@ class _CommentSectionState extends State<CommentSection>
 
     return AnymeXContainer(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      color: tagColor.withOpacity(0.1),
+      color: tagColor.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(8),
       border: Border.all(
-        color: tagColor.withOpacity(0.2),
+        color: tagColor.withValues(alpha: 0.2),
         width: 1,
       ),
       child: AnymeXText(
@@ -3845,7 +3845,7 @@ class _UserProfileSheet extends StatelessWidget {
             margin: const EdgeInsets.symmetric(vertical: 12),
             width: 40,
             height: 4,
-            color: colorScheme.onSurfaceVariant.withOpacity(0.3),
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(2),
           ),
           Padding(
@@ -3876,10 +3876,10 @@ class _UserProfileSheet extends StatelessWidget {
                         margin: const EdgeInsets.only(left: 8),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
-                        color: _getRoleColor(context, userRole!).withOpacity(0.15),
+                        color: _getRoleColor(context, userRole!).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: _getRoleColor(context, userRole!).withOpacity(0.3),
+                          color: _getRoleColor(context, userRole!).withValues(alpha: 0.3),
                         ),
                         child: AnymeXText(
                           _getRoleLabel(userRole!),

@@ -31,12 +31,12 @@ class DelayRow extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: colors.surfaceContainer.withOpacity(0.4),
+        color: colors.surfaceContainer.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isOffset
-              ? colors.primary.withOpacity(0.4)
-              : colors.outline.withOpacity(0.12),
+              ? colors.primary.withValues(alpha: 0.4)
+              : colors.outline.withValues(alpha: 0.12),
           width: 1,
         ),
       ),
@@ -46,8 +46,8 @@ class DelayRow extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: isOffset
-                  ? colors.primary.withOpacity(0.15)
-                  : colors.surfaceContainerHighest.withOpacity(0.4),
+                  ? colors.primary.withValues(alpha: 0.15)
+                  : colors.surfaceContainerHighest.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -86,7 +86,7 @@ class DelayRow extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 margin: const EdgeInsets.only(right: 6),
                 decoration: BoxDecoration(
-                  color: colors.primary.withOpacity(0.12),
+                  color: colors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: AnymeXText(
@@ -128,9 +128,9 @@ class DelayRow extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest.withOpacity(0.5),
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colors.outline.withOpacity(0.1)),
+          border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
         ),
         child: Icon(icon, size: 18, color: colors.onSurface),
       ),

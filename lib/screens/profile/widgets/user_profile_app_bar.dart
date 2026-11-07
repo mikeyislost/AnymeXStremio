@@ -88,7 +88,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
       leading: Container(
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: context.theme.colorScheme.surface.withOpacity(0.5),
+          color: context.theme.colorScheme.surface.withValues(alpha: 0.5),
           shape: BoxShape.circle,
         ),
         child: IconButton(
@@ -100,7 +100,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
         Container(
           margin: const EdgeInsets.only(top: 8, bottom: 8, right: 4),
           decoration: BoxDecoration(
-            color: context.theme.colorScheme.surface.withOpacity(0.5),
+            color: context.theme.colorScheme.surface.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
           child: IconButton(
@@ -122,7 +122,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
         Container(
           margin: const EdgeInsets.only(top: 8, bottom: 8, right: 8),
           decoration: BoxDecoration(
-            color: context.theme.colorScheme.surface.withOpacity(0.5),
+            color: context.theme.colorScheme.surface.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
           child: IconButton(
@@ -147,7 +147,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
                             height: 4,
                             decoration: BoxDecoration(
                               color: context.theme.colorScheme.onSurfaceVariant
-                                  .withOpacity(0.3),
+                                  .withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -284,7 +284,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: Container(
                       color:
-                          context.theme.colorScheme.surface.withOpacity(0.2)),
+                          context.theme.colorScheme.surface.withValues(alpha: 0.2)),
                 ),
               ),
             IgnorePointer(
@@ -295,7 +295,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      context.theme.colorScheme.surface.withOpacity(0.8),
+                      context.theme.colorScheme.surface.withValues(alpha: 0.8),
                       context.theme.colorScheme.surface,
                     ],
                     stops: const [0.0, 0.8, 1.0],
@@ -397,7 +397,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
                                   decoration: BoxDecoration(
                                     color: widget.isFollowingUser == true
                                         ? context.theme.colorScheme.primary
-                                        : Colors.black.withOpacity(0.45),
+                                        : Colors.black.withValues(alpha: 0.45),
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Row(
@@ -490,7 +490,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.4),
+                                  color: Colors.black.withValues(alpha: 0.4),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -534,7 +534,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.4),
+                                      color: Colors.black.withValues(alpha: 0.4),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Row(
@@ -571,7 +571,7 @@ class _UserProfileAppBarState extends State<UserProfileAppBar> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.4),
+                                    color: Colors.black.withValues(alpha: 0.4),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(

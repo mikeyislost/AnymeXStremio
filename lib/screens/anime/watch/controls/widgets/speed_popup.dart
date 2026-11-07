@@ -201,7 +201,7 @@ class _SpeedPopupContentState extends State<_SpeedPopupContent> {
           children: [
             AnymeXText('Current Speed',
                 style: theme.textTheme.labelSmall?.copyWith(
-                    color: cs.onSurface.withOpacity(0.5), letterSpacing: 0.8)),
+                    color: cs.onSurface.withValues(alpha: 0.5), letterSpacing: 0.8)),
             const SizedBox(height: 2),
             AnymeXText(
               _fmt(_currentSpeed),
@@ -228,7 +228,7 @@ class _SpeedPopupContentState extends State<_SpeedPopupContent> {
       children: [
         AnymeXText(_fmt(_min),
             style: theme.textTheme.labelSmall
-                ?.copyWith(color: cs.onSurface.withOpacity(0.45))),
+                ?.copyWith(color: cs.onSurface.withValues(alpha: 0.45))),
         Expanded(
           child: Slider(
             min: _min,
@@ -243,7 +243,7 @@ class _SpeedPopupContentState extends State<_SpeedPopupContent> {
         ),
         AnymeXText(_fmt(_max),
             style: theme.textTheme.labelSmall
-                ?.copyWith(color: cs.onSurface.withOpacity(0.45))),
+                ?.copyWith(color: cs.onSurface.withValues(alpha: 0.45))),
       ],
     );
   }
@@ -254,10 +254,10 @@ class _SpeedPopupContentState extends State<_SpeedPopupContent> {
       children: [
         AnymeXText('Slow',
             style: theme.textTheme.bodySmall
-                ?.copyWith(color: cs.onSurface.withOpacity(0.4))),
+                ?.copyWith(color: cs.onSurface.withValues(alpha: 0.4))),
         AnymeXText('Fast',
             style: theme.textTheme.bodySmall
-                ?.copyWith(color: cs.onSurface.withOpacity(0.4))),
+                ?.copyWith(color: cs.onSurface.withValues(alpha: 0.4))),
       ],
     );
   }
@@ -269,7 +269,7 @@ class _SpeedPopupContentState extends State<_SpeedPopupContent> {
           child: AnymeXText('Speed Presets',
               style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: cs.onSurface.withOpacity(0.7))),
+                  color: cs.onSurface.withValues(alpha: 0.7))),
         ),
         _ActionChip(
           label: 'Restore',
@@ -319,7 +319,7 @@ class _SpeedPopupContentState extends State<_SpeedPopupContent> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          side: BorderSide(color: cs.outline.withOpacity(0.3)),
+          side: BorderSide(color: cs.outline.withValues(alpha: 0.3)),
         ),
       ),
     );
@@ -353,10 +353,10 @@ class _SpeedChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isActive
               ? cs.primary
-              : cs.surfaceContainerHighest.withOpacity(0.5),
+              : cs.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
           border:
-              isActive ? null : Border.all(color: cs.outline.withOpacity(0.2)),
+              isActive ? null : Border.all(color: cs.outline.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -375,8 +375,8 @@ class _SpeedChip extends StatelessWidget {
                 child: Icon(Icons.close_rounded,
                     size: 14,
                     color: isActive
-                        ? cs.onPrimary.withOpacity(0.7)
-                        : cs.onSurface.withOpacity(0.5)),
+                        ? cs.onPrimary.withValues(alpha: 0.7)
+                        : cs.onSurface.withValues(alpha: 0.5)),
               ),
               const SizedBox(width: 4),
             ],
@@ -407,9 +407,9 @@ class _ActionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

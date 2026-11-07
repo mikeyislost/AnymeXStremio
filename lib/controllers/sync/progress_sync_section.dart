@@ -63,12 +63,12 @@ class _GistSyncCard extends StatelessWidget {
 
       return Container(
         decoration: BoxDecoration(
-          color: colors.surfaceContainerLow.withOpacity(0.4),
+          color: colors.surfaceContainerLow.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isLogged
-                ? statusColor.withOpacity(0.45)
-                : colors.outlineVariant.withOpacity(0.2),
+                ? statusColor.withValues(alpha: 0.45)
+                : colors.outlineVariant.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -228,10 +228,10 @@ class _GistSyncCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color:
-                                colors.surfaceContainerHigh.withOpacity(0.45),
+                                colors.surfaceContainerHigh.withValues(alpha: 0.45),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: colors.outlineVariant.withOpacity(0.2),
+                              color: colors.outlineVariant.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Row(
@@ -393,7 +393,7 @@ class _GistSyncCard extends StatelessWidget {
       height: 44,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(isLogged ? 0.15 : 0.1),
+        color: statusColor.withValues(alpha: isLogged ? 0.15 : 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(
@@ -426,7 +426,7 @@ class _GistSyncCard extends StatelessWidget {
                       width: 36,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: ctx.colors.outlineVariant.withOpacity(0.5),
+                        color: ctx.colors.outlineVariant.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -460,10 +460,10 @@ class _GistSyncCard extends StatelessWidget {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color:
-                            ctx.colors.surfaceContainerHigh.withOpacity(0.55),
+                            ctx.colors.surfaceContainerHigh.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: statusColor.withOpacity(0.35),
+                          color: statusColor.withValues(alpha: 0.35),
                         ),
                       ),
                       child: Column(
@@ -810,9 +810,9 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: AnymeXText(label,
         size: 10,

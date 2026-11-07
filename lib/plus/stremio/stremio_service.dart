@@ -11,9 +11,10 @@ import 'dart:convert';
 
 import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
-import 'package:anymex/controllers/services/stremio/stremio_api.dart';
-import 'package:anymex/controllers/services/stremio/stremio_models.dart';
-import 'package:anymex/controllers/services/stremio/watched_bitfield.dart';
+import 'package:anymex/plus/stremio/stremio_api.dart';
+import 'package:anymex/plus/stremio/stremio_disk_cache.dart';
+import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/models/Media/media.dart' as anymex;
@@ -154,6 +155,15 @@ class StremioService extends GetxController {
   static const _kSyncToAnilist = 'stremio_sync_to_anilist';
   static const _kAnimeStreamSource = 'anymexplus_anime_stream_source';
 
+  // On-device copies (see StremioDiskCache).
+  static const _kDiskAddons = 'stremio/addons';
+  static const _kDiskLibrary = 'stremio/library';
+
+  /// Title details saved on the device are used without asking the addon
+  /// again for this long; older copies are only used when offline.
+  static const Duration metaFreshFor = Duration(hours: 12);
+  static const int _metaMemoryLimit = 200;
+
   final api = StremioApi();
 
   final RxBool isLoggedIn = false.obs;
@@ -212,6 +222,52 @@ class StremioService extends GetxController {
     } catch (e) {
       Logger.e('Stremio: failed to restore session: $e');
     }
+    unawaited(_restoreFromDisk());
+    unawaited(StremioDiskCache.prune());
+  }
+
+  /// Library refreshed from Stremio this session (the device copy must not
+  /// overwrite it).
+  bool _libraryFresh = false;
+
+  /// Shows the addons and library saved last time right away, so Movies &
+  /// TV opens with its rows and Continue Watching filled while they refresh.
+  Future<void> _restoreFromDisk() async {
+    if (!isLoggedIn.value) return;
+    try {
+      final a = await StremioDiskCache.read(_kDiskAddons);
+      if (addons.isEmpty && a?.value is List) {
+        final list = (a!.value as List)
+            .whereType<Map>()
+            .map((e) =>
+                StremioAddon.fromDescriptor(Map<String, dynamic>.from(e)))
+            .where((x) => x.transportUrl.isNotEmpty)
+            .toList();
+        if (list.isNotEmpty && addons.isEmpty) addons.assignAll(list);
+      }
+      final l = await StremioDiskCache.read(_kDiskLibrary);
+      if (!_libraryFresh && l?.value is List) {
+        for (final e in (l!.value as List).whereType<Map>()) {
+          final item = StremioLibraryItem(Map<String, dynamic>.from(e));
+          if (item.id.isNotEmpty) _libraryCache.putIfAbsent(item.id, () => item);
+        }
+        _rebuildLists(save: false);
+      }
+    } catch (e) {
+      Logger.i('Stremio: restoring saved data failed: $e');
+    }
+  }
+
+  Timer? _librarySaveTimer;
+
+  void _scheduleLibrarySave() {
+    if (!isLoggedIn.value) return;
+    _librarySaveTimer?.cancel();
+    _librarySaveTimer = Timer(const Duration(seconds: 3), () {
+      if (!isLoggedIn.value) return;
+      unawaited(StremioDiskCache.write(_kDiskLibrary,
+          _libraryCache.values.map((i) => i.toJson()).toList()));
+    });
   }
 
   @override
@@ -298,6 +354,10 @@ class StremioService extends GetxController {
     continueWatching.clear();
     library.clear();
     _libraryCache.clear();
+    _libraryFresh = false;
+    _librarySaveTimer?.cancel();
+    unawaited(StremioDiskCache.remove(_kDiskAddons));
+    unawaited(StremioDiskCache.remove(_kDiskLibrary));
     KvHelper.remove(_kAuthKey);
     KvHelper.remove(_kUser);
     if (key != null) unawaited(api.logout(key));
@@ -347,6 +407,8 @@ class StremioService extends GetxController {
       if (_authKey != null) {
         final list = await api.addonCollectionGet(_authKey!);
         addons.assignAll(list);
+        unawaited(StremioDiskCache.write(
+            _kDiskAddons, list.map((a) => a.toDescriptor()).toList()));
       } else {
         addons.assignAll(await _loadLocalAddons());
       }
@@ -390,6 +452,8 @@ class StremioService extends GetxController {
   Future<void> _saveAddons(List<StremioAddon> list) async {
     if (_authKey != null) {
       await api.addonCollectionSet(_authKey!, list);
+      unawaited(StremioDiskCache.write(
+          _kDiskAddons, list.map((a) => a.toDescriptor()).toList()));
     } else {
       _saveLocalAddons(list);
     }
@@ -428,45 +492,141 @@ class StremioService extends GetxController {
   }
 
   /// Fetches full meta from the first installed addon that supports it.
+  /// A copy saved on the device in the last [metaFreshFor] is used as is;
+  /// an older one only when no addon answers (offline).
   Future<StremioMeta?> fetchMeta(String type, String id) async {
     final cacheKey = '$type|$id';
     final cached = _metaCache[cacheKey];
     if (cached != null) return cached;
+    final diskKey = 'meta|$cacheKey';
+    final saved = await StremioDiskCache.read(diskKey);
+    StremioMeta? savedMeta;
+    if (saved?.value is Map) {
+      try {
+        savedMeta =
+            StremioMeta.fromJson(Map<String, dynamic>.from(saved!.value));
+        if (savedMeta.id.isEmpty) savedMeta = null;
+      } catch (_) {}
+    }
+    if (savedMeta != null && saved!.isFresherThan(metaFreshFor)) {
+      _rememberMeta(cacheKey, savedMeta);
+      return savedMeta;
+    }
     await ensureAddons();
     for (final addon in addons
         .where((a) => isAddonUsable(a) && a.supports('meta', type, id))) {
       try {
         final meta = await api.meta(addon, type, id);
         if (meta != null && meta.id.isNotEmpty) {
-          _metaCache[cacheKey] = meta;
+          _rememberMeta(cacheKey, meta);
+          unawaited(StremioDiskCache.write(diskKey, meta.raw));
           return meta;
         }
       } catch (e) {
         Logger.i('Stremio meta from ${addon.name} failed: $e');
       }
     }
-    return null;
+    if (savedMeta != null) _rememberMeta(cacheKey, savedMeta);
+    return savedMeta;
+  }
+
+  /// Keeps the in-memory title details to the most recent few hundred.
+  void _rememberMeta(String key, StremioMeta meta) {
+    _metaCache.remove(key);
+    _metaCache[key] = meta;
+    while (_metaCache.length > _metaMemoryLimit) {
+      _metaCache.remove(_metaCache.keys.first);
+    }
+  }
+
+  static String _catalogKey(StremioAddon addon, StremioCatalog catalog,
+      Map<String, String> extra) {
+    final keys = extra.keys.toList()..sort();
+    final ex = keys.map((k) => '$k=${extra[k]}').join('&');
+    return 'catalog|${addon.transportUrl}|${catalog.type}|${catalog.id}|$ex';
+  }
+
+  /// The copy of a home row saved last time it loaded, if any.
+  Future<List<StremioMetaPreview>?> savedCatalog(StremioAddon addon,
+      StremioCatalog catalog, {Map<String, String> extra = const {}}) async {
+    final entry = await StremioDiskCache.read(_catalogKey(addon, catalog, extra));
+    if (entry?.value is! List) return null;
+    return (entry!.value as List)
+        .whereType<Map>()
+        .map((e) => StremioMetaPreview.fromJson(Map<String, dynamic>.from(e)))
+        .where((m) => m.id.isNotEmpty)
+        .toList();
+  }
+
+  /// Loads a home row from its addon and saves it on the device. Falls back
+  /// to the saved copy when the addon doesn't answer.
+  Future<List<StremioMetaPreview>> catalogWithSave(
+      StremioAddon addon, StremioCatalog catalog,
+      {Map<String, String> extra = const {}}) async {
+    try {
+      final items = await api.catalog(addon, catalog, extra: extra);
+      if (items.isNotEmpty) {
+        unawaited(StremioDiskCache.write(_catalogKey(addon, catalog, extra),
+            items.take(40).map((m) => m.toJson()).toList()));
+      }
+      return items;
+    } catch (e) {
+      Logger.i('Stremio catalog ${catalog.id} from ${addon.name} failed: $e');
+      return await savedCatalog(addon, catalog, extra: extra) ?? const [];
+    }
   }
 
   /// Streams for one video from every addon that serves streams for it.
   /// [onAddonResult] is called as each addon answers, for progressive UIs.
+  /// How long stream results are reused (reopening the list, or the next
+  /// episode found early while the current one plays).
+  static const Duration streamResultsFor = Duration(minutes: 10);
+  final Map<String, (DateTime, Map<String, List<StremioStream>>)>
+      _streamResults = {};
+  final Map<String, Future<List<StremioStream>>> _streamsInFlight = {};
+
   Future<List<StremioStream>> fetchStreams(
     String type,
     String videoId, {
     void Function(StremioAddon addon, List<StremioStream> streams)?
         onAddonResult,
+    bool refresh = false,
   }) async {
     await ensureAddons();
-    final sources = addons.where((a) =>
-        isAddonUsable(a) &&
-        (a.supports('stream', type, videoId) ||
-            a.supports('stream', 'anime', videoId)));
-    final results = await Future.wait(sources.map((addon) async {
+    final sources = addons
+        .where((a) =>
+            isAddonUsable(a) &&
+            (a.supports('stream', type, videoId) ||
+                a.supports('stream', 'anime', videoId)))
+        .toList();
+    final key = '$type|$videoId';
+    final cached = _streamResults[key];
+    if (!refresh &&
+        cached != null &&
+        DateTime.now().difference(cached.$1) < streamResultsFor) {
+      final out = <StremioStream>[];
+      for (final addon in sources) {
+        final list = cached.$2[addon.transportUrl];
+        if (list == null) continue;
+        onAddonResult?.call(addon, list);
+        out.addAll(list);
+      }
+      if (out.isNotEmpty) return out;
+    }
+    // Found early in the background and still loading: wait for it.
+    final pending = _streamsInFlight[key];
+    if (!refresh && pending != null && onAddonResult == null) {
+      return pending;
+    }
+
+    final byAddon = <String, List<StremioStream>>{};
+    final future = Future.wait(sources.map((addon) async {
       try {
         final list = await api.streams(
             addon,
             addon.supports('stream', type, videoId) ? type : 'anime',
             videoId);
+        byAddon[addon.transportUrl] = list;
         onAddonResult?.call(addon, list);
         return list;
       } catch (e) {
@@ -474,8 +634,37 @@ class StremioService extends GetxController {
         onAddonResult?.call(addon, const []);
         return <StremioStream>[];
       }
-    }));
-    return results.expand((e) => e).toList();
+    })).then((results) {
+      final all = results.expand((e) => e).toList();
+      if (all.isNotEmpty) {
+        _streamResults[key] = (DateTime.now(), byAddon);
+        // Keep only recent lookups.
+        _streamResults.removeWhere((_, v) =>
+            DateTime.now().difference(v.$1) >= streamResultsFor);
+      }
+      return all;
+    });
+    _streamsInFlight[key] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_streamsInFlight[key], future)) {
+        _streamsInFlight.remove(key);
+      }
+    }
+  }
+
+  /// Looks up a video's streams in the background so they're ready when
+  /// it starts (used for the next episode while the current one plays).
+  void prefetchStreams(String type, String videoId) {
+    final key = '$type|$videoId';
+    final cached = _streamResults[key];
+    if (_streamsInFlight.containsKey(key)) return;
+    if (cached != null &&
+        DateTime.now().difference(cached.$1) < streamResultsFor) {
+      return;
+    }
+    unawaited(fetchStreams(type, videoId).catchError((_) => <StremioStream>[]));
   }
 
   // ---- library ------------------------------------------------------------
@@ -489,6 +678,7 @@ class StremioService extends GetxController {
       for (final item in items) {
         _libraryCache[item.id] = item;
       }
+      _libraryFresh = true;
       _rebuildLists();
     } catch (e) {
       Logger.e('Stremio: failed to load library: $e');
@@ -737,7 +927,8 @@ class StremioService extends GetxController {
     }
     await ensureAddons();
     if (refresh || !_animeMappings.containsKey(mapKey)) {
-      _animeMappings[mapKey] = await _fetchAnimeMapping(key.$1, key.$2);
+      _animeMappings[mapKey] =
+          await _fetchAnimeMapping(key.$1, key.$2, refresh: refresh);
     }
     final mapping = _animeMappings[mapKey];
     if (mapping == null) return null;
@@ -929,7 +1120,48 @@ class StremioService extends GetxController {
     return candidates.first;
   }
 
-  Future<_AnimeMapping?> _fetchAnimeMapping(String param, String id) async {
+  /// ani.zip ids for an anime. Saved on the device for 30 days (a miss
+  /// for a day), since they rarely change.
+  Future<_AnimeMapping?> _fetchAnimeMapping(String param, String id,
+      {bool refresh = false}) async {
+    final diskKey = 'anizip|$param=$id';
+    if (!refresh) {
+      final saved = await StremioDiskCache.read(diskKey);
+      final v = saved?.value;
+      if (v is Map) {
+        if (v['none'] == true) {
+          if (saved!.isFresherThan(const Duration(days: 1))) return null;
+        } else if (saved!.isFresherThan(const Duration(days: 30))) {
+          final eps = <String, (int, int)>{};
+          if (v['e'] is Map) {
+            (v['e'] as Map).forEach((k, x) {
+              if (x is List && x.length == 2 && x[0] is int && x[1] is int) {
+                eps[k.toString()] = (x[0] as int, x[1] as int);
+              }
+            });
+          }
+          return _AnimeMapping(v['k']?.toString(), v['i']?.toString(),
+              v['m'] == true, eps);
+        }
+      }
+    }
+    final mapping = await _fetchAnimeMappingNetwork(param, id);
+    unawaited(StremioDiskCache.write(
+        diskKey,
+        mapping == null
+            ? {'none': true}
+            : {
+                'k': mapping.kitsuId,
+                'i': mapping.imdbId,
+                'm': mapping.isMovie,
+                'e': mapping.imdbEpisodes
+                    .map((k, v) => MapEntry(k, [v.$1, v.$2])),
+              }));
+    return mapping;
+  }
+
+  Future<_AnimeMapping?> _fetchAnimeMappingNetwork(
+      String param, String id) async {
     try {
       final resp = await http
           .get(Uri.parse('https://api.ani.zip/mappings?$param=$id'))
@@ -1116,7 +1348,8 @@ class StremioService extends GetxController {
 
   /// Recomputes Continue Watching and the library from the local cache,
   /// with the same rules Stremio uses.
-  void _rebuildLists() {
+  void _rebuildLists({bool save = true}) {
+    if (save) _scheduleLibrarySave();
     final all = _libraryCache.values.toList();
     DateTime watched(StremioLibraryItem i) =>
         i.lastWatched ?? i.mtime ?? DateTime(1970);
@@ -1438,6 +1671,21 @@ class StremioService extends GetxController {
   }
 
   Future<String?> _anilistFromKitsu(String kitsuId) async {
+    final diskKey = 'kitsu2anilist|$kitsuId';
+    final saved = await StremioDiskCache.read(diskKey);
+    if (saved != null) {
+      final v = saved.value;
+      if (v is String && v.isNotEmpty && saved.isFresherThan(const Duration(days: 30))) {
+        return v;
+      }
+      if (v == null && saved.isFresherThan(const Duration(days: 1))) return null;
+    }
+    final id = await _anilistFromKitsuNetwork(kitsuId);
+    unawaited(StremioDiskCache.write(diskKey, id));
+    return id;
+  }
+
+  Future<String?> _anilistFromKitsuNetwork(String kitsuId) async {
     try {
       final resp = await http
           .get(Uri.parse(
@@ -1467,6 +1715,20 @@ class StremioService extends GetxController {
   /// AniList ids that share this IMDb id (one per season/part), or empty
   /// when the title isn't anime.
   Future<List<String>> _anilistFromImdb(String imdbId) async {
+    final diskKey = 'imdb2anilist|$imdbId';
+    final saved = await StremioDiskCache.read(diskKey);
+    if (saved != null && saved.value is List) {
+      final ids = (saved.value as List).map((e) => e.toString()).toList();
+      final maxAge =
+          ids.isEmpty ? const Duration(days: 1) : const Duration(days: 30);
+      if (saved.isFresherThan(maxAge)) return ids;
+    }
+    final ids = await _anilistFromImdbNetwork(imdbId);
+    unawaited(StremioDiskCache.write(diskKey, ids));
+    return ids;
+  }
+
+  Future<List<String>> _anilistFromImdbNetwork(String imdbId) async {
     try {
       final resp = await http
           .get(Uri.parse('https://arm.haglund.dev/api/v2/imdb?id=$imdbId'))
@@ -1489,6 +1751,18 @@ class StremioService extends GetxController {
     if (_aniZipEpisodes.containsKey(anilistId)) {
       return _aniZipEpisodes[anilistId];
     }
+    final diskKey = 'anizip-eps|$anilistId';
+    final saved = await StremioDiskCache.read(diskKey);
+    if (saved != null && saved.value is Map &&
+        saved.isFresherThan(const Duration(days: 30))) {
+      final eps = <String, (int, int)>{};
+      (saved.value as Map).forEach((k, x) {
+        if (x is List && x.length == 2 && x[0] is int && x[1] is int) {
+          eps[k.toString()] = (x[0] as int, x[1] as int);
+        }
+      });
+      return _aniZipEpisodes[anilistId] = eps;
+    }
     Map<String, (int, int)>? out;
     try {
       final resp = await http
@@ -1509,6 +1783,10 @@ class StremioService extends GetxController {
       }
     } catch (_) {}
     _aniZipEpisodes[anilistId] = out;
+    if (out != null) {
+      unawaited(StremioDiskCache.write(
+          diskKey, out.map((k, v) => MapEntry(k, [v.$1, v.$2]))));
+    }
     return out;
   }
 }

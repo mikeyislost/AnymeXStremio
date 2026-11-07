@@ -116,12 +116,12 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainer.withOpacity(0.5),
+            color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.5),
           ),
           child: Center(
             child: Icon(
               Icons.play_circle_fill_rounded,
-              color: theme.colorScheme.primary.withOpacity(0.4),
+              color: theme.colorScheme.primary.withValues(alpha: 0.4),
               size: 20,
             ),
           ),

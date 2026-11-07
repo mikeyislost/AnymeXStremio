@@ -707,7 +707,7 @@ class _LogoAnimationPreviewDialogState
       height: 40,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: context.colors.surfaceContainerHighest.withOpacity(0.5),
+        color: context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -840,9 +840,9 @@ class _LogoAnimationPreviewDialogState
           // Add Custom Logo Button
           AnymeXContainer(
             radius: 12,
-            color: context.colors.primary.withOpacity(0.12),
+            color: context.colors.primary.withValues(alpha: 0.12),
             border: Border.all(
-              color: context.colors.primary.withOpacity(0.35),
+              color: context.colors.primary.withValues(alpha: 0.35),
               width: 1.5,
             ),
             child: InkWell(
@@ -884,7 +884,7 @@ class _LogoAnimationPreviewDialogState
                 radius: 12,
                 margin: const EdgeInsets.only(bottom: 8),
                 color: isSelected
-                    ? context.colors.primary.withOpacity(0.15)
+                    ? context.colors.primary.withValues(alpha: 0.15)
                     : context.colors.surfaceContainer,
                 border: Border.all(
                   color: isSelected
@@ -931,7 +931,7 @@ class _LogoAnimationPreviewDialogState
                           decoration: BoxDecoration(
                             color: logo.sizeMode !=
                                     CustomLogoSizeMode.defaultSize
-                                ? context.colors.primary.withOpacity(0.2)
+                                ? context.colors.primary.withValues(alpha: 0.2)
                                 : context.colors.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(6),
                           ),

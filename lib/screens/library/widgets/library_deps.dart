@@ -2,7 +2,7 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
-import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/screens/library/controller/library_controller.dart';
 import 'package:anymex/screens/library/editor/list_editor.dart';
 import 'package:anymex/widgets/common/anymex_pills.dart';

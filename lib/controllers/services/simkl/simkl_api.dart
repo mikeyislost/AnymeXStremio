@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:anymex/controllers/network/network_manager.dart';
-import 'package:anymex/controllers/services/simkl/simkl_auth_v2.dart';
+import 'package:anymex/plus/simkl_auth_v2.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/utils/logger.dart';

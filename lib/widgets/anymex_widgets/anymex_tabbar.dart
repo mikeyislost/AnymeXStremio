@@ -42,9 +42,9 @@ class AnymeXTabBar extends StatelessWidget {
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color:
-              inactiveColor ?? colors.surfaceContainerHighest.withOpacity(0.4),
+              inactiveColor ?? colors.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.outline.withOpacity(0.1)),
+          border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
         ),
         child: Stack(
           children: [
@@ -62,7 +62,7 @@ class AnymeXTabBar extends StatelessWidget {
                     boxShadow: [
                       BoxShadow(
                         color:
-                            (activeColor ?? colors.secondary).withOpacity(0.3),
+                            (activeColor ?? colors.secondary).withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       )
