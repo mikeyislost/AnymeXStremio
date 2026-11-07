@@ -22,6 +22,16 @@ Every push also runs **Actions → Build Windows EXE**, which publishes to the *
 
 Windows may show a SmartScreen warning because the app isn't code-signed. Click **More info → Run anyway**.
 
+## Install on iPhone with Feather
+
+In Feather → **Sources** → add:
+
+```
+https://github.com/mikeyislost/AnymeXStremio/releases/download/latest-ios/source.json
+```
+
+It shows up as **AnymeX+** (bundle ID `com.mikeyislost.anymexstremio`, so it installs separately from official AnymeX). Every build bumps the version, so Feather shows new builds as updates.
+
 ## Building the iOS app
 
 Every push to `main` runs **Actions → Build iOS IPA**. It checks the code, builds an unsigned `.ipa`, and attaches it to the **latest-ios** release. Install it with Feather, AltStore or Sideloadly.

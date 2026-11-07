@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - "**.md"
       - ".github/workflows/windows.yml"
+      - "windows/**"
   workflow_dispatch:
 
 env:
@@ -94,10 +95,20 @@ jobs:
           TMDB_API_KEY=$TMDB_API_KEY
           EOF
 
+      # Version = <pubspec major.minor>.<run number>, so every build is a
+      # newer version and Feather shows it as an update.
+      - name: Compute version
+        id: ver
+        run: |
+          BASE=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+)\.([0-9]+).*/\1.\2/')
+          echo "version=$BASE.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
       - name: Build iOS (unsigned)
         run: |
           flutter pub get
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign \
+            --build-name "${{ steps.ver.outputs.version }}" \
+            --build-number "${{ github.run_number }}"
           mkdir -p build/ios/iphoneos/Payload
           cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
           cd build/ios/iphoneos
@@ -108,13 +119,80 @@ jobs:
           name: AnymeX-Stremio-ipa
           path: build/ios/iphoneos/AnymeX-Stremio.ipa
 
-      # Always-current download link: Releases → "latest-ios".
+      # Feather / AltStore source. Add this URL in Feather → Sources:
+      # https://github.com/<owner>/<repo>/releases/download/latest-ios/source.json
+      - name: Generate Feather source
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, datetime
+          ipa = "build/ios/iphoneos/AnymeX-Stremio.ipa"
+          repo, owner, version = os.environ["REPO"], os.environ["OWNER"], os.environ["VERSION"]
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          url = f"https://github.com/{repo}/releases/download/latest-ios/AnymeX-Stremio.ipa"
+          icon = f"https://raw.githubusercontent.com/{repo}/main/logo.png"
+          size = os.path.getsize(ipa)
+          desc = ("AnymeX (anime & manga tracker/player) with Stremio built in: "
+                  "Stremio login and addons, a Movies & TV tab, and watch "
+                  "progress synced to Stremio. AniList, MAL, Simkl and Discord "
+                  "status included.")
+          source = {
+            "name": "AnymeX+ (Stremio)",
+            "identifier": "com.mikeyislost.anymexstremio.source",
+            "subtitle": "Personal AnymeX + Stremio build",
+            "description": desc,
+            "iconURL": icon,
+            "website": f"https://github.com/{repo}",
+            "tintColor": "#7C4DFF",
+            "apps": [{
+              "name": "AnymeX+",
+              "bundleIdentifier": "com.mikeyislost.anymexstremio",
+              "developerName": owner,
+              "subtitle": "AnymeX with Stremio built in",
+              "localizedDescription": desc,
+              "iconURL": icon,
+              "tintColor": "#7C4DFF",
+              "category": "entertainment",
+              "version": version,
+              "versionDate": now,
+              "versionDescription": f"Built from {os.environ['SHA'][:7]}",
+              "downloadURL": url,
+              "size": size,
+              "screenshotURLs": [],
+              "appPermissions": {},
+              "versions": [{
+                "version": version,
+                "buildVersion": os.environ.get("GITHUB_RUN_NUMBER", "1"),
+                "date": now,
+                "localizedDescription": f"Built from {os.environ['SHA'][:7]}",
+                "downloadURL": url,
+                "size": size,
+                "minOSVersion": "13.0"
+              }]
+            }],
+            "news": []
+          }
+          with open("build/ios/iphoneos/source.json", "w") as f:
+              json.dump(source, f, indent=2)
+          print(json.dumps(source, indent=2))
+          PY
+
+      # Always-current download links: Releases → "latest-ios".
       - name: Publish to the latest-ios release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-ios
           name: Latest iOS build
-          body: "Built from ${{ github.sha }}"
+          body: |
+            Built from ${{ github.sha }} (version ${{ steps.ver.outputs.version }}).
+
+            **Feather source:** https://github.com/${{ github.repository }}/releases/download/latest-ios/source.json
           prerelease: true
           make_latest: false
-          files: build/ios/iphoneos/AnymeX-Stremio.ipa
+          files: |
+            build/ios/iphoneos/AnymeX-Stremio.ipa
+            build/ios/iphoneos/source.json

@@ -5,7 +5,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>AnymeX</string>
+    <string>AnymeX+</string>
     <key>FLTEnableImpeller</key>
     <true/>
     <!-- <key>FLTEnableImpeller</key>
