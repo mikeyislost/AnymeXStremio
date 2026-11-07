@@ -756,10 +756,8 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
   /// Accelerometer tilt → landscape side. AnymeX+: for the same tilt iOS
   /// needs the opposite landscape value to Android, otherwise the picture
   /// ends up upside down, so it is swapped there.
-  DeviceOrientation _landscapeForTilt(bool positiveX) {
-    final left = Platform.isIOS ? !positiveX : positiveX;
-    return left ? DeviceOrientation.landscapeLeft : DeviceOrientation.landscapeRight;
-  }
+  DeviceOrientation _landscapeForTilt(bool positiveX) =>
+      landscapeForTilt(positiveX, ios: Platform.isIOS);
 
   void _initPhysicalOrientationListener() {
     if (!Platform.isAndroid && !Platform.isIOS) return;
@@ -3180,4 +3178,12 @@ class SubtitleCue {
   final String text;
 
   SubtitleCue({required this.start, required this.end, required this.text});
+}
+
+/// AnymeX+: accelerometer tilt (positive x = phone turned to the left) →
+/// landscape side to request. iOS needs the opposite value to Android for
+/// the same tilt. Public so the self test can check it.
+DeviceOrientation landscapeForTilt(bool positiveX, {required bool ios}) {
+  final left = ios ? !positiveX : positiveX;
+  return left ? DeviceOrientation.landscapeLeft : DeviceOrientation.landscapeRight;
 }

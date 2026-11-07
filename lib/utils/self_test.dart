@@ -10,8 +10,22 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:anymex/controllers/discord/discord_rpc.dart';
+import 'package:anymex/controllers/offline/offline_storage_controller.dart';
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/database/isar_models/episode.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/screens/anime/watch/controller/player_controller.dart'
+    show landscapeForTilt;
+import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
+import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
+import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
+import 'package:anymex/screens/stremio/stremio_widgets.dart'
+    show stremioEpisodeLabel;
+import 'package:anymex/utils/logger.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
+import 'package:anymex/controllers/services/stremio/stremio_models.dart';
 import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/screens/stremio/stremio_info_tab.dart';
 import 'package:anymex/controllers/services/stremio/watched_bitfield.dart';
@@ -23,6 +37,7 @@ import 'package:anymex/utils/color_extractor.dart';
 import 'package:anymex/utils/updater.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -102,7 +117,15 @@ class SelfTestRunner extends GetxController {
     results.clear();
     reportPath.value = '';
     _started = DateTime.now();
-    final tests = _tests().where((t) => comprehensive || t.quick).toList();
+    final picked = _tests().where((t) => comprehensive || t.quick).toList();
+    // Keep each group together (report sections aren't split).
+    final groups = <String>[];
+    for (final t in picked) {
+      if (!groups.contains(t.group)) groups.add(t.group);
+    }
+    final tests = [
+      for (final g in groups) ...picked.where((t) => t.group == g),
+    ];
     total.value = tests.length;
     for (final t in tests) {
       if (_cancel) break;
@@ -263,6 +286,66 @@ class SelfTestRunner extends GetxController {
         _ => '',
       };
 
+  /// Removes keys/tokens from log lines before they go in the report.
+  static String _redact(String line) => line
+      .replaceAllMapped(
+          RegExp(
+              r'''((?:client_id|client_secret|api_key|apikey|access_token|refresh_token|authkey|token|secret|password|key)["']?\s*[:=]\s*["']?)([^&\s"',}]+)''',
+              caseSensitive: false),
+          (m) => '${m[1]}***')
+      .replaceAllMapped(
+          RegExp(r'(bearer\s+)\S+', caseSensitive: false), (m) => '${m[1]}***');
+
+  /// Total size of a folder (stops after [maxFiles] files).
+  static Future<(int, int)> _dirSize(Directory dir, {int maxFiles = 60000}) async {
+    var bytes = 0;
+    var files = 0;
+    if (!await dir.exists()) return (0, 0);
+    await for (final e in dir.list(recursive: true, followLinks: false)) {
+      if (e is File) {
+        try {
+          bytes += await e.length();
+        } catch (_) {}
+        if (++files >= maxFiles) break;
+      }
+    }
+    return (bytes, files);
+  }
+
+  static String _mb(int bytes) => bytes >= 1024 * 1024 * 1024
+      ? '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB'
+      : '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+
+  /// Whether a Stremio watched field (`anchor:len:base64(zlib)`) decodes.
+  static bool _watchedFieldDecodes(String field) {
+    try {
+      final parts = field.split(':');
+      if (parts.length < 3) return false;
+      int.parse(parts[parts.length - 2]);
+      ZLibCodec().decode(base64.decode(parts.last));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Runs [checks] (description → passed?) and reports the failures.
+  static Outcome _expect(Map<String, bool Function()> checks) {
+    final failed = <String>[];
+    checks.forEach((what, ok) {
+      bool passed;
+      try {
+        passed = ok();
+      } catch (e) {
+        passed = false;
+      }
+      if (!passed) failed.add(what);
+    });
+    return failed.isEmpty
+        ? Outcome.pass('${checks.length} checks ok')
+        : Outcome.fail('failed: ${failed.join('; ')}');
+  }
+
   StremioService get _stremio => StremioService.to;
   ServiceHandler? get _handler =>
       Get.isRegistered<ServiceHandler>() ? Get.find<ServiceHandler>() : null;
@@ -387,6 +470,152 @@ class SelfTestRunner extends GetxController {
           return Outcome(ms > 3000 ? SelfTestStatus.warn : SelfTestStatus.pass,
               '200 write+read pairs in ${ms}ms');
         }),
+        _TestCase('App', 'Device clock', () async {
+          final r = await _get('https://api.github.com/zen');
+          final date = r.headers['date'];
+          if (date == null) return const Outcome.skip('server sent no time');
+          final skew =
+              DateTime.now().toUtc().difference(HttpDate.parse(date)).inSeconds;
+          if (skew.abs() > 120) {
+            return Outcome.warn('your clock is ${skew.abs()}s '
+                '${skew > 0 ? 'ahead' : 'behind'}; logins and debrid links can fail');
+          }
+          return Outcome.pass('within ${skew.abs()}s of internet time');
+        }, quick: true),
+        _TestCase('App', 'Storage used by the app', () async {
+          final docs = await getApplicationDocumentsDirectory();
+          final support = await getApplicationSupportDirectory();
+          final tmp = await getTemporaryDirectory();
+          final lines = <String>[];
+          var cacheBytes = 0;
+          for (final (label, dir) in [
+            ('documents', docs),
+            ('app data', support),
+            ('cache', tmp),
+          ]) {
+            final (bytes, files) = await _dirSize(dir);
+            if (label == 'cache') cacheBytes = bytes;
+            lines.add('$label: ${_mb(bytes)} in $files files');
+          }
+          return Outcome(
+              cacheBytes > 3 * 1024 * 1024 * 1024
+                  ? SelfTestStatus.warn
+                  : SelfTestStatus.pass,
+              '${lines.join(' · ')}'
+              '${cacheBytes > 3 * 1024 * 1024 * 1024 ? '\ncache is large; clearing it in Settings frees space' : ''}');
+        }, timeout: const Duration(seconds: 60)),
+        _TestCase('App', 'Watch history database', () async {
+          if (!Get.isRegistered<OfflineStorageController>()) {
+            return const Outcome.skip('history not loaded');
+          }
+          final c = Get.find<OfflineStorageController>();
+          final anime = c.getAnimeLibrarySync();
+          final manga = c.getMangaLibrarySync();
+          final novels = c.getNovelLibrarySync();
+          final stremio =
+              anime.where((m) => (m.mediaId ?? '').startsWith('stremio|')).length;
+          final fromAddons =
+              anime.where((m) => m.currentEpisode?.source == 'Stremio').length;
+          return Outcome.pass('anime: ${anime.length} (Movies & TV: $stremio, '
+              'played from Stremio addons: $fromAddons) · manga: ${manga.length} · '
+              'novels: ${novels.length}');
+        }, quick: true),
+        _TestCase('App', 'Settings snapshot', () async {
+          final ps = Get.find<Settings>().playerSettings.value;
+          return Outcome.info(
+              'player: ${ps.defaultPortraitMode ? 'portrait' : ps.defaultOrientation} · '
+              'decoder ${ps.hardwareDecoder} · marked watched at ${ps.markAsCompleted}% · '
+              'auto-skip OP ${ps.autoSkipOP ? 'on' : 'off'} / ED ${ps.autoSkipED ? 'on' : 'off'}\n'
+              'anime streams from: ${_stremio.animeStreamSource.value} · '
+              'episode cards: ${EpisodeStyleRegistry.currentStyleId.value}');
+        }, quick: true),
+        _TestCase('App', 'Recent errors in the app log', () async {
+          final logs = await Logger.getLogs();
+          if (logs.trim().isEmpty) {
+            return const Outcome.info('log is empty (file logging may be off)');
+          }
+          final lines = logs.split('\n');
+          final recent =
+              lines.length > 800 ? lines.sublist(lines.length - 800) : lines;
+          final errors = recent
+              .where((l) =>
+                  l.contains('[ERROR]') ||
+                  l.contains('[WARNING]') ||
+                  l.contains('Exception'))
+              .toList();
+          if (errors.isEmpty) {
+            return Outcome.pass('no errors in the last ${recent.length} log lines');
+          }
+          final last =
+              errors.length > 15 ? errors.sublist(errors.length - 15) : errors;
+          return Outcome.info(
+              '${errors.length} error/warning lines in the last ${recent.length}; newest:\n'
+              '${last.map(_redact).map((l) => l.length > 240 ? '${l.substring(0, 240)}…' : l).join('\n')}');
+        }, quick: true),
+
+        // ---- Logic (offline checks of AnymeX+ code) ----------------------
+        _TestCase('Logic', 'Episode labels', () async => _expect({
+              'tt0903747:1:2 → S1 E2': () =>
+                  stremioEpisodeLabel('tt0903747:1:2') == 'S1 E2',
+              'kitsu:49803:1 → E1': () =>
+                  stremioEpisodeLabel('kitsu:49803:1') == 'E1',
+              'movie ids have no label': () =>
+                  stremioEpisodeLabel('tt0111161') == null &&
+                  stremioEpisodeLabel('kitsu:7311') == null,
+            }), quick: true),
+        _TestCase('Logic', 'Stremio ids', () async => _expect({
+              'media id round-trip': () =>
+                  StremioIds.parse(StremioIds.mediaId('series', 'tt0903747',
+                      season: 2)) ==
+                  ('series', 'tt0903747'),
+              'AniList ids are not Stremio ids': () =>
+                  !StremioIds.isStremioMediaId('21'),
+              'kitsu:1:5 is a series episode': () =>
+                  StremioIds.typeForVideoId('kitsu:1:5') == 'series',
+              'kitsu:1 is a movie': () =>
+                  StremioIds.typeForVideoId('kitsu:1') == 'movie',
+              'tt1:1:2 is a series episode': () =>
+                  StremioIds.typeForVideoId('tt1:1:2') == 'series',
+            }), quick: true),
+        _TestCase('Logic', 'Movie detection & runtimes', () async {
+          final one = [Episode(number: '1')];
+          return _expect({
+            'AniList MOVIE with 1 entry is a movie': () => isMovieMedia(
+                Media(format: 'MOVIE', serviceType: ServicesType.anilist), one),
+            'TV is not a movie': () => !isMovieMedia(
+                Media(format: 'TV', serviceType: ServicesType.anilist), one),
+            'movie split in 2 parts shows episodes': () => !isMovieMedia(
+                Media(format: 'MOVIE', serviceType: ServicesType.anilist),
+                [Episode(number: '1'), Episode(number: '2')]),
+            '"46 mins" → 46m': () => formatMovieRuntime('46 mins') == '46m',
+            '"106 min" → 1h 46m': () => formatMovieRuntime('106 min') == '1h 46m',
+            '"1 hr 46 min" → 1h 46m': () =>
+                formatMovieRuntime('1 hr 46 min') == '1h 46m',
+            '"?" → empty': () => formatMovieRuntime('?') == '',
+          });
+        }, quick: true),
+        _TestCase('Logic', 'Torrent file index', () async {
+          final (url, idx) = StremioPlayerBridge.splitTorrentFileIndex(
+              'magnet:?xt=urn:btih:abc&anymex_fidx=2');
+          final (_, none) =
+              StremioPlayerBridge.splitTorrentFileIndex('magnet:?xt=urn:btih:abc');
+          return _expect({
+            'marker removed': () => url == 'magnet:?xt=urn:btih:abc',
+            'Stremio file 2 → TorrServer file 3': () => idx == 3,
+            'no marker → no file': () => none == null,
+          });
+        }, quick: true),
+        _TestCase('Logic', 'Player rotation sides', () async => _expect({
+              'iPhone turned left → landscapeRight': () =>
+                  landscapeForTilt(true, ios: true) ==
+                  DeviceOrientation.landscapeRight,
+              'iPhone turned right → landscapeLeft': () =>
+                  landscapeForTilt(false, ios: true) ==
+                  DeviceOrientation.landscapeLeft,
+              'Android unchanged': () =>
+                  landscapeForTilt(true, ios: false) ==
+                  DeviceOrientation.landscapeLeft,
+            }), quick: true),
 
         // ---- Network -------------------------------------------------------
         _TestCase('Network', 'Internet connection',
@@ -430,6 +659,72 @@ class SelfTestRunner extends GetxController {
         _TestCase('Network', 'TVmaze (show info)',
             () => _reach('api.tvmaze.com',
                 'https://api.tvmaze.com/lookup/shows?imdb=tt0903747')),
+        _TestCase('Network', 'TMDB API (your key)', () async {
+          final key = (dotenv.env['TMDB_API_KEY'] ?? '').trim();
+          if (key.isEmpty) return const Outcome.skip('TMDB_API_KEY not set');
+          final r = await _get(
+              'https://api.themoviedb.org/3/configuration?api_key=$key');
+          if (r.statusCode == 200) return const Outcome.pass('key accepted');
+          if (r.statusCode == 401) {
+            return Outcome.fail('TMDB rejected the key (HTTP 401). Use the '
+                'short "API Key", not the long "API Read Access Token"'
+                '${key.length > 40 ? '; yours looks like the access token' : ''}.');
+          }
+          return Outcome.warn('HTTP ${r.statusCode}');
+        }, quick: true),
+        _TestCase('Network', 'Simkl API (your key)', () async {
+          final key = (dotenv.env['SIMKL_CLIENT_ID'] ?? '').trim();
+          if (key.isEmpty) return const Outcome.skip('SIMKL_CLIENT_ID not set');
+          final r = await _get(
+              'https://api.simkl.com/search/id?imdb=tt0903747&client_id=$key');
+          if (r.statusCode == 200) return const Outcome.pass('client id accepted');
+          if (r.statusCode == 401 || r.statusCode == 412) {
+            return Outcome.fail(
+                'Simkl rejected SIMKL_CLIENT_ID (HTTP ${r.statusCode})');
+          }
+          return Outcome.warn('HTTP ${r.statusCode}');
+        }, quick: true),
+        _TestCase('Network', 'AniSkip (skip intro/outro)',
+            () => _reach('api.aniskip.com',
+                'https://api.aniskip.com/v2/skip-times/1/1?types[]=op&types[]=ed&episodeLength=0',
+                ok: const [200, 404])),
+        _TestCase('Network', 'AnimeThemes (openings/endings)',
+            () => _reach('api.animethemes.moe',
+                'https://api.animethemes.moe/anime?page[size]=1')),
+        _TestCase('Network', 'Jikan (MyAnimeList data)',
+            () => _reach('api.jikan.moe', 'https://api.jikan.moe/v4/anime/1',
+                ok: const [200, 429])),
+        _TestCase('Network', 'DNS lookups', () async {
+          const hosts = [
+            'graphql.anilist.co',
+            'api.strem.io',
+            'v3-cinemeta.strem.io',
+            'api.ani.zip',
+            'api.github.com',
+            'api.themoviedb.org',
+            'api.simkl.com',
+          ];
+          final lines = <String>[];
+          var failed = 0;
+          var slow = 0;
+          for (final h in hosts) {
+            final sw = Stopwatch()..start();
+            try {
+              await InternetAddress.lookup(h).timeout(const Duration(seconds: 8));
+              final ms = sw.elapsedMilliseconds;
+              if (ms > 1500) slow++;
+              lines.add('$h ${ms}ms');
+            } catch (_) {
+              failed++;
+              lines.add('$h FAILED');
+            }
+          }
+          return Outcome(
+              failed > 0
+                  ? SelfTestStatus.fail
+                  : (slow > 0 ? SelfTestStatus.warn : SelfTestStatus.pass),
+              lines.join(' · '));
+        }),
         _TestCase('Network', 'GitHub releases (updates)',
             () => _reach('GitHub', 'https://api.github.com/repos/${UpdateManager.repo}/releases/latest',
                 headers: const {'Accept': 'application/vnd.github+json'})),
@@ -459,6 +754,30 @@ class SelfTestRunner extends GetxController {
           if (!d.isLoggedIn) return const Outcome.info('not connected (optional)');
           return Outcome(d.isConnected ? SelfTestStatus.pass : SelfTestStatus.warn,
               d.isConnected ? 'connected, status updates active' : 'logged in but gateway not connected');
+        }, quick: true),
+        _TestCase('Accounts', 'AniList login still valid', () async {
+          final token = AuthKeys.authToken.get<String?>();
+          if (token == null || token.isEmpty) {
+            return const Outcome.skip('not logged in to AniList');
+          }
+          final r = await http
+              .post(Uri.parse('https://graphql.anilist.co'),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': 'Bearer $token',
+                  },
+                  body: jsonEncode({'query': '{ Viewer { name } }'}))
+              .timeout(const Duration(seconds: 15));
+          if (r.statusCode == 200) {
+            final name = jsonDecode(r.body)['data']?['Viewer']?['name'];
+            return Outcome.pass('token works (signed in as $name)');
+          }
+          if (r.statusCode == 400 || r.statusCode == 401) {
+            return const Outcome.fail(
+                'AniList refused the saved login; log out and back in');
+          }
+          return Outcome.warn('HTTP ${r.statusCode}');
         }, quick: true),
         _TestCase('Accounts', 'AniList API query', () async {
           final resp = await http
@@ -495,13 +814,19 @@ class SelfTestRunner extends GetxController {
           await _stremio.ensureAddons();
           final bad = <String>[];
           final local = <String>[];
+          final times = <String>[];
+          final slow = <String>[];
           for (final a in _stremio.addons) {
             final host = Uri.tryParse(a.transportUrl)?.host ?? '';
             final isLocal = host == '127.0.0.1' || host == 'localhost';
+            final sw = Stopwatch()..start();
             try {
               final r = await _get(a.transportUrl, timeout: const Duration(seconds: 12));
               if (r.statusCode != 200) {
                 bad.add('${a.name} (HTTP ${r.statusCode}${_httpHint(r.statusCode)})');
+              } else {
+                times.add('${a.name} ${sw.elapsedMilliseconds}ms');
+                if (sw.elapsedMilliseconds > 3000) slow.add(a.name);
               }
             } catch (e) {
               (isLocal ? local : bad).add(isLocal ? a.name : '${a.name} (no response)');
@@ -516,6 +841,8 @@ class SelfTestRunner extends GetxController {
             if (local.isNotEmpty)
               'only works with the Stremio desktop app running on the same '
                   'device (expected on a phone): ${local.join(', ')}',
+            if (slow.isNotEmpty) 'slow (over 3s): ${slow.join(', ')}',
+            if (times.isNotEmpty) 'response times: ${times.join(' · ')}',
           ];
           return Outcome(
               bad.isNotEmpty ? SelfTestStatus.warn : SelfTestStatus.pass,
@@ -620,6 +947,98 @@ class SelfTestRunner extends GetxController {
               'AniList/MAL anime → Stremio: ${_stremio.syncAnime.value ? 'on' : 'off'} · '
               'Movies & TV → AniList: ${_stremio.syncToAnilist.value ? 'on' : 'off'}');
         }, quick: true),
+        _TestCase('Stremio', 'Subtitles', () async {
+          await _stremio.ensureAddons();
+          final subAddons =
+              _stremio.addons.where((a) => a.hasResource('subtitles')).toList();
+          if (subAddons.isEmpty) {
+            return const Outcome.info(
+                'no subtitle addons (subtitles inside the video still work)');
+          }
+          final lines = <String>[];
+          var total = 0;
+          var failed = 0;
+          for (final a in subAddons) {
+            try {
+              final subs = await _stremio.api
+                  .subtitles(a, 'series', 'tt0903747:1:1')
+                  .timeout(const Duration(seconds: 20));
+              total += subs.length;
+              final langs = subs.map((e) => e['lang']).toSet().length;
+              lines.add('${a.name}: ${subs.length} ($langs languages)');
+            } catch (e) {
+              failed++;
+              lines.add('${a.name}: failed');
+            }
+          }
+          return Outcome(
+              failed == subAddons.length || total == 0
+                  ? SelfTestStatus.warn
+                  : SelfTestStatus.pass,
+              'Breaking Bad S1E1: ${lines.join(', ')}');
+        }, timeout: const Duration(seconds: 60)),
+        _TestCase('Stremio', 'Continue Watching items open',
+            () => _needStremio(() async {
+                  await _stremio.refreshContinueWatching();
+                  final items = _stremio.continueWatching.take(25).toList();
+                  if (items.isEmpty) return const Outcome.skip('nothing in Continue Watching');
+                  final broken = <String>[];
+                  final odd = <String>[];
+                  for (final item in items) {
+                    StremioMeta? meta;
+                    try {
+                      meta = await _stremio.fetchMeta(item.type, item.id);
+                    } catch (_) {}
+                    if (meta == null) {
+                      broken.add('${item.name} (${item.id})');
+                    } else if (!meta.isSingleVideo &&
+                        item.videoId != null &&
+                        !meta.videos.any((v) => v.id == item.videoId)) {
+                      odd.add('${item.name} (${item.videoId})');
+                    }
+                  }
+                  return Outcome(
+                      broken.isEmpty && odd.isEmpty
+                          ? SelfTestStatus.pass
+                          : SelfTestStatus.warn,
+                      '${items.length - broken.length}/${items.length} open with details'
+                      '${broken.isEmpty ? '' : '\nno details from your addons: ${broken.join(', ')}'}'
+                      '${odd.isEmpty ? '' : '\nepisode not in its episode list: ${odd.join(', ')}'}');
+                }), timeout: const Duration(seconds: 120)),
+        _TestCase('Stremio', 'Library health', () => _needStremio(() async {
+              await _stremio.refreshLibrary();
+              final all = {
+                for (final i in [..._stremio.library, ..._stremio.continueWatching])
+                  i.id: i
+              }.values.toList();
+              final badField = <String>[];
+              for (final i in all) {
+                final f = i.watchedField;
+                if (f != null && f.isNotEmpty && !_watchedFieldDecodes(f)) {
+                  badField.add(i.name);
+                }
+              }
+              // Same anime saved twice (Kitsu id and IMDb id)?
+              final ids = {for (final i in all) i.id: i};
+              final dupes = <String>[];
+              for (final k in all.where((i) => i.id.startsWith('kitsu:')).take(15)) {
+                try {
+                  final r = await _get(
+                      'https://api.ani.zip/mappings?kitsu_id=${k.id.split(':')[1]}');
+                  if (r.statusCode != 200) continue;
+                  final imdb = jsonDecode(r.body)['mappings']?['imdb_id']?.toString();
+                  final other = imdb == null ? null : ids[imdb];
+                  if (other != null) dupes.add('"${k.name}" (Kitsu) and "${other.name}" (IMDb)');
+                } catch (_) {}
+              }
+              return Outcome(
+                  badField.isEmpty && dupes.isEmpty
+                      ? SelfTestStatus.pass
+                      : SelfTestStatus.warn,
+                  '${all.length} items checked'
+                  '${badField.isEmpty ? '' : '\nwatched marks unreadable: ${badField.join(', ')}'}'
+                  '${dupes.isEmpty ? '' : '\nsaved twice: ${dupes.join('; ')}. Remove one from Continue Watching / Library.'}');
+            }), timeout: const Duration(seconds: 120)),
 
         // ---- Sync & mapping ------------------------------------------------
         _TestCase('Sync', 'AniList → Stremio mapping (Frieren)', () async {
@@ -707,9 +1126,9 @@ class SelfTestRunner extends GetxController {
               continue;
             }
             final info = await StremioInfoLoader.load(meta);
-            final extra = info.source == StremioInfoSource.stremio
-                ? ' (${info.facts.length} facts, ${info.cast.length} cast)'
-                : '';
+            final extra = ' (${info.castCount} cast'
+                '${info.castCount > 0 && !info.castHasPhotos ? ', no photos' : ''}'
+                '${info.source == StremioInfoSource.stremio ? ', ${info.facts.length} facts' : ''})';
             lines.add('✓ $label: ${info.sourceLabel}$extra');
             if (id == 'tt0213338' && info.source != StremioInfoSource.anilist) {
               bad++;
@@ -718,6 +1137,29 @@ class SelfTestRunner extends GetxController {
           return Outcome(bad == 0 ? SelfTestStatus.pass : SelfTestStatus.warn,
               lines.join('\n'));
         }, timeout: const Duration(seconds: 90)),
+        _TestCase('Sync', 'Movie matching (The Garden of Words)', () async {
+          final h = _handler;
+          if (h == null) return const Outcome.skip('services not loaded');
+          await _stremio.ensureAddons();
+          final media = await h.anilistService
+              .fetchDetails(FetchDetailsParams(id: '16782'));
+          final sync =
+              await _stremio.describeAnimeMapping(ServicesType.anilist, '16782', 1);
+          if (!_stremio.hasStreamAddons) {
+            return Outcome.pass('sync → $sync (no stream addons to check)');
+          }
+          final t = await _stremio.animeTarget(media);
+          if (t == null) {
+            return Outcome.warn('sync → $sync\nno stream addon accepts its ids');
+          }
+          final link = t.episodes.isEmpty ? '' : t.episodes.first.link ?? '';
+          final ok = t.isMovie &&
+              t.episodes.length == 1 &&
+              StremioIds.typeForVideoId(link) == 'movie';
+          return Outcome(ok ? SelfTestStatus.pass : SelfTestStatus.fail,
+              'streams → ${t.isMovie ? 'movie' : 'series'} $link via ${t.addonNames.join(', ')}\n'
+              'sync → $sync');
+        }, timeout: const Duration(seconds: 60)),
         _TestCase('Sync', 'Kitsu → AniList mapping', () async {
           final id = await _stremio.debugAnilistFromKitsu('1');
           return id == null
@@ -763,10 +1205,11 @@ class SelfTestRunner extends GetxController {
 
         // ---- Playback & extensions ----------------------------------------
         _TestCase('Playback', 'Torrent engine', () async {
-          final installed = await TorrentService.instance.addon.isInstalled();
+          final addon = TorrentService.instance.addon;
+          final installed = await addon.isInstalled();
           return Outcome(installed ? SelfTestStatus.pass : SelfTestStatus.info,
               installed
-                  ? 'TorrServer available'
+                  ? 'TorrServer available (${addon.isRunning ? 'running now' : 'starts when a torrent plays'})'
                   : 'TorrServer not set up yet (installs on first torrent stream)');
         }),
         _TestCase('Extensions', 'Installed sources', () async {
@@ -778,6 +1221,79 @@ class SelfTestRunner extends GetxController {
               'manga: ${s.installedMangaExtensions.length} · '
               'novel: ${s.installedNovelExtensions.length}');
         }, quick: true),
+        _TestCase('Extensions', 'Each anime source: search → episodes → servers',
+            () async {
+          if (!Get.isRegistered<SourceController>()) {
+            return const Outcome.skip('extension system not loaded');
+          }
+          final sources =
+              Get.find<SourceController>().installedExtensions.take(5).toList();
+          if (sources.isEmpty) return const Outcome.skip('no anime sources installed');
+          const step = Duration(seconds: 25);
+          final lines = <String>[];
+          var bad = 0;
+          for (final src in sources) {
+            final sw = Stopwatch()..start();
+            final name = src.name ?? 'source';
+            try {
+              final found = (await src.methods.search('One Piece', 1, []).timeout(step)).list;
+              if (found.isEmpty) {
+                bad++;
+                lines.add('✗ $name: search found nothing');
+                continue;
+              }
+              final detail = await src.methods.getDetail(found.first).timeout(step);
+              final eps = detail.episodes ?? const [];
+              if (eps.isEmpty) {
+                bad++;
+                lines.add('✗ $name: ${found.length} results, but no episodes');
+                continue;
+              }
+              final servers = await src.methods.getVideoList(eps.first).timeout(step);
+              if (servers.isEmpty) bad++;
+              lines.add('${servers.isEmpty ? '✗' : '✓'} $name: ${found.length} results · '
+                  '${eps.length} episodes · ${servers.length} servers '
+                  '(${(sw.elapsedMilliseconds / 1000).toStringAsFixed(1)}s)');
+            } catch (e) {
+              bad++;
+              final msg = e is TimeoutException ? 'timed out' : _redact('$e');
+              lines.add('✗ $name: ${msg.length > 160 ? msg.substring(0, 160) : msg}');
+            }
+          }
+          return Outcome(
+              bad == 0
+                  ? SelfTestStatus.pass
+                  : (bad == sources.length ? SelfTestStatus.fail : SelfTestStatus.warn),
+              lines.join('\n'));
+        }, timeout: const Duration(seconds: 400)),
+        _TestCase('Extensions', 'Each manga/novel source: search', () async {
+          if (!Get.isRegistered<SourceController>()) {
+            return const Outcome.skip('extension system not loaded');
+          }
+          final s = Get.find<SourceController>();
+          final sources = [
+            ...s.installedMangaExtensions,
+            ...s.installedNovelExtensions,
+          ].take(6).toList();
+          if (sources.isEmpty) return const Outcome.skip('no manga/novel sources installed');
+          final lines = <String>[];
+          var bad = 0;
+          for (final src in sources) {
+            try {
+              final found = (await src.methods
+                      .search('Solo Leveling', 1, [])
+                      .timeout(const Duration(seconds: 25)))
+                  .list;
+              if (found.isEmpty) bad++;
+              lines.add('${found.isEmpty ? '✗' : '✓'} ${src.name}: ${found.length} results');
+            } catch (e) {
+              bad++;
+              lines.add('✗ ${src.name}: ${e is TimeoutException ? 'timed out' : 'failed'}');
+            }
+          }
+          return Outcome(bad == 0 ? SelfTestStatus.pass : SelfTestStatus.warn,
+              lines.join('\n'));
+        }, timeout: const Duration(seconds: 200)),
       ];
 }
 

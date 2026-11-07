@@ -138,8 +138,8 @@ class _SettingsSelfTestState extends State<SettingsSelfTest> {
                     icon: Icons.bolt_rounded,
                     title: 'Quick test',
                     subtitle:
-                        'Essentials: app, storage, accounts, Stremio, comments, '
-                        'updates (~15 s)',
+                        'Essentials: app, your API keys and logins, Stremio, '
+                        'comments, updates and built-in logic checks (~20 s)',
                     enabled: !running,
                     onTap: running ? null : () => _start(false),
                   ),
@@ -147,8 +147,9 @@ class _SettingsSelfTestState extends State<SettingsSelfTest> {
                     icon: Icons.fact_check_rounded,
                     title: 'Full test',
                     subtitle:
-                        'Everything: every addon & catalog, streams, search, '
-                        'AniList ↔ Stremio mapping for your anime, speed (~1–3 min)',
+                        'Everything: every addon, catalog, stream and subtitle '
+                        'source, each extension end to end, library health, '
+                        'AniList ↔ Stremio matching, network and storage (~2–5 min)',
                     enabled: !running,
                     onTap: running ? null : () => _start(true),
                   ),

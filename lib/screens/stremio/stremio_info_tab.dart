@@ -73,6 +73,12 @@ class StremioInfo {
     this.imdbId,
   });
 
+  int get castCount =>
+      (media.characters ?? const []).isNotEmpty ? media.characters!.length : cast.length;
+
+  bool get castHasPhotos => cast.any((c) => (c.photo ?? '').isNotEmpty) ||
+      (media.characters ?? const []).any((c) => (c.image ?? '').isNotEmpty);
+
   String get sourceLabel => switch (source) {
         StremioInfoSource.anilist => 'AniList',
         StremioInfoSource.simkl => 'Simkl',
@@ -140,9 +146,127 @@ class StremioInfoLoader {
           id: '$simklId*${isMovie ? 'MOVIE' : 'SERIES'}'));
       if (media.title.isEmpty || media.title == '?') return null;
       return StremioInfo(
-          source: StremioInfoSource.simkl, media: media, imdbId: imdb);
+        source: StremioInfoSource.simkl,
+        media: media,
+        imdbId: imdb,
+        cast: await _castFor(meta, isMovie: isMovie),
+      );
     }
     return null;
+  }
+
+  static String? get _tmdbKey {
+    final k = dotenv.env['TMDB_API_KEY'];
+    return (k == null || k.trim().isEmpty) ? null : k.trim();
+  }
+
+  /// Cast with photos from TMDB (needs TMDB_API_KEY), found by IMDb id.
+  static Future<List<_CastMember>> _tmdbCast(String imdb, bool isMovie) async {
+    final key = _tmdbKey;
+    if (key == null) return const [];
+    final find = await http
+        .get(Uri.parse('https://api.themoviedb.org/3/find/$imdb'
+            '?api_key=$key&external_source=imdb_id'))
+        .timeout(const Duration(seconds: 12));
+    if (find.statusCode != 200) return const [];
+    final data = jsonDecode(find.body);
+    if (data is! Map) return const [];
+    final movies = data['movie_results'] is List ? data['movie_results'] as List : const [];
+    final shows = data['tv_results'] is List ? data['tv_results'] as List : const [];
+    final useMovie = isMovie ? movies.isNotEmpty : shows.isEmpty && movies.isNotEmpty;
+    final hit = useMovie
+        ? (movies.isNotEmpty ? movies.first : null)
+        : (shows.isNotEmpty ? shows.first : null);
+    if (hit is! Map || hit['id'] == null) return const [];
+    final path = useMovie
+        ? 'movie/${hit['id']}/credits'
+        : 'tv/${hit['id']}/aggregate_credits';
+    final credits = await http
+        .get(Uri.parse('https://api.themoviedb.org/3/$path?api_key=$key'))
+        .timeout(const Duration(seconds: 12));
+    if (credits.statusCode != 200) return const [];
+    final c = jsonDecode(credits.body);
+    final list = c is Map && c['cast'] is List ? c['cast'] as List : const [];
+    final out = <_CastMember>[];
+    for (final e in list.whereType<Map>().take(25)) {
+      final name = e['name']?.toString() ?? '';
+      if (name.isEmpty) continue;
+      String? role = e['character']?.toString();
+      if ((role == null || role.isEmpty) && e['roles'] is List) {
+        final roles = (e['roles'] as List).whereType<Map>();
+        if (roles.isNotEmpty) role = roles.first['character']?.toString();
+      }
+      final photo = e['profile_path']?.toString();
+      out.add(_CastMember(
+          name,
+          role,
+          (photo == null || photo.isEmpty)
+              ? null
+              : 'https://image.tmdb.org/t/p/w185$photo'));
+    }
+    return out;
+  }
+
+  /// Best available cast for a movie/show: TMDB, then the addon's own list
+  /// (Cinemeta has photos), then TVmaze for shows, then names only.
+  static Future<List<_CastMember>> _castFor(StremioMeta meta,
+      {required bool isMovie}) async {
+    final imdb = _imdbIdOf(meta);
+    if (imdb != null) {
+      try {
+        final tmdb = await _tmdbCast(imdb, isMovie);
+        if (tmdb.isNotEmpty) return tmdb;
+      } catch (e) {
+        Logger.i('Stremio info: TMDB cast failed: $e');
+      }
+    }
+    final extras = meta.raw['app_extras'] is Map
+        ? Map<String, dynamic>.from(meta.raw['app_extras'] as Map)
+        : const <String, dynamic>{};
+    final cast = <_CastMember>[];
+    if (extras['cast'] is List) {
+      for (final c in (extras['cast'] as List).whereType<Map>()) {
+        final name = c['name']?.toString() ?? '';
+        if (name.isEmpty) continue;
+        cast.add(_CastMember(
+            name, c['character']?.toString(), c['photo']?.toString()));
+      }
+    }
+    if (cast.isNotEmpty) return cast;
+    if (!isMovie && imdb != null) {
+      try {
+        final r = await http
+            .get(Uri.parse('https://api.tvmaze.com/lookup/shows?imdb=$imdb'))
+            .timeout(const Duration(seconds: 12));
+        if (r.statusCode == 200) {
+          final show = jsonDecode(r.body);
+          if (show is Map && show['id'] != null) {
+            cast.addAll(await _tvmazeCast(show['id']));
+          }
+        }
+      } catch (_) {}
+      if (cast.isNotEmpty) return cast;
+    }
+    return meta.cast.take(15).map((c) => _CastMember(c, null, null)).toList();
+  }
+
+  static Future<List<_CastMember>> _tvmazeCast(dynamic showId) async {
+    final out = <_CastMember>[];
+    final c = await http
+        .get(Uri.parse('https://api.tvmaze.com/shows/$showId/cast'))
+        .timeout(const Duration(seconds: 12));
+    if (c.statusCode != 200) return out;
+    for (final e in (jsonDecode(c.body) as List).whereType<Map>()) {
+      final person = e['person'] is Map ? e['person'] as Map : {};
+      final character = e['character'] is Map ? e['character'] as Map : {};
+      final name = person['name']?.toString() ?? '';
+      if (name.isEmpty) continue;
+      final img = person['image'] is Map
+          ? (person['image'] as Map)['medium']?.toString()
+          : null;
+      out.add(_CastMember(name, character['name']?.toString(), img));
+    }
+    return out;
   }
 
   static String? _imdbIdOf(StremioMeta meta) {
@@ -191,15 +315,7 @@ class StremioInfoLoader {
     final country = raw['country']?.toString();
     final awards = raw['awards']?.toString();
 
-    final cast = <_CastMember>[];
-    if (extras['cast'] is List) {
-      for (final c in (extras['cast'] as List).whereType<Map>()) {
-        final name = c['name']?.toString() ?? '';
-        if (name.isEmpty) continue;
-        cast.add(_CastMember(
-            name, c['character']?.toString(), c['photo']?.toString()));
-      }
-    }
+    final cast = await _castFor(meta, isMovie: !isSeries);
 
     final trailers = <_Trailer>[];
     if (raw['trailers'] is List) {
@@ -219,7 +335,7 @@ class StremioInfoLoader {
       }
     }
 
-    // TVmaze (no key needed): status, network, dates and cast for shows.
+    // TVmaze (no key needed): status, network and dates for shows.
     Map<String, dynamic>? show;
     if (isSeries && imdb != null) {
       try {
@@ -228,26 +344,6 @@ class StremioInfoLoader {
             .timeout(const Duration(seconds: 12));
         if (r.statusCode == 200) {
           show = Map<String, dynamic>.from(jsonDecode(r.body) as Map);
-          if (cast.isEmpty && show['id'] != null) {
-            final c = await http
-                .get(Uri.parse(
-                    'https://api.tvmaze.com/shows/${show['id']}/cast'))
-                .timeout(const Duration(seconds: 12));
-            if (c.statusCode == 200) {
-              for (final e in (jsonDecode(c.body) as List).whereType<Map>()) {
-                final person = e['person'] is Map ? e['person'] as Map : {};
-                final character =
-                    e['character'] is Map ? e['character'] as Map : {};
-                final name = person['name']?.toString() ?? '';
-                if (name.isEmpty) continue;
-                final img = person['image'] is Map
-                    ? (person['image'] as Map)['medium']?.toString()
-                    : null;
-                cast.add(_CastMember(
-                    name, character['name']?.toString(), img));
-              }
-            }
-          }
         }
       } catch (e) {
         Logger.i('Stremio info: TVmaze lookup failed: $e');
@@ -290,13 +386,6 @@ class StremioInfoLoader {
       if ((meta.imdbRating ?? '').isNotEmpty)
         MapEntry('IMDb', '★ ${meta.imdbRating}'),
     ];
-
-    // Names-only cast from the addon when nothing better was found.
-    if (cast.isEmpty) {
-      for (final c in meta.cast.take(15)) {
-        cast.add(_CastMember(c, null, null));
-      }
-    }
 
     final poster = meta.poster ?? meta.background ?? '';
     final media = Media(
@@ -507,7 +596,10 @@ class _StremioInfoTabState extends State<StremioInfoTab> {
             if (isAnilist) buildSeasonsSection(context, media),
           ]),
         ),
-        buildCharactersSection(context, media),
+        if ((media.characters ?? const []).isNotEmpty)
+          buildCharactersSection(context, media)
+        else if (info.cast.isNotEmpty)
+          _castCarousel(context, info.cast),
         if (isAnilist && rels.isNotEmpty)
           ReusableCarousel(
             data: rels,

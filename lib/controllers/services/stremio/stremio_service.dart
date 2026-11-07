@@ -1340,8 +1340,11 @@ class StremioService extends GetxController {
     if (pb == null) {
       throw Exception('no Stremio match (no Kitsu/IMDb mapping for $mediaId)');
     }
+    final existing =
+        isLoggedIn.value ? await getLibraryItem(pb.libraryId) != null : false;
     return '${pb.libraryId} → ${pb.videoId} ("${pb.name}", ${pb.type}, '
-        '${pb.videos.length} videos in meta)';
+        '${pb.videos.length} videos in meta, '
+        '${existing ? 'your existing Stremio entry' : 'new Stremio entry'})';
   }
 
   /// For the self test: AniList id for a Kitsu id / IMDb id.
