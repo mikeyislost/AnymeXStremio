@@ -390,6 +390,8 @@ class _StremioAccountPageState extends State<StremioAccountPage> {
       ),
       title: addon.name,
       subtitle: [
+        if (_service.unreachableAddons[addon.transportUrl] != null)
+          '⚠ ${_service.unreachableAddons[addon.transportUrl]}',
         if (addon.version.isNotEmpty) 'v${addon.version}',
         resources.join(', '),
       ].where((s) => s.isNotEmpty).join(' · '),

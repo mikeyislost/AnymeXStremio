@@ -796,8 +796,9 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
     final type = widget.type ?? widget.meta?.type ?? 'movie';
     final sources = service.addons
         .where((a) =>
-            a.supports('stream', type, widget.videoId) ||
-            a.supports('stream', 'anime', widget.videoId))
+            service.isAddonUsable(a) &&
+            (a.supports('stream', type, widget.videoId) ||
+                a.supports('stream', 'anime', widget.videoId)))
         .toList();
     setState(() {
       _started = true;

@@ -93,8 +93,13 @@ class _TestCase {
   final Duration timeout;
   final Future<Outcome> Function() run;
 
+  /// A third-party service only one feature needs; problems are warnings.
+  final bool optional;
+
   _TestCase(this.group, this.name, this.run,
-      {this.quick = false, this.timeout = const Duration(seconds: 25)});
+      {this.quick = false,
+      this.timeout = const Duration(seconds: 25),
+      this.optional = false});
 }
 
 class SelfTestRunner extends GetxController {
@@ -148,7 +153,7 @@ class SelfTestRunner extends GetxController {
           group: t.group,
           name: t.name,
           status: SelfTestStatus.fail,
-          detail: 'Timed out after ${t.timeout.inSeconds}s',
+          detail: 'No response within ${sw.elapsed.inSeconds}s',
           duration: sw.elapsed,
         );
       } catch (e, st) {
@@ -159,6 +164,17 @@ class SelfTestRunner extends GetxController {
           detail: e.toString(),
           duration: sw.elapsed,
           error: st.toString().split('\n').take(8).join('\n'),
+        );
+      }
+      if (t.optional && r.status == SelfTestStatus.fail) {
+        r = SelfTestResult(
+          group: r.group,
+          name: r.name,
+          status: SelfTestStatus.warn,
+          detail: '${r.detail}\n(a third-party service down on its end; '
+              'only that one feature is affected)',
+          duration: r.duration,
+          error: r.error,
         );
       }
       results.add(r);
@@ -539,20 +555,36 @@ class SelfTestRunner extends GetxController {
           final lines = logs.split('\n');
           final recent =
               lines.length > 800 ? lines.sublist(lines.length - 800) : lines;
+          // Skip AnymeX's routine "Key … not found" lookups and empty
+          // stack lines; group repeats of the same message.
+          final noise = RegExp(r'\] Key .+ not found$|\[ERROR\] STACK:\s*$');
           final errors = recent
               .where((l) =>
-                  l.contains('[ERROR]') ||
-                  l.contains('[WARNING]') ||
-                  l.contains('Exception'))
+                  (l.contains('[ERROR]') ||
+                      l.contains('[WARNING]') ||
+                      l.contains('Exception')) &&
+                  !noise.hasMatch(l.trim()))
               .toList();
           if (errors.isEmpty) {
-            return Outcome.pass('no errors in the last ${recent.length} log lines');
+            return Outcome.pass(
+                'no real errors in the last ${recent.length} log lines');
           }
-          final last =
-              errors.length > 15 ? errors.sublist(errors.length - 15) : errors;
+          final counts = <String, int>{};
+          final lastTime = <String, String>{};
+          for (final l in errors) {
+            final m = RegExp(r'^\[(\d\d:\d\d:\d\d)\](.*)$').firstMatch(l);
+            final msg = _redact((m?.group(2) ?? l).trim());
+            counts[msg] = (counts[msg] ?? 0) + 1;
+            lastTime[msg] = m?.group(1) ?? '';
+          }
+          final newest = counts.keys.toList().reversed.take(10).map((msg) {
+            final short = msg.length > 220 ? '${msg.substring(0, 220)}…' : msg;
+            final n = counts[msg]!;
+            return '[${lastTime[msg]}] $short${n > 1 ? '  (×$n)' : ''}';
+          });
           return Outcome.info(
-              '${errors.length} error/warning lines in the last ${recent.length}; newest:\n'
-              '${last.map(_redact).map((l) => l.length > 240 ? '${l.substring(0, 240)}…' : l).join('\n')}');
+              '${errors.length} error lines (${counts.length} different) in the last '
+              '${recent.length}; newest:\n${newest.join('\n')}');
         }, quick: true),
 
         // ---- Logic (offline checks of AnymeX+ code) ----------------------
@@ -660,7 +692,8 @@ class SelfTestRunner extends GetxController {
             () => _reach('kitsu.io', 'https://kitsu.io/api/edge/anime/1')),
         _TestCase('Network', 'TVmaze (show info)',
             () => _reach('api.tvmaze.com',
-                'https://api.tvmaze.com/lookup/shows?imdb=tt0903747')),
+                'https://api.tvmaze.com/lookup/shows?imdb=tt0903747'),
+            optional: true),
         _TestCase('Network', 'TMDB API (your key)', () async {
           final key = (dotenv.env['TMDB_API_KEY'] ?? '').trim();
           if (key.isEmpty) return const Outcome.skip('TMDB_API_KEY not set');
@@ -701,13 +734,16 @@ class SelfTestRunner extends GetxController {
         _TestCase('Network', 'AniSkip (skip intro/outro)',
             () => _reach('api.aniskip.com',
                 'https://api.aniskip.com/v2/skip-times/1/1?types[]=op&types[]=ed&episodeLength=0',
-                ok: const [200, 404])),
+                ok: const [200, 404]),
+            optional: true),
         _TestCase('Network', 'AnimeThemes (openings/endings)',
             () => _reach('api.animethemes.moe',
-                'https://api.animethemes.moe/anime?page[size]=1')),
+                'https://api.animethemes.moe/anime?page[size]=1'),
+            optional: true),
         _TestCase('Network', 'Jikan (MyAnimeList data)',
             () => _reach('api.jikan.moe', 'https://api.jikan.moe/v4/anime/1',
-                ok: const [200, 429])),
+                ok: const [200, 429]),
+            optional: true),
         _TestCase('Network', 'DNS lookups', () async {
           const hosts = [
             'graphql.anilist.co',
@@ -850,6 +886,19 @@ class SelfTestRunner extends GetxController {
               '$catalogs catalogs\n${addons.map((a) => a.name).join(', ')}'
               '${streams == 0 ? '\nno stream addons: nothing will play' : ''}');
         }, quick: true),
+        _TestCase('Stremio', 'Addons the app is skipping', () async {
+          await _stremio.ensureAddons();
+          await _stremio.checkAddonHealth();
+          final skipped = _stremio.addons
+              .where((a) => !_stremio.isAddonUsable(a))
+              .map((a) =>
+                  '${a.name}: ${_stremio.unreachableAddons[a.transportUrl]}')
+              .toList();
+          return skipped.isEmpty
+              ? const Outcome.pass('none; every addon is in use')
+              : Outcome.info('not used for streams/details until they work again:\n'
+                  '${skipped.join('\n')}');
+        }, quick: true),
         _TestCase('Stremio', 'Every addon manifest reachable', () async {
           await _stremio.ensureAddons();
           final bad = <String>[];
@@ -905,15 +954,23 @@ class SelfTestRunner extends GetxController {
           var ok = 0;
           final empty = <String>[];
           final failed = <String>[];
-          for (final a in _stremio.addons) {
-            for (final c in a.catalogs.where((c) => c.isBoardCatalog)) {
+          final jobs = [
+            for (final a in _stremio.addons)
+              for (final c in a.catalogs.where((c) => c.isBoardCatalog)) (a, c)
+          ];
+          // Six at a time, like the Movies & TV home loads them.
+          for (var i = 0; i < jobs.length; i += 6) {
+            await Future.wait(jobs.skip(i).take(6).map((job) async {
+              final (a, c) = job;
               try {
-                final items = await _stremio.api.catalog(a, c);
+                final items = await _stremio.api
+                    .catalog(a, c)
+                    .timeout(const Duration(seconds: 20));
                 items.isEmpty ? empty.add('${a.name}/${c.name} (${c.type})') : ok++;
               } catch (e) {
                 failed.add('${a.name}/${c.name} (${c.type})');
               }
-            }
+            }));
           }
           final status = failed.isNotEmpty
               ? SelfTestStatus.warn
@@ -1098,7 +1155,9 @@ class SelfTestRunner extends GetxController {
           final lines = <String>[];
           var mapped = 0;
           for (final m in watching) {
-            final ep = (int.tryParse(m.episodeCount ?? '') ?? 0) + 1;
+            var ep = (int.tryParse(m.episodeCount ?? '') ?? 0) + 1;
+            final total = int.tryParse(m.totalEpisodes ?? '') ?? 0;
+            if (total > 0 && ep > total) ep = total;
             try {
               final d = await _stremio.describeAnimeMapping(
                   ServicesType.anilist, m.id ?? '', ep);

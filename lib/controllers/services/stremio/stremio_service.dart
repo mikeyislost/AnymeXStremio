@@ -306,6 +306,41 @@ class StremioService extends GetxController {
 
   // ---- addons -------------------------------------------------------------
 
+  // ---- addon health ----------------------------------------------------------
+
+  /// AnymeX+: addons whose manifest answered with an HTTP error this session
+  /// (dead on their end), or local-only addons this device can't reach.
+  /// They're skipped for streams and metadata. transportUrl → reason.
+  final RxMap<String, String> unreachableAddons = <String, String>{}.obs;
+
+  bool isAddonUsable(StremioAddon a) =>
+      !unreachableAddons.containsKey(a.transportUrl);
+
+  /// Checks every addon's manifest once (in the background after loading).
+  Future<void> checkAddonHealth() async {
+    await Future.wait(addons.toList().map((a) async {
+      final host = Uri.tryParse(a.transportUrl)?.host ?? '';
+      final local = host == '127.0.0.1' || host == 'localhost';
+      try {
+        final r = await http
+            .get(Uri.parse(a.transportUrl))
+            .timeout(const Duration(seconds: 12));
+        if (r.statusCode >= 400) {
+          unreachableAddons[a.transportUrl] = 'not responding (HTTP ${r.statusCode})';
+        } else {
+          unreachableAddons.remove(a.transportUrl);
+        }
+      } on TimeoutException {
+        // Slow isn't dead; leave it in.
+      } catch (_) {
+        if (local) {
+          unreachableAddons[a.transportUrl] =
+              'needs the Stremio desktop app running on this device';
+        }
+      }
+    }));
+  }
+
   Future<void> refreshAddons() async {
     addonsLoading.value = true;
     try {
@@ -315,6 +350,7 @@ class StremioService extends GetxController {
       } else {
         addons.assignAll(await _loadLocalAddons());
       }
+      unawaited(checkAddonHealth());
     } catch (e) {
       Logger.e('Stremio: failed to load addons: $e');
       if (e is StremioApiException && e.code == 1) {
@@ -397,7 +433,8 @@ class StremioService extends GetxController {
     final cached = _metaCache[cacheKey];
     if (cached != null) return cached;
     await ensureAddons();
-    for (final addon in addons.where((a) => a.supports('meta', type, id))) {
+    for (final addon in addons
+        .where((a) => isAddonUsable(a) && a.supports('meta', type, id))) {
       try {
         final meta = await api.meta(addon, type, id);
         if (meta != null && meta.id.isNotEmpty) {
@@ -421,8 +458,9 @@ class StremioService extends GetxController {
   }) async {
     await ensureAddons();
     final sources = addons.where((a) =>
-        a.supports('stream', type, videoId) ||
-        a.supports('stream', 'anime', videoId));
+        isAddonUsable(a) &&
+        (a.supports('stream', type, videoId) ||
+            a.supports('stream', 'anime', videoId)));
     final results = await Future.wait(sources.map((addon) async {
       try {
         final list = await api.streams(
@@ -668,7 +706,8 @@ class StremioService extends GetxController {
   }
 
   /// Whether any installed addon serves streams.
-  bool get hasStreamAddons => addons.any((a) => a.hasResource('stream'));
+  bool get hasStreamAddons =>
+      addons.any((a) => isAddonUsable(a) && a.hasResource('stream'));
 
   final Map<String, StremioAnimeTarget?> _animeTargets = {};
 
@@ -707,7 +746,9 @@ class StremioService extends GetxController {
         media.format.toUpperCase() == 'MOVIE' ||
         (media.totalEpisodes == '1' &&
             media.format.toUpperCase() == 'SPECIAL');
-    final streamAddons = addons.where((a) => a.hasResource('stream')).toList();
+    final streamAddons = addons
+        .where((a) => isAddonUsable(a) && a.hasResource('stream'))
+        .toList();
 
     List<String> acceptedBy(String id, String type) => streamAddons
         .where((a) =>
