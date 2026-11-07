@@ -37,12 +37,14 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:anymex/controllers/network/network_manager.dart';
 import 'package:anymex/controllers/services/simkl/simkl_api.dart';
+import 'package:anymex/controllers/services/simkl/simkl_auth_v2.dart';
 
 enum SimklSearchCategory { anime, movie, show }
 
 class SimklService extends GetxController
     implements BaseService, OnlineService {
-  http.Client get _client => NetworkManager.instance.compatibleClient;
+  http.Client get _client =>
+      SimklHttpClient(NetworkManager.instance.compatibleClient);
   final api = SimklApi();
   RxList<Media> trendingMovies = <Media>[].obs;
   RxList<Media> trendingSeries = <Media>[].obs;
@@ -947,10 +949,8 @@ class SimklService extends GetxController
       forceWebAuth = selectedMethod == 'browser_external';
     }
 
-    final clientId = dotenv.env['SIMKL_CLIENT_ID'];
-
-    final url =
-        'https://simkl.com/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=anymex://callback';
+    // AnymeX+: Simkl AUTH V2 (OAuth 2.0 with PKCE).
+    final url = SimklAuthV2.authorizeUrl();
     try {
       final result = await OauthHelper.authenticate(
         context: context,
@@ -959,22 +959,14 @@ class SimklService extends GetxController
         forceWebAuth: forceWebAuth,
       );
 
-      if (result != null) {
-        final code = Uri.parse(result).queryParameters['code'];
-        if (code != null) {
-          await _exchangeCodeForToken(code);
-        }
-      }
+      if (result != null) await _finishLogin(result);
     } catch (e) {
       Logger.i(e.toString());
     }
   }
 
   Future<void> loginWithWebView(BuildContext context) async {
-    final clientId = dotenv.env['SIMKL_CLIENT_ID'];
-
-    final url =
-        'https://simkl.com/oauth/authorize?response_type=code&client_id=$clientId&redirect_uri=anymex://callback';
+    final url = SimklAuthV2.authorizeUrl();
     try {
       final result = await OauthHelper.authenticate(
         context: context,
@@ -983,46 +975,21 @@ class SimklService extends GetxController
         forceWebAuth: false,
       );
 
-      if (result != null) {
-        final code = Uri.parse(result).queryParameters['code'];
-        if (code != null) {
-          await _exchangeCodeForToken(code);
-        }
-      }
+      if (result != null) await _finishLogin(result);
     } catch (e) {
       Logger.i(e.toString());
     }
   }
 
-  Future<void> _exchangeCodeForToken(String code) async {
-    final clientId = dotenv.env['SIMKL_CLIENT_ID'];
-    final clientSecret = dotenv.env['SIMKL_CLIENT_SECRET'];
-
-    final url = Uri.parse('https://api.simkl.com/oauth/token');
-    final req = await _client.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: json.encode({
-        "code": code,
-        "client_id": clientId,
-        "client_secret": clientSecret,
-        "redirect_uri": "anymex://callback",
-        "grant_type": "authorization_code"
-      }),
-    );
-
-    if (req.statusCode == 200) {
-      final data = json.decode(req.body);
-      final token = data['access_token'];
-      AuthKeys.simklAuthToken.set(token);
+  Future<void> _finishLogin(String callbackUrl) async {
+    try {
+      await SimklAuthV2.finishLogin(callbackUrl);
       isLoggedIn.value = true;
       await fetchUserInfo();
-      snackBar("Simkl Logined Successfully!");
-    } else {
-      Logger.i('${req.statusCode}: ${req.body}');
-      snackBar("Yep, Failed");
+      snackBar('Logged in to Simkl');
+    } catch (e) {
+      Logger.i('Simkl login: $e');
+      snackBar(e.toString());
     }
   }
 
@@ -1112,6 +1079,7 @@ class SimklService extends GetxController
   @override
   Future<void> logout() async {
     AuthKeys.simklAuthToken.delete();
+    SimklAuthV2.clear();
     isLoggedIn.value = false;
     profileData.value = Profile();
   }
@@ -1120,6 +1088,10 @@ class SimklService extends GetxController
   Future<void> autoLogin() async {
     final token = AuthKeys.simklAuthToken.get<String?>();
     if (token != null) {
+      // AnymeX+: Simkl logins last 7 days; renew before they lapse.
+      if (SimklAuthV2.canRefresh && SimklAuthV2.expiresSoon) {
+        await SimklAuthV2.refresh();
+      }
       await fetchUserInfo();
     }
   }

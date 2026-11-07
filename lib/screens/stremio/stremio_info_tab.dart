@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/anilist/anilist_data.dart';
-import 'package:anymex/controllers/services/simkl/simkl_api.dart';
+import 'package:anymex/controllers/services/simkl/simkl_auth_v2.dart';
 import 'package:anymex/controllers/services/stremio/stremio_models.dart';
 import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/models/Media/media.dart';
@@ -89,11 +89,6 @@ class StremioInfo {
 class StremioInfoLoader {
   static final Map<String, StremioInfo> _cache = {};
 
-  static String? get _simklKey {
-    final k = dotenv.env['SIMKL_CLIENT_ID'];
-    return (k == null || k.isEmpty) ? null : k;
-  }
-
   /// AniList (anime) → Simkl (needs a client id) → addon metadata.
   static Future<StremioInfo> load(StremioMeta meta, {int? season}) async {
     final key = '${meta.id}|${season ?? 0}';
@@ -126,33 +121,60 @@ class StremioInfoLoader {
     return StremioInfo(source: StremioInfoSource.anilist, media: media);
   }
 
-  static Future<StremioInfo?> _fromSimkl(StremioMeta meta) async {
-    final clientId = _simklKey;
-    final imdb = _imdbIdOf(meta);
-    if (clientId == null || imdb == null) return null;
-    final resp = await http
-        .get(Uri.parse(
-            'https://api.simkl.com/search/id?imdb=$imdb&client_id=$clientId'))
-        .timeout(const Duration(seconds: 15));
-    if (resp.statusCode != 200 || resp.body.isEmpty) return null;
-    final data = jsonDecode(resp.body);
-    final list = data is List ? data : (data is Map ? [data] : const []);
-    for (final item in list.whereType<Map>()) {
-      final type = item['type']?.toString() ?? '';
-      final simklId = (item['ids'] is Map) ? item['ids']['simkl'] : null;
-      if (simklId == null || type == 'anime') continue;
-      final isMovie = type == 'movie' || meta.type == 'movie';
-      final media = await SimklApi().fetchDetails(FetchDetailsParams(
-          id: '$simklId*${isMovie ? 'MOVIE' : 'SERIES'}'));
-      if (media.title.isEmpty || media.title == '?') return null;
-      return StremioInfo(
-        source: StremioInfoSource.simkl,
-        media: media,
-        imdbId: imdb,
-        cast: await _castFor(meta, isMovie: isMovie),
-      );
+  /// IMDb id → (kind, Simkl id), read from the Location header of Simkl's
+  /// /redirect endpoint. Works without a Simkl login (search needs one for
+  /// apps registered with Simkl's newer AUTH V2).
+  static Future<(String, String)?> simklIdForImdb(String imdb) async {
+    final client = http.Client();
+    try {
+      final req = http.Request(
+          'GET',
+          SimklAuthV2.withAppParams(Uri.parse(
+              'https://api.simkl.com/redirect?to=simkl&imdb=$imdb')))
+        ..followRedirects = false
+        ..headers.addAll(SimklAuthV2.baseHeaders);
+      final resp = await client.send(req).timeout(const Duration(seconds: 15));
+      final loc = resp.headers['location'];
+      await resp.stream.drain<void>();
+      if (loc == null) return null;
+      final m = RegExp(r'/(movies|tv|anime)/(\d+)').firstMatch(loc);
+      if (m == null) return null;
+      return (m.group(1)!, m.group(2)!);
+    } finally {
+      client.close();
     }
-    return null;
+  }
+
+  static Future<StremioInfo?> _fromSimkl(StremioMeta meta) async {
+    if (SimklAuthV2.clientId == null) return null;
+    final imdb = _imdbIdOf(meta);
+    if (imdb == null) return null;
+    final found = await simklIdForImdb(imdb);
+    if (found == null) return null;
+    final (kind, simklId) = found;
+    if (kind == 'anime') return null; // anime info comes from AniList
+    final isMovie = kind == 'movies';
+    final resp = await http
+        .get(
+            SimklAuthV2.withAppParams(Uri.parse(
+                'https://api.simkl.com/${isMovie ? 'movies' : 'tv'}/$simklId?extended=full')),
+            headers: SimklAuthV2.baseHeaders)
+        .timeout(const Duration(seconds: 15));
+    if (resp.statusCode != 200) {
+      Logger.i('Stremio info: Simkl details HTTP ${resp.statusCode}');
+      return null;
+    }
+    final data = Map<String?, dynamic>.from(jsonDecode(resp.body) as Map);
+    data['id'] = '$simklId*${isMovie ? 'MOVIE' : 'SERIES'}';
+    data['__isMovie'] = isMovie;
+    final media = Media.fromSimkl(data, isMovie);
+    if (media.title.isEmpty || media.title == '?') return null;
+    return StremioInfo(
+      source: StremioInfoSource.simkl,
+      media: media,
+      imdbId: imdb,
+      cast: await _castFor(meta, isMovie: isMovie),
+    );
   }
 
   static String? get _tmdbKey {

@@ -25,6 +25,7 @@ import 'package:anymex/screens/stremio/stremio_widgets.dart'
 import 'package:anymex/utils/logger.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
+import 'package:anymex/controllers/services/simkl/simkl_auth_v2.dart';
 import 'package:anymex/controllers/services/stremio/stremio_models.dart';
 import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/screens/stremio/stremio_info_tab.dart';
@@ -674,11 +675,23 @@ class SelfTestRunner extends GetxController {
           return Outcome.warn('HTTP ${r.statusCode}');
         }, quick: true),
         _TestCase('Network', 'Simkl API (your key)', () async {
-          final key = (dotenv.env['SIMKL_CLIENT_ID'] ?? '').trim();
-          if (key.isEmpty) return const Outcome.skip('SIMKL_CLIENT_ID not set');
-          final r = await _get(
-              'https://api.simkl.com/search/id?imdb=tt0903747&client_id=$key');
-          if (r.statusCode == 200) return const Outcome.pass('client id accepted');
+          if (SimklAuthV2.clientId == null) {
+            return const Outcome.skip('SIMKL_CLIENT_ID not set');
+          }
+          final found = await StremioInfoLoader.simklIdForImdb('tt0903747');
+          if (found == null) {
+            return const Outcome.fail(
+                'Simkl did not resolve IMDb tt0903747; check SIMKL_CLIENT_ID');
+          }
+          final r = await http
+              .get(
+                  SimklAuthV2.withAppParams(
+                      Uri.parse('https://api.simkl.com/tv/${found.$2}')),
+                  headers: SimklAuthV2.baseHeaders)
+              .timeout(const Duration(seconds: 15));
+          if (r.statusCode == 200) {
+            return Outcome.pass('client id accepted (Breaking Bad → Simkl ${found.$2})');
+          }
           if (r.statusCode == 401 || r.statusCode == 412) {
             return Outcome.fail(
                 'Simkl rejected SIMKL_CLIENT_ID (HTTP ${r.statusCode})');
@@ -779,6 +792,32 @@ class SelfTestRunner extends GetxController {
                 'AniList refused the saved login; log out and back in');
           }
           return Outcome.warn('HTTP ${r.statusCode}');
+        }, quick: true),
+        _TestCase('Accounts', 'Simkl login still valid', () async {
+          final token = AuthKeys.simklAuthToken.get<String?>();
+          if (token == null || token.isEmpty) {
+            return const Outcome.skip('not logged in to Simkl');
+          }
+          final client = SimklHttpClient(http.Client());
+          try {
+            final r = await client
+                .post(Uri.parse('https://api.simkl.com/users/settings'),
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': 'Bearer $token',
+                    })
+                .timeout(const Duration(seconds: 15));
+            if (r.statusCode != 200) {
+              return Outcome.fail('Simkl refused the saved login (HTTP '
+                  '${r.statusCode}); log out and back in');
+            }
+            final name = jsonDecode(r.body)['user']?['name'];
+            final exp = SimklAuthV2.expiresAt;
+            return Outcome.pass('signed in as $name'
+                '${exp == null ? '' : ' · renews automatically (current token until ${exp.toLocal().toString().split('.').first})'}');
+          } finally {
+            client.close();
+          }
         }, quick: true),
         _TestCase('Accounts', 'AniList API query', () async {
           final resp = await http

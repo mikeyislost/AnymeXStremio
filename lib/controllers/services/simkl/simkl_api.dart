@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:anymex/controllers/network/network_manager.dart';
+import 'package:anymex/controllers/services/simkl/simkl_auth_v2.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/utils/logger.dart';
@@ -9,7 +10,7 @@ import 'package:http/http.dart' as http;
 
 class SimklApi {
   NetworkManager get _net => Get.find<NetworkManager>();
-  http.Client get _client => _net.compatibleClient;
+  http.Client get _client => SimklHttpClient(_net.compatibleClient);
 
   String? get _clientId => dotenv.env['SIMKL_CLIENT_ID'];
 
