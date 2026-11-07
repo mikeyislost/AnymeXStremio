@@ -126,7 +126,7 @@ class _StremioHomePageState extends State<StremioHomePage> {
                     itemBuilder: (context, i) {
                       final (addon, catalog, title) = rows[i];
                       return RepaintBoundary(
-                        child: _CatalogCarousel(
+                        child: StremioCatalogCarousel(
                           key: ValueKey(
                               '${addon.transportUrl}|${catalog.type}|${catalog.id}|$_reloadToken'),
                           addon: addon,
@@ -229,13 +229,13 @@ class _StremioHomePageState extends State<StremioHomePage> {
 }
 
 /// One catalog as an AnymeX carousel (uses the user's card style).
-class _CatalogCarousel extends StatefulWidget {
+class StremioCatalogCarousel extends StatefulWidget {
   final StremioAddon addon;
   final StremioCatalog catalog;
   final String title;
   final Map<String, String> extra;
 
-  const _CatalogCarousel({
+  const StremioCatalogCarousel({
     super.key,
     required this.addon,
     required this.catalog,
@@ -244,10 +244,10 @@ class _CatalogCarousel extends StatefulWidget {
   });
 
   @override
-  State<_CatalogCarousel> createState() => _CatalogCarouselState();
+  State<StremioCatalogCarousel> createState() => _StremioCatalogCarouselState();
 }
 
-class _CatalogCarouselState extends State<_CatalogCarousel> {
+class _StremioCatalogCarouselState extends State<StremioCatalogCarousel> {
   List<StremioMetaPreview>? _items;
 
   @override
@@ -516,7 +516,7 @@ class _StremioSearchPageState extends State<StremioSearchPage> {
                 ),
               )
             else
-              ...targets.map((t) => _CatalogCarousel(
+              ...targets.map((t) => StremioCatalogCarousel(
                     key: ValueKey(
                         '$_query|${t.$1.transportUrl}|${t.$2.type}|${t.$2.id}'),
                     addon: t.$1,

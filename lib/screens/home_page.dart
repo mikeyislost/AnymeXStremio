@@ -6,7 +6,10 @@ import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
 import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/screens/search/everything_search_page.dart';
+import 'package:anymex/utils/function.dart';
 import 'package:anymex/widgets/common/reusable_carousel.dart';
+import 'package:anymex/widgets/common/search_bar.dart';
 import 'package:anymex/widgets/common/scroll_aware_app_bar.dart';
 import 'package:anymex/widgets/dialogs/donation_dialog.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
@@ -192,6 +195,12 @@ class _HomePageState extends State<HomePage> {
 
   ScrollController get scrollController => _scrollController;
 
+  bool _showDiscoverOnHome(Settings settings, ServiceHandler handler) {
+    if (handler.serviceType.value == ServicesType.extensions) return false;
+    final tabs = settings.navigationTabOrder;
+    return !tabs.contains('Anime') && !tabs.contains('Discover');
+  }
+
   @override
   void dispose() {
     for (final w in _workers) {
@@ -281,22 +290,25 @@ class _HomePageState extends State<HomePage> {
                         : CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 10),
+                      // AnymeX+: one search for anime, manga, movies & TV.
                       Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: isDesktop ? 24.0 : 20.0,
+                          horizontal: isDesktop ? 8.0 : 4.0,
                         ),
-                        child: AnymeXText(
-                          'Find your favourite anime or manga, manhwa or whatever you like!',
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .inverseSurface
-                                .withOpacity(0.8),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 640),
+                          child: TappableSearchBar(
+                            chipLabel: 'SEARCH',
+                            hintText: serviceHandler.serviceType.value ==
+                                    ServicesType.simkl
+                                ? 'Movies, series & more…'
+                                : 'Anime, manga, movies & TV…',
+                            onSubmitted: () =>
+                                navigate(() => const EverythingSearchPage()),
                           ),
-                          textAlign: textAlignment,
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -314,6 +326,32 @@ class _HomePageState extends State<HomePage> {
                     ),
                   );
                 }(),
+                // AnymeX+: the Anime tab's discover rows live on Home now
+                // (unless an Anime/Discover tab is still in the bar).
+                if (_showDiscoverOnHome(settings, serviceHandler))
+                  SliverToBoxAdapter(
+                    child: Obx(() {
+                      final isSimkl = serviceHandler.serviceType.value ==
+                          ServicesType.simkl;
+                      final widgets = serviceHandler.animeWidgets(context);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                                isDesktop ? 24.0 : 20.0, 24, 20, 6),
+                            child: AnymeXText(
+                              isSimkl ? 'Discover movies' : 'Discover anime',
+                              size: 20,
+                              variant: TextVariant.bold,
+                              color: context.colors.primary,
+                            ),
+                          ),
+                          ...widgets.map((w) => RepaintBoundary(child: w)),
+                        ],
+                      );
+                    }),
+                  ),
                 if (novelData.isNotEmpty)
                   SliverToBoxAdapter(
                     child: ReusableCarousel(

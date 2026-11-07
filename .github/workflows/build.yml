@@ -85,6 +85,8 @@ jobs:
             lib/controllers/services/mal/mal_service.dart \
             lib/controllers/services/simkl \
             lib/utils/self_test.dart \
+            lib/screens/home_page.dart \
+            lib/screens/search/everything_search_page.dart \
             lib/screens/anime/widgets/episode_list_builder.dart \
             lib/screens/anime/widgets/episode_section.dart \
             lib/screens/anime/widgets/movie_watch_card.dart \

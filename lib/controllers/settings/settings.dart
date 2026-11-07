@@ -571,9 +571,10 @@ class Settings extends GetxController {
                 'Stats',
                 if (isDesktop) 'Extensions'
               ]
+            // AnymeX+: anime discover is part of Home (see HomePage).
             : (isDesktop
-                ? ['Home', 'Anime', 'Manga', 'Stremio', 'Library', 'Stats', 'Extensions']
-                : ['Home', 'Anime', 'Manga', 'Stremio', 'Library', 'Stats']))
+                ? ['Home', 'Manga', 'Stremio', 'Library', 'Stats', 'Extensions']
+                : ['Home', 'Manga', 'Stremio', 'Library', 'Stats']))
         : (isExtensionsService
             ? [
                 'Home',
@@ -613,6 +614,18 @@ class Settings extends GetxController {
               'Stremio');
           KvHelper.set(_currentTabOrderKey, jsonEncode(strings));
           KvHelper.set(stremioFlag, true);
+        }
+        // One-time: anime discover moved onto Home, so drop the Anime tab
+        // (it can be added back in the tab settings).
+        final mergedFlag = '${_currentTabOrderKey}_anime_on_home';
+        if (strings.contains('Anime') &&
+            !isExtensionsService &&
+            !KvHelper.get<bool>(mergedFlag, defaultVal: false)) {
+          strings.remove('Anime');
+          KvHelper.set(_currentTabOrderKey, jsonEncode(strings));
+        }
+        if (!KvHelper.get<bool>(mergedFlag, defaultVal: false)) {
+          KvHelper.set(mergedFlag, true);
         }
         return strings;
       }
