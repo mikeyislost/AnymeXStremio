@@ -2,6 +2,7 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/screens/library/controller/library_controller.dart';
 import 'package:anymex/screens/library/editor/list_editor.dart';
 import 'package:anymex/widgets/common/anymex_pills.dart';
@@ -268,7 +269,9 @@ class ChipTabs extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
       child: Obx(() {
         final lists = controller.customLists;
-        final selectedIndex = controller.selectedListIndex.value;
+        final stremioSelected = controller.showStremio.value;
+        final selectedIndex =
+            stremioSelected ? -999 : controller.selectedListIndex.value;
         final isUnified = General.unifiedLibrary.get<bool>(true);
         final isLegacy = settings.useLegacyNavbar;
 
@@ -280,6 +283,20 @@ class ChipTabs extends StatelessWidget {
               label: 'History',
               isSelected: selectedIndex == -1,
               onTap: () => controller.selectList(-1),
+            ),
+          );
+        }
+
+        // AnymeX+: the synced Stremio library (anime mode only).
+        final stremio = StremioService.to;
+        if (controller.type.value == ItemType.anime &&
+            stremio.isLoggedIn.value) {
+          pillItems.add(
+            PillItem(
+              icon: Icons.live_tv_rounded,
+              label: 'Stremio (${stremio.library.length})',
+              isSelected: stremioSelected,
+              onTap: () => controller.showStremio.value = true,
             ),
           );
         }

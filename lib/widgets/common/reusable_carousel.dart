@@ -164,7 +164,16 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
   }
 
   void _showPeekPopup(BuildContext context, CarouselData itemData, String tag) {
-    if (StremioIds.isStremioMediaId(itemData.id)) return;
+    final stremioRef = StremioIds.parse(itemData.id ?? '');
+    if (stremioRef != null) {
+      showStremioItemActions(
+        type: stremioRef.$1,
+        id: stremioRef.$2,
+        name: itemData.title ?? '',
+        poster: itemData.poster,
+      );
+      return;
+    }
     final ItemType mediaType = _determineItemType(itemData);
     final media = Media.fromCarouselData(itemData, mediaType);
     if (media.userStatus != null && media.userStatus!.isNotEmpty) return;

@@ -555,6 +555,9 @@ class StremioLibraryItem {
   bool get isInContinueWatching =>
       type != 'other' && (!removed || temp) && timeOffset > 0;
 
+  /// In the user's Stremio library (explicitly added, not removed).
+  bool get isInLibrary => type != 'other' && !removed && !temp;
+
   double get progress =>
       (timeOffset > 0 && duration > 0) ? timeOffset / duration : 0.0;
 

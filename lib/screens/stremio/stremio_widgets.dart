@@ -13,12 +13,16 @@ import 'package:anymex/models/models_convertor/carousel_mapper.dart';
 import 'package:anymex/screens/stremio/stremio_details_page.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_tile.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:anymex/widgets/common/cards/card_gate.dart';
 import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 /// Opens the Stremio details page with AnymeX's page transition.
 void openStremioDetails(String type, String id,
@@ -208,6 +212,91 @@ SliverGridDelegate stremioGridDelegate(BuildContext context) {
   );
 }
 
+StremioMetaPreview stremioPreviewFromLibraryItem(StremioLibraryItem i) =>
+    StremioMetaPreview(id: i.id, type: i.type, name: i.name, poster: i.poster);
+
+/// Long-press actions for a Stremio title (Continue Watching / library).
+void showStremioItemActions({
+  required String type,
+  required String id,
+  required String name,
+  String? poster,
+}) {
+  final context = Get.context;
+  if (context == null) return;
+  final service = StremioService.to;
+  if (!service.isLoggedIn.value) {
+    openStremioDetails(type, id, title: name, poster: poster);
+    return;
+  }
+  final inLibrary = service.isInLibrary(id);
+  final inCw = service.isInContinueWatching(id);
+
+  Future<void> run(Future<void> Function() action, String done) async {
+    Navigator.of(context).pop();
+    try {
+      await action();
+      snackBar(done);
+    } catch (e) {
+      snackBar('Stremio: $e');
+    }
+  }
+
+  AnymeXSheet.custom(
+    Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+          child: AnymeXText(name,
+              size: 16,
+              variant: TextVariant.bold,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+        ),
+        AnymeXTile(
+          icon: Icons.info_outline_rounded,
+          title: 'Open',
+          onTap: () {
+            Navigator.of(context).pop();
+            openStremioDetails(type, id, title: name, poster: poster);
+          },
+        ),
+        if (inCw)
+          AnymeXTile(
+            icon: Icons.history_toggle_off_rounded,
+            title: 'Remove from Continue Watching',
+            subtitle: 'Also removed in Stremio',
+            showChevron: false,
+            onTap: () => run(() => service.dismissFromContinueWatching(id),
+                'Removed from Continue Watching'),
+          ),
+        if (inLibrary)
+          AnymeXTile(
+            icon: Icons.bookmark_remove_rounded,
+            title: 'Remove from Library',
+            showChevron: false,
+            onTap: () => run(
+                () => service.removeFromLibrary(id), 'Removed from Library'),
+          )
+        else
+          AnymeXTile(
+            icon: Icons.bookmark_add_rounded,
+            title: 'Add to Library',
+            showChevron: false,
+            onTap: () => run(
+                () => service.addToLibrary(
+                    id: id, type: type, name: name, poster: poster),
+                'Added to Library'),
+          ),
+      ],
+    ),
+    context,
+    showDragHandle: true,
+  );
+}
+
 /// One grid cell: an AnymeX media card that opens the Stremio details page.
 class StremioGridCard extends StatelessWidget {
   final StremioMetaPreview item;
@@ -223,11 +312,149 @@ class StremioGridCard extends StatelessWidget {
     return AnymexOnTap(
       onTap: () => openStremioDetails(item.type, item.id,
           tag: tag, title: item.name, poster: item.poster),
+      onLongPress: () => showStremioItemActions(
+          type: item.type, id: item.id, name: item.name, poster: item.poster),
       child: MediaCardGate(
         itemData: data,
         tag: tag,
         variant: DataVariant.regular,
         type: ItemType.anime,
+      ),
+    );
+  }
+}
+
+/// The user's Stremio library, shown as a section of AnymeX's Library tab.
+class StremioLibrarySliver extends StatefulWidget {
+  final String searchQuery;
+  const StremioLibrarySliver({super.key, this.searchQuery = ''});
+
+  @override
+  State<StremioLibrarySliver> createState() => _StremioLibrarySliverState();
+}
+
+class _StremioLibrarySliverState extends State<StremioLibrarySliver> {
+  String? _type; // null = all
+
+  @override
+  void initState() {
+    super.initState();
+    final service = StremioService.to;
+    if (service.isLoggedIn.value && service.library.isEmpty) {
+      service.refreshLibrary();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final service = StremioService.to;
+    return Obx(() {
+      final colors = context.colors;
+      if (!service.isLoggedIn.value) {
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: AnymeXText(
+              'Log in to Stremio (Settings → Accounts → Stremio) to see your '
+              'Stremio library here.',
+              textAlign: TextAlign.center,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        );
+      }
+      final all = service.library.toList();
+      final types = all.map((i) => i.type).toSet().toList()..sort();
+      final q = widget.searchQuery.trim().toLowerCase();
+      final items = all
+          .where((i) => _type == null || i.type == _type)
+          .where((i) => q.isEmpty || i.name.toLowerCase().contains(q))
+          .toList();
+
+      return SliverMainAxisGroup(
+        slivers: [
+          if (types.length > 1)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 46,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  children: [
+                    _typeChip(context, null, 'All (${all.length})'),
+                    ...types.map((t) => _typeChip(
+                        context,
+                        t,
+                        '${stremioTypeLabel(t)} '
+                        '(${all.where((i) => i.type == t).length})')),
+                  ],
+                ),
+              ),
+            ),
+          if (service.libraryLoading.value && all.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: 80),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            )
+          else if (items.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: AnymeXText(
+                  all.isEmpty
+                      ? 'Your Stremio library is empty. Add titles from their '
+                          'page or by long-pressing a card.'
+                      : 'Nothing matches.',
+                  textAlign: TextAlign.center,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
+              sliver: SliverGrid.builder(
+                gridDelegate: stremioGridDelegate(context),
+                itemCount: items.length,
+                itemBuilder: (context, i) => StremioGridCard(
+                  item: stremioPreviewFromLibraryItem(items[i]),
+                  tagPrefix: 'stremio-library',
+                ),
+              ),
+            ),
+        ],
+      );
+    });
+  }
+
+  Widget _typeChip(BuildContext context, String? type, String label) {
+    final selected = _type == type;
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: AnymexOnTap(
+        onTap: () => setState(() => _type = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? colors.primary
+                : colors.surfaceContainerHighest.opaque(0.3, iReallyMeanIt: true),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colors.onSurface.opaque(0.08, iReallyMeanIt: true),
+              width: 0.5,
+            ),
+          ),
+          child: AnymeXText(
+            label,
+            size: 12,
+            variant: selected ? TextVariant.bold : TextVariant.semiBold,
+            color: selected ? colors.onPrimary : colors.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }

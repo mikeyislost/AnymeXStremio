@@ -27,6 +27,10 @@ class LibraryController extends GetxController {
   final gridCount = 0.obs;
   final searchQuery = ''.obs;
   final selectedListIndex = 0.obs;
+
+  /// AnymeX+: the "Stremio" chip shows the synced Stremio library instead
+  /// of a local list.
+  final showStremio = false.obs;
   final type = ItemType.anime.obs;
   final isSearchActive = false.obs;
 
@@ -199,6 +203,7 @@ class LibraryController extends GetxController {
 
   void switchCategory(ItemType typ) {
     if (type.value == typ) return;
+    if (typ != ItemType.anime) showStremio.value = false;
 
     _isSwitchingCategory = true;
     Future.microtask(savePreferences);
@@ -224,7 +229,13 @@ class LibraryController extends GetxController {
   }
 
   void selectList(int index) {
+    final wasStremio = showStremio.value;
+    showStremio.value = false;
     if (selectedListIndex.value == index) return;
+    if (wasStremio && searchQuery.isNotEmpty) {
+      searchController.clear();
+      searchQuery.value = '';
+    }
     _isSwitchingCategory = true;
     selectedListIndex.value = index;
     if (searchQuery.isNotEmpty) {

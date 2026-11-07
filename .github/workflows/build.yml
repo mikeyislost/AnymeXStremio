@@ -32,16 +32,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Version = <pubspec major.minor>.<commit count>: grows with every
-      # update, identical for the iOS and Windows builds of one commit.
+      # Version: <major.minor from pubspec>.<patch>, where patch = the last
+      # v<major.minor>.* release + 1 (first release: .1). Change the
+      # major/minor in pubspec.yaml (e.g. 1.1.0) to start a new series.
+      # Re-running a commit that already has a release reuses its version.
       - name: Compute version
         id: ver
         run: |
           BASE=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+)\.([0-9]+).*/\1.\2/')
+          EXISTING=$(git tag --points-at HEAD --list "v$BASE.*" | sort -V | tail -n 1)
+          if [ -n "$EXISTING" ]; then
+            VERSION="${EXISTING#v}"
+          else
+            LAST=$(git tag --list "v$BASE.*" | sort -V | tail -n 1)
+            if [ -z "$LAST" ]; then PATCH=1; else PATCH=$(( ${LAST##*.} + 1 )); fi
+            VERSION="$BASE.$PATCH"
+          fi
           COUNT=$(git rev-list --count HEAD)
-          echo "version=$BASE.$COUNT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$COUNT" >> "$GITHUB_OUTPUT"
-          echo "Version: $BASE.$COUNT"
+          echo "Version: $VERSION (build $COUNT)"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -67,6 +77,8 @@ jobs:
             lib/widgets/anime/media_header.dart \
             lib/widgets/common/reusable_carousel.dart \
             lib/utils/color_extractor.dart \
+            lib/utils/updater.dart \
+            lib/screens/library \
             lib/controllers/settings/settings.dart \
             lib/main.dart
 
@@ -241,7 +253,7 @@ jobs:
 
       - name: Release notes
         run: |
-          PREV=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD^ 2>/dev/null || true)
           {
             echo "## What's new"
             if [ -n "$PREV" ]; then
@@ -281,6 +293,12 @@ jobs:
               for rel in json.loads(out):
                   tag = rel.get("tag_name", "")
                   if not tag.startswith("v") or tag == f"v{version}" or rel.get("draft"):
+                      continue
+                  try:
+                      older = tuple(int(x) for x in tag[1:].split(".")) < tuple(int(x) for x in version.split("."))
+                  except ValueError:
+                      older = False
+                  if not older:
                       continue
                   ipa = next((a for a in rel.get("assets", []) if a["name"].endswith(".ipa")), None)
                   if not ipa:
@@ -344,3 +362,7 @@ jobs:
             --title "Feather source (legacy link)" \
             --notes "Only hosts source.json for the original Feather source URL. Get builds from the versioned releases." || true
           gh release delete latest-windows -R "$REPO" --cleanup-tag -y || true
+          # Versions restarted at v1.0.x: remove the old v3.x releases.
+          for t in $(gh release list -R "$REPO" --limit 100 --json tagName -q '.[].tagName' | grep -E '^v3\.' || true); do
+            gh release delete "$t" -R "$REPO" --cleanup-tag -y || true
+          done

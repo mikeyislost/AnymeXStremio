@@ -16,13 +16,25 @@ Settings → Accounts → **Stremio** has the login, sync switches and addon lis
 
 ## Downloads
 
-Every update is published as its own release, **AnymeX+ vX.Y.N**, under [Releases](https://github.com/mikeyislost/AnymeXStremio/releases). Each one has:
+Every update is published as its own release, **AnymeX+ v1.0.N** (counting up from v1.0.1), under [Releases](https://github.com/mikeyislost/AnymeXStremio/releases). Each one has:
 - `AnymeX-Stremio-vX.Y.N.ipa`: iPhone
 - `AnymeX-Stremio-vX.Y.N-Windows-Setup.exe`: Windows installer (installs alongside official AnymeX)
 - `AnymeX-Stremio-vX.Y.N-Windows-Portable.zip`: unzip and run `anymex.exe`
 - a changelog of what changed since the previous release
 
 Windows may show a SmartScreen warning because the app isn't code-signed. Click **More info → Run anyway**.
+
+## In-app updates
+
+AnymeX+ checks this repo's releases on launch (and from Settings → About → check for updates):
+- **Windows:** downloads the new installer, runs it and closes the app so it can update.
+- **iPhone:** opens Feather on the AnymeX+ source so you can tap update (or downloads the IPA if Feather isn't installed).
+
+## Stremio library & AniList
+
+- **Library tab → Stremio** chip: your synced Stremio library (filter by Movies/Series, searchable).
+- Long-press any Stremio card (library or Continue Watching) to add/remove it from your library or remove it from Continue Watching. Title pages have the same buttons.
+- Anime watched in **Movies & TV** updates your AniList progress (matched through Kitsu/IMDb ids). Toggle under Settings → Accounts → Stremio.
 
 ## Install on iPhone with Feather
 

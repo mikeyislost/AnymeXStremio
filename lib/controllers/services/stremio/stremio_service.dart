@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/stremio/stremio_api.dart';
 import 'package:anymex/controllers/services/stremio/stremio_models.dart';
@@ -113,6 +114,7 @@ class StremioService extends GetxController {
   static const _kLocalAddons = 'stremio_local_addons';
   static const _kSyncAnime = 'stremio_sync_anime';
   static const _kSyncEnabled = 'stremio_sync_enabled';
+  static const _kSyncToAnilist = 'stremio_sync_to_anilist';
 
   final api = StremioApi();
 
@@ -131,6 +133,12 @@ class StremioService extends GetxController {
   /// Also push anime watched through AniList / MyAnimeList.
   final RxBool syncAnime = true.obs;
 
+  /// Anime watched from Movies & TV (Stremio) updates AniList progress.
+  final RxBool syncToAnilist = true.obs;
+
+  /// The user's Stremio library (added items, newest first).
+  final RxList<StremioLibraryItem> library = <StremioLibraryItem>[].obs;
+
   String? _authKey;
   String? get authKey => _authKey;
 
@@ -148,6 +156,8 @@ class StremioService extends GetxController {
     try {
       syncEnabled.value = KvHelper.get<bool>(_kSyncEnabled, defaultVal: true);
       syncAnime.value = KvHelper.get<bool>(_kSyncAnime, defaultVal: true);
+      syncToAnilist.value =
+          KvHelper.get<bool>(_kSyncToAnilist, defaultVal: true);
       final key = KvHelper.get<String?>(_kAuthKey);
       if (key != null && key.isNotEmpty) {
         _authKey = key;
@@ -175,6 +185,11 @@ class StremioService extends GetxController {
   void setSyncAnime(bool v) {
     syncAnime.value = v;
     KvHelper.set(_kSyncAnime, v);
+  }
+
+  void setSyncToAnilist(bool v) {
+    syncToAnilist.value = v;
+    KvHelper.set(_kSyncToAnilist, v);
   }
 
   void _applyUser(dynamic user) {
@@ -237,6 +252,7 @@ class StremioService extends GetxController {
     userEmail.value = '';
     userAvatar.value = '';
     continueWatching.clear();
+    library.clear();
     _libraryCache.clear();
     KvHelper.remove(_kAuthKey);
     KvHelper.remove(_kUser);
@@ -386,13 +402,7 @@ class StremioService extends GetxController {
       for (final item in items) {
         _libraryCache[item.id] = item;
       }
-      final cw = items.where((i) => i.isInContinueWatching).toList()
-        ..sort((a, b) {
-          final at = a.lastWatched ?? a.mtime ?? DateTime(1970);
-          final bt = b.lastWatched ?? b.mtime ?? DateTime(1970);
-          return bt.compareTo(at);
-        });
-      continueWatching.assignAll(cw);
+      _rebuildLists();
     } catch (e) {
       Logger.e('Stremio: failed to load library: $e');
     } finally {
@@ -714,6 +724,11 @@ class StremioService extends GetxController {
           wb.setVideo(pb.videoId, true);
           item.watchedField = wb.serialize();
         }
+        // Stremio-native titles (Movies & TV) → AniList. Anime opened from
+        // AniList is already tracked by AnymeX itself.
+        if (StremioIds.isStremioMediaId(media.id)) {
+          unawaited(_syncToAnilist(pb));
+        }
       }
 
       if (isFinal && posMs > durMs * creditsThreshold) {
@@ -746,9 +761,245 @@ class StremioService extends GetxController {
   }
 
   void _updateContinueWatching(StremioLibraryItem item) {
-    final list = List<StremioLibraryItem>.from(continueWatching)
-      ..removeWhere((i) => i.id == item.id);
-    if (item.isInContinueWatching) list.insert(0, item);
-    continueWatching.assignAll(list);
+    _libraryCache[item.id] = item;
+    _rebuildLists();
+  }
+
+  /// Recomputes Continue Watching and the library from the local cache,
+  /// with the same rules Stremio uses.
+  void _rebuildLists() {
+    final all = _libraryCache.values.toList();
+    DateTime watched(StremioLibraryItem i) =>
+        i.lastWatched ?? i.mtime ?? DateTime(1970);
+    DateTime modified(StremioLibraryItem i) => i.mtime ?? DateTime(1970);
+    continueWatching.assignAll(all.where((i) => i.isInContinueWatching).toList()
+      ..sort((a, b) => watched(b).compareTo(watched(a))));
+    library.assignAll(all.where((i) => i.isInLibrary).toList()
+      ..sort((a, b) => modified(b).compareTo(modified(a))));
+  }
+
+  Future<void> refreshLibrary() => refreshContinueWatching();
+
+  StremioLibraryItem? cachedLibraryItem(String id) => _libraryCache[id];
+
+  bool isInLibrary(String id) => _libraryCache[id]?.isInLibrary ?? false;
+
+  bool isInContinueWatching(String id) =>
+      _libraryCache[id]?.isInContinueWatching ?? false;
+
+  Future<void> _putItem(StremioLibraryItem item) async {
+    final key = _authKey;
+    if (key == null) throw StremioApiException('Log in to Stremio first');
+    item.touch();
+    _libraryCache[item.id] = item;
+    _rebuildLists();
+    await api.datastorePut(key, [item]);
+  }
+
+  /// Stremio "Add to library".
+  Future<void> addToLibrary({
+    required String id,
+    required String type,
+    required String name,
+    String? poster,
+  }) async {
+    final item = await getLibraryItem(id) ??
+        StremioLibraryItem.create(
+            id: id, type: type, name: name, poster: poster);
+    if (item.name.isEmpty) item.raw['name'] = name;
+    if (item.poster == null && poster != null) item.raw['poster'] = poster;
+    item.raw['removed'] = false;
+    item.raw['temp'] = false;
+    await _putItem(item);
+  }
+
+  /// Stremio "Remove from library" (also drops it from Continue Watching).
+  Future<void> removeFromLibrary(String id) async {
+    final item = await getLibraryItem(id);
+    if (item == null) return;
+    item.raw['removed'] = true;
+    item.raw['temp'] = false;
+    await _putItem(item);
+  }
+
+  /// Stremio's Continue Watching "dismiss": items only kept for Continue
+  /// Watching are removed; items in your library are rewound instead.
+  Future<void> dismissFromContinueWatching(String id) async {
+    final item = await getLibraryItem(id);
+    if (item == null) return;
+    if (item.temp || item.removed) {
+      item.raw['removed'] = true;
+      item.raw['temp'] = false;
+    } else {
+      item.timeOffset = 0;
+    }
+    await _putItem(item);
+  }
+
+  // ---- AniList sync for Stremio watches -----------------------------------
+
+  final Map<String, (String, int)?> _anilistTargets = {};
+  final Map<String, Map<String, (int, int)>?> _aniZipEpisodes = {};
+
+  /// When an anime episode/movie is watched from Movies & TV, update the
+  /// AniList entry (progress only ever moves forward).
+  Future<void> _syncToAnilist(StremioPlayback pb) async {
+    if (!syncToAnilist.value) return;
+    try {
+      final handler = Get.find<ServiceHandler>();
+      final anilist = handler.anilistService;
+      if (!anilist.isLoggedIn.value) return;
+      final target = await _anilistTargetFor(pb);
+      if (target == null) return;
+      final (anilistId, progress) = target;
+      if (progress <= 0) return;
+
+      final entry =
+          anilist.animeList.firstWhereOrNull((m) => m.id == anilistId);
+      final current = int.tryParse(entry?.episodeCount ?? '') ?? 0;
+      if (entry != null && current >= progress) return;
+      final total = int.tryParse(entry?.totalEpisodes ?? '');
+      final repeating =
+          (entry?.watchingStatus ?? '').toUpperCase() == 'REPEATING';
+      final status = (total != null && total > 0 && progress >= total)
+          ? 'COMPLETED'
+          : (repeating ? 'REPEATING' : 'CURRENT');
+      await anilist.updateListEntry(UpdateListEntryParams(
+        listId: anilistId,
+        progress: progress,
+        status: status,
+        isAnime: true,
+      ));
+      Logger.i('Stremio → AniList: $anilistId progress $progress ($status)');
+    } catch (e) {
+      Logger.i('Stremio → AniList sync failed: $e');
+    }
+  }
+
+  /// (AniList id, episode progress) for a Stremio video, or null when it
+  /// isn't anime / can't be matched.
+  Future<(String, int)?> _anilistTargetFor(StremioPlayback pb) async {
+    final key = pb.videoId;
+    if (_anilistTargets.containsKey(key)) return _anilistTargets[key];
+    (String, int)? result;
+    try {
+      final isMovie = pb.type == 'movie' || pb.videoId == pb.libraryId;
+      if (pb.libraryId.startsWith('kitsu:')) {
+        final kitsuId = pb.libraryId.split(':')[1];
+        final anilistId = await _anilistFromKitsu(kitsuId);
+        if (anilistId != null) {
+          final parts = pb.videoId.split(':');
+          final ep = isMovie || parts.length < 3 ? 1 : int.tryParse(parts[2]);
+          if (ep != null) result = (anilistId, ep);
+        }
+      } else if (pb.libraryId.startsWith('tt')) {
+        final candidates = await _anilistFromImdb(pb.libraryId);
+        if (candidates.isNotEmpty) {
+          if (isMovie) {
+            result = (candidates.first, 1);
+          } else {
+            final parts = pb.videoId.split(':');
+            final s = parts.length >= 3 ? int.tryParse(parts[1]) : null;
+            final e = parts.length >= 3 ? int.tryParse(parts[2]) : null;
+            if (s != null && e != null) {
+              for (final id in candidates.take(8)) {
+                final eps = await _aniZipEpisodesFor(id);
+                if (eps == null) continue;
+                for (final entry in eps.entries) {
+                  if (entry.value.$1 == s && entry.value.$2 == e) {
+                    final n = int.tryParse(entry.key);
+                    if (n != null) result = (id, n);
+                    break;
+                  }
+                }
+                if (result != null) break;
+              }
+              if (result == null && candidates.length == 1 && s == 1) {
+                result = (candidates.first, e);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      Logger.i('Stremio → AniList mapping failed for ${pb.videoId}: $e');
+    }
+    _anilistTargets[key] = result;
+    return result;
+  }
+
+  Future<String?> _anilistFromKitsu(String kitsuId) async {
+    try {
+      final resp = await http
+          .get(Uri.parse(
+              'https://arm.haglund.dev/api/v2/ids?source=kitsu&id=$kitsuId'))
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode == 200 && resp.body.isNotEmpty) {
+        final data = jsonDecode(resp.body);
+        final id = data is Map ? data['anilist'] : null;
+        if (id != null) return id.toString();
+      }
+    } catch (_) {}
+    try {
+      final resp = await http
+          .get(Uri.parse('https://api.ani.zip/mappings?kitsu_id=$kitsuId'))
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        final id = data is Map && data['mappings'] is Map
+            ? (data['mappings'] as Map)['anilist_id']
+            : null;
+        if (id != null) return id.toString();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// AniList ids that share this IMDb id (one per season/part), or empty
+  /// when the title isn't anime.
+  Future<List<String>> _anilistFromImdb(String imdbId) async {
+    try {
+      final resp = await http
+          .get(Uri.parse('https://arm.haglund.dev/api/v2/imdb?id=$imdbId'))
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode != 200 || resp.body.isEmpty) return const [];
+      final data = jsonDecode(resp.body);
+      final list = data is List ? data : (data is Map ? [data] : const []);
+      return list
+          .whereType<Map>()
+          .map((m) => m['anilist']?.toString())
+          .whereType<String>()
+          .where((s) => s.isNotEmpty && s != 'null')
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<Map<String, (int, int)>?> _aniZipEpisodesFor(String anilistId) async {
+    if (_aniZipEpisodes.containsKey(anilistId)) {
+      return _aniZipEpisodes[anilistId];
+    }
+    Map<String, (int, int)>? out;
+    try {
+      final resp = await http
+          .get(Uri.parse('https://api.ani.zip/mappings?anilist_id=$anilistId'))
+          .timeout(const Duration(seconds: 15));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        if (data is Map && data['episodes'] is Map) {
+          out = {};
+          (data['episodes'] as Map).forEach((k, v) {
+            if (v is Map) {
+              final s = int.tryParse('${v['seasonNumber'] ?? ''}');
+              final e = int.tryParse('${v['episodeNumber'] ?? ''}');
+              if (s != null && e != null) out![k.toString()] = (s, e);
+            }
+          });
+        }
+      }
+    } catch (_) {}
+    _aniZipEpisodes[anilistId] = out;
+    return out;
   }
 }

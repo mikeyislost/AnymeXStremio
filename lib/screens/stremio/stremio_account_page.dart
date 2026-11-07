@@ -196,6 +196,16 @@ class _StremioAccountPageState extends State<StremioAccountPage> {
                     onChanged: _service.setSyncEnabled,
                   ),
                   CustomSwitchTile(
+                    icon: Icons.sync_alt_rounded,
+                    title: 'Update AniList from Movies & TV',
+                    description:
+                        'Anime watched in the Movies & TV tab updates your '
+                        'AniList progress (needs AniList login)',
+                    switchValue: _service.syncToAnilist.value,
+                    disabled: !loggedIn,
+                    onChanged: _service.setSyncToAnilist,
+                  ),
+                  CustomSwitchTile(
                     icon: Icons.animation_rounded,
                     title: 'Include anime from AniList / MAL',
                     description:

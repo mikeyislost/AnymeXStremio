@@ -21,8 +21,13 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UpdateManager {
+  // AnymeX+ (AnymeX + Stremio) updates come from its own releases, not
+  // from official AnymeX, so updating never replaces this build.
+  static const String repo = 'mikeyislost/AnymeXStremio';
   static const String _stableRepoUrl =
-      'https://api.github.com/repos/RyanYuuki/AnymeX/releases/latest';
+      'https://api.github.com/repos/$repo/releases/latest';
+  static const String featherSourceUrl =
+      'https://github.com/$repo/releases/latest/download/source.json';
 
   static const String _betaRepoUrl =
       'https://api.github.com/repos/Shebyyy/AnymeX-Preview/releases/latest';
@@ -56,6 +61,7 @@ class UpdateManager {
       'android_arm32': getDownloadUrlByArch(assets, 'v7a'),
       'android_universal': getDownloadUrlByArch(assets, 'universal'),
       'windows': getDownloadUrlByArch(assets, '.exe'),
+      'ios': getDownloadUrlByArch(assets, '.ipa'),
       'macos': getDownloadUrlByArch(assets, '.dmg'),
       'linux': getDownloadUrlByArch(assets, '.AppImage'),
     };
@@ -72,7 +78,10 @@ class UpdateManager {
 
       try {
         final packageInfo = await PackageInfo.fromPlatform();
-        final isBetaApp = packageInfo.packageName == 'com.ryan.anymexbeta';
+        // No beta channel for AnymeX+.
+        const isBetaApp = false;
+        isBeta = false;
+        debugPrint('Checking ${packageInfo.packageName} for updates');
         final currentVersion = await _getCurrentVersion();
 
         if (isBetaApp) {
@@ -375,6 +384,8 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
       }
     } else if (Platform.isWindows) {
       return widget.downloadUrls['windows']!;
+    } else if (Platform.isIOS) {
+      return widget.downloadUrls['ios'] ?? '';
     } else if (Platform.isMacOS) {
       return widget.downloadUrls['macos']!;
     } else if (Platform.isLinux) {
@@ -398,6 +409,8 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
         await _downloadAndInstallAndroid(downloadUrl);
       } else if (Platform.isWindows) {
         await _downloadWindows(downloadUrl);
+      } else if (Platform.isIOS) {
+        await _openIosUpdate(downloadUrl);
       } else {
         final Uri url = Uri.parse(downloadUrl);
         if (await canLaunchUrl(url)) {
@@ -460,6 +473,26 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
     }
   }
 
+  /// iPhone apps can't update themselves: open Feather on this app's
+  /// source (where the update shows), else download the IPA in Safari.
+  Future<void> _openIosUpdate(String ipaUrl) async {
+    setState(() => _downloadStatus = 'Opening Feather...');
+    final feather =
+        Uri.parse('feather://source/${UpdateManager.featherSourceUrl}');
+    var opened = false;
+    try {
+      opened =
+          await launchUrl(feather, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!opened && ipaUrl.isNotEmpty) {
+      await launchUrl(Uri.parse(ipaUrl), mode: LaunchMode.externalApplication);
+    }
+    if (mounted) Navigator.of(context).pop();
+    snackBar(opened
+        ? 'Update AnymeX+ from its source in Feather'
+        : 'Downloading the new IPA, open it with Feather to install');
+  }
+
   Future<void> _downloadWindows(String downloadUrl) async {
     setState(() {
       _downloadStatus = 'Downloading installer...';
@@ -484,7 +517,16 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
       },
     );
 
-    _showSuccessDialog(filePath: savePath);
+    // Run the installer, then close so it can replace the app's files.
+    try {
+      setState(() => _downloadStatus = 'Starting installer...');
+      await Process.start(savePath, const [], mode: ProcessStartMode.detached);
+      await Future.delayed(const Duration(milliseconds: 800));
+      exit(0);
+    } catch (e) {
+      Logger.i('Could not start installer: $e');
+      _showSuccessDialog(filePath: savePath);
+    }
   }
 
   void _showErrorDialog(String message) {
@@ -757,9 +799,11 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
                     AnymeXText(
                       _isDownloading
                           ? "Downloading..."
-                          : (Platform.isAndroid
+                          : (Platform.isAndroid || Platform.isWindows
                               ? "Download & Install"
-                              : "Download"),
+                              : (Platform.isIOS
+                                  ? "Update in Feather"
+                                  : "Download")),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.onPrimary,

@@ -28,6 +28,7 @@ import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart' show Obx;
 import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -233,12 +234,127 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
             else if (_error != null)
               SliverToBoxAdapter(child: _errorView(context))
             else if (_meta != null) ...[
+              SliverToBoxAdapter(child: _quickActions(context, _meta!)),
               if (_page == 0)
                 SliverToBoxAdapter(child: _infoTab(context, _meta!))
               else
                 ..._watchTab(context, _meta!),
             ],
             const SliverToBoxAdapter(child: SizedBox(height: 180)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Library / Continue Watching actions, like Stremio's details page.
+  Widget _quickActions(BuildContext context, StremioMeta meta) {
+    return Obx(() {
+      if (!_service.isLoggedIn.value) return const SizedBox.shrink();
+      // Rebuild when the library or Continue Watching changes.
+      _service.library.length;
+      _service.continueWatching.length;
+      final inLibrary = _service.isInLibrary(meta.id);
+      final inCw = _service.isInContinueWatching(meta.id);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: _actionButton(
+                context,
+                icon: inLibrary
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_add_outlined,
+                label: inLibrary ? 'In Library' : 'Add to Library',
+                highlighted: inLibrary,
+                onTap: () async {
+                  try {
+                    if (inLibrary) {
+                      await _service.removeFromLibrary(meta.id);
+                      snackBar('Removed from your Stremio library');
+                    } else {
+                      await _service.addToLibrary(
+                        id: meta.id,
+                        type: meta.type,
+                        name: meta.name,
+                        poster: meta.poster,
+                      );
+                      snackBar('Added to your Stremio library');
+                    }
+                  } catch (e) {
+                    snackBar('Stremio: $e');
+                  }
+                },
+              ),
+            ),
+            if (inCw) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: _actionButton(
+                  context,
+                  icon: Icons.history_toggle_off_rounded,
+                  label: 'Remove from Continue',
+                  onTap: () async {
+                    try {
+                      await _service.dismissFromContinueWatching(meta.id);
+                      await _loadLibraryState(refresh: false);
+                      if (mounted) setState(() {});
+                      snackBar('Removed from Continue Watching');
+                    } catch (e) {
+                      snackBar('Stremio: $e');
+                    }
+                  },
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _actionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool highlighted = false,
+  }) {
+    final colors = context.colors;
+    return AnymexOnTap(
+      onTap: onTap,
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: highlighted
+              ? colors.primary.opaque(0.18, iReallyMeanIt: true)
+              : colors.surfaceContainerHighest.opaque(0.3, iReallyMeanIt: true),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: highlighted
+                ? colors.primary.opaque(0.4, iReallyMeanIt: true)
+                : colors.onSurface.opaque(0.08, iReallyMeanIt: true),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 18,
+                color: highlighted ? colors.primary : colors.onSurface),
+            const SizedBox(width: 8),
+            Flexible(
+              child: AnymeXText(
+                label,
+                size: 12.5,
+                variant: TextVariant.semiBold,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                color: highlighted ? colors.primary : null,
+              ),
+            ),
           ],
         ),
       ),

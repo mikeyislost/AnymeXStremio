@@ -261,13 +261,11 @@ class Settings extends GetxController {
   }
 
   void checkForUpdates(BuildContext context, {bool manualCheck = false}) {
-    // This is a custom build (AnymeX + Stremio). Don't auto-prompt to install
-    // official AnymeX releases, which would replace it; manual checks still work.
-    if (!manualCheck) return;
+    // Checks this app's own releases (see UpdateManager.repo).
     UpdateManager().checkForUpdates(
       context,
       RxBool(true),
-      isBeta: enableBetaUpdates.value,
+      isBeta: false,
       manualCheck: manualCheck,
     );
   }
