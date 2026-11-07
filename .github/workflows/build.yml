@@ -92,6 +92,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
           cache: true
 
       - name: Create placeholder .env
@@ -139,7 +140,7 @@ jobs:
     env:
       VERSION: ${{ needs.analyze.outputs.version }}
       BUILD: ${{ needs.analyze.outputs.build }}
-      CHANNEL: ${{ needs.analyze.outputs.channel }}
+      RELEASE_CHANNEL: ${{ needs.analyze.outputs.channel }}
       TAG: ${{ needs.analyze.outputs.tag }}
       FILE_VER: ${{ needs.analyze.outputs.file_ver }}
     steps:
@@ -154,6 +155,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
           cache: true
 
       # Optional repo secrets (Settings → Secrets and variables → Actions).
@@ -180,12 +182,12 @@ jobs:
           CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
           TMDB_API_KEY=$TMDB_API_KEY
           COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
-          APP_CHANNEL=$CHANNEL
+          APP_CHANNEL=$RELEASE_CHANNEL
           APP_VERSION_TAG=$TAG
           EOF
 
       - name: Make the beta app (AnymeX+ β)
-        if: env.CHANNEL == 'beta'
+        if: env.RELEASE_CHANNEL == 'beta'
         run: python3 scripts/beta_build.py ios
 
       - name: Build iOS (unsigned)
@@ -208,7 +210,7 @@ jobs:
     env:
       VERSION: ${{ needs.analyze.outputs.version }}
       BUILD: ${{ needs.analyze.outputs.build }}
-      CHANNEL: ${{ needs.analyze.outputs.channel }}
+      RELEASE_CHANNEL: ${{ needs.analyze.outputs.channel }}
       TAG: ${{ needs.analyze.outputs.tag }}
       FILE_VER: ${{ needs.analyze.outputs.file_ver }}
     steps:
@@ -232,6 +234,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
           cache: true
 
       - name: Install Inno Setup
@@ -271,7 +274,7 @@ jobs:
           CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
           TMDB_API_KEY=$TMDB_API_KEY
           COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
-          APP_CHANNEL=$CHANNEL
+          APP_CHANNEL=$RELEASE_CHANNEL
           APP_VERSION_TAG=$TAG
           EOF
           # Stamp the version into the app and the installer.
@@ -279,7 +282,7 @@ jobs:
           sed -i -E "s/^    version: [0-9.]+$/    version: $VERSION/" pubspec.yaml
 
       - name: Make the beta app (AnymeX+ β)
-        if: env.CHANNEL == 'beta'
+        if: env.RELEASE_CHANNEL == 'beta'
         shell: bash
         run: python scripts/beta_build.py windows
 
@@ -313,7 +316,7 @@ jobs:
     env:
       VERSION: ${{ needs.analyze.outputs.version }}
       BUILD: ${{ needs.analyze.outputs.build }}
-      CHANNEL: ${{ needs.analyze.outputs.channel }}
+      RELEASE_CHANNEL: ${{ needs.analyze.outputs.channel }}
       TAG: ${{ needs.analyze.outputs.tag }}
       FILE_VER: ${{ needs.analyze.outputs.file_ver }}
       GH_TOKEN: ${{ github.token }}
@@ -332,13 +335,13 @@ jobs:
       # the betas that went into it); beta notes cover the last build.
       - name: Release notes
         run: |
-          if [ "$CHANNEL" = beta ]; then
+          if [ "$RELEASE_CHANNEL" = beta ]; then
             PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD^ 2>/dev/null || true)
           else
             PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-beta' HEAD^ 2>/dev/null || true)
           fi
           {
-            if [ "$CHANNEL" = beta ]; then
+            if [ "$RELEASE_CHANNEL" = beta ]; then
               echo "> **Beta build.** Installs next to AnymeX+ as a separate app, **AnymeX+ β**, with its own sign-ins and library. It may have bugs; once it's ready it ships as **v$VERSION**."
               echo
             fi
@@ -350,7 +353,7 @@ jobs:
             fi
             echo
             echo "## Install"
-            if [ "$CHANNEL" = beta ]; then
+            if [ "$RELEASE_CHANNEL" = beta ]; then
               echo "- **iPhone (Feather):** add the beta source \`https://raw.githubusercontent.com/$REPO/feather/source-beta.json\` and install **AnymeX+ β**, or download the \`.ipa\` below."
               echo "- **Windows:** run the \`Setup.exe\` (installs **AnymeXStremio Beta** next to the normal app), or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
             else
@@ -363,7 +366,7 @@ jobs:
           cat notes.md
 
       - name: Feather / AltStore source
-        if: env.CHANNEL == 'stable'
+        if: env.RELEASE_CHANNEL == 'stable'
         run: |
           python3 - <<'PY'
           import json, os, subprocess, datetime
@@ -433,7 +436,7 @@ jobs:
           PY
 
       - name: Publish release v${{ env.VERSION }}
-        if: env.CHANNEL == 'stable'
+        if: env.RELEASE_CHANNEL == 'stable'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
@@ -444,7 +447,7 @@ jobs:
           files: dist/*
 
       - name: Publish beta v${{ env.TAG }}
-        if: env.CHANNEL == 'beta'
+        if: env.RELEASE_CHANNEL == 'beta'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.TAG }}
@@ -458,7 +461,7 @@ jobs:
       # Betas can't use the "latest release" link (it skips pre-releases),
       # so their Feather source lives on the `feather` branch.
       - name: Beta Feather source
-        if: env.CHANNEL == 'beta'
+        if: env.RELEASE_CHANNEL == 'beta'
         run: |
           gh release view "v$TAG" -R "$REPO" --json assets,body > beta_release.json
           python3 - <<'PY'
@@ -516,7 +519,7 @@ jobs:
       # Keep the original Feather source URL (latest-ios/source.json)
       # working, and retire the old rolling download releases.
       - name: Update legacy source URL
-        if: env.CHANNEL == 'stable'
+        if: env.RELEASE_CHANNEL == 'stable'
         run: |
           gh release view latest-ios -R "$REPO" >/dev/null 2>&1 || exit 0
           for a in $(gh release view latest-ios -R "$REPO" --json assets -q '.assets[].name'); do
