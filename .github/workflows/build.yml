@@ -245,9 +245,9 @@ jobs:
           {
             echo "## What's new"
             if [ -n "$PREV" ]; then
-              git log "$PREV"..HEAD --no-merges --format='- %s' | grep -v '^- Merge' || true
+              git log "$PREV"..HEAD --no-merges --format='- %s' | grep -v '^- Merge' | sed 's/ \[skip ci\]//' || true
             else
-              git log -n 15 --no-merges --format='- %s'
+              git log -n 15 --no-merges --format='- %s' | sed 's/ \[skip ci\]//'
             fi
             echo
             echo "## Install"
