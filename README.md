@@ -14,11 +14,13 @@ A personal build of [AnymeX](https://github.com/RyanYuuki/AnymeX) (anime/manga t
 
 Settings → Accounts → **Stremio** has the login, sync switches and addon list.
 
-## Windows
+## Downloads
 
-Every push also runs **Actions → Build Windows EXE**, which publishes to the **latest-windows** release:
-- `AnymeX-Stremio-Windows-Setup.exe`: installer (installs alongside official AnymeX)
-- `AnymeX-Stremio-Windows-Portable.zip`: unzip and run `anymex.exe`, no install needed
+Every update is published as its own release, **AnymeX+ vX.Y.N**, under [Releases](https://github.com/mikeyislost/AnymeXStremio/releases). Each one has:
+- `AnymeX-Stremio-vX.Y.N.ipa`: iPhone
+- `AnymeX-Stremio-vX.Y.N-Windows-Setup.exe`: Windows installer (installs alongside official AnymeX)
+- `AnymeX-Stremio-vX.Y.N-Windows-Portable.zip`: unzip and run `anymex.exe`
+- a changelog of what changed since the previous release
 
 Windows may show a SmartScreen warning because the app isn't code-signed. Click **More info → Run anyway**.
 
@@ -27,14 +29,14 @@ Windows may show a SmartScreen warning because the app isn't code-signed. Click 
 In Feather → **Sources** → add:
 
 ```
-https://github.com/mikeyislost/AnymeXStremio/releases/download/latest-ios/source.json
+https://github.com/mikeyislost/AnymeXStremio/releases/latest/download/source.json
 ```
 
-It shows up as **AnymeX+** (bundle ID `com.mikeyislost.anymexstremio`, so it installs separately from official AnymeX). Every build bumps the version, so Feather shows new builds as updates.
+It shows up as **AnymeX+** (bundle ID `com.mikeyislost.anymexstremio`, so it installs separately from official AnymeX), and every new release appears as an update. (The older `latest-ios/source.json` link keeps working too.)
 
-## Building the iOS app
+## How builds work
 
-Every push to `main` runs **Actions → Build iOS IPA**. It checks the code, builds an unsigned `.ipa`, and attaches it to the **latest-ios** release. Install it with Feather, AltStore or Sideloadly.
+Every push to `main` runs **Actions → Build & Release**: it checks the code, builds iOS and Windows in parallel, then publishes one release with all files.
 
 AniList login needs your own (free) AniList API client:
 1. https://anilist.co/settings/developer → Create New Client, Redirect URL `anymex://callback`

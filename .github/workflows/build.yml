@@ -1,0 +1,345 @@
+name: Build & Release
+
+# Every push to main builds iOS + Windows and publishes ONE GitHub release
+# (vX.Y.N) containing the IPA, the Windows installer + portable zip, the
+# Feather source file and a changelog of what changed since the last release.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: "3.41.6"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast (Linux) check so mistakes fail in ~5 minutes, plus the version.
+  analyze:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      build: ${{ steps.ver.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Version = <pubspec major.minor>.<commit count>: grows with every
+      # update, identical for the iOS and Windows builds of one commit.
+      - name: Compute version
+        id: ver
+        run: |
+          BASE=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+)\.([0-9]+).*/\1.\2/')
+          COUNT=$(git rev-list --count HEAD)
+          echo "version=$BASE.$COUNT" >> "$GITHUB_OUTPUT"
+          echo "build=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Version: $BASE.$COUNT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Create placeholder .env
+        run: touch .env
+
+      - name: Install packages
+        run: flutter pub get
+
+      - name: Analyze (errors fail the build)
+        run: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings \
+            lib/controllers/services/stremio \
+            lib/screens/stremio \
+            lib/screens/anime/watch/controller/player_controller.dart \
+            lib/screens/anime/details \
+            lib/screens/settings/sub_settings/settings_accounts.dart \
+            lib/screens/settings/sub_settings/settings_ui.dart \
+            lib/screens/library/widgets/history_model.dart \
+            lib/widgets/anime/media_header.dart \
+            lib/widgets/common/reusable_carousel.dart \
+            lib/controllers/settings/settings.dart \
+            lib/main.dart
+
+  ios:
+    needs: analyze
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.analyze.outputs.version }}
+      BUILD: ${{ needs.analyze.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      # Optional repo secrets (Settings → Secrets and variables → Actions).
+      - name: Setup environment
+        shell: bash
+        env:
+          AL_CLIENT_ID: ${{ secrets.AL_CLIENT_ID }}
+          AL_CLIENT_SECRET: ${{ secrets.AL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
+          CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          cat > .env << EOF
+          AL_CLIENT_ID=$AL_CLIENT_ID
+          AL_CLIENT_SECRET=$AL_CLIENT_SECRET
+          SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID
+          SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET
+          MAL_CLIENT_ID=$MAL_CLIENT_ID
+          MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
+          CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
+          TMDB_API_KEY=$TMDB_API_KEY
+          EOF
+
+      - name: Build iOS (unsigned)
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign \
+            --build-name "$VERSION" --build-number "$BUILD"
+          mkdir -p build/ios/iphoneos/Payload dist
+          cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          (cd build/ios/iphoneos && zip -qr "../../../dist/AnymeX-Stremio-v$VERSION.ipa" Payload)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: dist/*.ipa
+
+  windows:
+    needs: analyze
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.analyze.outputs.version }}
+      BUILD: ${{ needs.analyze.outputs.build }}
+    steps:
+      - name: Enable Git long paths
+        run: |
+          git config --global core.longpaths true
+          git config --system core.longpaths true
+
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $innoPath = "${env:ProgramFiles(x86)}\Inno Setup 6"
+          $isccPath = Join-Path $innoPath "ISCC.exe"
+          if (-not (Test-Path $isccPath)) {
+            $installer = "$env:TEMP\innosetup.exe"
+            Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $installer -UseBasicParsing
+            Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait -NoNewWindow
+            Start-Sleep -Seconds 5
+          }
+          if (-not (Test-Path $isccPath)) { Write-Error "Inno Setup install failed"; exit 1 }
+          echo "$innoPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Setup environment + version
+        shell: bash
+        env:
+          AL_CLIENT_ID: ${{ secrets.AL_CLIENT_ID }}
+          AL_CLIENT_SECRET: ${{ secrets.AL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
+          CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          cat > .env << EOF
+          AL_CLIENT_ID=$AL_CLIENT_ID
+          AL_CLIENT_SECRET=$AL_CLIENT_SECRET
+          SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID
+          SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET
+          MAL_CLIENT_ID=$MAL_CLIENT_ID
+          MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
+          CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
+          TMDB_API_KEY=$TMDB_API_KEY
+          EOF
+          # Stamp the version into the app and the installer.
+          sed -i -E "s/^version: .*/version: $VERSION+$BUILD/" pubspec.yaml
+          sed -i -E "s/^    version: [0-9.]+$/    version: $VERSION/" pubspec.yaml
+
+      - name: Build Windows app + installer
+        shell: pwsh
+        run: |
+          flutter pub get
+          dart run inno_bundle:build --release 2>&1 | Select-String -Pattern "Compile aborted" -NotMatch
+          $issFile = "build\windows\x64\installer\Release\inno-script.iss"
+          if (-not (Test-Path $issFile)) { Write-Error "ISS file not found: $issFile"; exit 1 }
+          $content = Get-Content $issFile -Raw
+          $content = $content -replace '.*Icelandic\.isl.*\r?\n', ''
+          Set-Content $issFile -Value $content -NoNewline
+          & iscc $issFile
+          if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup failed ($LASTEXITCODE)"; exit 1 }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Get-ChildItem build\windows\x64\installer\Release\*.exe | Select-Object -First 1 | Copy-Item -Destination "dist\AnymeX-Stremio-v$env:VERSION-Windows-Setup.exe"
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\AnymeX-Stremio-v$env:VERSION-Windows-Portable.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+
+  # One release per update, with everything in it. Publishes even if only
+  # the iOS build succeeded (the Windows files are then missing).
+  release:
+    needs: [analyze, ios, windows]
+    if: ${{ !cancelled() && needs.ios.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.analyze.outputs.version }}
+      BUILD: ${{ needs.analyze.outputs.build }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Release notes
+        run: |
+          PREV=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          {
+            echo "## What's new"
+            if [ -n "$PREV" ]; then
+              git log "$PREV"..HEAD --no-merges --format='- %s' | grep -v '^- Merge' || true
+            else
+              git log -n 15 --no-merges --format='- %s'
+            fi
+            echo
+            echo "## Install"
+            echo "- **iPhone (Feather):** add the source \`https://github.com/$REPO/releases/latest/download/source.json\` and update **AnymeX+**, or download the \`.ipa\` below."
+            echo "- **Windows:** run the \`Setup.exe\`, or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
+            echo
+            echo "Built from ${GITHUB_SHA:0:7}."
+          } > notes.md
+          cat notes.md
+
+      - name: Feather / AltStore source
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, datetime
+          repo, version, build = os.environ["REPO"], os.environ["VERSION"], os.environ["BUILD"]
+          owner = repo.split("/")[0]
+          ipa_name = f"AnymeX-Stremio-v{version}.ipa"
+          size = os.path.getsize(f"dist/{ipa_name}")
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          notes = open("notes.md").read().split("## Install")[0].replace("## What's new", "").strip()
+          versions = [{
+              "version": version, "buildVersion": build, "date": now,
+              "localizedDescription": notes or f"Version {version}",
+              "downloadURL": f"https://github.com/{repo}/releases/download/v{version}/{ipa_name}",
+              "size": size, "minOSVersion": "13.0",
+          }]
+          # Older versions, so Feather can show the history / downgrade.
+          try:
+              out = subprocess.run(["gh", "api", f"repos/{repo}/releases?per_page=30"],
+                                   capture_output=True, text=True, check=True).stdout
+              for rel in json.loads(out):
+                  tag = rel.get("tag_name", "")
+                  if not tag.startswith("v") or tag == f"v{version}" or rel.get("draft"):
+                      continue
+                  ipa = next((a for a in rel.get("assets", []) if a["name"].endswith(".ipa")), None)
+                  if not ipa:
+                      continue
+                  versions.append({
+                      "version": tag[1:], "date": rel.get("published_at") or now,
+                      "localizedDescription": (rel.get("body") or "").split("## Install")[0].replace("## What's new", "").strip()[:1500],
+                      "downloadURL": ipa["browser_download_url"], "size": ipa["size"],
+                      "minOSVersion": "13.0",
+                  })
+          except Exception as e:
+              print("Could not list older releases:", e)
+          icon = f"https://raw.githubusercontent.com/{repo}/main/logo.png"
+          desc = ("AnymeX (anime & manga tracker/player) with Stremio built in: "
+                  "Stremio login and addons, a Movies & TV tab, and watch "
+                  "progress synced to Stremio. AniList, MAL, Simkl and Discord "
+                  "status included.")
+          source = {
+            "name": "AnymeX+ (Stremio)",
+            "identifier": "com.mikeyislost.anymexstremio.source",
+            "subtitle": "Personal AnymeX + Stremio build",
+            "description": desc, "iconURL": icon,
+            "website": f"https://github.com/{repo}", "tintColor": "#7C4DFF",
+            "apps": [{
+              "name": "AnymeX+", "bundleIdentifier": "com.mikeyislost.anymexstremio",
+              "developerName": owner, "subtitle": "AnymeX with Stremio built in",
+              "localizedDescription": desc, "iconURL": icon, "tintColor": "#7C4DFF",
+              "category": "entertainment",
+              "version": version, "versionDate": now,
+              "versionDescription": versions[0]["localizedDescription"],
+              "downloadURL": versions[0]["downloadURL"], "size": size,
+              "screenshotURLs": [], "appPermissions": {},
+              "versions": versions,
+            }],
+            "news": [],
+          }
+          json.dump(source, open("dist/source.json", "w"), indent=2)
+          print(json.dumps(source, indent=2)[:3000])
+          PY
+
+      - name: Publish release v${{ env.VERSION }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: AnymeX+ v${{ env.VERSION }}
+          body_path: notes.md
+          make_latest: true
+          files: dist/*
+
+      # Keep the original Feather source URL (latest-ios/source.json)
+      # working, and retire the old rolling download releases.
+      - name: Update legacy source URL
+        run: |
+          gh release view latest-ios -R "$REPO" >/dev/null 2>&1 || exit 0
+          for a in $(gh release view latest-ios -R "$REPO" --json assets -q '.assets[].name'); do
+            [ "$a" = "source.json" ] || gh release delete-asset latest-ios "$a" -R "$REPO" -y || true
+          done
+          gh release upload latest-ios dist/source.json -R "$REPO" --clobber
+          gh release edit latest-ios -R "$REPO" \
+            --title "Feather source (legacy link)" \
+            --notes "Only hosts source.json for the original Feather source URL. Get builds from the versioned releases." || true
+          gh release delete latest-windows -R "$REPO" --cleanup-tag -y || true
