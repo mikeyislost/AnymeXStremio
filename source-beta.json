@@ -1,0 +1,42 @@
+{
+  "name": "AnymeX+ \u03b2 (Beta)",
+  "identifier": "com.mikeyislost.anymexstremio.beta.source",
+  "subtitle": "AnymeX+ beta builds",
+  "description": "Beta builds of AnymeX+ (AnymeX with Stremio built in). Installs next to the normal app as AnymeX+ \u03b2, with its own sign-ins and library. New fixes land here first.",
+  "iconURL": "https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/beta-logo.png",
+  "website": "https://github.com/mikeyislost/AnymeXStremio",
+  "tintColor": "#FF6B35",
+  "apps": [
+    {
+      "name": "AnymeX+ \u03b2",
+      "bundleIdentifier": "com.mikeyislost.anymexstremio.beta",
+      "developerName": "mikeyislost",
+      "subtitle": "AnymeX+ beta builds",
+      "localizedDescription": "Beta builds of AnymeX+ (AnymeX with Stremio built in). Installs next to the normal app as AnymeX+ \u03b2, with its own sign-ins and library. New fixes land here first.",
+      "iconURL": "https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/beta-logo.png",
+      "tintColor": "#FF6B35",
+      "category": "entertainment",
+      "beta": true,
+      "version": "1.1.1",
+      "buildVersion": "23",
+      "versionDate": "2026-11-07T19:46:35Z",
+      "versionDescription": "Beta v1.1.1-beta\n\n- Build: rename CHANNEL env so it doesn't clash with flutter-action\n- Beta channel: AnymeX+ \u03b2 builds from the beta branch\n- Versioning: single-digit vX.Y.Z that rolls over",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta/AnymeX-Stremio-v1.1.1-beta.ipa",
+      "size": 79387282,
+      "screenshotURLs": [],
+      "appPermissions": {},
+      "versions": [
+        {
+          "version": "1.1.1",
+          "buildVersion": "23",
+          "date": "2026-11-07T19:46:35Z",
+          "localizedDescription": "Beta v1.1.1-beta\n\n- Build: rename CHANNEL env so it doesn't clash with flutter-action\n- Beta channel: AnymeX+ \u03b2 builds from the beta branch\n- Versioning: single-digit vX.Y.Z that rolls over",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta/AnymeX-Stremio-v1.1.1-beta.ipa",
+          "size": 79387282,
+          "minOSVersion": "13.0"
+        }
+      ]
+    }
+  ],
+  "news": []
+}
