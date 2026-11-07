@@ -1,0 +1,42 @@
+name: Ship beta as release
+
+# One button (Actions tab → "Ship beta as release" → Run workflow) to turn
+# the current beta into the official release: merges `beta` into `main`
+# and starts the normal build, which publishes vX.Y.Z (the version the
+# betas were tagged for, e.g. v1.1.2-beta → v1.1.2).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Merge beta into main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch -q origin beta
+          if git merge-base --is-ancestor origin/beta HEAD; then
+            echo "::error::Nothing to ship: main already has everything on beta."
+            exit 1
+          fi
+          git merge --no-edit -m "Ship beta as release" origin/beta
+          git push origin HEAD:main
+          # Keep beta level with main for the next round of betas.
+          git push origin HEAD:beta
+
+      # Pushes made by this workflow don't start other workflows, so start
+      # the release build directly.
+      - name: Build the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build.yml --ref main -R "${{ github.repository }}"

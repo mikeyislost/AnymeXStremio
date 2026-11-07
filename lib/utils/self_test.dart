@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:anymex/utils/app_channel.dart';
 import 'package:anymex/controllers/discord/discord_rpc.dart';
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
 import 'package:anymex/controllers/settings/settings.dart';
@@ -206,7 +207,7 @@ class SelfTestRunner extends GetxController {
     b.writeln('Mode:      ${_comprehensive ? 'Full (comprehensive)' : 'Quick'}');
     b.writeln('Date:      ${now.toIso8601String()}');
     b.writeln('Duration:  ${_started == null ? '-' : now.difference(_started!).inMilliseconds / 1000}s');
-    b.writeln('App:       ${info.appName} ${info.version} (build ${info.buildNumber})');
+    b.writeln('App:       ${AppChannel.appName} ${await AppChannel.version()} (build ${info.buildNumber})');
     b.writeln('Package:   ${info.packageName}');
     b.writeln('Platform:  ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
     b.writeln('Locale:    ${Platform.localeName}');
@@ -402,7 +403,7 @@ class SelfTestRunner extends GetxController {
         _TestCase('App', 'Version & build', () async {
           final i = await PackageInfo.fromPlatform();
           return Outcome.info(
-              '${i.appName} ${i.version} (build ${i.buildNumber}), ${i.packageName}');
+              '${AppChannel.appName} ${await AppChannel.version()} (build ${i.buildNumber}), ${i.packageName}');
         }, quick: true),
         _TestCase('App', 'Device', () async {
           final d = DeviceInfoPlugin();
@@ -1290,16 +1291,32 @@ class SelfTestRunner extends GetxController {
 
         // ---- Updates -------------------------------------------------------
         _TestCase('Updates', 'Latest release', () async {
+          final beta = AppChannel.isBeta;
           final r = await _get(
-              'https://api.github.com/repos/${UpdateManager.repo}/releases/latest',
+              beta
+                  ? 'https://api.github.com/repos/${UpdateManager.repo}/releases?per_page=30'
+                  : 'https://api.github.com/repos/${UpdateManager.repo}/releases/latest',
               headers: const {'Accept': 'application/vnd.github+json'});
           if (r.statusCode != 200) return Outcome.warn('HTTP ${r.statusCode}');
-          final tag = jsonDecode(r.body)['tag_name']?.toString() ?? '?';
-          final info = await PackageInfo.fromPlatform();
+          final body = jsonDecode(r.body);
+          String tag = '?';
+          if (beta && body is List) {
+            for (final rel in body) {
+              final t = (rel is Map ? rel['tag_name'] : null)?.toString() ?? '';
+              if (t.endsWith('-beta') && rel['prerelease'] == true) {
+                tag = t;
+                break;
+              }
+            }
+          } else if (body is Map) {
+            tag = body['tag_name']?.toString() ?? '?';
+          }
+          final installed = await AppChannel.version();
           final latest = tag.replaceFirst('v', '');
-          return Outcome(latest == info.version ? SelfTestStatus.pass : SelfTestStatus.info,
-              'installed ${info.version} · latest $tag'
-              '${latest == info.version ? ' (up to date)' : ''}');
+          final channel = beta ? 'latest beta' : 'latest';
+          return Outcome(latest == installed ? SelfTestStatus.pass : SelfTestStatus.info,
+              'installed $installed · $channel $tag'
+              '${latest == installed ? ' (up to date)' : ''}');
         }, quick: true),
 
         // ---- Playback & extensions ----------------------------------------

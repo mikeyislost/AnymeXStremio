@@ -50,10 +50,36 @@ I would just like to note that this app is built using claude code. I do not kno
 
 AnymeX+ uses its own bundle ID, so it installs next to the official AnymeX. The app checks for updates on launch.
 
+<div align="center">
+
+### Beta (AnymeX+ β)
+  <p>
+    <a href="https://github.com/mikeyislost/AnymeXStremio/releases"><img src="https://img.shields.io/github/v/release/mikeyislost/AnymeXStremio?include_prereleases&color=FF6B35&labelColor=0D0D0D&display_name=tag&style=for-the-badge&label=Newest%20build" alt="Newest build"/></a>
+  </p>
+  <p>
+    <a href="https://intradeus.github.io/http-protocol-redirector?r=feather://source/https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/source-beta.json"><img alt="Feather Beta Source" src="https://img.shields.io/badge/open_in_app-_?style=for-the-badge&label=Feather%20Beta&labelColor=0D0D0D&color=FF6B35"></a>
+    <a href="https://intradeus.github.io/http-protocol-redirector?r=altstore://source?url=https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/source-beta.json"><img alt="AltStore Beta Source" src="https://img.shields.io/badge/open_in_app-_?style=for-the-badge&label=AltStore%20Beta&labelColor=0D0D0D&color=FF6B35"></a>
+    <a href="https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/source-beta.json"><img alt="Beta Source URL" src="https://img.shields.io/badge/copy_%2F_paste-_?style=for-the-badge&label=Beta%20Source%20URL&labelColor=0D0D0D&color=FF6B35"></a>
+  </p>
+</div>
+
+| | Stable | Beta |
+|---|---|---|
+| **App name** | AnymeX+ | AnymeX+ β |
+| **Icon** | White logo | Orange logo with a BETA tag |
+| **iOS bundle ID** | `com.mikeyislost.anymexstremio` | `com.mikeyislost.anymexstremio.beta` |
+| **Windows** | AnymeXStremio | AnymeXStremio Beta |
+| **Releases** | `v1.1.2` | pre-releases `v1.1.2-beta`, `v1.1.2+1-beta`, ... |
+
+Fixes and new features go to the beta first. The beta is a separate app with its own sign-ins and library, so it can't break your normal install. Once a beta is ready it ships as the next stable release.
+
+> [!CAUTION]
+> Beta builds may be unstable or contain bugs.
+
 <details>
 <summary>Building it yourself</summary>
 
-Every push to `main` builds iOS and Windows with GitHub Actions and publishes a release.
+Every push to `main` builds iOS and Windows with GitHub Actions and publishes a release. Pushes to `beta` publish a beta pre-release instead. To ship a beta, run **Actions → Ship beta as release** (merges `beta` into `main` and builds the release).
 
 AniList login needs a free AniList API client:
 1. Create a client at https://anilist.co/settings/developer with the redirect URL `anymex://callback`

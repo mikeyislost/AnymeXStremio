@@ -18,6 +18,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../widgets/non_widgets/snackbar.dart';
 import '../main.dart';
+import 'package:anymex/utils/app_channel.dart';
 
 class Database {
   Isar _openIsar(Directory dir) {
@@ -175,7 +176,9 @@ class Database {
     if (Platform.isAndroid || Platform.isIOS) {
       return dir;
     }
-    String dbDir = path.join(dir.path, 'AnymeX', 'databases');
+    // The beta app keeps its own data so it can run next to the stable one.
+    String dbDir = path.join(
+        dir.path, AppChannel.isBeta ? 'AnymeX Beta' : 'AnymeX', 'databases');
     await Directory(dbDir).create(recursive: true);
     return Directory(dbDir);
   }

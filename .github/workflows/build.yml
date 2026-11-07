@@ -1,11 +1,17 @@
 name: Build & Release
 
 # Every push to main builds iOS + Windows and publishes ONE GitHub release
-# (vX.Y.N) containing the IPA, the Windows installer + portable zip, the
+# (vX.Y.Z) containing the IPA, the Windows installer + portable zip, the
 # Feather source file and a changelog of what changed since the last release.
+#
+# Pushes to `beta` build "AnymeX+ β" instead: a GitHub pre-release tagged
+# like AnymeX's betas (v1.1.2-beta, then v1.1.2+1-beta, ...), with its own
+# app ID, icon and data so it installs next to the stable app, and its own
+# Feather source (feather branch). Shipping a beta = merging beta into main
+# (the "Ship beta as release" workflow does that), which builds vX.Y.Z.
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths-ignore:
       - "**.md"
   workflow_dispatch:
@@ -27,34 +33,61 @@ jobs:
     outputs:
       version: ${{ steps.ver.outputs.version }}
       build: ${{ steps.ver.outputs.build }}
+      channel: ${{ steps.ver.outputs.channel }}
+      tag: ${{ steps.ver.outputs.tag }}
+      file_ver: ${{ steps.ver.outputs.file_ver }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       # Version: vX.Y.Z with single digits that roll over (1.0.9 -> 1.1.0,
-      # 1.9.9 -> 2.0.0). Next = latest release + 1; an old tag like 1.0.10
-      # counts as 1.1.0. Setting a higher version in pubspec.yaml (e.g.
-      # 2.0.0) starts there instead. Re-running a commit that already has a
-      # release reuses its version.
+      # 1.9.9 -> 2.0.0). Next = latest stable release + 1; an old tag like
+      # 1.0.10 counts as 1.1.0. Setting a higher version in pubspec.yaml
+      # (e.g. 2.0.0) starts there instead. Betas are rounds of the next
+      # stable version: v1.1.2-beta, v1.1.2+1-beta, v1.1.2+2-beta ...
+      # Re-running a commit that already has a release reuses its version.
       - name: Compute version
         id: ver
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          EXISTING=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
-          if [ -n "$EXISTING" ]; then
-            VERSION="${EXISTING#v}"
+          CHANNEL=stable
+          if [ "$GITHUB_REF_NAME" = "beta" ]; then CHANNEL=beta; fi
+          if [ "$CHANNEL" = beta ]; then
+            EXISTING=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?-beta$' | sort -V | tail -n 1 || true)
           else
+            EXISTING=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          fi
+          if [ -n "$EXISTING" ]; then
+            TAG="${EXISTING#v}"
+            VERSION=$(echo "$TAG" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          else
+            RELEASES=$(gh api "repos/${{ github.repository }}/releases?per_page=100" -q '.[].tag_name' || true)
             BASE=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
-            LAST=$(gh api "repos/${{ github.repository }}/releases?per_page=100" -q '.[].tag_name' \
-              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n 1 || true)
+            LAST=$(echo "$RELEASES" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n 1 || true)
             VERSION=$(python3 scripts/next_version.py "$BASE" "$LAST")
+            if [ "$CHANNEL" = beta ]; then
+              TAG=$( { echo "$RELEASES"; git tag; } | python3 scripts/next_beta.py "$VERSION")
+            else
+              TAG="$VERSION"
+            fi
+          fi
+          # File names avoid "+": 1.1.2+1-beta -> 1.1.2-beta.1
+          if [[ "$TAG" == *+* ]]; then
+            ROUND="${TAG#*+}"; FILE_VER="$VERSION-beta.${ROUND%-beta}"
+          else
+            FILE_VER="$TAG"
           fi
           COUNT=$(git rev-list --count HEAD)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "build=$COUNT" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION (build $COUNT)"
+          {
+            echo "version=$VERSION"
+            echo "build=$COUNT"
+            echo "channel=$CHANNEL"
+            echo "tag=$TAG"
+            echo "file_ver=$FILE_VER"
+          } >> "$GITHUB_OUTPUT"
+          echo "Channel: $CHANNEL · tag v$TAG · version $VERSION (build $COUNT) · files $FILE_VER"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -81,6 +114,9 @@ jobs:
             lib/widgets/common/reusable_carousel.dart \
             lib/utils/color_extractor.dart \
             lib/utils/updater.dart \
+            lib/utils/app_channel.dart \
+            lib/database/database.dart \
+            lib/screens/settings/sub_settings/settings_about.dart \
             lib/screens/library \
             lib/utils/function.dart \
             lib/controllers/settings/settings.dart \
@@ -103,6 +139,9 @@ jobs:
     env:
       VERSION: ${{ needs.analyze.outputs.version }}
       BUILD: ${{ needs.analyze.outputs.build }}
+      CHANNEL: ${{ needs.analyze.outputs.channel }}
+      TAG: ${{ needs.analyze.outputs.tag }}
+      FILE_VER: ${{ needs.analyze.outputs.file_ver }}
     steps:
       - uses: actions/checkout@v4
 
@@ -141,7 +180,13 @@ jobs:
           CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
           TMDB_API_KEY=$TMDB_API_KEY
           COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
+          APP_CHANNEL=$CHANNEL
+          APP_VERSION_TAG=$TAG
           EOF
+
+      - name: Make the beta app (AnymeX+ β)
+        if: env.CHANNEL == 'beta'
+        run: python3 scripts/beta_build.py ios
 
       - name: Build iOS (unsigned)
         run: |
@@ -150,7 +195,7 @@ jobs:
             --build-name "$VERSION" --build-number "$BUILD"
           mkdir -p build/ios/iphoneos/Payload dist
           cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
-          (cd build/ios/iphoneos && zip -qr "../../../dist/AnymeX-Stremio-v$VERSION.ipa" Payload)
+          (cd build/ios/iphoneos && zip -qr "../../../dist/AnymeX-Stremio-v$FILE_VER.ipa" Payload)
 
       - uses: actions/upload-artifact@v4
         with:
@@ -163,6 +208,9 @@ jobs:
     env:
       VERSION: ${{ needs.analyze.outputs.version }}
       BUILD: ${{ needs.analyze.outputs.build }}
+      CHANNEL: ${{ needs.analyze.outputs.channel }}
+      TAG: ${{ needs.analyze.outputs.tag }}
+      FILE_VER: ${{ needs.analyze.outputs.file_ver }}
     steps:
       - name: Enable Git long paths
         run: |
@@ -223,10 +271,17 @@ jobs:
           CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
           TMDB_API_KEY=$TMDB_API_KEY
           COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
+          APP_CHANNEL=$CHANNEL
+          APP_VERSION_TAG=$TAG
           EOF
           # Stamp the version into the app and the installer.
           sed -i -E "s/^version: .*/version: $VERSION+$BUILD/" pubspec.yaml
           sed -i -E "s/^    version: [0-9.]+$/    version: $VERSION/" pubspec.yaml
+
+      - name: Make the beta app (AnymeX+ β)
+        if: env.CHANNEL == 'beta'
+        shell: bash
+        run: python scripts/beta_build.py windows
 
       - name: Build Windows app + installer
         shell: pwsh
@@ -241,8 +296,8 @@ jobs:
           & iscc $issFile
           if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup failed ($LASTEXITCODE)"; exit 1 }
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Get-ChildItem build\windows\x64\installer\Release\*.exe | Select-Object -First 1 | Copy-Item -Destination "dist\AnymeX-Stremio-v$env:VERSION-Windows-Setup.exe"
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\AnymeX-Stremio-v$env:VERSION-Windows-Portable.zip"
+          Get-ChildItem build\windows\x64\installer\Release\*.exe | Select-Object -First 1 | Copy-Item -Destination "dist\AnymeX-Stremio-v$env:FILE_VER-Windows-Setup.exe"
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\AnymeX-Stremio-v$env:FILE_VER-Windows-Portable.zip"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -258,6 +313,9 @@ jobs:
     env:
       VERSION: ${{ needs.analyze.outputs.version }}
       BUILD: ${{ needs.analyze.outputs.build }}
+      CHANNEL: ${{ needs.analyze.outputs.channel }}
+      TAG: ${{ needs.analyze.outputs.tag }}
+      FILE_VER: ${{ needs.analyze.outputs.file_ver }}
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
     steps:
@@ -270,10 +328,20 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # Stable notes cover everything since the last stable release (all
+      # the betas that went into it); beta notes cover the last build.
       - name: Release notes
         run: |
-          PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD^ 2>/dev/null || true)
+          if [ "$CHANNEL" = beta ]; then
+            PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD^ 2>/dev/null || true)
+          else
+            PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-beta' HEAD^ 2>/dev/null || true)
+          fi
           {
+            if [ "$CHANNEL" = beta ]; then
+              echo "> **Beta build.** Installs next to AnymeX+ as a separate app, **AnymeX+ β**, with its own sign-ins and library. It may have bugs; once it's ready it ships as **v$VERSION**."
+              echo
+            fi
             echo "## What's new"
             if [ -n "$PREV" ]; then
               git log "$PREV"..HEAD --no-merges --format='- %s' | grep -v '^- Merge' | sed 's/ \[skip ci\]//' || true
@@ -282,14 +350,20 @@ jobs:
             fi
             echo
             echo "## Install"
-            echo "- **iPhone (Feather):** add the source \`https://github.com/$REPO/releases/latest/download/source.json\` and update **AnymeX+**, or download the \`.ipa\` below."
-            echo "- **Windows:** run the \`Setup.exe\`, or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
+            if [ "$CHANNEL" = beta ]; then
+              echo "- **iPhone (Feather):** add the beta source \`https://raw.githubusercontent.com/$REPO/feather/source-beta.json\` and install **AnymeX+ β**, or download the \`.ipa\` below."
+              echo "- **Windows:** run the \`Setup.exe\` (installs **AnymeXStremio Beta** next to the normal app), or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
+            else
+              echo "- **iPhone (Feather):** add the source \`https://github.com/$REPO/releases/latest/download/source.json\` and update **AnymeX+**, or download the \`.ipa\` below."
+              echo "- **Windows:** run the \`Setup.exe\`, or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
+            fi
             echo
-            echo "Built from ${GITHUB_SHA:0:7}."
+            echo "Built from ${GITHUB_SHA:0:7} (build $BUILD)."
           } > notes.md
           cat notes.md
 
       - name: Feather / AltStore source
+        if: env.CHANNEL == 'stable'
         run: |
           python3 - <<'PY'
           import json, os, subprocess, datetime
@@ -307,7 +381,7 @@ jobs:
           }]
           # Older versions, so Feather can show the history / downgrade.
           try:
-              out = subprocess.run(["gh", "api", f"repos/{repo}/releases?per_page=30"],
+              out = subprocess.run(["gh", "api", f"repos/{repo}/releases?per_page=100"],
                                    capture_output=True, text=True, check=True).stdout
               for rel in json.loads(out):
                   tag = rel.get("tag_name", "")
@@ -359,6 +433,7 @@ jobs:
           PY
 
       - name: Publish release v${{ env.VERSION }}
+        if: env.CHANNEL == 'stable'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
@@ -368,9 +443,80 @@ jobs:
           make_latest: true
           files: dist/*
 
+      - name: Publish beta v${{ env.TAG }}
+        if: env.CHANNEL == 'beta'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          name: AnymeX+ β v${{ env.TAG }}
+          body_path: notes.md
+          prerelease: true
+          make_latest: false
+          files: dist/*
+
+      # Betas can't use the "latest release" link (it skips pre-releases),
+      # so their Feather source lives on the `feather` branch.
+      - name: Beta Feather source
+        if: env.CHANNEL == 'beta'
+        run: |
+          gh release view "v$TAG" -R "$REPO" --json assets,body > beta_release.json
+          python3 - <<'PY'
+          import json, os, datetime
+          repo, version, build, tag = (os.environ[k] for k in ("REPO", "VERSION", "BUILD", "TAG"))
+          rel = json.load(open("beta_release.json"))
+          ipa = next(a for a in rel["assets"] if a["name"].endswith(".ipa"))
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          notes = open("notes.md").read().split("## What's new")[-1].split("## Install")[0].strip()
+          notes = f"Beta v{tag}\n\n{notes}"
+          icon = f"https://raw.githubusercontent.com/{repo}/feather/beta-logo.png"
+          desc = ("Beta builds of AnymeX+ (AnymeX with Stremio built in). Installs "
+                  "next to the normal app as AnymeX+ \u03b2, with its own sign-ins "
+                  "and library. New fixes land here first.")
+          app = {
+            "name": "AnymeX+ \u03b2", "bundleIdentifier": "com.mikeyislost.anymexstremio.beta",
+            "developerName": repo.split("/")[0], "subtitle": "AnymeX+ beta builds",
+            "localizedDescription": desc, "iconURL": icon, "tintColor": "#FF6B35",
+            "category": "entertainment", "beta": True,
+            "version": version, "buildVersion": build, "versionDate": now,
+            "versionDescription": notes, "downloadURL": ipa["url"], "size": ipa["size"],
+            "screenshotURLs": [], "appPermissions": {},
+            "versions": [{
+              "version": version, "buildVersion": build, "date": now,
+              "localizedDescription": notes, "downloadURL": ipa["url"],
+              "size": ipa["size"], "minOSVersion": "13.0",
+            }],
+          }
+          source = {
+            "name": "AnymeX+ \u03b2 (Beta)", "identifier": "com.mikeyislost.anymexstremio.beta.source",
+            "subtitle": "AnymeX+ beta builds", "description": desc, "iconURL": icon,
+            "website": f"https://github.com/{repo}", "tintColor": "#FF6B35",
+            "apps": [app], "news": [],
+          }
+          json.dump(source, open("source-beta.json", "w"), indent=2)
+          print(json.dumps(source, indent=2))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin feather >/dev/null 2>&1; then
+            git fetch -q origin feather
+            git worktree add -q -B feather /tmp/feather FETCH_HEAD
+          else
+            git worktree add -q --detach /tmp/feather
+            (cd /tmp/feather && git checkout -q --orphan feather && git rm -rqf .)
+          fi
+          cp source-beta.json /tmp/feather/source-beta.json
+          cp beta/logo.png /tmp/feather/beta-logo.png
+          printf '# Feather source for AnymeX+ betas\n\nUpdated automatically by every beta build. Add this source in Feather:\n\nhttps://raw.githubusercontent.com/%s/feather/source-beta.json\n' "$REPO" > /tmp/feather/README.md
+          cd /tmp/feather
+          git add -A
+          git commit -qm "Beta source: v$TAG [skip ci]" || { echo "Source unchanged"; exit 0; }
+          git push -q origin HEAD:feather
+
       # Keep the original Feather source URL (latest-ios/source.json)
       # working, and retire the old rolling download releases.
       - name: Update legacy source URL
+        if: env.CHANNEL == 'stable'
         run: |
           gh release view latest-ios -R "$REPO" >/dev/null 2>&1 || exit 0
           for a in $(gh release view latest-ios -R "$REPO" --json assets -q '.assets[].name'); do

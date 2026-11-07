@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:anymex/utils/abi_checker.dart';
 import 'package:anymex/utils/logger.dart';
+import 'package:anymex/utils/app_channel.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_button.dart';
@@ -23,14 +24,17 @@ import 'package:url_launcher/url_launcher.dart';
 class UpdateManager {
   // AnymeX+ (AnymeX + Stremio) updates come from its own releases, not
   // from official AnymeX, so updating never replaces this build.
-  static const String repo = 'mikeyislost/AnymeXStremio';
+  // The beta app ("AnymeX+ β") only follows the beta pre-releases.
+  static const String repo = AppChannel.repo;
   static const String _stableRepoUrl =
       'https://api.github.com/repos/$repo/releases/latest';
-  static const String featherSourceUrl =
-      'https://github.com/$repo/releases/latest/download/source.json';
+  static const String _releasesListUrl =
+      'https://api.github.com/repos/$repo/releases?per_page=30';
 
-  static const String _betaRepoUrl =
-      'https://api.github.com/repos/Shebyyy/AnymeX-Preview/releases/latest';
+  /// Feather source this app updates from.
+  static String get featherSourceUrl => AppChannel.isBeta
+      ? AppChannel.betaSourceUrl
+      : 'https://github.com/$repo/releases/latest/download/source.json';
 
   String getDownloadUrlByArch(List<dynamic> assets, String arch) {
     for (var asset in assets) {
@@ -78,27 +82,24 @@ class UpdateManager {
 
       try {
         final packageInfo = await PackageInfo.fromPlatform();
-        // No beta channel for AnymeX+.
-        const isBetaApp = false;
-        isBeta = false;
+        // The beta app updates to newer betas only; the stable app to
+        // newer stable releases only (they are separate apps).
+        final isBetaApp = AppChannel.isBeta;
+        isBeta = isBetaApp;
         debugPrint('Checking ${packageInfo.packageName} for updates');
         final currentVersion = await _getCurrentVersion();
 
         if (isBetaApp) {
           final betaRelease = await _fetchLatestRelease(isBeta: true);
-          final stableRelease = await _fetchLatestRelease(isBeta: false);
-
-          if (betaRelease == null && stableRelease == null) {
-            Logger.i("Failed to check for updates");
+          if (betaRelease == null) {
+            Logger.i("Failed to check for beta updates");
             if (manualCheck) {
               snackBar('Failed to check for updates');
             }
             return;
           }
-
-          if (betaRelease != null &&
-              _shouldUpdate(currentVersion, betaRelease['tag_name'] ?? '',
-                  isBeta: true)) {
+          if (_shouldUpdate(currentVersion, betaRelease['tag_name'] ?? '',
+              isBeta: true)) {
             final downloadUrls =
                 _buildDownloadUrls(betaRelease['assets'] ?? []);
             if (context.mounted) {
@@ -110,18 +111,7 @@ class UpdateManager {
                 downloadUrls,
               );
             }
-            return;
-          }
-
-          if (stableRelease != null &&
-              _shouldUpdate(currentVersion, stableRelease['tag_name'] ?? '',
-                  isBeta: false)) {
-            snackBar(
-                'New stable update available: ${stableRelease['tag_name'] ?? ''}');
-            return;
-          }
-
-          if (manualCheck) {
+          } else if (manualCheck) {
             snackBar('No updates available');
           }
           return;
@@ -256,33 +246,32 @@ class UpdateManager {
     return false;
   }
 
-  Future<String> _getCurrentVersion() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    return packageInfo.version;
-  }
+  Future<String> _getCurrentVersion() => AppChannel.version();
 
   Future<Map<String, dynamic>?> _fetchLatestRelease({
     bool isBeta = false,
   }) async {
     try {
       if (isBeta) {
-        const betaReleasesListUrl =
-            'https://api.github.com/repos/Shebyyy/AnymeX-Preview/releases';
+        // Newest beta pre-release (GitHub lists newest first).
         final response = await http.get(
-          Uri.parse(betaReleasesListUrl),
+          Uri.parse(_releasesListUrl),
           headers: {'Accept': 'application/vnd.github.v3+json'},
         );
-        if (response.statusCode == 200) {
-          final List<dynamic> list = json.decode(response.body);
-          if (list.isNotEmpty) {
-            return list.first as Map<String, dynamic>;
-          }
+        if (response.statusCode != 200) return null;
+        final List<dynamic> list = json.decode(response.body);
+        for (final r in list) {
+          if (r is! Map<String, dynamic>) continue;
+          final tag = (r['tag_name'] ?? '').toString();
+          if (r['draft'] == true || r['prerelease'] != true) continue;
+          if (!tag.endsWith('-beta')) continue;
+          return r;
         }
+        return null;
       }
 
-      final url = isBeta ? _betaRepoUrl : _stableRepoUrl;
       final response = await http.get(
-        Uri.parse(url),
+        Uri.parse(_stableRepoUrl),
         headers: {'Accept': 'application/vnd.github.v3+json'},
       );
 
@@ -489,7 +478,7 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
     }
     if (mounted) Navigator.of(context).pop();
     snackBar(opened
-        ? 'Update AnymeX+ from its source in Feather'
+        ? 'Update ${AppChannel.appName} from its source in Feather'
         : 'Downloading the new IPA, open it with Feather to install');
   }
 

@@ -1,3 +1,4 @@
+import 'package:anymex/utils/app_channel.dart';
 import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/screens/stremio/stremio_home_page.dart';
 import 'dart:async';
@@ -390,7 +391,7 @@ class _MainAppState extends State<MainApp> {
       child: GetMaterialApp(
         scrollBehavior: MyCustomScrollBehavior(),
         debugShowCheckedModeBanner: false,
-        title: "AnymeX",
+        title: AppChannel.isBeta ? 'AnymeX+ Beta' : 'AnymeX',
         theme: theme.lightTheme,
         darkTheme: theme.darkTheme,
         themeMode: theme.isSystemMode

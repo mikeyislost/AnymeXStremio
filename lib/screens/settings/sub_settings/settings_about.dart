@@ -1,3 +1,4 @@
+import 'package:anymex/utils/app_channel.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/screens/other_features.dart';
 import 'package:anymex/screens/settings/sub_settings/contributors/contributors.dart';
@@ -109,9 +110,12 @@ class _AboutPageState extends State<AboutPage> {
                                   FutureBuilder<PackageInfo>(
                                     future: PackageInfo.fromPlatform(),
                                     builder: (context, snapshot) {
-                                      final version = snapshot.hasData
-                                          ? snapshot.data!.version
-                                          : '';
+                                      final version =
+                                          AppChannel.versionTag.isNotEmpty
+                                              ? AppChannel.versionTag
+                                              : snapshot.hasData
+                                                  ? snapshot.data!.version
+                                                  : '';
                                       return ProfileInfo(
                                         username: "AnymeX",
                                         version: "v$version",
