@@ -32,21 +32,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Version: <major.minor from pubspec>.<patch>, where patch = the last
-      # v<major.minor>.* release + 1 (first release: .1). Change the
-      # major/minor in pubspec.yaml (e.g. 1.1.0) to start a new series.
-      # Re-running a commit that already has a release reuses its version.
+      # Version: vX.Y.Z with single digits that roll over (1.0.9 -> 1.1.0,
+      # 1.9.9 -> 2.0.0). Next = latest release + 1; an old tag like 1.0.10
+      # counts as 1.1.0. Setting a higher version in pubspec.yaml (e.g.
+      # 2.0.0) starts there instead. Re-running a commit that already has a
+      # release reuses its version.
       - name: Compute version
         id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          BASE=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+)\.([0-9]+).*/\1.\2/')
-          EXISTING=$(git tag --points-at HEAD --list "v$BASE.*" | sort -V | tail -n 1)
+          EXISTING=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
           if [ -n "$EXISTING" ]; then
             VERSION="${EXISTING#v}"
           else
-            LAST=$(git tag --list "v$BASE.*" | sort -V | tail -n 1)
-            if [ -z "$LAST" ]; then PATCH=1; else PATCH=$(( ${LAST##*.} + 1 )); fi
-            VERSION="$BASE.$PATCH"
+            BASE=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+            LAST=$(gh api "repos/${{ github.repository }}/releases?per_page=100" -q '.[].tag_name' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n 1 || true)
+            VERSION=$(python3 scripts/next_version.py "$BASE" "$LAST")
           fi
           COUNT=$(git rev-list --count HEAD)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
