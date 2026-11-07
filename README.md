@@ -14,6 +14,14 @@ A personal build of [AnymeX](https://github.com/RyanYuuki/AnymeX) (anime/manga t
 
 Settings → Accounts → **Stremio** has the login, sync switches and addon list.
 
+## Windows
+
+Every push also runs **Actions → Build Windows EXE**, which publishes to the **latest-windows** release:
+- `AnymeX-Stremio-Windows-Setup.exe`: installer (installs alongside official AnymeX)
+- `AnymeX-Stremio-Windows-Portable.zip`: unzip and run `anymex.exe`, no install needed
+
+Windows may show a SmartScreen warning because the app isn't code-signed. Click **More info → Run anyway**.
+
 ## Building the iOS app
 
 Every push to `main` runs **Actions → Build iOS IPA**. It checks the code, builds an unsigned `.ipa`, and attaches it to the **latest-ios** release. Install it with Feather, AltStore or Sideloadly.

@@ -1,0 +1,119 @@
+name: Build Windows EXE
+
+# Builds a Windows installer (.exe) and a portable .zip.
+# Runs on every push to main, or manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: "3.41.6"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Enable Git long paths
+        run: |
+          git config --global core.longpaths true
+          git config --system core.longpaths true
+
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $innoPath = "${env:ProgramFiles(x86)}\Inno Setup 6"
+          $isccPath = Join-Path $innoPath "ISCC.exe"
+          if (-not (Test-Path $isccPath)) {
+            $installer = "$env:TEMP\innosetup.exe"
+            Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile $installer -UseBasicParsing
+            Start-Process -FilePath $installer -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-" -Wait -NoNewWindow
+            Start-Sleep -Seconds 5
+          }
+          if (-not (Test-Path $isccPath)) { Write-Error "Inno Setup install failed"; exit 1 }
+          echo "$innoPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      # Same optional repo secrets as the iOS build.
+      - name: Setup environment
+        shell: bash
+        env:
+          AL_CLIENT_ID: ${{ secrets.AL_CLIENT_ID }}
+          AL_CLIENT_SECRET: ${{ secrets.AL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
+          CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          cat > .env << EOF
+          AL_CLIENT_ID=$AL_CLIENT_ID
+          AL_CLIENT_SECRET=$AL_CLIENT_SECRET
+          SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID
+          SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET
+          MAL_CLIENT_ID=$MAL_CLIENT_ID
+          MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
+          CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
+          TMDB_API_KEY=$TMDB_API_KEY
+          EOF
+
+      - name: Build Windows app + installer
+        shell: pwsh
+        run: |
+          flutter pub get
+          dart run inno_bundle:build --release 2>&1 | Select-String -Pattern "Compile aborted" -NotMatch
+          $issFile = "build\windows\x64\installer\Release\inno-script.iss"
+          if (-not (Test-Path $issFile)) { Write-Error "ISS file not found: $issFile"; exit 1 }
+          $content = Get-Content $issFile -Raw
+          $content = $content -replace '.*Icelandic\.isl.*\r?\n', ''
+          Set-Content $issFile -Value $content -NoNewline
+          & iscc $issFile
+          if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup failed ($LASTEXITCODE)"; exit 1 }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Get-ChildItem build\windows\x64\installer\Release\*.exe | Select-Object -First 1 | Copy-Item -Destination dist\AnymeX-Stremio-Windows-Setup.exe
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath dist\AnymeX-Stremio-Windows-Portable.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AnymeX-Stremio-windows
+          path: dist/*
+
+      # Always-current download links: Releases → "latest-windows".
+      - name: Publish to the latest-windows release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-windows
+          name: Latest Windows build
+          body: "Built from ${{ github.sha }}. Setup.exe installs it; the Portable zip runs without installing (open anymex.exe)."
+          prerelease: true
+          make_latest: false
+          files: |
+            dist/AnymeX-Stremio-Windows-Setup.exe
+            dist/AnymeX-Stremio-Windows-Portable.zip
