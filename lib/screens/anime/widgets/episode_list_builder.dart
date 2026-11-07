@@ -13,6 +13,8 @@ import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/watch/watch_view.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/screens/anime/widgets/episode_range.dart';
+import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
+import 'package:anymex/screens/anime/widgets/stremio_anime_episodes.dart';
 import 'package:anymex/screens/anime/widgets/track_dialog.dart';
 import 'package:anymex/screens/downloads/controller/download_controller.dart';
 import 'package:anymex/screens/downloads/model/download_models.dart';
@@ -68,6 +70,19 @@ class EpisodeListBuilder extends StatefulWidget {
     required Media anilistData,
     bool bypassDialog = false,
   }) async {
+    // AnymeX+: episodes saved from a Stremio stream reopen Stremio streams.
+    if (episode.source == 'Stremio' && (episode.link?.isNotEmpty ?? false)) {
+      await openStremioAnimeStreams(
+        context,
+        media: anilistData,
+        episode: episode,
+        episodes:
+            episodeList.where((e) => e.source == 'Stremio').toList(),
+        isMovie: isMovieMedia(anilistData, episodeList),
+        bypassDialog: bypassDialog,
+      );
+      return;
+    }
     await AnymeXSheet.custom(
       ServerSheetContent(
         episode: episode,
@@ -503,6 +518,10 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
       final selectedEpisodes = chunkedEpisodes.isNotEmpty
           ? chunkedEpisodes[safeChunkIndex]
           : <Episode>[];
+      // AnymeX+: movies get one movie card instead of "Episode 1".
+      final isMovie = isMovieMedia(widget.anilistData, widget.episodeList);
+      Widget movieCard() =>
+          _buildMovieCard(context, widget.episodeList.first, extName, mediaTitle);
 
       if (widget.isSliverMode) {
         return SliverMainAxisGroup(
@@ -516,6 +535,7 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
                 isDownloadedTab: isDownloadedTab,
                 extName: extName,
                 mediaTitle: mediaTitle,
+                isMovie: isMovie,
               ),
             ),
             if (isDownloadedTab)
@@ -609,6 +629,8 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
                     ).animatePop(index: index);
                   },
                 )
+            else if (isMovie)
+              SliverToBoxAdapter(child: movieCard())
             else if (currentStyle.isGrid)
               SliverGrid.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -702,6 +724,7 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
             isDownloadedTab: isDownloadedTab,
             extName: extName,
             mediaTitle: mediaTitle,
+            isMovie: isMovie,
           ),
           if (isDownloadedTab)
             if (downloadedEpisodes.isEmpty)
@@ -746,6 +769,8 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
                   ).animatePop(index: index);
                 },
               )
+          else if (isMovie)
+            movieCard()
           else
             ListView.builder(
               padding: EdgeInsets.zero,
@@ -788,6 +813,35 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
     });
   }
 
+  Widget _buildMovieCard(
+      BuildContext context, Episode episode, String extName, String mediaTitle) {
+    final media = widget.anilistData;
+    final thumb = episode.thumbnail ?? '';
+    final image = thumb.isNotEmpty
+        ? thumb
+        : ((media?.cover?.isNotEmpty ?? false) ? media!.cover! : media?.poster ?? '');
+    final year = media?.seasonYear?.toString() ??
+        RegExp(r'(19|20)\d{2}').firstMatch(media?.aired ?? '')?.group(0) ??
+        '';
+    return MovieWatchCard(
+      title: (media?.title.isNotEmpty ?? false)
+          ? media!.title
+          : (episode.title ?? 'Movie'),
+      imageUrl: image,
+      fallbackImage: media?.poster,
+      details: [formatMovieRuntime(media?.duration ?? ''), year],
+      progress: _calculateEpisodeProgress(episode),
+      watched: _isEpisodeWatched(episode),
+      onPlay: () => _handleEpisodeSelection(episode),
+      onLongPress: () {
+        selectedEpisode.value = episode;
+        fetchServers(episode, bypassDialog: true);
+      },
+      trailing: _buildEpisodeDownloadButton(
+          context, episode, extName, mediaTitle),
+    ).animatePop(index: 0);
+  }
+
   Widget _buildHeaderCard(
     BuildContext context, {
     required List<EpisodeSortSection> sortSections,
@@ -796,6 +850,7 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
     required bool isDownloadedTab,
     required String extName,
     required String mediaTitle,
+    bool isMovie = false,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -901,7 +956,7 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
               ],
             ],
           ),
-          if (!isDownloadedTab) ...[
+          if (!isDownloadedTab && !isMovie) ...[
             ...sortSections.map((section) {
               final values =
                   _availableValuesForKey(section.key, sections: sortSections);

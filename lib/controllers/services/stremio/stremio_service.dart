@@ -33,6 +33,16 @@ class StremioIds {
   static bool isStremioMediaId(String? id) =>
       id != null && id.startsWith(prefix);
 
+  /// Stremio content type for a bare video id: `kitsu:1:5` / `tt1:1:5` are
+  /// series episodes, `kitsu:1` / `tt1` are movies.
+  static String typeForVideoId(String videoId) {
+    final parts = videoId.split(':');
+    if (videoId.startsWith('kitsu:')) {
+      return parts.length >= 3 ? 'series' : 'movie';
+    }
+    return parts.length >= 3 ? 'series' : 'movie';
+  }
+
   /// Returns (type, metaId) or null.
   static (String, String)? parse(String id) {
     if (!isStremioMediaId(id)) return null;
@@ -81,6 +91,33 @@ class StremioPlayback {
   }
 }
 
+/// An AniList/MAL anime matched to Stremio, for playing it with the user's
+/// Stremio stream addons from the anime Watch tab.
+class StremioAnimeTarget {
+  /// Stremio type to ask stream addons for (series / movie).
+  final String type;
+
+  /// kitsu:… or tt… id the stream addons understand.
+  final String libraryId;
+  final StremioMeta? meta;
+  final bool isMovie;
+
+  /// One per episode; `link` is the Stremio video id, `source` is 'Stremio'.
+  final List<Episode> episodes;
+
+  /// Names of the stream addons that accept these ids.
+  final List<String> addonNames;
+
+  const StremioAnimeTarget({
+    required this.type,
+    required this.libraryId,
+    required this.meta,
+    required this.isMovie,
+    required this.episodes,
+    required this.addonNames,
+  });
+}
+
 class _AnimeMapping {
   final String? kitsuId;
   final String? imdbId;
@@ -115,6 +152,7 @@ class StremioService extends GetxController {
   static const _kSyncAnime = 'stremio_sync_anime';
   static const _kSyncEnabled = 'stremio_sync_enabled';
   static const _kSyncToAnilist = 'stremio_sync_to_anilist';
+  static const _kAnimeStreamSource = 'anymexplus_anime_stream_source';
 
   final api = StremioApi();
 
@@ -135,6 +173,9 @@ class StremioService extends GetxController {
 
   /// Anime watched from Movies & TV (Stremio) updates AniList progress.
   final RxBool syncToAnilist = true.obs;
+
+  /// Where the anime Watch tab gets streams: 'extensions' or 'stremio'.
+  final RxString animeStreamSource = 'extensions'.obs;
 
   /// The user's Stremio library (added items, newest first).
   final RxList<StremioLibraryItem> library = <StremioLibraryItem>[].obs;
@@ -158,6 +199,8 @@ class StremioService extends GetxController {
       syncAnime.value = KvHelper.get<bool>(_kSyncAnime, defaultVal: true);
       syncToAnilist.value =
           KvHelper.get<bool>(_kSyncToAnilist, defaultVal: true);
+      animeStreamSource.value = KvHelper.get<String>(_kAnimeStreamSource,
+          defaultVal: 'extensions');
       final key = KvHelper.get<String?>(_kAuthKey);
       if (key != null && key.isNotEmpty) {
         _authKey = key;
@@ -376,10 +419,15 @@ class StremioService extends GetxController {
         onAddonResult,
   }) async {
     await ensureAddons();
-    final sources = addons.where((a) => a.supports('stream', type, videoId));
+    final sources = addons.where((a) =>
+        a.supports('stream', type, videoId) ||
+        a.supports('stream', 'anime', videoId));
     final results = await Future.wait(sources.map((addon) async {
       try {
-        final list = await api.streams(addon, type, videoId);
+        final list = await api.streams(
+            addon,
+            addon.supports('stream', type, videoId) ? type : 'anime',
+            videoId);
         onAddonResult?.call(addon, list);
         return list;
       } catch (e) {
@@ -579,6 +627,214 @@ class StremioService extends GetxController {
     }
     _animePlaybackCache[cacheKey] = playback;
     return playback;
+  }
+
+  // ---- anime Watch tab → Stremio streams -----------------------------------
+
+  void setAnimeStreamSource(String value) {
+    animeStreamSource.value = value;
+    KvHelper.set(_kAnimeStreamSource, value);
+  }
+
+  /// Whether any installed addon serves streams.
+  bool get hasStreamAddons => addons.any((a) => a.hasResource('stream'));
+
+  final Map<String, StremioAnimeTarget?> _animeTargets = {};
+
+  (String, String)? _mappingKey(anymex.Media media) {
+    final service = media.serviceType;
+    if (service == ServicesType.anilist && media.id.isNotEmpty) {
+      return ('anilist_id', media.id);
+    }
+    if (service == ServicesType.mal && media.id.isNotEmpty) {
+      return ('mal_id', media.id);
+    }
+    if (media.idMal.isNotEmpty && media.idMal != '0') {
+      return ('mal_id', media.idMal);
+    }
+    return null;
+  }
+
+  /// Matches an anime to ids the user's stream addons accept and lists its
+  /// episodes as Stremio video ids. Null when it can't be matched.
+  Future<StremioAnimeTarget?> animeTarget(anymex.Media media,
+      {bool refresh = false}) async {
+    final key = _mappingKey(media);
+    if (key == null) return null;
+    final mapKey = '${key.$1}:${key.$2}';
+    if (!refresh && _animeTargets.containsKey(mapKey)) {
+      return _animeTargets[mapKey];
+    }
+    await ensureAddons();
+    if (refresh || !_animeMappings.containsKey(mapKey)) {
+      _animeMappings[mapKey] = await _fetchAnimeMapping(key.$1, key.$2);
+    }
+    final mapping = _animeMappings[mapKey];
+    if (mapping == null) return null;
+
+    final isMovieHint = mapping.isMovie ||
+        media.format.toUpperCase() == 'MOVIE' ||
+        (media.totalEpisodes == '1' &&
+            media.format.toUpperCase() == 'SPECIAL');
+    final streamAddons = addons.where((a) => a.hasResource('stream')).toList();
+
+    List<String> acceptedBy(String id, String type) => streamAddons
+        .where((a) =>
+            a.supports('stream', type, id) || a.supports('stream', 'anime', id))
+        .map((a) => a.name)
+        .toList();
+
+    StremioAnimeTarget? target;
+
+    // Kitsu ids first: one id per AniList entry, episodes numbered the same.
+    if (mapping.kitsuId != null) {
+      final libId = 'kitsu:${mapping.kitsuId}';
+      StremioMeta? meta;
+      for (final t in isMovieHint
+          ? ['movie', 'series', 'anime']
+          : ['series', 'anime', 'movie']) {
+        meta = await fetchMeta(t, libId);
+        if (meta != null) break;
+      }
+      final isMovie = meta != null ? meta.isSingleVideo : isMovieHint;
+      final type = isMovie ? 'movie' : 'series';
+      final names = acceptedBy(isMovie ? libId : '$libId:1', type);
+      if (names.isNotEmpty) {
+        target = StremioAnimeTarget(
+          type: type,
+          libraryId: libId,
+          meta: meta,
+          isMovie: isMovie,
+          addonNames: names,
+          episodes: isMovie
+              ? [_movieEpisode(media, meta, meta?.singleVideoId ?? libId)]
+              : _kitsuEpisodes(media, meta, libId),
+        );
+      }
+    }
+
+    // Otherwise IMDb ids (season/episode from ani.zip).
+    if (target == null && mapping.imdbId != null) {
+      final libId = mapping.imdbId!;
+      final isMovie = isMovieHint;
+      final type = isMovie ? 'movie' : 'series';
+      final meta = await fetchMeta(type, libId);
+      final names = acceptedBy(isMovie ? libId : '$libId:1:1', type);
+      if (names.isNotEmpty) {
+        target = StremioAnimeTarget(
+          type: type,
+          libraryId: libId,
+          meta: meta,
+          isMovie: isMovie,
+          addonNames: names,
+          episodes: isMovie
+              ? [_movieEpisode(media, meta, libId)]
+              : _imdbEpisodes(media, meta, libId, mapping),
+        );
+      }
+    }
+
+    _animeTargets[mapKey] = target;
+    return target;
+  }
+
+  /// Released episode count for an anime from AniList/MAL data.
+  int _releasedEpisodes(anymex.Media media) {
+    final total = int.tryParse(media.totalEpisodes) ?? 0;
+    final next = media.nextAiringEpisode?.episode;
+    if (next != null && next > 1) {
+      return total > 0 ? (next - 1).clamp(1, total) : next - 1;
+    }
+    return total;
+  }
+
+  Episode _movieEpisode(anymex.Media media, StremioMeta? meta, String videoId) {
+    return Episode(
+      number: '1',
+      title: meta?.name ?? media.title,
+      link: videoId,
+      thumbnail: meta?.background ?? media.cover ?? media.poster,
+      desc: meta?.description,
+      source: 'Stremio',
+    );
+  }
+
+  List<Episode> _kitsuEpisodes(
+      anymex.Media media, StremioMeta? meta, String libId) {
+    final byNumber = <int, StremioVideo>{};
+    for (final v in meta?.videos ?? const <StremioVideo>[]) {
+      final n = v.episode ?? int.tryParse(v.id.split(':').last);
+      if (n != null) byNumber[n] = v;
+    }
+    var count = _releasedEpisodes(media);
+    if (byNumber.isNotEmpty) {
+      final released = byNumber.entries
+          .where((e) => e.value.isReleased)
+          .map((e) => e.key)
+          .fold<int>(0, (a, b) => b > a ? b : a);
+      if (count == 0 || released > count) count = released;
+    }
+    if (count <= 0) count = 1;
+    return List.generate(count, (i) {
+      final n = i + 1;
+      final v = byNumber[n];
+      return Episode(
+        number: '$n',
+        title: (v != null && v.title.isNotEmpty) ? v.title : 'Episode $n',
+        link: v?.id ?? '$libId:$n',
+        thumbnail: v?.thumbnail,
+        desc: v?.overview,
+        dateUpload: v?.released?.toIso8601String(),
+        source: 'Stremio',
+      );
+    });
+  }
+
+  List<Episode> _imdbEpisodes(anymex.Media media, StremioMeta? meta,
+      String libId, _AnimeMapping mapping) {
+    var count = _releasedEpisodes(media);
+    if (count <= 0) {
+      count = mapping.imdbEpisodes.keys
+          .map((k) => int.tryParse(k) ?? 0)
+          .fold<int>(0, (a, b) => b > a ? b : a);
+    }
+    if (count <= 0) count = 1;
+    final videos = <String, StremioVideo>{
+      for (final v in meta?.videos ?? const <StremioVideo>[]) v.id: v
+    };
+    return List.generate(count, (i) {
+      final n = i + 1;
+      final se = mapping.imdbEpisodes['$n'];
+      final id = se != null ? '$libId:${se.$1}:${se.$2}' : '$libId:1:$n';
+      final v = videos[id];
+      return Episode(
+        number: '$n',
+        title: (v != null && v.title.isNotEmpty) ? v.title : 'Episode $n',
+        link: id,
+        thumbnail: v?.thumbnail,
+        desc: v?.overview,
+        dateUpload: v?.released?.toIso8601String(),
+        source: 'Stremio',
+      );
+    });
+  }
+
+  /// AniList id for a Stremio title (Kitsu or IMDb id), or null when it
+  /// isn't anime. For IMDb series with one AniList entry per season,
+  /// [season] picks the matching one.
+  Future<String?> anilistIdFor(StremioMeta meta, {int? season}) async {
+    if (meta.id.startsWith('kitsu:')) {
+      return _anilistFromKitsu(meta.id.split(':')[1]);
+    }
+    if (!meta.id.startsWith('tt')) return null;
+    final candidates = await _anilistFromImdb(meta.id);
+    if (candidates.isEmpty) return null;
+    if (candidates.length == 1 || season == null) return candidates.first;
+    for (final c in candidates.take(8)) {
+      final eps = await _aniZipEpisodesFor(c);
+      if (eps != null && eps.values.any((v) => v.$1 == season)) return c;
+    }
+    return candidates.first;
   }
 
   Future<_AnimeMapping?> _fetchAnimeMapping(String param, String id) async {

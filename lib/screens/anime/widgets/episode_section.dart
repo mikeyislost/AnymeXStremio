@@ -4,6 +4,8 @@ import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/screens/anime/widgets/episode_list_builder.dart';
+import 'package:anymex/screens/anime/widgets/stremio_anime_episodes.dart';
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/screens/extensions/ExtensionSettings/ExtensionSettings.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
@@ -215,42 +217,67 @@ class EpisodeSection extends StatelessWidget {
     });
   }
 
+  /// AnymeX+: AniList/MAL anime can get streams from Stremio addons.
+  bool get _canUseStremio =>
+      anilistData is Media &&
+      (anilistData as Media).serviceType != ServicesType.extensions &&
+      (anilistData as Media).id.isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
-    final installed = sourceController.installedExtensions.isNotEmpty;
-
-    if (isSliverMode) {
-      return SliverMainAxisGroup(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            sliver: SliverToBoxAdapter(child: _buildHeader(context)),
-          ),
-          if (installed)
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: _buildEpisodeListSliver(context),
-            ),
+    return Obx(() {
+      final useStremio =
+          StremioService.to.animeStreamSource.value == 'stremio' &&
+              _canUseStremio;
+      final installed = sourceController.installedExtensions.isNotEmpty;
+      final header = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimeStreamSourceSwitch(available: _canUseStremio),
+          if (!useStremio) _buildHeader(context),
         ],
       );
-    }
+      final Widget listSliver = useStremio
+          ? StremioAnimeEpisodes(
+              key: ValueKey('stremio-anime-${(anilistData as Media).id}'),
+              media: anilistData as Media,
+            )
+          : _buildEpisodeListSliver(context);
 
-    return CustomScrollView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildHeader(context),
+      if (isSliverMode) {
+        return SliverMainAxisGroup(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              sliver: SliverToBoxAdapter(child: header),
+            ),
+            if (installed || useStremio)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: listSliver,
+              ),
+          ],
+        );
+      }
+
+      return CustomScrollView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: header,
+            ),
           ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: _buildEpisodeListSliver(context),
-        ),
-      ],
-    );
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: listSliver,
+          ),
+        ],
+      );
+    });
   }
 }
 

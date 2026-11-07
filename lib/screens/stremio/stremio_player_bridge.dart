@@ -126,6 +126,32 @@ class StremioPlayerBridge {
         ));
   }
 
+  /// Plays an AniList/MAL anime from a Stremio stream. The anime keeps its
+  /// own media (so AniList/MAL tracking works as usual); [episodes] carry
+  /// Stremio video ids so the next episode is fetched from Stremio too.
+  static Future<void> playAnime({
+    required anymex.Media media,
+    required List<Episode> episodes,
+    required Episode current,
+    required StremioStream selected,
+    required List<StremioStream> allStreams,
+    required bool shouldTrack,
+  }) async {
+    final tracks = videosFromStreams(allStreams);
+    final selectedTrack = videoFromStream(selected);
+    if (!tracks.any((t) => t.url == selectedTrack.url)) {
+      tracks.insert(0, selectedTrack);
+    }
+    await navigate(() => WatchScreen(
+          episodeSrc: selectedTrack,
+          currentEpisode: current,
+          episodeList: episodes,
+          anilistData: media,
+          episodeTracks: tracks,
+          shouldTrack: shouldTrack,
+        ));
+  }
+
   /// Used by the player when switching episodes on Stremio media: fetches the
   /// new episode's streams and orders them so the best match comes first.
   static Future<List<model.Video>> videosForEpisode(
@@ -134,11 +160,22 @@ class StremioPlayerBridge {
     model.Video? previous,
   }) async {
     final parsed = StremioIds.parse(media.id);
-    if (parsed == null) return [];
-    final (type, metaId) = parsed;
-    final videoId = (episode.link != null && episode.link!.isNotEmpty)
-        ? episode.link!
-        : metaId;
+    final String type;
+    final String videoId;
+    if (parsed != null) {
+      final (t, metaId) = parsed;
+      type = t;
+      videoId = (episode.link != null && episode.link!.isNotEmpty)
+          ? episode.link!
+          : metaId;
+    } else {
+      // An AniList/MAL anime played from Stremio addons: the episode link
+      // is the Stremio video id (kitsu:… / tt…).
+      final link = episode.link;
+      if (link == null || link.isEmpty) return [];
+      type = StremioIds.typeForVideoId(link);
+      videoId = link;
+    }
     final streams = await StremioService.to.fetchStreams(type, videoId);
     final playable = streams.where((s) => s.isPlayable).toList();
     if (playable.isEmpty) return [];

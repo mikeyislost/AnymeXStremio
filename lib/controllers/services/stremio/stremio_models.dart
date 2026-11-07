@@ -286,6 +286,9 @@ class StremioMeta extends StremioMetaPreview {
   final String? defaultVideoId;
   final List<String> cast;
 
+  /// The addon's full meta object (director, country, links, app_extras…).
+  final Map<String, dynamic> raw;
+
   const StremioMeta({
     required super.id,
     required super.type,
@@ -302,6 +305,7 @@ class StremioMeta extends StremioMetaPreview {
     this.runtime,
     this.defaultVideoId,
     this.cast = const [],
+    this.raw = const {},
   });
 
   factory StremioMeta.fromJson(Map<String, dynamic> json) {
@@ -332,6 +336,7 @@ class StremioMeta extends StremioMetaPreview {
       runtime: _str(json['runtime']),
       defaultVideoId: _str(hints['defaultVideoId']),
       cast: _strList(json['cast']),
+      raw: json,
     );
   }
 

@@ -22,6 +22,8 @@ import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/ui_extensions/sizing.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:anymex/screens/anime/widgets/episode_list_builder.dart';
+import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/screens/manga/reading_page.dart';
 import 'package:anymex/screens/novel/reader/novel_reader.dart';
 import 'package:anymex/screens/manga/widgets/track_dialog.dart';
@@ -1042,6 +1044,12 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
       final bool showButton = selectedPage == 1 && hasContent;
 
       if (!showButton) return const SizedBox.shrink();
+      // AnymeX+: the Stremio-addon episode list has its own buttons.
+      if (isAnime &&
+          StremioService.to.animeStreamSource.value == 'stremio' &&
+          controller.media.value.serviceType != ServicesType.extensions) {
+        return const SizedBox.shrink();
+      }
 
       String titleText = '';
       String imageUrl = '';
@@ -1068,11 +1076,22 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
             ? ep.thumbnail!
             : controller.media.value.poster;
         progressVal = controller.getEpisodeProgress(ep);
+        // AnymeX+: movies say "Play/Resume <title>", not "EP 1 - …".
+        if (isMovieMedia(controller.media.value, controller.episodeList)) {
+          final name = controller.media.value.title;
+          titleText = progressVal > 0.01 && progressVal < 0.97
+              ? 'Resume $name'
+              : 'Play $name';
+        }
         onTap = () async {
           HapticFeedback.lightImpact();
           await EpisodeListBuilder.showServerSheet(
             context,
-            episode: ep,
+            // Saved progress may come from a Stremio stream; use this
+            // source's own episode then.
+            episode: (ep.source == 'Stremio' && matchedEp != null)
+                ? matchedEp
+                : ep,
             episodeList: controller.episodeList,
             anilistData: controller.media.value,
           );

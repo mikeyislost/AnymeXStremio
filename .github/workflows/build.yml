@@ -84,6 +84,10 @@ jobs:
             lib/controllers/services/anilist/anilist_data.dart \
             lib/controllers/services/mal/mal_service.dart \
             lib/utils/self_test.dart \
+            lib/screens/anime/widgets/episode_list_builder.dart \
+            lib/screens/anime/widgets/episode_section.dart \
+            lib/screens/anime/widgets/movie_watch_card.dart \
+            lib/screens/anime/widgets/stremio_anime_episodes.dart \
             lib/screens/settings/sub_settings/settings_self_test.dart \
             lib/screens/settings/registry/settings_registry.dart \
             lib/main.dart

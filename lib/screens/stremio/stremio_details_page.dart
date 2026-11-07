@@ -11,6 +11,8 @@ import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/widgets/comments/comments_section.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
+import 'package:anymex/screens/anime/widgets/movie_watch_card.dart';
+import 'package:anymex/screens/stremio/stremio_info_tab.dart';
 import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
 import 'package:anymex/screens/stremio/stremio_widgets.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
@@ -243,7 +245,14 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
             else if (_meta != null) ...[
               SliverToBoxAdapter(child: _quickActions(context, _meta!)),
               if (_page == 0)
-                SliverToBoxAdapter(child: _infoTab(context, _meta!))
+                SliverToBoxAdapter(
+                  child: StremioInfoTab(
+                    meta: _meta!,
+                    season: _meta!.isSingleVideo
+                        ? null
+                        : (_season == 0 ? null : _season),
+                  ),
+                )
               else if (_page == 1)
                 ..._watchTab(context, _meta!)
               else
@@ -447,104 +456,13 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     );
   }
 
-  // Info tab ------------------------------------------------------------------
-
-  Widget _infoTab(BuildContext context, StremioMeta meta) {
-    final rows = <(String, String)>[
-      ('Type', stremioTypeLabel(meta.type, plural: false)),
-      if (meta.releaseInfo != null) ('Released', meta.releaseInfo!),
-      if (meta.runtime != null) ('Runtime', meta.runtime!),
-      if (meta.imdbRating != null) ('IMDb rating', '★ ${meta.imdbRating}'),
-      if (!meta.isSingleVideo)
-        ('Seasons', '${meta.seasons.where((s) => s != 0).length}'),
-      if (!meta.isSingleVideo)
-        ('Episodes',
-            '${meta.videos.where((v) => (v.season ?? 1) != 0).length}'),
-    ];
-    final sections = <Widget>[
-      if (meta.description != null)
-        StremioSection(
-          title: 'Synopsis',
-          children: [
-            AnymeXText(
-              meta.description!,
-              size: 13,
-              maxLines: 9999,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      StremioSection(
-        title: 'Info',
-        children: rows
-            .map((r) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 110,
-                        child: AnymeXText(r.$1,
-                            size: 12,
-                            color: context.colors.onSurfaceVariant),
-                      ),
-                      Expanded(
-                        child: AnymeXText(r.$2,
-                            size: 12, variant: TextVariant.semiBold),
-                      ),
-                    ],
-                  ),
-                ))
-            .toList(),
-      ),
-      if (meta.genres.isNotEmpty)
-        StremioSection(
-          title: 'Genres',
-          children: [
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: meta.genres.map((g) => StremioChip(g)).toList(),
-            ),
-          ],
-        ),
-      if (meta.cast.isNotEmpty)
-        StremioSection(
-          title: 'Cast',
-          children: [
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: meta.cast
-                  .take(12)
-                  .map((c) => StremioChip(c, icon: Icons.person_rounded))
-                  .toList(),
-            ),
-          ],
-        ),
-    ];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: Column(
-        children: [
-          for (final s in sections) ...[s, const SizedBox(height: 12)],
-        ],
-      ),
-    );
-  }
-
   // Watch tab -----------------------------------------------------------------
 
   List<Widget> _watchTab(BuildContext context, StremioMeta meta) {
     final style = EpisodeStyleRegistry.activeStyle;
 
     if (meta.isSingleVideo) {
-      final ep = StremioPlayerBridge.episodeFor(meta, null);
       final item = _libraryItem;
-      if (item != null && item.timeOffset > 1 && item.duration > 0) {
-        ep.timeStampInMilliseconds = item.timeOffset;
-        ep.durationInMilliseconds = item.duration;
-      }
       final progress = (item != null && item.duration > 0)
           ? (item.timeOffset / item.duration).clamp(0.0, 1.0)
           : 0.0;
@@ -552,18 +470,21 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
           sliver: SliverToBoxAdapter(
-            child: SizedBox(
-              height: style.isGrid ? 65 : null,
-              child: style.builder(
-                context,
-                ep,
-                false,
-                (item?.timesWatched ?? 0) > 0,
-                progress,
-                _headerMedia,
-                () => _openStreams(null),
-                () => _openStreams(null),
-              ),
+            child: MovieWatchCard(
+              title: meta.name,
+              imageUrl: meta.background ?? meta.poster ?? '',
+              fallbackImage: meta.poster,
+              badge: meta.type == 'movie'
+                  ? 'MOVIE'
+                  : stremioTypeLabel(meta.type, plural: false).toUpperCase(),
+              details: [
+                formatMovieRuntime(meta.runtime ?? ''),
+                meta.releaseInfo ?? '',
+                if (meta.imdbRating != null) '★ ${meta.imdbRating}',
+              ],
+              progress: progress,
+              watched: (item?.timesWatched ?? 0) > 0,
+              onPlay: () => _openStreams(null),
             ),
           ),
         ),
@@ -828,15 +749,28 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
 /// Stream picker in AnymeX's sheet + server-list style. Fills in as each
 /// addon answers.
 class StremioStreamsSheet extends StatefulWidget {
-  final StremioMeta meta;
+  final StremioMeta? meta;
   final StremioVideo? video;
   final String videoId;
+
+  /// Stremio type to request; defaults to the meta's type.
+  final String? type;
+
+  /// Header line under "Select stream"; defaults to the title / episode.
+  final String? title;
+
+  /// Plays the chosen stream; defaults to playing it as a Stremio title.
+  final Future<void> Function(
+      StremioStream selected, List<StremioStream> all)? onPlay;
 
   const StremioStreamsSheet({
     super.key,
     required this.meta,
     required this.video,
     required this.videoId,
+    this.type,
+    this.title,
+    this.onPlay,
   });
 
   @override
@@ -859,8 +793,11 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
     final service = StremioService.to;
     await service.ensureAddons();
     if (!mounted) return;
+    final type = widget.type ?? widget.meta?.type ?? 'movie';
     final sources = service.addons
-        .where((a) => a.supports('stream', widget.meta.type, widget.videoId))
+        .where((a) =>
+            a.supports('stream', type, widget.videoId) ||
+            a.supports('stream', 'anime', widget.videoId))
         .toList();
     setState(() {
       _started = true;
@@ -870,7 +807,7 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
         ..addAll(sources.map((a) => a.name));
     });
     await service.fetchStreams(
-      widget.meta.type,
+      type,
       widget.videoId,
       onAddonResult: (addon, streams) {
         if (!mounted) return;
@@ -899,12 +836,16 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
       return;
     }
     final all = _all.where((e) => e.isPlayable).toList();
-    await StremioPlayerBridge.play(
-      meta: widget.meta,
-      video: widget.video,
-      selected: s,
-      allStreams: all,
-    );
+    if (widget.onPlay != null) {
+      await widget.onPlay!(s, all);
+    } else {
+      await StremioPlayerBridge.play(
+        meta: widget.meta!,
+        video: widget.video,
+        selected: s,
+        allStreams: all,
+      );
+    }
     // Back from the player: close the picker so the details page refreshes.
     if (mounted) Navigator.of(context).pop();
   }
@@ -913,10 +854,11 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final v = widget.video;
-    final title = v == null
-        ? widget.meta.name
-        : 'S${v.season ?? 1} E${v.episode ?? 1}'
-            '${v.title.isNotEmpty ? ' · ${v.title}' : ''}';
+    final title = widget.title ??
+        (v == null
+            ? (widget.meta?.name ?? '')
+            : 'S${v.season ?? 1} E${v.episode ?? 1}'
+                '${v.title.isNotEmpty ? ' · ${v.title}' : ''}');
 
     final children = <Widget>[];
     if (_started && _addonOrder.isEmpty) {

@@ -748,9 +748,37 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
       } else {
         isOrientationLocked.value = false;
         final orientation = await _getClosestLandscapeOrientation();
-        _applyOrientation(orientation);
+        if (Platform.isIOS) {
+          // AnymeX+: iOS rotates to whichever landscape side matches how the
+          // phone is held; forcing one side from the accelerometer flipped
+          // the picture upside down.
+          currentOrientation.value = orientation;
+          _applyIosAutoRotation();
+        } else {
+          _applyOrientation(orientation);
+        }
       }
     }
+  }
+
+  /// iOS, unlocked: allow both landscape sides (and portrait in "auto full")
+  /// so the system rotates the right way round.
+  void _applyIosAutoRotation() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    final full = playerSettings.defaultOrientation == 'auto_full';
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.landscapeLeft,
+      if (full) DeviceOrientation.portraitUp,
+    ]);
+    isLeftLandscaped = currentOrientation.value != DeviceOrientation.landscapeRight;
+  }
+
+  /// Accelerometer tilt → landscape side. iOS reports the opposite side to
+  /// Android for the same tilt, so it is swapped there.
+  DeviceOrientation _landscapeForTilt(bool positiveX) {
+    final left = Platform.isIOS ? !positiveX : positiveX;
+    return left ? DeviceOrientation.landscapeLeft : DeviceOrientation.landscapeRight;
   }
 
   void _initPhysicalOrientationListener() {
@@ -767,9 +795,9 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
         if (defaultMode == 'auto_full') {
           if (x.abs() > y.abs()) {
             if (x > 3.0) {
-              targetOrientation = DeviceOrientation.landscapeLeft;
+              targetOrientation = _landscapeForTilt(true);
             } else if (x < -3.0) {
-              targetOrientation = DeviceOrientation.landscapeRight;
+              targetOrientation = _landscapeForTilt(false);
             }
           } else {
             if (y > 3.0) {
@@ -780,9 +808,9 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
           }
         } else {
           if (x > 2.5) {
-            targetOrientation = DeviceOrientation.landscapeLeft;
+            targetOrientation = _landscapeForTilt(true);
           } else if (x < -2.5) {
-            targetOrientation = DeviceOrientation.landscapeRight;
+            targetOrientation = _landscapeForTilt(false);
           }
         }
 
@@ -790,7 +818,14 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
           physicalOrientation.value = targetOrientation;
           if (!isOrientationLocked.value &&
               currentOrientation.value != targetOrientation) {
-            _applyOrientation(targetOrientation);
+            if (Platform.isIOS) {
+              // The system does the rotating; just keep track of it.
+              currentOrientation.value = targetOrientation;
+              isLeftLandscaped =
+                  targetOrientation != DeviceOrientation.landscapeRight;
+            } else {
+              _applyOrientation(targetOrientation);
+            }
           }
         }
       });
@@ -814,10 +849,10 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
         const double slightLeanThreshold = 0.05;
         if (averageX >= slightLeanThreshold) {
-          return DeviceOrientation.landscapeLeft;
+          return _landscapeForTilt(true);
         }
         if (averageX <= -slightLeanThreshold) {
-          return DeviceOrientation.landscapeRight;
+          return _landscapeForTilt(false);
         }
       }
     } catch (_) {}
@@ -843,8 +878,22 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
   void toggleOrientation() {
     isOrientationLocked.value = !isOrientationLocked.value;
+    if (Platform.isIOS) {
+      if (isOrientationLocked.value) {
+        _applyOrientation(currentOrientation.value);
+      } else {
+        final p = physicalOrientation.value;
+        if (p == DeviceOrientation.landscapeLeft ||
+            p == DeviceOrientation.landscapeRight ||
+            playerSettings.defaultOrientation == 'auto_full') {
+          currentOrientation.value = p;
+        }
+        _applyIosAutoRotation();
+      }
+    }
     if (!isOrientationLocked.value) {
-      if (currentOrientation.value != physicalOrientation.value) {
+      if (!Platform.isIOS &&
+          currentOrientation.value != physicalOrientation.value) {
         _applyOrientation(physicalOrientation.value);
       }
       snackBar('Orientation Unlocked');
@@ -1757,7 +1806,8 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     try {
       PlayerBottomSheets.showLoader();
 
-      final isStremio = StremioIds.isStremioMediaId(anilistData.id);
+      final isStremio = StremioIds.isStremioMediaId(anilistData.id) ||
+          episode.source == 'Stremio';
       final List<model.Video> stremioTracks = isStremio
           ? await StremioPlayerBridge.videosForEpisode(anilistData, episode,
               previous: selectedVideo.value)

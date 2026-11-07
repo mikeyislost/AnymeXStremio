@@ -7,10 +7,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:anymex/controllers/discord/discord_rpc.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/screens/stremio/stremio_info_tab.dart';
 import 'package:anymex/controllers/services/stremio/watched_bitfield.dart';
 import 'package:anymex/controllers/services/torrent/torrent_service.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -252,6 +255,14 @@ class SelfTestRunner extends GetxController {
     return Outcome.fail('$label returned HTTP ${resp.statusCode} (${ms}ms)');
   }
 
+  static String _httpHint(int code) => switch (code) {
+        402 => ', host unpaid',
+        404 => ', not found',
+        410 => ', removed',
+        >= 500 => ', server error',
+        _ => '',
+      };
+
   StremioService get _stremio => StremioService.to;
   ServiceHandler? get _handler =>
       Get.isRegistered<ServiceHandler>() ? Get.find<ServiceHandler>() : null;
@@ -264,9 +275,22 @@ class SelfTestRunner extends GetxController {
   }
 
   /// Small valid PNG (16x16, purple) for the image-decoding checks.
-  static const _testPng =
-      'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAH0lEQVR4nGP4z8DwnwI8'
-      'gDE4OGhUQ1A1hCQwEVzEgIEBAI2uBP9sMvEJAAAAAElFTkSuQmCC';
+  /// A 48x48 PNG drawn in-app (teal with an orange square), so the check
+  /// exercises the same decode path posters use.
+  static Future<String> _makeTestPng() async {
+    final rec = ui.PictureRecorder();
+    final canvas = ui.Canvas(rec);
+    canvas.drawRect(const ui.Rect.fromLTWH(0, 0, 48, 48),
+        ui.Paint()..color = const ui.Color(0xFF1E8C7E));
+    canvas.drawRect(const ui.Rect.fromLTWH(12, 12, 16, 16),
+        ui.Paint()..color = const ui.Color(0xFFE07A1F));
+    canvas.drawCircle(const ui.Offset(36, 36), 6,
+        ui.Paint()..color = const ui.Color(0xFF3050C0));
+    final img = await rec.endRecording().toImage(48, 48);
+    final data = await img.toByteData(format: ui.ImageByteFormat.png);
+    img.dispose();
+    return base64Encode(data!.buffer.asUint8List());
+  }
 
   // ---------------------------------------------------------------------------
   // Tests
@@ -344,10 +368,12 @@ class SelfTestRunner extends GetxController {
         }, quick: true),
         _TestCase('App', 'Image decoding (poster color extractor)', () async {
           // Regression check for the iOS crash fixed in this build.
-          final c = await ImageColorExtractor.extractColor(_testPng, isBase64: true);
+          final png = await _makeTestPng();
+          ImageColorExtractor.clearCachedColor(png);
+          final c = await ImageColorExtractor.extractColor(png, isBase64: true);
           return c == null
-              ? const Outcome.warn('decoded but no color extracted')
-              : Outcome.pass('decoded test image, color #${c.toARGB32().toRadixString(16)}');
+              ? const Outcome.warn('test image decoded but no color came back')
+              : Outcome.pass('decoded test image, color #${c.toARGB32().toRadixString(16).substring(2)}');
         }, quick: true),
         _TestCase('App', 'Settings storage speed', () async {
           const key = 'anymexplus_selftest_speed';
@@ -368,8 +394,25 @@ class SelfTestRunner extends GetxController {
                 ok: const [200, 403, 429]),
             quick: true),
         _TestCase('Network', 'AniList API',
-            () => _reach('graphql.anilist.co', 'https://graphql.anilist.co',
-                ok: const [200, 400, 405]),
+            () async {
+              final sw = Stopwatch()..start();
+              final r = await http
+                  .post(Uri.parse('https://graphql.anilist.co'),
+                      headers: const {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                      },
+                      body: jsonEncode({'query': '{ Media(id: 1) { id } }'}))
+                  .timeout(const Duration(seconds: 15));
+              final ms = sw.elapsedMilliseconds;
+              if (r.statusCode == 200) {
+                return Outcome.pass('graphql.anilist.co reachable (${ms}ms)');
+              }
+              if (r.statusCode == 429) {
+                return Outcome.warn('AniList is rate-limiting right now (HTTP 429)');
+              }
+              return Outcome.fail('graphql.anilist.co returned HTTP ${r.statusCode} (${ms}ms)');
+            },
             quick: true),
         _TestCase('Network', 'Stremio API',
             () => _reach('api.strem.io', 'https://api.strem.io/api/',
@@ -384,6 +427,9 @@ class SelfTestRunner extends GetxController {
                 'https://arm.haglund.dev/api/v2/ids?source=anilist&id=21')),
         _TestCase('Network', 'Kitsu API',
             () => _reach('kitsu.io', 'https://kitsu.io/api/edge/anime/1')),
+        _TestCase('Network', 'TVmaze (show info)',
+            () => _reach('api.tvmaze.com',
+                'https://api.tvmaze.com/lookup/shows?imdb=tt0903747')),
         _TestCase('Network', 'GitHub releases (updates)',
             () => _reach('GitHub', 'https://api.github.com/repos/${UpdateManager.repo}/releases/latest',
                 headers: const {'Accept': 'application/vnd.github+json'})),
@@ -448,17 +494,32 @@ class SelfTestRunner extends GetxController {
         _TestCase('Stremio', 'Every addon manifest reachable', () async {
           await _stremio.ensureAddons();
           final bad = <String>[];
+          final local = <String>[];
           for (final a in _stremio.addons) {
+            final host = Uri.tryParse(a.transportUrl)?.host ?? '';
+            final isLocal = host == '127.0.0.1' || host == 'localhost';
             try {
               final r = await _get(a.transportUrl, timeout: const Duration(seconds: 12));
-              if (r.statusCode != 200) bad.add('${a.name} (HTTP ${r.statusCode})');
+              if (r.statusCode != 200) {
+                bad.add('${a.name} (HTTP ${r.statusCode}${_httpHint(r.statusCode)})');
+              }
             } catch (e) {
-              bad.add('${a.name} (${e.runtimeType})');
+              (isLocal ? local : bad).add(isLocal ? a.name : '${a.name} (no response)');
             }
           }
-          return bad.isEmpty
-              ? Outcome.pass('${_stremio.addons.length} manifests ok')
-              : Outcome.warn('unreachable: ${bad.join(', ')}');
+          final ok = _stremio.addons.length - bad.length - local.length;
+          final lines = [
+            '$ok of ${_stremio.addons.length} manifests ok',
+            if (bad.isNotEmpty)
+              'not working: ${bad.join(', ')}. These addons are down on their '
+                  'end; you can remove them in Settings → Accounts → Stremio.',
+            if (local.isNotEmpty)
+              'only works with the Stremio desktop app running on the same '
+                  'device (expected on a phone): ${local.join(', ')}',
+          ];
+          return Outcome(
+              bad.isNotEmpty ? SelfTestStatus.warn : SelfTestStatus.pass,
+              lines.join('\n'));
         }, timeout: const Duration(seconds: 120)),
         _TestCase('Stremio', 'Catalog (first board catalog)', () async {
           await _stremio.ensureAddons();
@@ -481,9 +542,9 @@ class SelfTestRunner extends GetxController {
             for (final c in a.catalogs.where((c) => c.isBoardCatalog)) {
               try {
                 final items = await _stremio.api.catalog(a, c);
-                items.isEmpty ? empty.add('${a.name}/${c.name}') : ok++;
+                items.isEmpty ? empty.add('${a.name}/${c.name} (${c.type})') : ok++;
               } catch (e) {
-                failed.add('${a.name}/${c.name}');
+                failed.add('${a.name}/${c.name} (${c.type})');
               }
             }
           }
@@ -593,6 +654,69 @@ class SelfTestRunner extends GetxController {
                   ? SelfTestStatus.pass
                   : (mapped == 0 ? SelfTestStatus.fail : SelfTestStatus.warn),
               '$mapped/${watching.length} would sync to Stremio\n${lines.join('\n')}');
+        }, timeout: const Duration(seconds: 90)),
+        _TestCase('Sync', 'Anime → Stremio addon streams (your current anime)',
+            () async {
+          final h = _handler;
+          if (h == null || !h.anilistService.isLoggedIn.value) {
+            return const Outcome.skip('AniList not logged in');
+          }
+          await _stremio.ensureAddons();
+          if (!_stremio.hasStreamAddons) {
+            return const Outcome.skip('no Stremio stream addons installed');
+          }
+          final watching = h.anilistService.animeList
+              .where((m) => (m.watchingStatus ?? '').toUpperCase() == 'CURRENT')
+              .take(4)
+              .toList();
+          if (watching.isEmpty) return const Outcome.skip('nothing in Watching');
+          final lines = <String>[];
+          var ok = 0;
+          for (final m in watching) {
+            final media = await h.anilistService
+                .fetchDetails(FetchDetailsParams(id: m.id ?? ''));
+            final t = await _stremio.animeTarget(media);
+            if (t == null) {
+              lines.add('✗ ${m.title}: no Kitsu/IMDb id your stream addons accept');
+              continue;
+            }
+            ok++;
+            final ep = (int.tryParse(m.episodeCount ?? '') ?? 0) + 1;
+            final next = t.episodes.length >= ep ? t.episodes[ep - 1].link : null;
+            lines.add('✓ ${m.title}: ${t.libraryId} (${t.isMovie ? 'movie' : '${t.episodes.length} eps'})'
+                '${next != null ? ', next ep → $next' : ''} via ${t.addonNames.join(', ')}');
+          }
+          return Outcome(
+              ok == watching.length
+                  ? SelfTestStatus.pass
+                  : SelfTestStatus.warn,
+              '$ok/${watching.length} can play from Stremio addons\n${lines.join('\n')}');
+        }, timeout: const Duration(seconds: 120)),
+        _TestCase('Stremio', 'Info tab sources', () async {
+          final lines = <String>[];
+          var bad = 0;
+          for (final (type, id, label) in const [
+            ('series', 'tt0903747', 'Breaking Bad'),
+            ('movie', 'tt0111161', 'The Shawshank Redemption'),
+            ('series', 'tt0213338', 'Cowboy Bebop (anime)'),
+          ]) {
+            final meta = await _stremio.fetchMeta(type, id);
+            if (meta == null) {
+              bad++;
+              lines.add('✗ $label: no metadata');
+              continue;
+            }
+            final info = await StremioInfoLoader.load(meta);
+            final extra = info.source == StremioInfoSource.stremio
+                ? ' (${info.facts.length} facts, ${info.cast.length} cast)'
+                : '';
+            lines.add('✓ $label: ${info.sourceLabel}$extra');
+            if (id == 'tt0213338' && info.source != StremioInfoSource.anilist) {
+              bad++;
+            }
+          }
+          return Outcome(bad == 0 ? SelfTestStatus.pass : SelfTestStatus.warn,
+              lines.join('\n'));
         }, timeout: const Duration(seconds: 90)),
         _TestCase('Sync', 'Kitsu → AniList mapping', () async {
           final id = await _stremio.debugAnilistFromKitsu('1');
