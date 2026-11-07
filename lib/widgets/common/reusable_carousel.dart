@@ -1,6 +1,8 @@
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/screens/stremio/stremio_widgets.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/models/models_convertor/carousel/carousel_data.dart';
 import 'package:anymex/screens/anime/details_page.dart';
@@ -162,6 +164,7 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
   }
 
   void _showPeekPopup(BuildContext context, CarouselData itemData, String tag) {
+    if (StremioIds.isStremioMediaId(itemData.id)) return;
     final ItemType mediaType = _determineItemType(itemData);
     final media = Media.fromCarouselData(itemData, mediaType);
     if (media.userStatus != null && media.userStatus!.isNotEmpty) return;
@@ -177,6 +180,12 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
   }
 
   void _navigateToDetailsPage(CarouselData itemData, String tag) {
+    final stremioRef = StremioIds.parse(itemData.id ?? '');
+    if (stremioRef != null) {
+      openStremioDetails(stremioRef.$1, stremioRef.$2,
+          tag: tag, title: itemData.title, poster: itemData.poster);
+      return;
+    }
     final controller = Get.find<SourceController>();
     final ItemType mediaType = _determineItemType(itemData);
     final media = Media.fromCarouselData(itemData, mediaType);

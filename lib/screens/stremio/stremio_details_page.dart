@@ -1,22 +1,50 @@
+// Stremio title page, built from the same pieces as AnymeX's own details
+// page: MediaHeader, the Info/Watch bottom bar, the continue button, the
+// user's episode card style and AnymeX's section panels.
+
 import 'package:anymex/controllers/services/stremio/stremio_models.dart';
 import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'package:anymex/controllers/services/stremio/watched_bitfield.dart';
+import 'package:anymex/controllers/settings/methods.dart';
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/database/isar_models/episode.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
+import 'package:anymex/screens/stremio/stremio_widgets.dart';
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/anime/media_header.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_chip.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_linear_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_progress.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/common/anymex_scaffold.dart';
+import 'package:anymex/widgets/common/navbar.dart';
+import 'package:anymex/widgets/helper/platform_builder.dart';
+import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StremioDetailsPage extends StatefulWidget {
   final String type;
   final String id;
-  final StremioMetaPreview? preview;
+  final String tag;
+  final String? initialTitle;
+  final String? initialPoster;
 
   const StremioDetailsPage({
     super.key,
     required this.type,
     required this.id,
-    this.preview,
+    required this.tag,
+    this.initialTitle,
+    this.initialPoster,
   });
 
   @override
@@ -29,6 +57,7 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
   bool _loading = true;
   String? _error;
   int? _season;
+  int _page = 0; // 0 = Info, 1 = Watch (same tabs as AnymeX)
   WatchedBitField? _watched;
   StremioLibraryItem? _libraryItem;
 
@@ -54,7 +83,6 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
           _season = seasons.isEmpty ? null : seasons.first;
         }
         await _loadLibraryState();
-        // Jump to the season of the episode Stremio says you're on.
         final vid = _libraryItem?.videoId;
         if (vid != null && !meta.isSingleVideo) {
           for (final v in meta.videos) {
@@ -81,23 +109,22 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     }
   }
 
+  // ---- actions --------------------------------------------------------------
+
   void _openStreams(StremioVideo? video) {
     final meta = _meta;
     if (meta == null) return;
-    final videoId = video?.id ?? meta.singleVideoId;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (_) => StremioStreamsSheet(
+    HapticFeedback.lightImpact();
+    AnymeXSheet.custom(
+      StremioStreamsSheet(
         meta: meta,
         video: video,
-        videoId: videoId,
+        videoId: video?.id ?? meta.singleVideoId,
       ),
+      context,
+      showDragHandle: true,
     ).then((_) async {
-      // Progress changed while watching; the sync writes the local cache
-      // first, so give it a moment and read from there.
+      // The sync writes the local cache first; read from there.
       await Future.delayed(const Duration(milliseconds: 800));
       await _loadLibraryState(refresh: false);
       if (mounted) setState(() {});
@@ -112,334 +139,500 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       return;
     }
     final now = !(_watched?.getVideo(video.id) ?? false);
+    HapticFeedback.selectionClick();
     try {
       await _service.setVideoWatched(meta, video, now);
-      await _loadLibraryState();
+      await _loadLibraryState(refresh: false);
       if (mounted) setState(() {});
+      snackBar(now ? 'Marked as watched' : 'Marked as unwatched');
     } catch (e) {
       snackBar('Could not update Stremio: $e');
     }
   }
 
+  /// The episode Stremio says you're on, else the first released episode.
+  StremioVideo? get _continueVideo {
+    final meta = _meta;
+    if (meta == null || meta.isSingleVideo) return null;
+    final current = _libraryItem?.videoId;
+    if (current != null) {
+      for (final v in meta.videos) {
+        if (v.id == current) return v;
+      }
+    }
+    final seasons = meta.seasons.where((s) => s != 0).toList();
+    if (seasons.isEmpty) return null;
+    final eps = meta.videosForSeason(seasons.first);
+    return eps.isEmpty ? null : eps.first;
+  }
+
+  // ---- media for AnymeX widgets -------------------------------------------
+
+  Media get _headerMedia {
+    final meta = _meta;
+    if (meta == null) {
+      return Media(
+        id: StremioIds.mediaId(widget.type, widget.id),
+        title: widget.initialTitle ?? 'Loading...',
+        poster: widget.initialPoster ?? '',
+        status: stremioTypeLabel(widget.type, plural: false),
+        serviceType: ServicesType.extensions,
+      );
+    }
+    final media = StremioPlayerBridge.mediaFor(meta);
+    media.status = stremioTypeLabel(meta.type, plural: false);
+    media.studios = [meta.releaseInfo ?? stremioTypeLabel(meta.type)];
+    return media;
+  }
+
+  Episode _episodeFor(StremioVideo video) {
+    final meta = _meta!;
+    final ep = StremioPlayerBridge.episodeFor(meta, video);
+    if (video.id == _libraryItem?.videoId &&
+        (_libraryItem?.timeOffset ?? 0) > 1 &&
+        (_libraryItem?.duration ?? 0) > 0) {
+      ep.timeStampInMilliseconds = _libraryItem!.timeOffset;
+      ep.durationInMilliseconds = _libraryItem!.duration;
+    }
+    return ep;
+  }
+
+  // ---- build ----------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final meta = _meta;
-    final preview = widget.preview;
-    final name = meta?.name ?? preview?.name ?? '';
-    final background =
-        meta?.background ?? preview?.background ?? meta?.poster ?? preview?.poster;
+    final media = _headerMedia;
+    final poster = _meta?.poster ?? widget.initialPoster ?? '';
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.white,
-      ),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _header(theme, name, background)),
-          if (_loading)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            )
-          else if (_error != null)
+    return AnymeXScaffold(
+      extendBody: true,
+      resizeToAvoidBottomInset: false,
+      bottomNavigationBar: _bottomBar(context),
+      body: ScrollConfiguration(
+        behavior:
+            ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics()),
+          slivers: [
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    Text(_error!, textAlign: TextAlign.center),
-                    TextButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
+              child: MediaHeader(
+                tag: widget.tag,
+                data: media,
+                posterUrl: poster,
+                enableVisuals: false,
               ),
-            )
-          else if (meta != null) ...[
-            SliverToBoxAdapter(child: _info(theme, meta)),
-            if (meta.isSingleVideo)
-              SliverToBoxAdapter(child: _moviePlay(theme, meta))
-            else ...[
-              SliverToBoxAdapter(child: _seasonPicker(theme, meta)),
-              _episodeList(theme, meta),
+            ),
+            if (_loading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(child: AnymeXProgressIndicator()),
+                ),
+              )
+            else if (_error != null)
+              SliverToBoxAdapter(child: _errorView(context))
+            else if (_meta != null) ...[
+              if (_page == 0)
+                SliverToBoxAdapter(child: _infoTab(context, _meta!))
+              else
+                ..._watchTab(context, _meta!),
             ],
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+            const SliverToBoxAdapter(child: SizedBox(height: 180)),
           ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _header(ThemeData theme, String name, String? background) {
-    final poster = _meta?.poster ?? widget.preview?.poster;
-    return SizedBox(
-      height: 320,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (background != null)
-            CachedNetworkImage(
-              imageUrl: background,
-              fit: BoxFit.cover,
-              errorWidget: (_, __, ___) => const SizedBox.shrink(),
-            ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.35),
-                  theme.scaffoldBackgroundColor,
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 12,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (poster != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: poster,
-                      width: 100,
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    name,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _info(ThemeData theme, StremioMeta meta) {
-    final facts = [
-      if (meta.releaseInfo != null) meta.releaseInfo!,
-      if (meta.runtime != null) meta.runtime!,
-      if (meta.imdbRating != null) '★ ${meta.imdbRating}',
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (facts.isNotEmpty)
-            Text(facts.join('  ·  '),
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          if (meta.genres.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: meta.genres
-                  .take(6)
-                  .map((g) => Chip(
-                        label: Text(g),
-                        visualDensity: VisualDensity.compact,
-                      ))
-                  .toList(),
-            ),
-          ],
-          if (meta.description != null) ...[
-            const SizedBox(height: 12),
-            Text(meta.description!, style: theme.textTheme.bodyMedium),
-          ],
-          if (meta.cast.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('Cast: ${meta.cast.take(5).join(', ')}',
-                style: theme.textTheme.bodySmall),
-          ],
-          const SizedBox(height: 12),
-          if (!meta.isSingleVideo) _continueButton(theme, meta),
-        ],
-      ),
-    );
-  }
-
-  Widget _continueButton(ThemeData theme, StremioMeta meta) {
-    final item = _libraryItem;
-    StremioVideo? target;
-    if (item?.videoId != null) {
-      for (final v in meta.videos) {
-        if (v.id == item!.videoId) {
-          target = v;
-          break;
-        }
-      }
-    }
-    if (target == null) {
-      final seasons = meta.seasons.where((s) => s != 0).toList();
-      if (seasons.isNotEmpty) {
-        final eps = meta.videosForSeason(seasons.first);
-        if (eps.isNotEmpty) target = eps.first;
-      }
-    }
-    if (target == null) return const SizedBox.shrink();
-    final resume = item?.videoId == target.id && (item?.timeOffset ?? 0) > 1;
-    final label = 'S${target.season ?? 1} E${target.episode ?? 1}';
-    final t = target;
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        icon: const Icon(Icons.play_arrow_rounded),
-        label: Text(resume
-            ? 'Resume $label'
-            : (item?.videoId == target.id ? 'Continue $label' : 'Play $label')),
-        onPressed: () => _openStreams(t),
-      ),
-    );
-  }
-
-  Widget _moviePlay(ThemeData theme, StremioMeta meta) {
-    final item = _libraryItem;
-    final resume = item != null &&
-        item.timeOffset > 1 &&
-        (item.videoId == null || item.videoId == meta.singleVideoId);
+  Widget _errorView(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: StremioSection(
         children: [
-          if (resume && item!.progress > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: LinearProgressIndicator(value: item!.progress),
-            ),
-          FilledButton.icon(
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: Text(resume ? 'Resume' : 'Play'),
-            onPressed: () => _openStreams(null),
+          AnymeXText(_error!, size: 13),
+          const SizedBox(height: 8),
+          AnymexOnTap(
+            onTap: _load,
+            child: AnymeXText('Retry',
+                variant: TextVariant.bold, color: context.colors.primary),
           ),
         ],
       ),
     );
   }
 
-  Widget _seasonPicker(ThemeData theme, StremioMeta meta) {
-    final seasons = meta.seasons;
-    if (seasons.length <= 1) return const SizedBox(height: 8);
-    return SizedBox(
-      height: 52,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: seasons
-            .map((s) => Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: ChoiceChip(
-                    label: Text(s == 0 ? 'Specials' : 'Season $s'),
-                    selected: _season == s,
-                    onSelected: (_) => setState(() => _season = s),
+  // Info tab ------------------------------------------------------------------
+
+  Widget _infoTab(BuildContext context, StremioMeta meta) {
+    final rows = <(String, String)>[
+      ('Type', stremioTypeLabel(meta.type, plural: false)),
+      if (meta.releaseInfo != null) ('Released', meta.releaseInfo!),
+      if (meta.runtime != null) ('Runtime', meta.runtime!),
+      if (meta.imdbRating != null) ('IMDb rating', '★ ${meta.imdbRating}'),
+      if (!meta.isSingleVideo)
+        ('Seasons', '${meta.seasons.where((s) => s != 0).length}'),
+      if (!meta.isSingleVideo)
+        ('Episodes',
+            '${meta.videos.where((v) => (v.season ?? 1) != 0).length}'),
+    ];
+    final sections = <Widget>[
+      if (meta.description != null)
+        StremioSection(
+          title: 'Synopsis',
+          children: [
+            AnymeXText(
+              meta.description!,
+              size: 13,
+              maxLines: 9999,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      StremioSection(
+        title: 'Info',
+        children: rows
+            .map((r) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 110,
+                        child: AnymeXText(r.$1,
+                            size: 12,
+                            color: context.colors.onSurfaceVariant),
+                      ),
+                      Expanded(
+                        child: AnymeXText(r.$2,
+                            size: 12, variant: TextVariant.semiBold),
+                      ),
+                    ],
                   ),
                 ))
             .toList(),
       ),
+      if (meta.genres.isNotEmpty)
+        StremioSection(
+          title: 'Genres',
+          children: [
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: meta.genres.map((g) => StremioChip(g)).toList(),
+            ),
+          ],
+        ),
+      if (meta.cast.isNotEmpty)
+        StremioSection(
+          title: 'Cast',
+          children: [
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: meta.cast
+                  .take(12)
+                  .map((c) => StremioChip(c, icon: Icons.person_rounded))
+                  .toList(),
+            ),
+          ],
+        ),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Column(
+        children: [
+          for (final s in sections) ...[s, const SizedBox(height: 12)],
+        ],
+      ),
     );
   }
 
-  Widget _episodeList(ThemeData theme, StremioMeta meta) {
-    final episodes =
-        _season == null ? meta.videos : meta.videosForSeason(_season!);
-    final currentId = _libraryItem?.videoId;
-    return SliverList.builder(
-      itemCount: episodes.length,
-      itemBuilder: (context, i) {
-        final v = episodes[i];
-        final watched = _watched?.getVideo(v.id) ?? false;
-        final isCurrent = v.id == currentId;
-        final released = v.released;
-        final upcoming = !v.isReleased;
-        return ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          onTap: upcoming ? null : () => _openStreams(v),
-          onLongPress: () => _toggleWatched(v),
-          leading: SizedBox(
-            width: 112,
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(color: theme.colorScheme.surfaceContainerHighest),
-                    if (v.thumbnail != null)
-                      CachedNetworkImage(
-                        imageUrl: v.thumbnail!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    if (isCurrent && (_libraryItem?.progress ?? 0) > 0)
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: LinearProgressIndicator(
-                          value: _libraryItem!.progress.clamp(0.0, 1.0),
-                          minHeight: 3,
-                        ),
-                      ),
-                  ],
-                ),
+  // Watch tab -----------------------------------------------------------------
+
+  List<Widget> _watchTab(BuildContext context, StremioMeta meta) {
+    final style = EpisodeStyleRegistry.activeStyle;
+
+    if (meta.isSingleVideo) {
+      final ep = StremioPlayerBridge.episodeFor(meta, null);
+      final item = _libraryItem;
+      if (item != null && item.timeOffset > 1 && item.duration > 0) {
+        ep.timeStampInMilliseconds = item.timeOffset;
+        ep.durationInMilliseconds = item.duration;
+      }
+      final progress = (item != null && item.duration > 0)
+          ? (item.timeOffset / item.duration).clamp(0.0, 1.0)
+          : 0.0;
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: SizedBox(
+              height: style.isGrid ? 65 : null,
+              child: style.builder(
+                context,
+                ep,
+                false,
+                (item?.timesWatched ?? 0) > 0,
+                progress,
+                _headerMedia,
+                () => _openStreams(null),
+                () => _openStreams(null),
               ),
             ),
           ),
-          title: Text(
-            '${v.episode ?? i + 1}. ${v.title.isEmpty ? 'Episode ${v.episode ?? i + 1}' : v.title}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-              color: upcoming ? theme.disabledColor : null,
+        ),
+      ];
+    }
+
+    final seasons = meta.seasons;
+    final videos =
+        _season == null ? meta.videos : meta.videosForSeason(_season!);
+    final currentId = _libraryItem?.videoId;
+    final currentProgress = _libraryItem?.progress ?? 0.0;
+
+    Widget card(BuildContext context, int i) {
+      final v = videos[i];
+      final watched = _watched?.getVideo(v.id) ?? false;
+      final isCurrent = v.id == currentId;
+      return style.builder(
+        context,
+        _episodeFor(v),
+        isCurrent,
+        watched,
+        isCurrent ? currentProgress : (watched ? 1.0 : 0.0),
+        _headerMedia,
+        v.isReleased ? () => _openStreams(v) : () => snackBar('Not released yet'),
+        () => _toggleWatched(v),
+      );
+    }
+
+    return [
+      if (seasons.length > 1)
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 46,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: seasons.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (context, i) {
+                final s = seasons[i];
+                return AnymeXChip(
+                  label: s == 0 ? 'Specials' : 'Season $s',
+                  isSelected: _season == s,
+                  showCheck: false,
+                  onSelected: (_) => setState(() => _season = s),
+                );
+              },
             ),
           ),
-          subtitle: released == null
-              ? null
-              : Text(
-                  upcoming
-                      ? 'Airs ${_date(released)}'
-                      : _date(released),
-                  style: theme.textTheme.bodySmall,
+        ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+          child: AnymeXText(
+            '${videos.length} episodes · long-press to mark watched',
+            size: 12,
+            color: context.colors.onSurfaceVariant,
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: style.isGrid
+            ? SliverGrid.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: getResponsiveCrossAxisCount(
+                    context,
+                    baseColumns: 1,
+                    maxColumns: 3,
+                    mobileItemWidth: 400,
+                    tabletItemWidth: 400,
+                    desktopItemWidth: 200,
+                  ),
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  mainAxisExtent: style.id == 'minimal' ? 65 : 100,
                 ),
-          trailing: watched
-              ? Icon(Icons.check_circle_rounded,
-                  color: theme.colorScheme.primary)
-              : null,
-        );
-      },
-    );
+                itemCount: videos.length,
+                itemBuilder: card,
+              )
+            : SliverList.builder(
+                itemCount: videos.length,
+                itemBuilder: (context, i) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: card(context, i),
+                ),
+              ),
+      ),
+    ];
   }
 
-  static String _date(DateTime d) {
-    final l = d.toLocal();
-    return '${l.year}-${l.month.toString().padLeft(2, '0')}-${l.day.toString().padLeft(2, '0')}';
+  // Bottom bar (same as AnymeX details) ---------------------------------------
+
+  Widget _bottomBar(BuildContext context) {
+    final isDesktop =
+        getResponsiveValue(context, mobileValue: false, desktopValue: true);
+    final items = [
+      NavItem(
+        selectedIcon: Iconsax.info_circle5,
+        unselectedIcon: Iconsax.info_circle,
+        label: 'Info',
+        onTap: (i) => setState(() => _page = i),
+      ),
+      NavItem(
+        selectedIcon: Iconsax.play5,
+        unselectedIcon: Iconsax.play,
+        label: 'Watch',
+        onTap: (i) => setState(() => _page = i),
+      ),
+    ];
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          child: (_page == 1 && !_loading && _meta != null)
+              ? _continueButton(context)
+              : const SizedBox.shrink(),
+        ),
+        SafeArea(
+          child: ResponsiveNavBar(
+            isDesktop: false,
+            currentIndex: _page,
+            margin: EdgeInsets.fromLTRB(
+                32, 0, 32, settingsController.bottomNavBarMargin),
+            items: items,
+          ),
+        ),
+      ],
+    );
+    if (isDesktop == true) {
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 450),
+          child: child,
+        ),
+      );
+    }
+    return child;
+  }
+
+  Widget _continueButton(BuildContext context) {
+    final meta = _meta!;
+    final item = _libraryItem;
+    String title;
+    String image;
+    double progress = 0;
+    VoidCallback onTap;
+
+    if (meta.isSingleVideo) {
+      final resume = item != null && item.timeOffset > 1;
+      title = resume ? 'Resume ${meta.name}' : 'Play ${meta.name}';
+      image = meta.background ?? meta.poster ?? '';
+      progress = resume ? item!.progress : 0;
+      onTap = () => _openStreams(null);
+    } else {
+      final v = _continueVideo;
+      if (v == null) return const SizedBox.shrink();
+      final label = 'S${v.season ?? 1} E${v.episode ?? 1}';
+      title = v.title.isNotEmpty ? '$label - ${v.title}' : label;
+      image = v.thumbnail ?? meta.background ?? meta.poster ?? '';
+      if (item?.videoId == v.id) progress = item!.progress;
+      onTap = () => _openStreams(v);
+    }
+
+    final theme = Theme.of(context);
+    final clamped = progress.clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 52,
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondaryContainer
+                .opaque(0.4, iReallyMeanIt: true),
+            borderRadius: BorderRadius.circular(24.multiplyRadius()),
+            border: Border.all(
+              color: theme.colorScheme.outline.opaque(0.12, iReallyMeanIt: true),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.opaque(0.12, iReallyMeanIt: true),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 60,
+                  height: 38,
+                  child: AnymeXImage(
+                      imageUrl: image, fit: BoxFit.cover, radius: 0),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnymeXText(
+                      title,
+                      size: 11.5,
+                      variant: TextVariant.semiBold,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      isMarquee: true,
+                    ),
+                    const SizedBox(height: 5),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(50),
+                      child: AnymeXLinearIndicator(
+                        value: clamped > 0 ? clamped : 0.05,
+                        minHeight: 8,
+                        color: theme.colorScheme.primary,
+                        backgroundColor:
+                            theme.colorScheme.onSurface.opaque(0.1, iReallyMeanIt: true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.opaque(0.9),
+                  borderRadius: BorderRadius.circular(32.multiplyRadius()),
+                ),
+                child: Icon(Icons.play_arrow_rounded,
+                    size: 16, color: theme.colorScheme.onPrimary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
-/// Lists streams from all addons, filling in as each addon answers.
+/// Stream picker in AnymeX's sheet + server-list style. Fills in as each
+/// addon answers.
 class StremioStreamsSheet extends StatefulWidget {
   final StremioMeta meta;
   final StremioVideo? video;
@@ -495,8 +688,9 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
     );
   }
 
-  List<StremioStream> get _all =>
-      _addonOrder.expand((a) => _byAddon[a] ?? const <StremioStream>[]).toList();
+  List<StremioStream> get _all => _addonOrder
+      .expand((a) => _byAddon[a] ?? const <StremioStream>[])
+      .toList();
 
   Future<void> _select(StremioStream s) async {
     if (!s.isPlayable) {
@@ -523,90 +717,178 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colors = context.colors;
     final v = widget.video;
     final title = v == null
         ? widget.meta.name
         : 'S${v.season ?? 1} E${v.episode ?? 1}'
             '${v.title.isNotEmpty ? ' · ${v.title}' : ''}';
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.75,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      builder: (context, scroll) {
-        final children = <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+
+    final children = <Widget>[];
+    if (_started && _addonOrder.isEmpty) {
+      children.add(Padding(
+        padding: const EdgeInsets.all(24),
+        child: AnymeXText(
+          'No stream addons installed for this title. Add one (e.g. '
+          'Torrentio) from the Stremio account page.',
+          textAlign: TextAlign.center,
+          color: colors.onSurfaceVariant,
+        ),
+      ));
+    }
+    for (final addonName in _addonOrder) {
+      final streams = _byAddon[addonName];
+      if (streams == null) continue;
+      children.add(Padding(
+        padding: const EdgeInsets.fromLTRB(6, 12, 6, 6),
+        child: AnymeXText(
+          streams.isEmpty ? '$addonName — no streams' : addonName,
+          size: 13,
+          variant: TextVariant.bold,
+          color: streams.isEmpty ? colors.onSurfaceVariant : colors.primary,
+        ),
+      ));
+      for (final s in streams) {
+        children.add(_StreamTile(stream: s, onTap: () => _select(s)));
+      }
+    }
+    if (_pending == 0 && _started && _all.isEmpty && _addonOrder.isNotEmpty) {
+      children.add(Padding(
+        padding: const EdgeInsets.all(24),
+        child: AnymeXText('No streams found.',
+            textAlign: TextAlign.center, color: colors.onSurfaceVariant),
+      ));
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Row(
+            children: [
+              Icon(Iconsax.play_circle, color: colors.primary, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AnymeXText('Select stream',
+                        size: 16, variant: TextVariant.bold),
+                    AnymeXText(title,
+                        size: 12,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        color: colors.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ],
           ),
-          if (_pending > 0) const LinearProgressIndicator(),
-        ];
-        if (_started && _addonOrder.isEmpty) {
-          children.add(const Padding(
-            padding: EdgeInsets.all(32),
-            child: Text(
-              'No stream addons installed for this title. Add one (e.g. '
-              'Torrentio) from the Stremio account page.',
-              textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        if (_pending > 0 || !_started)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(50),
+            child: AnymeXLinearIndicator(
+              minHeight: 3,
+              color: colors.primary,
+              backgroundColor: colors.onSurface.opaque(0.08, iReallyMeanIt: true),
             ),
-          ));
-        }
-        for (final addonName in _addonOrder) {
-          final streams = _byAddon[addonName];
-          if (streams == null) continue;
-          children.add(Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              streams.isEmpty ? '$addonName — no streams' : addonName,
-              style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold),
+          ),
+        Flexible(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.6,
             ),
-          ));
-          for (final s in streams) {
-            children.add(_streamTile(theme, s));
-          }
-        }
-        if (_pending == 0 && _started && _all.isEmpty && _addonOrder.isNotEmpty) {
-          children.add(const Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('No streams found.', textAlign: TextAlign.center),
-          ));
-        }
-        return ListView(
-          controller: scroll,
-          padding: const EdgeInsets.only(bottom: 32),
-          children: children,
-        );
-      },
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              children: children,
+            ),
+          ),
+        ),
+      ],
     );
   }
+}
 
-  Widget _streamTile(ThemeData theme, StremioStream s) {
-    final playable = s.isPlayable;
-    final details = s.details;
-    return ListTile(
-      onTap: () => _select(s),
-      leading: Icon(
-        s.isTorrent
-            ? Icons.downloading_rounded
-            : (playable ? Icons.play_circle_outline_rounded : Icons.open_in_new_rounded),
-        color: playable ? theme.colorScheme.primary : theme.disabledColor,
+class _StreamTile extends StatelessWidget {
+  final StremioStream stream;
+  final VoidCallback onTap;
+
+  const _StreamTile({required this.stream, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final playable = stream.isPlayable;
+    final details = stream.details;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: AnymexOnTap(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest
+                .opaque(0.3, iReallyMeanIt: true),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: colors.onSurface.opaque(0.06, iReallyMeanIt: true),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer
+                      .opaque(0.3, iReallyMeanIt: true),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  stream.isTorrent
+                      ? Icons.downloading_rounded
+                      : (playable
+                          ? Icons.play_arrow_rounded
+                          : Icons.open_in_new_rounded),
+                  size: 20,
+                  color: playable ? colors.primary : colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnymeXText(
+                      (stream.name ?? stream.addonName).replaceAll('\n', ' '),
+                      size: 13,
+                      variant: TextVariant.semiBold,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (details.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      AnymeXText(
+                        details,
+                        size: 11,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      title: Text(
-        (s.name ?? s.addonName).replaceAll('\n', ' '),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      subtitle: details.isEmpty
-          ? null
-          : Text(details, maxLines: 4, overflow: TextOverflow.ellipsis),
     );
   }
 }

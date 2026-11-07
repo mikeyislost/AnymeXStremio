@@ -29,9 +29,12 @@ class MediaHeader extends StatelessWidget {
     this.onShare,
     this.userStatus,
     this.userProgress,
+    this.enableVisuals = true,
   });
 
   final Media? data;
+  /// Tapping the poster opens the anime artwork viewer (AniList/MAL only).
+  final bool enableVisuals;
   final String posterUrl;
   final String tag;
   final VoidCallback? onShare;
@@ -176,7 +179,9 @@ class MediaHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 GestureDetector(
-                  onTap: () {
+                  onTap: !enableVisuals
+                      ? null
+                      : () {
                     Get.to(
                       () => VisualsPopup(
                         animeTitle:

@@ -1,171 +1,234 @@
+// Shared helpers that let Stremio content use AnymeX's own UI components
+// (cards, carousels, sections, chips) so the Stremio part looks native.
+
+import 'dart:math' as math;
+
+import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/stremio/stremio_models.dart';
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/database/isar_models/episode.dart';
+import 'package:anymex/database/isar_models/offline_media.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/models/models_convertor/carousel_mapper.dart';
 import 'package:anymex/screens/stremio/stremio_details_page.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:anymex/utils/function.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/common/cards/card_gate.dart';
+import 'package:anymex/widgets/helper/platform_builder.dart';
+import 'package:anymex/widgets/helper/tv_wrapper.dart';
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:flutter/material.dart';
 
-void openStremioDetails(BuildContext context, String type, String id,
-    {StremioMetaPreview? preview}) {
-  Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => StremioDetailsPage(type: type, id: id, preview: preview),
-  ));
+/// Opens the Stremio details page with AnymeX's page transition.
+void openStremioDetails(String type, String id,
+    {String? tag, String? title, String? poster}) {
+  navigateWithAnimation(() => StremioDetailsPage(
+        type: type,
+        id: id,
+        tag: tag ?? 'stremio-$type-$id',
+        initialTitle: title,
+        initialPoster: poster,
+      ));
 }
 
-class StremioPosterCard extends StatelessWidget {
-  final String title;
-  final String? poster;
-  final String? subtitle;
-  final double? progress;
-  final VoidCallback onTap;
-  final double width;
-
-  const StremioPosterCard({
-    super.key,
-    required this.title,
-    required this.poster,
-    required this.onTap,
-    this.subtitle,
-    this.progress,
-    this.width = 112,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: width,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AspectRatio(
-              aspectRatio: 2 / 3,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(color: theme.colorScheme.surfaceContainerHighest),
-                    if (poster != null && poster!.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: poster!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => _fallback(theme),
-                      )
-                    else
-                      _fallback(theme),
-                    if (progress != null && progress! > 0)
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: LinearProgressIndicator(
-                          value: progress!.clamp(0.0, 1.0),
-                          minHeight: 4,
-                          backgroundColor: Colors.black45,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            if (subtitle != null && subtitle!.isNotEmpty)
-              Text(
-                subtitle!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _fallback(ThemeData theme) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium,
-          ),
-        ),
-      );
-}
-
-class StremioRow extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  final VoidCallback? onMore;
-
-  const StremioRow({
-    super.key,
-    required this.title,
-    required this.children,
-    this.onMore,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-              ),
-              if (onMore != null)
-                TextButton(onPressed: onMore, child: const Text('See all')),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: 215,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: children.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (_, i) => children[i],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-String typeLabel(String type) {
+String stremioTypeLabel(String type, {bool plural = true}) {
   switch (type) {
     case 'movie':
-      return 'Movies';
+      return plural ? 'Movies' : 'Movie';
     case 'series':
       return 'Series';
     case 'channel':
-      return 'Channels';
+      return plural ? 'Channels' : 'Channel';
     case 'tv':
       return 'TV';
     case 'anime':
       return 'Anime';
     default:
-      return type.isEmpty ? '' : '${type[0].toUpperCase()}${type.substring(1)}';
+      return type.isEmpty
+          ? ''
+          : '${type[0].toUpperCase()}${type.substring(1)}';
+  }
+}
+
+/// "S2 E9" for `tt123:2:9`, "Episode 4" for `kitsu:1:4`, else null.
+String? stremioEpisodeLabel(String? videoId) {
+  if (videoId == null) return null;
+  final parts = videoId.split(':');
+  if (parts.length >= 3) {
+    final s = int.tryParse(parts[parts.length - 2]);
+    final e = int.tryParse(parts.last);
+    if (s != null && e != null) return 'S$s E$e';
+  }
+  if (parts.length == 3 && parts.first == 'kitsu') {
+    return 'Episode ${parts.last}';
+  }
+  return null;
+}
+
+/// A catalog item as an AnymeX [Media], so AnymeX cards and carousels can
+/// show it. Tapping it is routed to the Stremio details page.
+Media stremioMediaFromPreview(StremioMetaPreview m) {
+  final poster = m.poster ?? m.background ?? '';
+  return Media(
+    id: StremioIds.mediaId(m.type, m.id),
+    idMal: '0',
+    title: m.name,
+    romajiTitle: m.name,
+    englishTitle: m.name,
+    poster: poster,
+    largePoster: poster,
+    cover: m.background,
+    description: m.description ?? '',
+    rating: m.imdbRating ?? m.releaseInfo ?? '',
+    genres: m.genres,
+    status: stremioTypeLabel(m.type, plural: false),
+    serviceType: ServicesType.extensions,
+    sourceName: 'Stremio',
+  );
+}
+
+/// A Stremio Continue Watching entry in the shape AnymeX uses for its own
+/// continue-watching cards (play badge + episode).
+OfflineMedia stremioContinueItem(StremioLibraryItem item) {
+  final label = stremioEpisodeLabel(item.videoId) ??
+      (item.progress > 0 ? '${(item.progress * 100).round()}%' : '');
+  return OfflineMedia(
+    mediaId: StremioIds.mediaId(item.type, item.id),
+    name: item.name,
+    english: item.name,
+    poster: item.poster ?? '',
+    serviceIndex: ServicesType.extensions.index,
+    currentEpisode: Episode(number: label),
+  );
+}
+
+/// The rounded translucent panel AnymeX uses on its details pages.
+class StremioSection extends StatelessWidget {
+  final String? title;
+  final Widget? trailing;
+  final List<Widget> children;
+
+  const StremioSection({
+    super.key,
+    this.title,
+    this.trailing,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.opaque(0.3, iReallyMeanIt: true),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: colors.onSurface.opaque(0.08, iReallyMeanIt: true),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: AnymeXText(
+                    title!,
+                    size: 14,
+                    variant: TextVariant.bold,
+                  ),
+                ),
+                if (trailing != null) trailing!,
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+/// Genre / info chip in AnymeX's details-page style.
+class StremioChip extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+
+  const StremioChip(this.label, {super.key, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.opaque(0.4, iReallyMeanIt: true),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colors.onSurface.opaque(0.08, iReallyMeanIt: true),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: colors.primary),
+            const SizedBox(width: 4),
+          ],
+          AnymeXText(label, size: 11, variant: TextVariant.semiBold),
+        ],
+      ),
+    );
+  }
+}
+
+/// Grid delegate matching AnymeX's library grid (respects the card style).
+SliverGridDelegate stremioGridDelegate(BuildContext context) {
+  const horizontalPadding = 32.0;
+  const spacing = 10.0;
+  final width = MediaQuery.sizeOf(context).width - horizontalPadding;
+  final itemWidth = getPlatform(context) == true ? 170.0 : 140.0;
+  final count =
+      math.max(1, ((width + spacing) / (itemWidth + spacing)).floor());
+  return SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: count,
+    crossAxisSpacing: spacing,
+    mainAxisSpacing: 20,
+    childAspectRatio: getGridCardAspectRatio(
+      context: context,
+      crossAxisCount: count,
+      spacing: spacing,
+      padding: horizontalPadding,
+    ),
+  );
+}
+
+/// One grid cell: an AnymeX media card that opens the Stremio details page.
+class StremioGridCard extends StatelessWidget {
+  final StremioMetaPreview item;
+  final String tagPrefix;
+
+  const StremioGridCard(
+      {super.key, required this.item, required this.tagPrefix});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = stremioMediaFromPreview(item).toCarouselData();
+    final tag = '$tagPrefix-${item.type}-${item.id}';
+    return AnymexOnTap(
+      onTap: () => openStremioDetails(item.type, item.id,
+          tag: tag, title: item.name, poster: item.poster),
+      child: MediaCardGate(
+        itemData: data,
+        tag: tag,
+        variant: DataVariant.regular,
+        type: ItemType.anime,
+      ),
+    );
   }
 }

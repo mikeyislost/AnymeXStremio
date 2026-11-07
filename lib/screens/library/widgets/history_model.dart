@@ -280,8 +280,9 @@ Future<void> _handleNovelTap(OfflineMedia media) async {
 
 Future<void> _handleAnimeTap(OfflineMedia media) async {
   final stremioRef = StremioIds.parse(media.mediaId ?? '');
-  if (stremioRef != null && Get.context != null) {
-    openStremioDetails(Get.context!, stremioRef.$1, stremioRef.$2);
+  if (stremioRef != null) {
+    openStremioDetails(stremioRef.$1, stremioRef.$2,
+        title: media.displayTitle, poster: media.poster);
     return;
   }
   final currentEpisode = media.currentEpisode;
