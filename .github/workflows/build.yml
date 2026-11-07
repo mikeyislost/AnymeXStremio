@@ -66,6 +66,7 @@ jobs:
             lib/screens/library/widgets/history_model.dart \
             lib/widgets/anime/media_header.dart \
             lib/widgets/common/reusable_carousel.dart \
+            lib/utils/color_extractor.dart \
             lib/controllers/settings/settings.dart \
             lib/main.dart
 

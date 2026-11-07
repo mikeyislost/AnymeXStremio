@@ -51,18 +51,27 @@ class ImageColorExtractor {
 
       if (bytes == null || bytes.isEmpty) return null;
 
+      // Keep the buffer, descriptor and codec alive until the frame has been
+      // decoded. Disposing the descriptor first frees its image generator
+      // while Flutter's io thread is still decoding with it, which crashed
+      // the app on iOS (EXC_BAD_ACCESS on io.worker) when opening a details
+      // page.
       final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-      final descriptor = await ui.ImageDescriptor.encoded(buffer);
-      buffer.dispose();
-
-      final codec = await descriptor.instantiateCodec(
-        targetWidth: 32,
-        targetHeight: 32,
-      );
-      descriptor.dispose();
-
-      final frame = await codec.getNextFrame();
-      codec.dispose();
+      ui.ImageDescriptor? descriptor;
+      ui.Codec? codec;
+      late final ui.FrameInfo frame;
+      try {
+        descriptor = await ui.ImageDescriptor.encoded(buffer);
+        codec = await descriptor.instantiateCodec(
+          targetWidth: 32,
+          targetHeight: 32,
+        );
+        frame = await codec.getNextFrame();
+      } finally {
+        codec?.dispose();
+        descriptor?.dispose();
+        buffer.dispose();
+      }
 
       final image = frame.image;
       final byteData =
