@@ -6,7 +6,8 @@ import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
 import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/utils/theme_extensions.dart';
-import 'package:anymex/screens/search/everything_search_page.dart';
+import 'package:anymex/screens/search/search_view.dart';
+import 'package:anymex/screens/search/source_search_page.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/widgets/common/reusable_carousel.dart';
 import 'package:anymex/widgets/common/search_bar.dart';
@@ -195,6 +196,25 @@ class _HomePageState extends State<HomePage> {
 
   ScrollController get scrollController => _scrollController;
 
+  /// Exactly what the Anime tab's search button opened.
+  void _openAnimeSearch(ServiceHandler handler) {
+    switch (handler.serviceType.value) {
+      case ServicesType.simkl:
+        navigate(() => const SearchPage(
+              searchTerm: '',
+              isManga: false,
+              type: ItemType.anime,
+            ));
+      case ServicesType.extensions:
+        navigateWithAnimation(() => const SourceSearchPage(
+              initialTerm: '',
+              type: ItemType.anime,
+            ));
+      default:
+        navigate(() => const SearchPage(searchTerm: '', isManga: false));
+    }
+  }
+
   bool _showDiscoverOnHome(Settings settings, ServiceHandler handler) {
     if (handler.serviceType.value == ServicesType.extensions) return false;
     final tabs = settings.navigationTabOrder;
@@ -290,22 +310,25 @@ class _HomePageState extends State<HomePage> {
                         : CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 10),
-                      // AnymeX+: one search for anime, manga, movies & TV.
+                      // AnymeX+: the Anime tab's search, now on Home.
                       Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: isDesktop ? 8.0 : 4.0,
                         ),
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 640),
-                          child: TappableSearchBar(
-                            chipLabel: 'SEARCH',
-                            hintText: serviceHandler.serviceType.value ==
-                                    ServicesType.simkl
-                                ? 'Movies, series & more…'
-                                : 'Anime, manga, movies & TV…',
-                            onSubmitted: () =>
-                                navigate(() => const EverythingSearchPage()),
-                          ),
+                          child: Obx(() {
+                            final isSimkl = serviceHandler.serviceType.value ==
+                                ServicesType.simkl;
+                            return TappableSearchBar(
+                              chipLabel: isSimkl ? 'MOVIES' : 'ANIME',
+                              hintText: isSimkl
+                                  ? 'Search movies...'
+                                  : 'Search anime...',
+                              onSubmitted: () =>
+                                  _openAnimeSearch(serviceHandler),
+                            );
+                          }),
                         ),
                       ),
                       const SizedBox(height: 24),
