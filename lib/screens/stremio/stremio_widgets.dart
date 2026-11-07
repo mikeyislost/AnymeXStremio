@@ -55,17 +55,18 @@ String stremioTypeLabel(String type, {bool plural = true}) {
   }
 }
 
-/// "S2 E9" for `tt123:2:9`, "Episode 4" for `kitsu:1:4`, else null.
+/// "S2 E9" for `tt123:2:9`, "E4" for `kitsu:1:4` (Kitsu ids are
+/// `kitsu:<show>:<episode>`, there is no season), else null.
 String? stremioEpisodeLabel(String? videoId) {
   if (videoId == null) return null;
   final parts = videoId.split(':');
+  if (parts.first == 'kitsu') {
+    return parts.length >= 3 ? 'E${parts.last}' : null;
+  }
   if (parts.length >= 3) {
     final s = int.tryParse(parts[parts.length - 2]);
     final e = int.tryParse(parts.last);
     if (s != null && e != null) return 'S$s E$e';
-  }
-  if (parts.length == 3 && parts.first == 'kitsu') {
-    return 'Episode ${parts.last}';
   }
   return null;
 }

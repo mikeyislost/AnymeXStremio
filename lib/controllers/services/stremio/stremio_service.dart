@@ -187,6 +187,7 @@ class StremioService extends GetxController {
   final Map<String, StremioMeta> _metaCache = {};
   final Map<String, _AnimeMapping?> _animeMappings = {};
   final Map<String, StremioPlayback?> _animePlaybackCache = {};
+  final Map<String, bool> _animeRoutes = {}; // mapping → use IMDb id
   _Session? _session;
 
   // ---- lifecycle ----------------------------------------------------------
@@ -577,15 +578,45 @@ class StremioService extends GetxController {
     if (mapping == null) return null;
 
     final isMovie = mapping.isMovie || media.format.toUpperCase() == 'MOVIE';
-    final useKitsu = mapping.kitsuId != null &&
+    final kitsuLib =
+        mapping.kitsuId != null ? 'kitsu:${mapping.kitsuId}' : null;
+    final imdbLib = mapping.imdbId;
+    final kitsuOk = kitsuLib != null &&
         addons.any((a) =>
-            a.supports('meta', 'series', 'kitsu:${mapping.kitsuId}') ||
-            a.supports('meta', 'movie', 'kitsu:${mapping.kitsuId}') ||
-            a.supports('meta', 'anime', 'kitsu:${mapping.kitsuId}'));
+            a.supports('meta', 'series', kitsuLib) ||
+            a.supports('meta', 'movie', kitsuLib) ||
+            a.supports('meta', 'anime', kitsuLib));
+    // IMDb ids only when ani.zip says which season/episode is which.
+    final imdbOk = imdbLib != null &&
+        (isMovie || mapping.imdbEpisodes.isNotEmpty);
+
+    // AnymeX+: use the entry the Stremio library already has for this show
+    // (watched in Stremio under its IMDb or Kitsu id), so progress lands on
+    // the same title instead of a second copy. New entries prefer the
+    // IMDb/Cinemeta title Stremio itself shows, else Kitsu. Decided once per
+    // show so every episode goes to the same entry.
+    final existingImdb = imdbOk ? await getLibraryItem(imdbLib) : null;
+    final existingKitsu =
+        kitsuLib != null ? await getLibraryItem(kitsuLib) : null;
+    var useImdb = _animeRoutes[mapKey];
+    if (useImdb == null) {
+      if (existingImdb != null && existingKitsu != null) {
+        final a = existingImdb.lastWatched ?? existingImdb.mtime;
+        final b = existingKitsu.lastWatched ?? existingKitsu.mtime;
+        useImdb = b == null || (a != null && !a.isBefore(b));
+      } else if (existingImdb != null) {
+        useImdb = true;
+      } else if (existingKitsu != null) {
+        useImdb = false;
+      } else {
+        useImdb = imdbOk || !kitsuOk;
+      }
+      _animeRoutes[mapKey] = useImdb;
+    }
 
     StremioPlayback? playback;
-    if (useKitsu) {
-      final libId = 'kitsu:${mapping.kitsuId}';
+    if (!useImdb && kitsuLib != null) {
+      final libId = kitsuLib;
       StremioMeta? meta;
       for (final t in isMovie
           ? ['movie', 'series', 'anime']
@@ -593,34 +624,34 @@ class StremioService extends GetxController {
         meta = await fetchMeta(t, libId);
         if (meta != null) break;
       }
-      final type = meta?.type ?? (isMovie ? 'movie' : 'series');
-      final single = meta != null ? meta.isSingleVideo : isMovie;
+      final type = existingKitsu?.type ??
+          meta?.type ??
+          (isMovie ? 'movie' : 'series');
+      final single = isMovie || (meta?.isSingleVideo ?? false);
       playback = StremioPlayback(
         libraryId: libId,
         type: type,
-        name: meta?.name ?? media.title,
-        poster: meta?.poster ?? media.poster,
-        videoId: single ? (meta?.singleVideoId ?? libId) : '$libId:$epNum',
+        name: meta?.name ?? existingKitsu?.name ?? media.title,
+        poster: meta?.poster ?? existingKitsu?.poster ?? media.poster,
+        videoId: single ? (meta?.defaultVideoId ?? libId) : '$libId:$epNum',
         videos: meta?.videos ?? const [],
       );
-    } else if (mapping.imdbId != null) {
-      final libId = mapping.imdbId!;
-      final type = isMovie ? 'movie' : 'series';
+    } else if (imdbLib != null) {
+      final libId = imdbLib;
+      final type = existingImdb?.type ?? (isMovie ? 'movie' : 'series');
       final meta = await fetchMeta(type, libId);
       String videoId;
       if (isMovie) {
         videoId = libId;
       } else {
-        final se = mapping.imdbEpisodes[epNum];
-        videoId = se != null
-            ? '$libId:${se.$1}:${se.$2}'
-            : '$libId:1:$epNum';
+        final se = _imdbEpisodeFor(mapping, epNum);
+        videoId = '$libId:${se.$1}:${se.$2}';
       }
       playback = StremioPlayback(
         libraryId: libId,
         type: meta?.type ?? type,
-        name: meta?.name ?? media.title,
-        poster: meta?.poster ?? media.poster,
+        name: meta?.name ?? existingImdb?.name ?? media.title,
+        poster: meta?.poster ?? existingImdb?.poster ?? media.poster,
         videoId: videoId,
         videos: meta?.videos ?? const [],
       );
@@ -696,7 +727,8 @@ class StremioService extends GetxController {
         meta = await fetchMeta(t, libId);
         if (meta != null) break;
       }
-      final isMovie = meta != null ? meta.isSingleVideo : isMovieHint;
+      final isMovie = isMovieHint ||
+          (meta != null && (meta.isSingleVideo || meta.type == 'movie'));
       final type = isMovie ? 'movie' : 'series';
       final names = acceptedBy(isMovie ? libId : '$libId:1', type);
       if (names.isNotEmpty) {
@@ -707,7 +739,7 @@ class StremioService extends GetxController {
           isMovie: isMovie,
           addonNames: names,
           episodes: isMovie
-              ? [_movieEpisode(media, meta, meta?.singleVideoId ?? libId)]
+              ? [_movieEpisode(media, meta, meta?.defaultVideoId ?? libId)]
               : _kitsuEpisodes(media, meta, libId),
         );
       }
@@ -736,6 +768,25 @@ class StremioService extends GetxController {
 
     _animeTargets[mapKey] = target;
     return target;
+  }
+
+  /// IMDb (season, episode) for an AniList episode number. Episodes ani.zip
+  /// doesn't list yet continue on from the last one it does.
+  (int, int) _imdbEpisodeFor(_AnimeMapping mapping, String epNum) {
+    final exact = mapping.imdbEpisodes[epNum];
+    if (exact != null) return exact;
+    final n = int.tryParse(epNum) ?? 1;
+    var bestK = 0;
+    (int, int)? best;
+    for (final entry in mapping.imdbEpisodes.entries) {
+      final kn = int.tryParse(entry.key) ?? 0;
+      if (kn < n && kn > bestK) {
+        bestK = kn;
+        best = entry.value;
+      }
+    }
+    if (best != null) return (best.$1, best.$2 + (n - bestK));
+    return (1, n);
   }
 
   /// Released episode count for an anime from AniList/MAL data.
@@ -804,8 +855,8 @@ class StremioService extends GetxController {
     };
     return List.generate(count, (i) {
       final n = i + 1;
-      final se = mapping.imdbEpisodes['$n'];
-      final id = se != null ? '$libId:${se.$1}:${se.$2}' : '$libId:1:$n';
+      final se = _imdbEpisodeFor(mapping, '$n');
+      final id = '$libId:${se.$1}:${se.$2}';
       final v = videos[id];
       return Episode(
         number: '$n',

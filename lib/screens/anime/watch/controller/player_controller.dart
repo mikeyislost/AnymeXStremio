@@ -748,34 +748,14 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
       } else {
         isOrientationLocked.value = false;
         final orientation = await _getClosestLandscapeOrientation();
-        if (Platform.isIOS) {
-          // AnymeX+: iOS rotates to whichever landscape side matches how the
-          // phone is held; forcing one side from the accelerometer flipped
-          // the picture upside down.
-          currentOrientation.value = orientation;
-          _applyIosAutoRotation();
-        } else {
-          _applyOrientation(orientation);
-        }
+        _applyOrientation(orientation);
       }
     }
   }
 
-  /// iOS, unlocked: allow both landscape sides (and portrait in "auto full")
-  /// so the system rotates the right way round.
-  void _applyIosAutoRotation() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    final full = playerSettings.defaultOrientation == 'auto_full';
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeRight,
-      DeviceOrientation.landscapeLeft,
-      if (full) DeviceOrientation.portraitUp,
-    ]);
-    isLeftLandscaped = currentOrientation.value != DeviceOrientation.landscapeRight;
-  }
-
-  /// Accelerometer tilt → landscape side. iOS reports the opposite side to
-  /// Android for the same tilt, so it is swapped there.
+  /// Accelerometer tilt → landscape side. AnymeX+: for the same tilt iOS
+  /// needs the opposite landscape value to Android, otherwise the picture
+  /// ends up upside down, so it is swapped there.
   DeviceOrientation _landscapeForTilt(bool positiveX) {
     final left = Platform.isIOS ? !positiveX : positiveX;
     return left ? DeviceOrientation.landscapeLeft : DeviceOrientation.landscapeRight;
@@ -802,7 +782,9 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
           } else {
             if (y > 3.0) {
               targetOrientation = DeviceOrientation.portraitUp;
-            } else if (y < -3.0) {
+            } else if (y < -3.0 && !Platform.isIOS) {
+              // iPhones don't allow upside-down portrait; asking for it
+              // would crash the app.
               targetOrientation = DeviceOrientation.portraitDown;
             }
           }
@@ -818,14 +800,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
           physicalOrientation.value = targetOrientation;
           if (!isOrientationLocked.value &&
               currentOrientation.value != targetOrientation) {
-            if (Platform.isIOS) {
-              // The system does the rotating; just keep track of it.
-              currentOrientation.value = targetOrientation;
-              isLeftLandscaped =
-                  targetOrientation != DeviceOrientation.landscapeRight;
-            } else {
-              _applyOrientation(targetOrientation);
-            }
+            _applyOrientation(targetOrientation);
           }
         }
       });
@@ -857,7 +832,8 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
       }
     } catch (_) {}
 
-    return DeviceOrientation.landscapeLeft;
+    // Held upright: the usual quarter turn to the left.
+    return _landscapeForTilt(true);
   }
 
   void _applyOrientation(DeviceOrientation orientation) {
@@ -878,23 +854,13 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
   void toggleOrientation() {
     isOrientationLocked.value = !isOrientationLocked.value;
-    if (Platform.isIOS) {
-      if (isOrientationLocked.value) {
-        _applyOrientation(currentOrientation.value);
-      } else {
-        final p = physicalOrientation.value;
-        if (p == DeviceOrientation.landscapeLeft ||
-            p == DeviceOrientation.landscapeRight ||
-            playerSettings.defaultOrientation == 'auto_full') {
-          currentOrientation.value = p;
-        }
-        _applyIosAutoRotation();
-      }
-    }
     if (!isOrientationLocked.value) {
-      if (!Platform.isIOS &&
-          currentOrientation.value != physicalOrientation.value) {
-        _applyOrientation(physicalOrientation.value);
+      final p = physicalOrientation.value;
+      final usable = p == DeviceOrientation.landscapeLeft ||
+          p == DeviceOrientation.landscapeRight ||
+          playerSettings.defaultOrientation == 'auto_full';
+      if (usable && currentOrientation.value != p) {
+        _applyOrientation(p);
       }
       snackBar('Orientation Unlocked');
     } else {
