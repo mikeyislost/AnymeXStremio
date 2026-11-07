@@ -1,0 +1,310 @@
+import 'dart:async';
+
+import 'package:anymex/controllers/watchium/watchium_service.dart';
+import 'package:anymex/controllers/watchium/watchium_sync_controller.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/database/isar_models/episode.dart';
+import 'package:anymex/database/isar_models/video.dart' as model;
+import 'package:anymex/models/Media/media.dart' as anymex;
+import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
+import 'package:anymex/screens/anime/watch/controls/themes/setup/themed_controls.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/double_tap_seek.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/episodes_pane.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/overlay.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/buffering_overlay.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/subtitle_text.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/tracks_popup.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/source_popup.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/audio_popup.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/speed_popup.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/watch_together_popup.dart';
+import 'package:anymex/widgets/watchium/watchium_live_overlays.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/sync_subs_popup.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/torrent_files_popup.dart';
+import 'package:anymex/screens/anime/widgets/media_indicator.dart';
+import 'package:anymex/screens/anime/watch/controls/widgets/shader_osd.dart';
+import 'package:anymex/widgets/watchium/watchium_party_popup.dart';
+import 'package:anymex/controllers/services/torrent/torrent_service.dart';
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/utils/color_extractor.dart';
+import 'package:anymex/widgets/common/anymex_scaffold.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+class _WatchiumOverlays extends StatelessWidget {
+  const _WatchiumOverlays();
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      try {
+        final watchium = Get.find<WatchiumService>();
+        if (!watchium.inRoom.value) return const SizedBox.shrink();
+        if (watchium.isPartyPaneOpened.value) return const SizedBox.shrink();
+      } catch (_) {
+        return const SizedBox.shrink();
+      }
+      return const Stack(
+        children: [
+          WatchiumSyncBanner(),
+          WatchiumCommentOverlay(),
+          WatchiumReactionOverlay(),
+        ],
+      );
+    });
+  }
+}
+
+class WatchScreen extends StatefulWidget {
+  final model.Video episodeSrc;
+  final Episode currentEpisode;
+  final List<Episode> episodeList;
+  final anymex.Media anilistData;
+  final List<model.Video> episodeTracks;
+  final bool shouldTrack;
+  const WatchScreen({
+    super.key,
+    required this.episodeSrc,
+    required this.currentEpisode,
+    required this.episodeList,
+    required this.anilistData,
+    required this.episodeTracks,
+    this.shouldTrack = true,
+  });
+
+  @override
+  State<WatchScreen> createState() => _WatchScreenState();
+}
+
+class _WatchScreenState extends State<WatchScreen> {
+  late PlayerController controller;
+  Worker? _inRoomWorker;
+
+  @override
+  initState() {
+    super.initState();
+    controller = Get.put(PlayerController(
+        widget.episodeSrc,
+        widget.currentEpisode,
+        widget.episodeList,
+        widget.anilistData,
+        widget.episodeTracks,
+        shouldTrack: widget.shouldTrack));
+    _initWatchiumSync();
+    final settings = Get.find<Settings>();
+    if (settings.usePosterColor &&
+        widget.anilistData.color.isEmpty &&
+        widget.anilistData.poster.isNotEmpty &&
+        ImageColorExtractor.getCachedColor(widget.anilistData.poster) == null) {
+      ImageColorExtractor.extractColor(widget.anilistData.poster).then((c) {
+        if (c != null && mounted) {
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  Color? _resolvePosterColor() {
+    final settings = Get.find<Settings>();
+    if (!settings.usePosterColor) return null;
+    final media = widget.anilistData;
+    if (media.color.isNotEmpty) {
+      final parsed = AnymeXScaffold.parseColor(media.color);
+      if (parsed != null) return parsed;
+    }
+    if (media.poster.isNotEmpty) {
+      return ImageColorExtractor.getCachedColor(media.poster);
+    }
+    return null;
+  }
+
+  void _initWatchiumSync() {
+    try {
+      final watchium = Get.find<WatchiumService>();
+
+      _inRoomWorker = ever(watchium.inRoom, (inRoom) {
+        if (inRoom) {
+          _ensureSyncController();
+        } else {
+          _disposeSyncController();
+        }
+      });
+
+      if (watchium.inRoom.value) {
+        _ensureSyncController();
+      }
+    } catch (_) {}
+  }
+
+  void _ensureSyncController() {
+    try {
+      Get.put(WatchiumSyncController(playerController: controller),
+          tag: 'watchiumSync');
+    } catch (_) {}
+  }
+
+  void _disposeSyncController() {
+    try {
+      Get.delete<WatchiumSyncController>(tag: 'watchiumSync');
+    } catch (_) {}
+  }
+
+  Future<bool> _onWillPop() {
+    return WatchiumService.confirmAndLeave(context);
+  }
+
+  @override
+  void dispose() {
+    _inRoomWorker?.dispose();
+    _disposeSyncController();
+    try {
+      unawaited(TorrentService.instance.stopStream());
+    } catch (_) {}
+    Get.delete<PlayerController>();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final seedColor = _resolvePosterColor();
+    final posterScheme = seedColor != null
+        ? ColorScheme.fromSeed(
+            brightness: Theme.of(context).brightness,
+            seedColor: seedColor,
+          )
+        : null;
+
+    return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop) return;
+          final shouldPop = await _onWillPop();
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: posterScheme ?? Theme.of(context).colorScheme,
+            focusColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+          ),
+          child: Scaffold(
+            body: Obx(() {
+              final isPip = controller.isPipMode.value;
+              return Stack(
+                children: [
+                  Obx(() => KeyedSubtree(
+                        key: ValueKey(controller.playerReloadVersion.value),
+                        child: controller.videoWidget,
+                      )),
+                  if (!PlayerKeys.useLibass.get<bool>(false))
+                    SubtitleText(controller: controller),
+                  if (!isPip) ...[
+                    PlayerOverlay(controller: controller),
+                    BufferingOverlay(controller: controller),
+                    DoubleTapSeekWidget(
+                      controller: controller,
+                    ),
+                    ExcludeFocus(
+                      excluding: !controller.showControls.value,
+                      child: const Align(
+                        alignment: Alignment.center,
+                        child: ThemedCenterControls(),
+                      ),
+                    ),
+                    ExcludeFocus(
+                      excluding: !controller.showControls.value,
+                      child: const Align(
+                        alignment: Alignment.topCenter,
+                        child: ThemedTopControls(),
+                      ),
+                    ),
+                    ExcludeFocus(
+                      excluding: !controller.showControls.value,
+                      child: const Align(
+                        alignment: Alignment.bottomCenter,
+                        child: ThemedBottomControls(),
+                      ),
+                    ),
+                    MediaIndicatorBuilder(
+                      isVolumeIndicator: false,
+                      controller: controller,
+                    ),
+                    MediaIndicatorBuilder(
+                      isVolumeIndicator: true,
+                      controller: controller,
+                    ),
+                    ShaderOsd(controller: controller),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: SourcePopup(controller: controller),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: TracksPopup(controller: controller),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: AudioPopup(controller: controller),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: SyncSubsPopup(controller: controller),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: EpisodesPane(controller: controller),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: SpeedPopup(controller: controller),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: WatchTogetherPopup(controller: controller),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: TorrentFilesPopup(controller: controller),
+                    ),
+                    const Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      child: WatchiumPartyPopup(),
+                    ),
+                    const _WatchiumOverlays(),
+                  ],
+                ],
+              );
+            }),
+          ),
+        ));
+  }
+}

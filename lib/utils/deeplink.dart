@@ -1,0 +1,681 @@
+import 'package:anymex/controllers/service_handler/params.dart';
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/controllers/services/anilist/compatibility_controller.dart';
+import 'package:anymex/controllers/watchium/watchium_service.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/screens/anime/details_page.dart';
+import 'package:anymex/screens/anime/watch/controls/themes/setup/player_control_theme_registry.dart';
+import 'package:anymex/screens/manga/details_page.dart';
+import 'package:anymex/screens/profile/compatibility/compatibility_result_page.dart';
+import 'package:anymex/screens/watchium/watchium_page.dart';
+import 'package:anymex/utils/function.dart';
+import 'package:anymex/utils/logger.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
+import 'package:anymex/widgets/watchium/watchium_server_sheet.dart';
+import 'package:anymex_extension_runtime_bridge/ExtensionManager.dart';
+import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class Deeplink {
+  static Future<void> handleDeepLink(Uri uri) async {
+    print("HANDLING DEEEPLIINK => ${uri.toString()}");
+
+    if (uri.host == 'callback' ||
+        uri.path.contains('callback') ||
+        uri.queryParameters.containsKey('code')) {
+      return;
+    }
+
+    final extensionManager = Get.isRegistered<ExtensionManager>()
+        ? Get.find<ExtensionManager>()
+        : null;
+    if (extensionManager != null) {
+      int attempts = 0;
+      while (extensionManager.managers.isEmpty && attempts < 25) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        attempts++;
+      }
+    }
+
+    final illegalSchemes = extensionManager?.managers
+            .expand((e) => e.schemes.toList())
+            .toList() ??
+        [];
+
+    if (_isThemeDeepLink(uri)) {
+      _handleThemeDeepLink(uri);
+      return;
+    }
+
+    if (_isWatchiumDeepLink(uri)) {
+      _handleWatchiumDeepLink(uri);
+      return;
+    }
+
+    if (_isAnimatchDeepLink(uri)) {
+      _handleAnimatchDeepLink(uri);
+      return;
+    }
+
+    final mediaTarget = _parseMediaTarget(uri);
+    if (mediaTarget != null) {
+      _openMediaTarget(mediaTarget);
+      return;
+    }
+
+    if (extensionManager == null ||
+        !illegalSchemes.contains(uri.scheme.toLowerCase())) {
+      return;
+    }
+
+    bool isRepoAdded = false;
+    if (uri.scheme.toLowerCase() == 'kotatsu') {
+      snackBar(
+          "Adding Kotatsu repository. This will take at least 1-2 minutes, please wait...");
+    } else {
+      snackBar("Adding repo... please wait.");
+    }
+    final manager = extensionManager.managers;
+    for (final handler in manager) {
+      print('Matching ${uri.scheme} with ${handler.schemes.toString()}');
+      if (handler.schemes.contains(uri.scheme.toLowerCase())) {
+        handler.handleSchemes(uri);
+        isRepoAdded = true;
+        break;
+      }
+    }
+    snackBar(
+      isRepoAdded
+          ? "Added Repo Links Successfully!"
+          : "Missing or invalid parameters in the link.",
+    );
+  }
+
+  static bool isDeepLink(Uri uri) {
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme == 'anymex' || scheme == 'kotatsu') return true;
+    if (_isThemeDeepLink(uri)) return true;
+    if (_isWatchiumDeepLink(uri)) return true;
+    if (_isAnimatchDeepLink(uri)) return true;
+    if (_parseMediaTarget(uri) != null) return true;
+
+    if (Get.isRegistered<ExtensionManager>()) {
+      try {
+        final extensionManager = Get.find<ExtensionManager>();
+        final schemes =
+            extensionManager.managers.expand((e) => e.schemes.toList()).toSet();
+        if (schemes.contains(scheme)) return true;
+      } catch (_) {}
+    }
+
+    return scheme.isNotEmpty && scheme != 'http' && scheme != 'https';
+  }
+
+  static Uri? extractEmbeddedDeepLink(Uri uri) {
+    for (final param in ['deeplink', 'deep_link', 'url', 'link', 'target']) {
+      final value = uri.queryParameters[param]?.trim();
+      if (value != null && value.isNotEmpty) {
+        final parsed = Uri.tryParse(value);
+        if (parsed != null && isDeepLink(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  }
+
+  static Future<void> openUrlOrDeepLink(String rawUrl) async {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) return;
+
+    var uri = Uri.tryParse(trimmed);
+    if (uri == null) return;
+
+    if (!uri.hasScheme && !trimmed.startsWith('//')) {
+      final withScheme = Uri.tryParse('https://$trimmed');
+      if (withScheme != null && withScheme.hasAuthority) {
+        uri = withScheme;
+      }
+    }
+
+    final embedded = extractEmbeddedDeepLink(uri);
+    if (embedded != null) {
+      await handleDeepLink(embedded);
+      return;
+    }
+
+    if (isDeepLink(uri)) {
+      int attempts = 0;
+      while (Get.context == null && attempts < 50) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        attempts++;
+      }
+      await handleDeepLink(uri);
+      return;
+    }
+
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      Logger.e('Failed to launch URL: $e');
+    }
+  }
+
+  static bool _isThemeDeepLink(Uri uri) {
+    if (uri.host.toLowerCase() == 'theme') return true;
+    final segments = _compactSegments(uri.pathSegments);
+    return segments.isNotEmpty && segments.first.toLowerCase() == 'theme';
+  }
+
+  static Future<void> _handleThemeDeepLink(Uri uri) async {
+    final type = (uri.queryParameters['type'] ?? '').trim().toLowerCase();
+    if (type.isEmpty) {
+      errorSnackBar('Missing "type" query parameter. Use type=player.');
+      return;
+    }
+    if (type != 'player') {
+      errorSnackBar('Unsupported theme type "$type". Supported: player.');
+      return;
+    }
+
+    final rawUrl = uri.queryParameters['url']?.trim();
+    if (rawUrl == null || rawUrl.isEmpty) {
+      errorSnackBar('Missing "url" query parameter for the theme JSON.');
+      return;
+    }
+
+    snackBar('Importing player theme from link...');
+    final result = await PlayerControlThemeRegistry.importFromUrl(rawUrl);
+
+    if (result.hasErrors) {
+      final extra = result.errors.length > 1
+          ? ' (+${result.errors.length - 1} more issue(s))'
+          : '';
+      errorSnackBar('Theme is invalid: ${result.errors.first}$extra');
+      return;
+    }
+
+    final imported = result.importedCount;
+    final label = imported == 1 ? 'theme' : 'themes';
+    if (result.hasWarnings) {
+      final more = result.warnings.length > 1
+          ? ' (+${result.warnings.length - 1} more warning(s))'
+          : '';
+      warningSnackBar(
+          'Theme imported with warning: ${result.warnings.first}$more');
+    } else {
+      successSnackBar('Theme JSON is valid. Imported $imported $label.');
+    }
+  }
+
+  static _MediaDeepLinkTarget? _parseMediaTarget(Uri uri) {
+    final webTarget = _parseWebTarget(uri);
+    if (webTarget != null) return webTarget;
+    return _parseCustomTarget(uri);
+  }
+
+  static _MediaDeepLinkTarget? _parseWebTarget(Uri uri) {
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'https' && scheme != 'http') return null;
+
+    final host = uri.host.toLowerCase();
+    final segments = _compactSegments(uri.pathSegments);
+
+    if (_isHost(host, 'anilist.co')) {
+      return _parseAnimeMangaTarget(
+        uri: uri,
+        segments: segments,
+        serviceType: ServicesType.anilist,
+      );
+    }
+
+    if (_isHost(host, 'myanimelist.net')) {
+      return _parseAnimeMangaTarget(
+        uri: uri,
+        segments: segments,
+        serviceType: ServicesType.mal,
+      );
+    }
+
+    if (_isHost(host, 'simkl.com')) {
+      return _parseSimklTarget(uri: uri, segments: segments);
+    }
+
+    return null;
+  }
+
+  static _MediaDeepLinkTarget? _parseCustomTarget(Uri uri) {
+    if (uri.host.toLowerCase() == 'callback' ||
+        uri.host.toLowerCase() == 'add-repo') {
+      return null;
+    }
+
+    final segments = _compactSegments(uri.pathSegments);
+    ServicesType? serviceType = _serviceFromToken(uri.host);
+    int offset = 0;
+
+    if (serviceType == null && segments.isNotEmpty) {
+      serviceType = _serviceFromToken(segments.first);
+      if (serviceType != null) {
+        offset = 1;
+      }
+    }
+
+    if (serviceType == null) {
+      final host = uri.host.toLowerCase();
+      if (host == 'anime' || host == 'manga') {
+        if (segments.isNotEmpty) {
+          final id = _extractNumericId(segments.first);
+          if (id != null) {
+            final defaultService = Get.isRegistered<ServiceHandler>()
+                ? Get.find<ServiceHandler>().serviceType.value
+                : ServicesType.anilist;
+            return _MediaDeepLinkTarget(
+              serviceType: defaultService,
+              isManga: host == 'manga',
+              mediaId: id,
+              initialTabIndex: _parseInitialTabIndex(uri.fragment),
+            );
+          }
+        }
+      }
+      return null;
+    }
+
+    final mediaSegments = segments.skip(offset).toList();
+
+    if (serviceType == ServicesType.simkl) {
+      return _parseSimklTarget(uri: uri, segments: mediaSegments);
+    }
+
+    return _parseAnimeMangaTarget(
+      uri: uri,
+      segments: mediaSegments,
+      serviceType: serviceType,
+    );
+  }
+
+  static _MediaDeepLinkTarget? _parseAnimeMangaTarget({
+    required Uri uri,
+    required List<String> segments,
+    required ServicesType serviceType,
+  }) {
+    if (segments.isEmpty) return null;
+
+    final first = segments.first.toLowerCase();
+
+    if ((first == 'anime.php' || first == 'manga.php') &&
+        uri.queryParameters.containsKey('id')) {
+      final isManga = first == 'manga.php';
+      final id = _extractNumericId(uri.queryParameters['id']!);
+      if (id == null) return null;
+
+      return _MediaDeepLinkTarget(
+        serviceType: serviceType,
+        isManga: isManga,
+        mediaId: id,
+        initialTabIndex: _parseInitialTabIndex(uri.fragment),
+      );
+    }
+
+    if (segments.length < 2) return null;
+
+    final type = first;
+    final isAnimePath = type == 'anime';
+    final isMangaPath = type == 'manga';
+    if (!isAnimePath && !isMangaPath) return null;
+
+    final id = _extractNumericId(segments[1]);
+    if (id == null) return null;
+
+    return _MediaDeepLinkTarget(
+      serviceType: serviceType,
+      isManga: isMangaPath,
+      mediaId: id,
+      initialTabIndex: _parseInitialTabIndex(uri.fragment),
+    );
+  }
+
+  static _MediaDeepLinkTarget? _parseSimklTarget({
+    required Uri uri,
+    required List<String> segments,
+  }) {
+    if (segments.length < 2) return null;
+
+    final type = segments.first.toLowerCase();
+    final isMovie = {'movie', 'movies', 'film', 'films'}.contains(type);
+    final isSeries = {'anime', 'tv', 'series', 'show', 'shows'}.contains(type);
+
+    if (!isMovie && !isSeries) return null;
+
+    final id = _extractNumericId(segments[1]);
+    if (id == null) return null;
+
+    return _MediaDeepLinkTarget(
+      serviceType: ServicesType.simkl,
+      isManga: false,
+      mediaId: '$id*${isMovie ? 'MOVIE' : 'SERIES'}',
+      initialTabIndex: _parseInitialTabIndex(uri.fragment),
+    );
+  }
+
+  static ServicesType? _serviceFromToken(String raw) {
+    final token = raw.toLowerCase();
+    if (token.contains('anilist')) return ServicesType.anilist;
+    if (token.contains('myanimelist') || token == 'mal') {
+      return ServicesType.mal;
+    }
+    if (token.contains('simkl')) return ServicesType.simkl;
+
+    switch (token) {
+      case 'anilist':
+      case 'al':
+        return ServicesType.anilist;
+      case 'mal':
+      case 'myanimelist':
+        return ServicesType.mal;
+      case 'simkl':
+        return ServicesType.simkl;
+      default:
+        return null;
+    }
+  }
+
+  static int _parseInitialTabIndex(String fragment) {
+    var tab = fragment.trim().toLowerCase();
+    tab = tab.replaceFirst(RegExp(r'^/+'), '');
+
+    switch (tab) {
+      case 'watch':
+      case 'read':
+        return 1;
+      case 'comment':
+      case 'comments':
+        return 2;
+      case 'details':
+      default:
+        return 0;
+    }
+  }
+
+  static void _openMediaTarget(
+    _MediaDeepLinkTarget target, {
+    int attempts = 0,
+  }) {
+    if (!Get.isRegistered<ServiceHandler>() || Get.context == null) {
+      if (attempts >= 300) return;
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _openMediaTarget(target, attempts: attempts + 1);
+      });
+      return;
+    }
+
+    final handler = Get.find<ServiceHandler>();
+    if (handler.serviceType.value != target.serviceType) {
+      handler.changeService(target.serviceType);
+    }
+
+    _openHydratedMediaTarget(target);
+  }
+
+  static Future<void> _openHydratedMediaTarget(
+      _MediaDeepLinkTarget target) async {
+    final handler = Get.find<ServiceHandler>();
+    final hasToken = AuthKeys.authToken.get<String>('').isNotEmpty ||
+        AuthKeys.malAuthToken.get<String>('').isNotEmpty ||
+        AuthKeys.simklAuthToken.get<String>('').isNotEmpty;
+    if (hasToken && !handler.isLoggedIn.value) {
+      int attempts = 0;
+      while (!handler.isLoggedIn.value && attempts < 25) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        attempts++;
+      }
+    }
+
+    Media media = Media(
+      id: target.mediaId,
+      serviceType: target.serviceType,
+      mediaType: target.isManga ? ItemType.manga : ItemType.anime,
+    );
+
+    try {
+      final fetchedMedia = await target.serviceType.service.fetchDetails(
+        FetchDetailsParams(
+          id: target.mediaId,
+          type: target.isManga ? ItemType.manga : ItemType.anime,
+        ),
+      );
+
+      fetchedMedia.serviceType = target.serviceType;
+      fetchedMedia.mediaType = target.isManga ? ItemType.manga : ItemType.anime;
+      media = fetchedMedia;
+    } catch (_) {}
+
+    final tag = 'deep-link-${DateTime.now().millisecondsSinceEpoch}';
+
+    if (target.isManga) {
+      navigate(() => MangaDetailsPage(
+            media: media,
+            tag: tag,
+            initialTabIndex: target.initialTabIndex,
+          ));
+      return;
+    }
+
+    navigate(() => AnimeDetailsPage(
+          media: media,
+          tag: tag,
+          initialTabIndex: target.initialTabIndex,
+        ));
+  }
+
+  static bool _isHost(String host, String domain) {
+    return host == domain || host.endsWith('.$domain');
+  }
+
+  static List<String> _compactSegments(List<String> segments) {
+    return segments.where((s) => s.trim().isNotEmpty).toList();
+  }
+
+  static String? _extractNumericId(String raw) {
+    return RegExp(r'\d+').firstMatch(raw)?.group(0);
+  }
+
+  // ---- Watchium Deep Link ----
+
+  static bool _isWatchiumDeepLink(Uri uri) {
+    if (uri.host.toLowerCase() != 'watchium') return false;
+    final segments = _compactSegments(uri.pathSegments);
+    return segments.isNotEmpty && segments.first.toLowerCase() == 'join';
+  }
+
+  static Future<void> _handleWatchiumDeepLink(Uri uri) async {
+    final segments = _compactSegments(uri.pathSegments);
+    Logger.i('Watchium deep link: $uri', 'DEEPLINK');
+    // URI: anymex://watchium/join/ABC123
+    if (segments.length < 2) {
+      Logger.w('Watchium deep link: invalid segments $segments', 'DEEPLINK');
+      errorSnackBar('Invalid Watch Together link');
+      return;
+    }
+
+    final code = segments[1].toUpperCase();
+    if (code.length != 6) {
+      Logger.w('Watchium deep link: invalid code length ${code.length}', 'DEEPLINK');
+      errorSnackBar('Invalid room code in link');
+      return;
+    }
+
+    Logger.d('Watchium deep link: parsed code=$code', 'DEEPLINK');
+
+    // Wait for WatchiumService to be registered
+    int attempts = 0;
+    while (!Get.isRegistered<WatchiumService>() && attempts < 50) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      attempts++;
+    }
+
+    if (!Get.isRegistered<WatchiumService>()) {
+      Logger.w('Watchium deep link: WatchiumService not registered after waiting', 'DEEPLINK');
+      errorSnackBar('App is still loading, try again shortly.');
+      return;
+    }
+
+    // On cold start, auth services may not have loaded saved login state yet.
+    // Wait for the user to be authenticated before attempting login/join.
+    if (!Get.isRegistered<ServiceHandler>()) {
+      Logger.w('Watchium deep link: ServiceHandler not registered', 'DEEPLINK');
+      errorSnackBar('App is still loading, try again shortly.');
+      return;
+    }
+
+    final serviceHandler = Get.find<ServiceHandler>();
+    attempts = 0;
+    while (!serviceHandler.isLoggedIn.value && attempts < 75) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      attempts++;
+    }
+
+    if (!serviceHandler.isLoggedIn.value) {
+      Logger.w('Watchium deep link: user not logged in after waiting', 'DEEPLINK');
+      errorSnackBar('Please log in first, then try the link again.');
+      return;
+    }
+
+    final watchium = Get.find<WatchiumService>();
+    successSnackBar('Joining room $code...');
+
+    // First get room info to navigate to the anime
+    final roomInfo = await watchium.getRoomInfo(code);
+    Logger.d('Watchium deep link: roomInfo=${roomInfo != null ? "found" : "null"}', 'DEEPLINK');
+
+    if (roomInfo == null) {
+      Logger.w('Watchium deep link: room not found or expired', 'DEEPLINK');
+      errorSnackBar('Room not found or expired');
+      return;
+    }
+
+    // Navigate to Watch Together page which shows the joined room
+    navigate(() => const WatchiumPage());
+
+    // Join the room
+    final ok = await watchium.handleDeepLinkJoin(code);
+    if (!ok) {
+      final err = watchium.error.value;
+      Logger.w('Watchium deep link: join failed: $err', 'DEEPLINK');
+      errorSnackBar('Failed to join room: $err');
+    } else {
+      Logger.i('Watchium deep link: joined room $code successfully', 'DEEPLINK');
+      successSnackBar('Joined room $code!');
+      // Wait for room state to populate from socket
+      await Future.delayed(const Duration(milliseconds: 1500));
+      final rs = watchium.roomState.value;
+      final content = rs?.content;
+      if (content != null && content.availableServers.isNotEmpty && Get.context != null) {
+        showWatchiumServerSheet(context: Get.context!, content: content);
+      }
+    }
+  }
+
+  static bool _isAnimatchDeepLink(Uri uri) {
+    final host = uri.host.toLowerCase();
+    const validKeywords = {'animatch', 'almatch', 'compat', 'compatibility'};
+    if (validKeywords.contains(host)) return true;
+
+    final segments = _compactSegments(uri.pathSegments);
+    if (segments.isNotEmpty && validKeywords.contains(segments.first.toLowerCase())) {
+      return true;
+    }
+
+    final watchiumUrl = (dotenv.env['WATCHIUM_SERVER_URL'] ?? WatchiumKeys.serverUrl.get<String>('')).trim();
+    if (watchiumUrl.isNotEmpty) {
+      final envUri = Uri.tryParse(watchiumUrl);
+      if (envUri != null && envUri.host.isNotEmpty && host == envUri.host.toLowerCase()) {
+        if (segments.isNotEmpty && validKeywords.contains(segments.first.toLowerCase())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  static Future<void> _handleAnimatchDeepLink(Uri uri) async {
+    String? user1 = uri.queryParameters['user1'] ??
+        uri.queryParameters['u1'] ??
+        uri.queryParameters['username1'] ??
+        uri.queryParameters['user'];
+    String? user2 = uri.queryParameters['user2'] ??
+        uri.queryParameters['u2'] ??
+        uri.queryParameters['username2'];
+
+    final segments = _compactSegments(uri.pathSegments);
+    if (user1 == null || user2 == null) {
+      const keywords = {'animatch', 'almatch', 'compat', 'compatibility'};
+      final meaningful = segments.where((s) => !keywords.contains(s.toLowerCase())).toList();
+
+      if (meaningful.length >= 2) {
+        user1 ??= meaningful[0];
+        user2 ??= meaningful[1];
+      } else if (meaningful.length == 1 && meaningful[0].contains('&')) {
+        final parts = meaningful[0].split('&');
+        if (parts.length >= 2) {
+          user1 ??= parts[0];
+          user2 ??= parts[1];
+        }
+      }
+    }
+
+    user1 = user1?.trim();
+    user2 = user2?.trim();
+
+    if (user1 == null || user1.isEmpty || user2 == null || user2.isEmpty) {
+      errorSnackBar('Invalid compatibility link: missing usernames.');
+      return;
+    }
+
+    if (user1.toLowerCase() == user2.toLowerCase()) {
+      errorSnackBar('Cannot compare the same profile with itself.');
+      return;
+    }
+
+    snackBar('Calculating AniMatch compatibility for $user1 & $user2...');
+
+    final controller = Get.isRegistered<CompatibilityController>()
+        ? Get.find<CompatibilityController>()
+        : Get.put(CompatibilityController());
+
+    await controller.runMatch(
+      userName1: user1,
+      userName2: user2,
+      useLoggedInUser: false,
+    );
+
+    if (controller.errorMessage.value.isNotEmpty) {
+      errorSnackBar(controller.errorMessage.value);
+      return;
+    }
+
+    if (controller.result.value != null) {
+      navigate(() => CompatibilityResultPage(controller: controller));
+    } else {
+      errorSnackBar('Could not calculate compatibility.');
+    }
+  }
+}
+
+class _MediaDeepLinkTarget {
+  final ServicesType serviceType;
+  final bool isManga;
+  final String mediaId;
+  final int initialTabIndex;
+
+  const _MediaDeepLinkTarget({
+    required this.serviceType,
+    required this.isManga,
+    required this.mediaId,
+    required this.initialTabIndex,
+  });
+}

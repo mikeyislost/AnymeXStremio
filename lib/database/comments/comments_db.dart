@@ -1,0 +1,563 @@
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/services/commentum_service.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
+import 'package:anymex/database/comments/model/user_points.dart';
+import 'package:anymex/database/comments/model/leaderboard_entry.dart';
+import 'package:get/get.dart';
+
+import 'model/comment.dart';
+
+class CommentsDatabase {
+  final commentumService = Get.find<CommentumService>();
+
+  void log(String msg) => {};
+
+  Future<CommentsPageResult> fetchCommentsPageResult(String mediaId,
+      {String sort = 'newest', int page = 1, int limit = 50}) async {
+    try {
+      log("Fetching comments for media: $mediaId (sort: $sort, page: $page)");
+      final pageResult = await commentumService.fetchCommentsPage(mediaId,
+          page: page, limit: limit, sort: sort);
+      log("Fetched ${pageResult.comments.length} comments (total: ${pageResult.total})");
+
+      final organizedComments = organizeComments(pageResult.comments, sort: sort);
+
+      return CommentsPageResult(
+        comments: organizedComments,
+        total: pageResult.total,
+        totalPages: pageResult.totalPages,
+        page: pageResult.page,
+        limit: pageResult.limit,
+      );
+    } catch (e) {
+      log("Error fetching comments: $e");
+      snackBar('Error fetching comments');
+      return CommentsPageResult.empty(page: page, limit: limit);
+    }
+  }
+
+  Future<List<Comment>> fetchComments(String mediaId,
+      {String sort = 'newest', int page = 1, int limit = 50}) async {
+    final result = await fetchCommentsPageResult(mediaId,
+        sort: sort, page: page, limit: limit);
+    return result.comments;
+  }
+
+  List<Comment> organizeComments(List<Comment> comments, {String sort = 'newest'}) {
+    log("Organizing ${comments.length} comments with sort: $sort");
+
+    final Map<int, Comment> commentMap = {};
+    final List<Comment> parentComments = [];
+    int replyCount = 0;
+
+    for (final comment in comments) {
+      final commentId = int.tryParse(comment.id) ?? 0;
+      commentMap[commentId] = comment;
+    }
+
+    for (final comment in comments) {
+      final parentId = comment.parentId;
+      if (parentId == null || parentId == 0) {
+        parentComments.add(comment);
+      } else {
+        final parent = commentMap[parentId];
+        if (parent != null) {
+          parent.replies ??= [];
+          parent.replies!.add(comment);
+          replyCount++;
+        } else {
+          // Parent not in this page, treat as top-level
+          parentComments.add(comment);
+        }
+      }
+    }
+
+    // Sort top-level comments based on sort option
+    switch (sort) {
+      case 'oldest':
+        parentComments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case 'top':
+        // Sort by vote score (upvotes - downvotes), newest as tiebreaker
+        parentComments.sort((a, b) {
+          final scoreA = a.likes - a.dislikes;
+          final scoreB = b.likes - b.dislikes;
+          if (scoreB != scoreA) return scoreB.compareTo(scoreA);
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+      case 'controversial':
+        // Sort by total votes (most argued), newest as tiebreaker
+        parentComments.sort((a, b) {
+          final totalA = a.likes + a.dislikes;
+          final totalB = b.likes + b.dislikes;
+          if (totalB != totalA) return totalB.compareTo(totalA);
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+      case 'newest':
+      default:
+        parentComments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+    }
+
+    // Always sort replies chronologically (oldest first)
+    for (final parent in parentComments) {
+      if (parent.replies != null && parent.replies!.isNotEmpty) {
+        parent.replies!.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      }
+    }
+
+    final pinned = parentComments.where((c) => c.pinned == true).toList();
+    final unpinned = parentComments.where((c) => c.pinned != true).toList();
+    parentComments
+      ..clear()
+      ..addAll(pinned)
+      ..addAll(unpinned);
+
+    log("Organized into ${parentComments.length} parent comments with $replyCount total replies");
+    return parentComments;
+  }
+
+  Future<Comment?> addComment({
+    required String comment,
+    required Media media,
+    required String mediaId,
+    required String tag,
+    int? parentId,
+  }) async {
+    try {
+      log("Adding comment to media: $mediaId${parentId != null ? ' as reply to $parentId' : ''}");
+      final newComment = await commentumService.createComment(
+        mediaId: mediaId,
+        media: media,
+        content: comment,
+        tag: tag,
+        parentId: parentId,
+      );
+
+      if (newComment != null) {
+        log('Comment added successfully: ${newComment.id}, parentId: ${newComment.parentId}');
+      } else {
+        log('Failed to add comment - API returned null');
+      }
+
+      return newComment;
+    } catch (e) {
+      log("Error adding comment: $e");
+      snackBar('Error adding comment');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> likeOrDislikeComment(
+      int commentId, int currentVote, int newVote) async {
+    try {
+      log("Voting on comment: $commentId, current: $currentVote, new: $newVote");
+
+      String voteType;
+      if (newVote == 0) {
+        voteType = 'remove';
+      } else if (newVote == 1) {
+        voteType = 'upvote';
+      } else if (newVote == -1) {
+        voteType = 'downvote';
+      } else {
+        return null;
+      }
+
+      final result = await commentumService.voteComment(
+        commentId: commentId,
+        voteType: voteType,
+      );
+
+      if (result != null) {
+        log("Vote updated successfully: $result");
+        return {
+          'likes': result['upvotes'],
+          'dislikes': result['downvotes'],
+          'userVote': result['userVote'] == 'upvote'
+              ? 1
+              : result['userVote'] == 'downvote'
+                  ? -1
+                  : 0,
+        };
+      } else {
+        log('Failed to update vote');
+        return null;
+      }
+    } catch (e) {
+      log("Error updating vote: $e");
+      snackBar('Error updating vote');
+      return null;
+    }
+  }
+
+  Future<Comment?> editComment(int commentId, String newContent) async {
+    try {
+      log("Editing comment: $commentId");
+      final updatedComment = await commentumService.editComment(
+        commentId: commentId,
+        content: newContent,
+      );
+
+      if (updatedComment != null) {
+        log('Comment edited successfully');
+      } else {
+        log('Failed to edit comment');
+      }
+
+      return updatedComment;
+    } catch (e) {
+      log("Error editing comment: $e");
+      snackBar('Error editing comment');
+      return null;
+    }
+  }
+
+  Future<bool> deleteComment(int commentId, {String? userId}) async {
+    try {
+      log("Deleting comment: $commentId");
+      final success =
+          await commentumService.deleteComment(commentId: commentId, userId: userId);
+
+      if (success) {
+        log('Comment deleted successfully');
+      } else {
+        log('Failed to delete comment');
+      }
+
+      return success;
+    } catch (e) {
+      log("Error deleting comment: $e");
+      snackBar('Error deleting comment');
+      return false;
+    }
+  }
+
+  Future<bool> reportComment(int commentId, String reason,
+      {String? notes}) async {
+    try {
+      log("Reporting comment: $commentId, reason: $reason");
+      final success = await commentumService.reportComment(
+        commentId: commentId,
+        reason: reason,
+        notes: notes,
+      );
+
+      if (success) {
+        log('Comment reported successfully');
+        snackBar('Comment reported successfully');
+      } else {
+        log('Failed to report comment');
+        snackBar('Failed to report comment');
+      }
+
+      return success;
+    } catch (e) {
+      log("Error reporting comment: $e");
+      snackBar('Error reporting comment');
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getReportsQueue() async {
+    try {
+      log("Fetching reports queue");
+      final queue = await commentumService.getReportsQueue();
+      log("Fetched ${queue.length} items in reports queue");
+      return queue;
+    } catch (e) {
+      log("Error fetching reports queue: $e");
+      snackBar('Error fetching reports queue');
+      return [];
+    }
+  }
+
+  Future<bool> resolveReport({
+    required int commentId,
+    String? reporterId,
+    required String resolution,
+    String? reviewNotes,
+    bool deleteComment = false,
+  }) async {
+    try {
+      log("Resolving report for comment $commentId: $resolution");
+      final success = await commentumService.resolveReport(
+        commentId: commentId,
+        reporterId: reporterId,
+        resolution: resolution,
+        reviewNotes: reviewNotes,
+        deleteComment: deleteComment,
+      );
+      if (success) {
+        snackBar('Report resolved successfully');
+      } else {
+        snackBar('Failed to resolve report');
+      }
+      return success;
+    } catch (e) {
+      log("Error resolving report: $e");
+      snackBar('Error resolving report');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getUserInfo({
+    required String targetUserId,
+    String? targetClientType,
+  }) async {
+    try {
+      log("Fetching user info for: $targetUserId");
+      return await commentumService.getUserInfo(
+        targetUserId: targetUserId,
+        targetClientType: targetClientType,
+      );
+    } catch (e) {
+      log("Error fetching user info: $e");
+      snackBar('Error fetching user info');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getUserHistory({
+    required String targetUserId,
+    String? targetClientType,
+  }) async {
+    try {
+      log("Fetching user history for: $targetUserId");
+      return await commentumService.getUserHistory(
+        targetUserId: targetUserId,
+        targetClientType: targetClientType,
+      );
+    } catch (e) {
+      log("Error fetching user history: $e");
+      snackBar('Error fetching user history');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getUserStats({
+    String? targetClientType,
+  }) async {
+    try {
+      log("Fetching user stats");
+      return await commentumService.getUserStats(
+        targetClientType: targetClientType,
+      );
+    } catch (e) {
+      log("Error fetching user stats: $e");
+      snackBar('Error fetching user stats');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> listUsers({
+    String? targetClientType,
+    String? role,
+    bool? banned,
+    bool? muted,
+    bool? shadowBanned,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      log("Listing users (page: $page, limit: $limit)");
+      return await commentumService.listUsers(
+        targetClientType: targetClientType,
+        role: role,
+        banned: banned,
+        muted: muted,
+        shadowBanned: shadowBanned,
+        page: page,
+        limit: limit,
+      );
+    } catch (e) {
+      log("Error listing users: $e");
+      snackBar('Error listing users');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> searchUsers({
+    required String username,
+    String? targetClientType,
+  }) async {
+    try {
+      log("Searching users by username: $username");
+      return await commentumService.searchUsers(
+        username: username,
+        targetClientType: targetClientType,
+      );
+    } catch (e) {
+      log("Error searching users: $e");
+      snackBar('Error searching users');
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getModerationQueue() async {
+    try {
+      log("Fetching moderation queue");
+      final queue = await commentumService.getModerationQueue();
+      log("Fetched ${queue.length} items in moderation queue");
+      return queue;
+    } catch (e) {
+      log("Error fetching moderation queue: $e");
+      snackBar('Error fetching moderation queue');
+      return [];
+    }
+  }
+
+  Future<bool> moderateComment({
+    required String action,
+    required int commentId,
+    required String reason,
+  }) async {
+    try {
+      log("Moderating comment: $commentId, action: $action");
+      final success = await commentumService.moderateComment(
+        action: action,
+        commentId: commentId,
+        reason: reason,
+      );
+
+      if (success) {
+        log('Comment moderated successfully');
+        snackBar('Comment moderated successfully');
+      } else {
+        log('Failed to moderate comment');
+        snackBar('Failed to moderate comment');
+      }
+
+      return success;
+    } catch (e) {
+      log("Error moderating comment: $e");
+      snackBar('Error moderating comment');
+      return false;
+    }
+  }
+
+  Future<bool> manageUser({
+    required String action,
+    required String targetUserId,
+    required String reason,
+    String? severity,
+    int? duration,
+    bool shadowBan = false,
+    String? role,
+    String? targetClientType,
+  }) async {
+    try {
+      log("Managing user: $targetUserId, action: $action");
+      final success = await commentumService.manageUser(
+        action: action,
+        targetUserId: targetUserId,
+        reason: reason,
+        severity: severity,
+        duration: duration,
+        shadowBan: shadowBan,
+        role: role,
+        targetClientType: targetClientType,
+      );
+
+      if (success) {
+        log('User managed successfully');
+        snackBar('User managed successfully');
+      } else {
+        log('Failed to manage user');
+        snackBar('Failed to manage user');
+      }
+
+      return success;
+    } catch (e) {
+      log("Error managing user: $e");
+      snackBar('Error managing user');
+      return false;
+    }
+  }
+
+  bool get isLoggedIn => commentumService.currentUserId != null;
+
+  Future<Map<String, dynamic>?> getCurrentUserInfo() async {
+    if (!isLoggedIn) return null;
+
+    return {
+      'id': commentumService.currentUserId,
+      'username': commentumService.currentUsername,
+      'avatar_url': commentumService.currentUserAvatar,
+    };
+  }
+
+  Future<void> login() async {
+    log("Using AnymeX authentication for Commentum v2");
+  }
+
+  Future<void> logout() async {
+    log("Using AnymeX authentication for Commentum v2");
+  }
+
+  Future<void> syncUserDataWithAniList() async {
+    log("User data sync handled by Commentum v2 API");
+  }
+
+  Future<UserPoints?> getUserPoints({
+    required String targetUserId,
+    String? targetClientType,
+  }) async {
+    try {
+      return await commentumService.getUserPoints(
+        targetUserId: targetUserId,
+        targetClientType: targetClientType,
+      );
+    } catch (e) {
+      log("Error fetching user points: $e");
+      return null;
+    }
+  }
+
+  Future<Map<String, UserPoints>> getBatchUserPoints({
+    required List<String> userIds,
+    String? targetClientType,
+  }) async {
+    try {
+      return await commentumService.getBatchUserPoints(
+        userIds: userIds,
+        targetClientType: targetClientType,
+      );
+    } catch (e) {
+      log("Error fetching batch user points: $e");
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getLeaderboard({
+    String? targetClientType,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      return await commentumService.getLeaderboard(
+        targetClientType: targetClientType,
+        page: page,
+        limit: limit,
+      );
+    } catch (e) {
+      log("Error fetching leaderboard: $e");
+      return {'entries': <LeaderboardEntry>[], 'pagination': null};
+    }
+  }
+
+  Future<Map<String, dynamic>?> getPointsConfig({
+    String? targetClientType,
+  }) async {
+    try {
+      return await commentumService.getPointsConfig(
+        targetClientType: targetClientType,
+      );
+    } catch (e) {
+      log("Error fetching points config: $e");
+      return null;
+    }
+  }
+}

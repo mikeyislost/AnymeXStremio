@@ -1,0 +1,1108 @@
+import 'dart:io';
+import 'dart:convert';
+import 'dart:math' show Random;
+import 'package:anymex/utils/oauth_helper.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
+
+import 'package:anymex/controllers/cacher/cache_controller.dart';
+import 'package:anymex/controllers/cacher/cold_cache.dart';
+import 'package:anymex/controllers/offline/offline_storage_controller.dart';
+import 'package:anymex/controllers/service_handler/params.dart';
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
+import 'package:anymex/controllers/services/widgets/widgets_builders.dart';
+import 'package:anymex/screens/community/community_recommendations_page.dart';
+import 'package:anymex/controllers/services/community_service.dart';
+import 'package:anymex/controllers/settings/methods.dart';
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/controllers/source/source_controller.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/models/Anilist/anilist_media_user.dart';
+import 'package:anymex/models/Anilist/anilist_profile.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/models/Service/base_service.dart';
+import 'package:anymex/models/Service/online_service.dart';
+import 'package:anymex/screens/anime/details_page.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_image_button.dart';
+import 'package:anymex/screens/library/online/anime_list.dart';
+import 'package:anymex/screens/library/online/manga_list.dart';
+import 'package:anymex/screens/manga/details_page.dart';
+import 'package:anymex/screens/novel/details/details_view.dart';
+import 'package:anymex/widgets/common/installed_extensions_gridview.dart';
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
+import 'package:anymex/screens/other_features.dart';
+import 'package:anymex/utils/fallback/fallback_manga.dart';
+import 'package:anymex/utils/function.dart';
+import 'package:anymex/utils/logger.dart';
+import 'package:anymex/utils/string_extensions.dart';
+import 'package:anymex/widgets/common/reusable_carousel.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_progress.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
+import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
+import 'package:anymex/controllers/network/network_manager.dart';
+
+import 'package:anymex/controllers/services/mal/mal_api.dart';
+
+class MalService extends GetxController implements BaseService, OnlineService {
+  http.Client get _client => NetworkManager.instance.compatibleClient;
+  final api = MalApi();
+  final communityService = Get.find<CommunityService>();
+
+  Media? _firstMediaWithCover(Iterable<Media> mediaList) {
+    for (final media in mediaList) {
+      final cover = media.cover;
+      if (cover != null && cover.isNotEmpty) {
+        return media;
+      }
+    }
+    return null;
+  }
+
+  Media? _lastMediaWithCover(Iterable<Media> mediaList) {
+    final list = mediaList.toList(growable: false);
+    for (var index = list.length - 1; index >= 0; index--) {
+      final media = list[index];
+      final cover = media.cover;
+      if (cover != null && cover.isNotEmpty) {
+        return media;
+      }
+    }
+    return null;
+  }
+
+  void _openHomeButtonMedia(Media media) {
+    final tag = 'home-button-${media.serviceType.name}-${media.id}';
+    if (media.mediaType == ItemType.novel) {
+      navigate(() => NovelDetailsPage(media: media));
+      return;
+    }
+    if (media.mediaType == ItemType.manga) {
+      navigate(() => MangaDetailsPage(media: media, tag: tag));
+      return;
+    }
+    navigate(() => AnimeDetailsPage(media: media, tag: tag));
+  }
+
+  @override
+  RxList<TrackedMedia> animeList = <TrackedMedia>[].obs;
+  @override
+  RxList<TrackedMedia> mangaList = <TrackedMedia>[].obs;
+
+  // Anime Lists
+  RxList<Media> trendingAnimes = <Media>[].obs;
+  RxList<Media> popularAnimes = <Media>[].obs;
+  RxList<Media> topAnimes = <Media>[].obs;
+  RxList<Media> upcomingAnimes = <Media>[].obs;
+
+  // Manga Lists
+  RxList<Media> trendingManga = <Media>[].obs;
+  RxList<Media> topManhwa = <Media>[].obs;
+  RxList<Media> topManga = <Media>[].obs;
+  RxList<Media> topManhua = <Media>[].obs;
+
+  static const field = "fields=mean,status,media_type,synopsis";
+
+  Future<List<Media>> fetchDataFromApi(String url,
+      {String? customFields}) async {
+    return api.fetchRanking(url, customFields: customFields);
+  }
+
+  Widget buildSectionIfNotEmpty(String title, RxList<Media> list,
+      {bool isManga = false}) {
+    return Obx(() {
+      if (list.isEmpty) return const Center(child: AnymeXProgressIndicator());
+      return buildSection(title, list,
+          type: isManga ? ItemType.manga : ItemType.anime);
+    });
+  }
+
+  @override
+  RxList<Widget> animeWidgets(BuildContext context) => [
+        Obx(() => trendingAnimes.isEmpty
+            ? const Center(child: AnymeXProgressIndicator())
+            : Column(
+                children: [
+                  buildBigCarousel(trendingAnimes, false),
+                  buildSectionIfNotEmpty("Trending Anime", trendingAnimes),
+                  buildSectionIfNotEmpty("Popular Anime", popularAnimes),
+                  buildSectionIfNotEmpty("Top Anime", topAnimes),
+                  buildSectionIfNotEmpty("Upcoming Anime", upcomingAnimes),
+                  Obx(() {
+                    final filteredList =
+                        communityService.getFilteredCommunityAnimes();
+                    if (filteredList.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return buildUnderratedSection(
+                        'Community Recommendations', filteredList,
+                        onSeeAll: () =>
+                            navigate(() => const CommunityRecommendationsPage(
+                                  category: 'anime',
+                                  type: ItemType.anime,
+                                )));
+                  }),
+                ],
+              )),
+      ].obs;
+
+  @override
+  RxList<Widget> mangaWidgets(BuildContext context) => [
+        Obx(() => trendingManga.isEmpty
+            ? const Center(child: AnymeXProgressIndicator())
+            : Column(
+                children: [
+                  buildBigCarousel(trendingManga, true),
+                  buildSectionIfNotEmpty("Trending Manga", trendingManga,
+                      isManga: true),
+                  buildSectionIfNotEmpty("Top Manga", topManga, isManga: true),
+                  buildSectionIfNotEmpty("Top Manhwa", topManhwa,
+                      isManga: true),
+                  buildSectionIfNotEmpty("Top Manhua", topManhua,
+                      isManga: true),
+                  ...sourceController.novelSections,
+                  Obx(() {
+                    final filteredList =
+                        communityService.getFilteredCommunityMangas();
+                    if (filteredList.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return buildUnderratedMangaSection(
+                        'Community Recommendations', filteredList,
+                        onSeeAll: () =>
+                            navigate(() => const CommunityRecommendationsPage(
+                                  category: 'manga',
+                                  type: ItemType.manga,
+                                )));
+                  }),
+                ],
+              )),
+      ].obs;
+
+  @override
+  RxList<Widget> novelWidgets(BuildContext context) {
+    final sourceController = Get.find<SourceController>();
+    sourceController.initNovelExtensions();
+    return [
+      Obx(() => InstalledExtensionsGridView(
+            sources: sourceController.installedNovelExtensions,
+            itemType: ItemType.novel,
+          )),
+    ].obs;
+  }
+
+  @override
+  bool get isDataLoaded =>
+      trendingAnimes.isNotEmpty ||
+      popularAnimes.isNotEmpty ||
+      trendingManga.isNotEmpty;
+
+  @override
+  void clearState() {
+    trendingAnimes.clear();
+    popularAnimes.clear();
+    topAnimes.clear();
+    upcomingAnimes.clear();
+    trendingManga.clear();
+    topManga.clear();
+    topManhwa.clear();
+    topManhua.clear();
+    animeList.clear();
+    mangaList.clear();
+    continueWatching.clear();
+    continueReading.clear();
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    _paintCached();
+  }
+
+  Future<void> _paintCached() async {
+    try {
+      final cached = await ColdCache.read('mal_home');
+      if (cached != null) {
+        if (cached['trendingAnimes'] is List) {
+          trendingAnimes.value = (cached['trendingAnimes'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: false))
+              .toList()
+              .removeDupes();
+        }
+        if (cached['popularAnimes'] is List) {
+          popularAnimes.value = (cached['popularAnimes'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: false))
+              .toList()
+              .removeDupes();
+        }
+        if (cached['topAnimes'] is List) {
+          topAnimes.value = (cached['topAnimes'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: false))
+              .toList()
+              .removeDupes();
+        }
+        if (cached['upcomingAnimes'] is List) {
+          upcomingAnimes.value = (cached['upcomingAnimes'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: false))
+              .toList()
+              .removeDupes();
+        }
+        if (cached['trendingManga'] is List) {
+          trendingManga.value = (cached['trendingManga'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: true))
+              .toList()
+              .removeDupes();
+        }
+        if (cached['topManga'] is List) {
+          topManga.value = (cached['topManga'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: true))
+              .toList()
+              .removeDupes();
+        }
+        if (cached['topManhwa'] is List) {
+          topManhwa.value = (cached['topManhwa'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: true))
+              .toList()
+              .removeDupes();
+        }
+        if (cached['topManhua'] is List) {
+          topManhua.value = (cached['topManhua'] as List)
+              .map((e) =>
+                  Media.fromMAL(Map<String, dynamic>.from(e), isManga: true))
+              .toList()
+              .removeDupes();
+        }
+      }
+    } catch (e) {
+      Logger.i('Error painting cached MAL feed: $e');
+    }
+  }
+
+  @override
+  Future<void> fetchHomePage() async {
+    try {
+      final results = await Future.wait([
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/anime/ranking?ranking_type=airing&limit=15'),
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/anime/ranking?ranking_type=bypopularity&limit=15'),
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/anime/ranking?ranking_type=tv&limit=15'),
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/anime/ranking?ranking_type=upcoming&limit=15'),
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/manga/ranking?ranking_type=all&limit=15'),
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/manga/ranking?ranking_type=manga&limit=15'),
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/manga/ranking?ranking_type=manhwa&limit=15'),
+        api.fetchRankingRaw(
+            'https://api.myanimelist.net/v2/manga/ranking?ranking_type=manhua&limit=15'),
+      ]);
+
+      ColdCache.write('mal_home', {
+        'trendingAnimes': results[0],
+        'popularAnimes': results[1],
+        'topAnimes': results[2],
+        'upcomingAnimes': results[3],
+        'trendingManga': results[4],
+        'topManga': results[5],
+        'topManhwa': results[6],
+        'topManhua': results[7],
+      });
+
+      trendingAnimes.value = results[0]
+          .map((e) => Media.fromMAL(e, isManga: false))
+          .toList()
+          .removeDupes();
+      popularAnimes.value = results[1]
+          .map((e) => Media.fromMAL(e, isManga: false))
+          .toList()
+          .removeDupes();
+      topAnimes.value = results[2]
+          .map((e) => Media.fromMAL(e, isManga: false))
+          .toList()
+          .removeDupes();
+      upcomingAnimes.value = results[3]
+          .map((e) => Media.fromMAL(e, isManga: false))
+          .toList()
+          .removeDupes();
+
+      trendingManga.value = results[4]
+          .map((e) => Media.fromMAL(e, isManga: true))
+          .toList()
+          .removeDupes();
+      topManga.value = results[5]
+          .map((e) => Media.fromMAL(e, isManga: true))
+          .toList()
+          .removeDupes();
+      topManhwa.value = results[6]
+          .map((e) => Media.fromMAL(e, isManga: true))
+          .toList()
+          .removeDupes();
+      topManhua.value = results[7]
+          .map((e) => Media.fromMAL(e, isManga: true))
+          .toList()
+          .removeDupes();
+
+      await communityService.fetchAll();
+    } catch (e) {
+      Logger.i('Error fetching home page data: $e');
+    }
+  }
+
+  @override
+  Future<Media> fetchDetails(FetchDetailsParams params) async {
+    if (params.type != null) {
+      if (params.type == ItemType.anime) {
+        final animeData = await fetchWithToken(
+          'https://api.myanimelist.net/v2/anime/${params.id}',
+        );
+        return animeData;
+      } else if (params.type == ItemType.manga) {
+        final mangaData = await fetchWithToken(
+          'https://api.myanimelist.net/v2/manga/${params.id}',
+        );
+        return mangaData;
+      }
+    }
+    try {
+      final animeData = await fetchWithToken(
+        'https://api.myanimelist.net/v2/anime/${params.id}',
+      );
+      return animeData;
+    } catch (animeError) {
+      try {
+        final mangaData = await fetchWithToken(
+          'https://api.myanimelist.net/v2/manga/${params.id}',
+        );
+        return mangaData;
+      } catch (mangaError) {
+        throw Exception(
+            'Failed to fetch details for both anime and manga with ID: ${params.id}');
+      }
+    }
+  }
+
+  Future<Media> fetchWithToken(String url) async {
+    const newField =
+        "fields=mean,status,media_type,synopsis,genres,type,num_episodes,num_chapters,studio,start_date,end_date,source,rating,rank,popularity,favorites,studios,statistics,recommendations";
+
+    final data = await fetchMAL('$url?$newField') as Map<String, dynamic>;
+    cacheController.addCache(data, ServicesType.mal);
+    final isManga = url.contains('/manga/');
+    return Media.fromFullMAL(data, isManga: isManga);
+  }
+
+  @override
+  Future<List<Media>> search(SearchParams params) async {
+    final mediaType = params.isManga ? 'manga' : 'anime';
+    final offset = (params.page - 1) * 25;
+    final token = AuthKeys.malAuthToken.get<String?>();
+    final isLoggedIn = token != null && token.isNotEmpty;
+    const fields =
+        'id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,rank,popularity,num_episodes,status,genres,num_chapters,num_volumes,media_type,start_season,average_episode_duration,studios';
+    final showNsfw = params.args == true;
+    final url =
+        'https://api.myanimelist.net/v2/$mediaType?q=${Uri.encodeComponent(params.query)}&limit=25&offset=$offset&fields=$fields${showNsfw ? '&nsfw=true' : ''}';
+
+    try {
+      final data = await fetchMAL(url, useAuthHeader: isLoggedIn);
+      if (data != null && data['data'] != null) {
+        return (data['data'] as List<dynamic>)
+            .map((e) => Media.fromMAL(e, isManga: params.isManga))
+            .toList()
+            .removeDupes();
+      }
+      return [];
+    } catch (e) {
+      Logger.i('MAL search failed: $e');
+      return [];
+    }
+  }
+
+  @override
+  RxList<Widget> homeWidgets(BuildContext context) {
+    final isDesktop = Get.width > 600;
+    final settings = Get.find<Settings>();
+    return [
+      if (isLoggedIn.value) ...[
+        Obx(() {
+          animeList.value.length;
+          mangaList.value.length;
+          return LayoutBuilder(builder: (context, constraints) {
+            final width = isDesktop ? 300.0 : constraints.maxWidth / 2 - 40;
+            final overflow = constraints.maxWidth < 900;
+            final overflowSecond =
+                !isDesktop ? false : constraints.maxWidth < 600;
+            final animeButtonMedia = _firstMediaWithCover(trendingAnimes);
+            final mangaButtonMedia = _firstMediaWithCover(
+              trendingManga.isNotEmpty ? trendingManga : trendingMangas,
+            );
+            final otherButtonMedia = _lastMediaWithCover([
+              ...popularAnimes,
+              ...(topManga.isNotEmpty ? topManga : popularMangas),
+              ...(trendingManga.isNotEmpty ? trendingManga : trendingMangas),
+              ...trendingAnimes,
+            ]);
+            return Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 15,
+              children: [
+                ImageButton(
+                  width: width,
+                  tagIcon: Icons.movie_filter_outlined,
+                  height: !isDesktop ? 70 : 90,
+                  subText: '${animeList.length} items',
+                  buttonText: "ANIME LIST",
+                  backgroundImage: animeButtonMedia?.cover ?? '',
+                  borderRadius: 16.multiplyRadius(),
+                  onPressed: () {
+                    navigate(() => AnimeList(data: animeList.removeDupes()));
+                  },
+                  onLongPress: animeButtonMedia == null
+                      ? null
+                      : () => _openHomeButtonMedia(animeButtonMedia),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(top: overflowSecond ? 8.0 : 0),
+                  child: ImageButton(
+                    width: width,
+                    tagIcon: Icons.book_outlined,
+                    height: !isDesktop ? 70 : 90,
+                    subText: '${mangaList.length} items',
+                    buttonText: "MANGA LIST",
+                    borderRadius: 16.multiplyRadius(),
+                    backgroundImage: mangaButtonMedia?.cover ?? '',
+                    onPressed: () {
+                      navigate(() =>
+                          AnilistMangaList(data: mangaList.removeDupes()));
+                    },
+                    onLongPress: mangaButtonMedia == null
+                        ? null
+                        : () => _openHomeButtonMedia(mangaButtonMedia),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(top: overflow ? 8.0 : 0),
+                  child: ImageButton(
+                    width: constraints.maxWidth > (width * 3)
+                        ? width
+                        : width * 2 + 15,
+                    height: !isDesktop ? 70 : 90,
+                    buttonText: "OTHER",
+                    borderRadius: 16.multiplyRadius(),
+                    backgroundImage: otherButtonMedia?.cover ?? '',
+                    onPressed: () {
+                      navigate(() => const OtherFeaturesPage());
+                    },
+                    onLongPress: otherButtonMedia == null
+                        ? null
+                        : () => _openHomeButtonMedia(otherButtonMedia),
+                    imageProportion: 0.5,
+                  ),
+                ),
+              ],
+            );
+          });
+        }),
+        const SizedBox(height: 10),
+        Obx(() {
+          settings.uiSettings.value;
+          final acceptedLists = settings.homePageCardsMal.entries
+              .where((entry) => entry.value)
+              .map<String>((entry) => entry.key)
+              .toList();
+          if (acceptedLists.isEmpty) return const SizedBox.shrink();
+          mangaList.length;
+          animeList.length;
+          return Column(
+            children: acceptedLists.map((e) {
+              return ReusableCarousel(
+                data: filterListByLabel(
+                    e.contains("Manga") || e.contains("Reading")
+                        ? mangaList
+                        : animeList,
+                    e),
+                title: e,
+                variant: DataVariant.anilist,
+                type: e.contains("Manga") || e.contains("Reading")
+                    ? ItemType.manga
+                    : ItemType.anime,
+              );
+            }).toList(),
+          );
+        }),
+      ],
+      buildSectionIfNotEmpty("Trending Animes", trendingAnimes),
+      buildSectionIfNotEmpty("Popular Animes", popularAnimes),
+      buildSectionIfNotEmpty("Trending Manga", trendingManga, isManga: true),
+      buildSectionIfNotEmpty("Popular Manga", topManga, isManga: true),
+    ].obs;
+  }
+
+  @override
+  RxBool isLoggedIn = false.obs;
+
+  @override
+  Rx<Profile> profileData = Profile().obs;
+
+  Future<void> fetchUserAnimeList() async {
+    final data = await fetchMAL(
+        'https://api.myanimelist.net/v2/users/@me/animelist?fields=num_episodes,mean,list_status&limit=1000&sort=list_updated_at&nsfw=1',
+        useAuthHeader: true);
+    animeList.value = (data['data'] as List<dynamic>)
+        .map((e) => TrackedMedia.fromMAL(e))
+        .toList();
+    continueWatching.value = animeList
+        .where((e) => e.watchingStatus?.toUpperCase().trim() == "CURRENT")
+        .toList();
+  }
+
+  Future<void> fetchUserMangaList() async {
+    final data = await fetchMAL(
+        'https://api.myanimelist.net/v2/users/@me/mangalist?fields=num_chapters,mean,list_status&limit=1000&sort=list_updated_at&nsfw=1',
+        useAuthHeader: true);
+    mangaList.value = (data['data'] as List<dynamic>)
+        .map((e) => TrackedMedia.fromMAL(e))
+        .toList();
+    continueReading.value = mangaList
+        .where((e) => e.watchingStatus?.toUpperCase().trim() == "CURRENT")
+        .toList();
+  }
+
+  Future<void> fetchUserInfo({String? token}) async {
+    final tokenn = token ?? AuthKeys.malAuthToken.get<String?>();
+    final data = await fetchMAL(
+        'https://api.myanimelist.net/v2/users/@me?fields=anime_statistics,manga_statistics',
+        useAuthHeader: true,
+        token: tokenn);
+    profileData.value = Profile.fromMAL(data);
+    isLoggedIn.value = true;
+    Future.wait([fetchUserAnimeList(), fetchUserMangaList()]);
+  }
+
+  @override
+  Future<void> autoLogin() async {
+    try {
+      final token = AuthKeys.malAuthToken.get<String?>();
+      final refreshToken = AuthKeys.malRefreshToken.get<String?>();
+
+      if (token != null) {
+        final isValid = await _validateToken(token);
+        if (isValid) {
+          Logger.i("Auto-login successful with existing token.");
+          await fetchUserInfo(token: token);
+          return;
+        }
+      }
+
+      if (refreshToken != null) {
+        await _refreshTokenWithMAL(refreshToken);
+      } else {
+        Logger.i("No valid tokens found. User needs to log in again.");
+      }
+    } catch (e) {
+      Logger.i("Auto-login failed: $e");
+    }
+  }
+
+  Future<bool> _validateToken(String token) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('https://api.myanimelist.net/v2/users/@me'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      Logger.i("Token validation failed: $e");
+      return false;
+    }
+  }
+
+  Future<void> _refreshTokenWithMAL(String refreshToken) async {
+    final clientId = dotenv.env['MAL_CLIENT_ID'] ?? '';
+    final clientSecret = dotenv.env['MAL_CLIENT_SECRET'] ?? '';
+
+    final response = await _client.post(
+      Uri.parse('https://myanimelist.net/v1/oauth2/token'),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: {
+        'grant_type': 'refresh_token',
+        'client_id': clientId,
+        'client_secret': clientSecret,
+        'refresh_token': refreshToken,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final newToken = data['access_token'];
+      final newRefreshToken = data['refresh_token'];
+
+      AuthKeys.malAuthToken.set(newToken);
+      if (newRefreshToken != null) {
+        AuthKeys.malRefreshToken.set(newRefreshToken);
+      }
+
+      Logger.i("Token refreshed successfully.");
+      await fetchUserInfo(token: newToken);
+    } else {
+      throw Exception('Failed to refresh token: ${response.body}');
+    }
+  }
+
+  Future<String?> _refreshAccessToken() async {
+    final refreshToken = AuthKeys.malRefreshToken.get<String?>();
+    if (refreshToken == null) return null;
+    try {
+      await _refreshTokenWithMAL(refreshToken);
+      return AuthKeys.malAuthToken.get<String?>();
+    } catch (e) {
+      Logger.i('Failed to refresh MAL access token: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> login(BuildContext context) async {
+    final isDesktop =
+        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+    String? selectedMethod;
+    if (isDesktop) {
+      selectedMethod = 'browser_internal';
+    } else {
+      selectedMethod = await AnymeXSheet.custom<String>(
+        loginSheetHelper(
+          context: context,
+          title: 'Login to MyAnimeList',
+          serviceName: 'MyAnimeList',
+          showTokenOption: false,
+        ),
+        context,
+        showDragHandle: true,
+      );
+    }
+
+    if (selectedMethod == null || !context.mounted) return;
+
+    final forceWebAuth = selectedMethod == 'browser_external';
+
+    String clientId = dotenv.env['MAL_CLIENT_ID'] ?? '';
+    String secret = dotenv.env['MAL_CLIENT_SECRET'] ?? '';
+    final secureRandom = Random.secure();
+    final codeVerifierBytes =
+        List<int>.generate(96, (_) => secureRandom.nextInt(256));
+
+    final codeChallenge = base64UrlEncode(codeVerifierBytes)
+        .replaceAll('=', '')
+        .replaceAll('+', '-')
+        .replaceAll('/', '_');
+
+    final url =
+        'https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id=$clientId&code_challenge=$codeChallenge';
+
+    try {
+      final result = await OauthHelper.authenticate(
+        context: context,
+        url: url,
+        callbackUrlScheme: 'anymex',
+        forceWebAuth: forceWebAuth,
+      );
+
+      if (result != null) {
+        final code = Uri.parse(result).queryParameters['code'];
+        if (code != null) {
+          Logger.i("Authorization code: $code");
+          await _exchangeCodeForTokenMAL(code, clientId, codeChallenge, secret);
+          await _fetchAndStoreMalSessionId();
+        }
+      }
+    } catch (e) {
+      Logger.i('Error during MyAnimeList login: $e');
+    }
+  }
+
+  Future<void> _fetchAndStoreMalSessionId() async {
+    try {
+      final token = AuthKeys.malAuthToken.get<String?>();
+      if (token == null) {
+        Logger.i('No MAL token found for session fetch');
+        return;
+      }
+
+      Logger.i('Attempting to fetch MAL session ID with token');
+
+      final response = await _client.get(
+        Uri.parse('https://myanimelist.net/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.headers.containsKey('set-cookie')) {
+        final cookies = response.headers['set-cookie']!;
+        Logger.i('Raw cookie header: $cookies');
+
+        final patterns = [
+          RegExp(r'MALHLOGSESSID=([^;]+)'),
+          RegExp(r'mal_session_id=([^;]+)'),
+          RegExp(r'session_id=([^;]+)'),
+        ];
+
+        for (final pattern in patterns) {
+          final match = pattern.firstMatch(cookies);
+          if (match != null) {
+            final sessionId = match.group(1);
+            if (sessionId != null && sessionId.isNotEmpty) {
+              AuthKeys.malSessionId.set(sessionId);
+              Logger.i('MAL session ID stored successfully: $sessionId');
+              final verify = AuthKeys.malSessionId.get<String?>();
+              Logger.i('Verification - stored session: $verify');
+              return;
+            }
+          }
+        }
+      }
+
+      Logger.i('No session cookie in main page, trying export page');
+      final exportResponse = await _client.get(
+        Uri.parse('https://myanimelist.net/panel.php?go=export'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (exportResponse.headers.containsKey('set-cookie')) {
+        final cookies = exportResponse.headers['set-cookie']!;
+        final match = RegExp(r'MALHLOGSESSID=([^;]+)').firstMatch(cookies);
+        if (match != null) {
+          final sessionId = match.group(1);
+          if (sessionId != null && sessionId.isNotEmpty) {
+            AuthKeys.malSessionId.set(sessionId);
+            Logger.i('MAL session ID stored from export page: $sessionId');
+            final verify = AuthKeys.malSessionId.get<String?>();
+            Logger.i('Verification - stored session: $verify');
+          }
+        }
+      }
+
+      if (AuthKeys.malSessionId.get<String?>() == null) {
+        Logger.i('Attempting to create session via export form');
+        final formResponse = await _client.post(
+          Uri.parse('https://myanimelist.net/panel.php?go=export'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: {
+            'type': '1',
+            'subexport': 'Export My List',
+          },
+        );
+
+        if (formResponse.headers.containsKey('set-cookie')) {
+          final cookies = formResponse.headers['set-cookie']!;
+          final match = RegExp(r'MALHLOGSESSID=([^;]+)').firstMatch(cookies);
+          if (match != null) {
+            final sessionId = match.group(1);
+            if (sessionId != null && sessionId.isNotEmpty) {
+              AuthKeys.malSessionId.set(sessionId);
+              Logger.i('MAL session ID created via export: $sessionId');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      Logger.i('Error fetching MAL session ID: $e');
+    }
+  }
+
+  Future<void> _exchangeCodeForTokenMAL(
+      String code, String clientId, String codeVerifier, String secret) async {
+    final response = await _client.post(
+      Uri.parse('https://myanimelist.net/v1/oauth2/token'),
+      body: {
+        'client_id': clientId,
+        'code': code,
+        'client_secret': secret,
+        'code_verifier': codeVerifier,
+        'grant_type': 'authorization_code',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final token = data['access_token'];
+      final refreshToken = data['refresh_token'];
+
+      AuthKeys.malAuthToken.set(token);
+      if (refreshToken != null) {
+        AuthKeys.malRefreshToken.set(refreshToken);
+      }
+
+      Logger.i("MAL Access token: $token");
+      await fetchUserInfo();
+      Logger.i("Login Succesfull!");
+    } else {
+      throw Exception(
+          'Failed to exchange code for token: ${response.body}, ${response.statusCode}');
+    }
+  }
+
+  Future<dynamic> fetchMAL(String url,
+      {bool useAuthHeader = false, String? token}) async {
+    try {
+      final clientId = dotenv.env['MAL_CLIENT_ID'];
+      if (clientId == null || clientId.isEmpty) {
+        throw Exception('MAL_CLIENT_ID is not set in .env file.');
+      }
+      final tokenn = token ?? AuthKeys.malAuthToken.get<String?>();
+      final useAuth = useAuthHeader && tokenn != null && tokenn.isNotEmpty;
+      final response = await _client.get(Uri.parse(url),
+          headers: useAuth
+              ? {
+                  'Authorization': 'Bearer $tokenn',
+                }
+              : {
+                  'X-MAL-CLIENT-ID': clientId,
+                });
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        Logger.i('Failed to fetch data from $url: ${response.statusCode}');
+        throw Exception(
+            'Error: ${response.statusCode} - ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      Logger.i('Error fetching data from API: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> updateListEntry(UpdateListEntryParams params) async {
+    if (!isLoggedIn.value) return;
+    final listId = params.listId;
+    final score = params.score;
+    final status = params.status;
+    final progress = params.progress;
+    final isAnime = params.isAnime;
+    final startedAt = params.startedAt;
+    final completedAt = params.completedAt;
+
+    var token = AuthKeys.malAuthToken.get<String?>();
+    if (token == null) return;
+
+    final url = Uri.parse(
+        'https://api.myanimelist.net/v2/${isAnime ? 'anime' : 'manga'}/$listId/my_list_status');
+
+    String formatMalDate(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    final body = {
+      if (status != null)
+        'status': getMALStatusEquivalent(status, isAnime: isAnime),
+      if (score != null) 'score': score.toInt().toString(),
+      if (progress != null && isAnime)
+        'num_watched_episodes': progress.toString(),
+      if (progress != null && !isAnime)
+        'num_chapters_read': progress.toString(),
+      if (startedAt != null) 'start_date': formatMalDate(startedAt),
+      if (completedAt != null) 'finish_date': formatMalDate(completedAt),
+    };
+
+    var req = await _client.put(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body,
+    );
+
+    if (req.statusCode == 401) {
+      token = await _refreshAccessToken();
+      if (token != null) {
+        req = await _client.put(
+          url,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: body,
+        );
+      }
+    }
+
+    if ((params.syncIds?.isNotEmpty ?? false) && params.syncIds?[0] != null) {
+      if (serviceHandler.anilistService.isLoggedIn.value) {
+        await serviceHandler.anilistService.updateListEntry(
+            UpdateListEntryParams(
+                listId: params.syncIds![0],
+                score: score != null ? score * 10.0 : null,
+                status: status,
+                progress: progress,
+                isAnime: isAnime,
+                startedAt: startedAt,
+                completedAt: completedAt));
+      }
+    }
+
+    if (isAnime && serviceHandler.simklService.isLoggedIn.value) {
+      final anilistId =
+          (params.syncIds?.isNotEmpty ?? false) ? params.syncIds![0] : null;
+      serviceHandler.simklService.updateListEntryFromExternalId(
+        malId: listId,
+        anilistId: anilistId,
+        score: score,
+        status: status,
+        progress: progress,
+        season: params.season,
+        isAnime: isAnime,
+      );
+    }
+
+    if (req.statusCode == 200) {
+      final newMedia = currentMedia.value
+        ..episodeCount = progress.toString()
+        ..watchingStatus = status
+        ..score = score.toString();
+      currentMedia.value = newMedia;
+      Logger.i('$isAnime: $body');
+      if (isAnime) {
+        fetchUserAnimeList();
+      } else {
+        fetchUserMangaList();
+      }
+    } else {
+      Logger.i('Error: ${req.body}');
+      Logger.i('$isAnime: $body');
+    }
+  }
+
+  @override
+  Future<void> deleteListEntry(String listId, {bool isAnime = true}) async {
+    var token = AuthKeys.malAuthToken.get<String?>();
+    if (token == null || !isLoggedIn.value) return;
+
+    final url = Uri.parse(
+        'https://api.myanimelist.net/v2/${isAnime ? 'anime' : 'manga'}/$listId/my_list_status');
+
+    var req = await _client.delete(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    );
+
+    if (req.statusCode == 401) {
+      token = await _refreshAccessToken();
+      if (token != null) {
+        req = await _client.delete(
+          url,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        );
+      }
+    }
+
+    if (req.statusCode == 200) {
+      snackBar(
+          "${isAnime ? "Anime" : "Manga"} successfully deleted from your list!");
+
+      currentMedia.value = TrackedMedia();
+      if (isAnime) {
+        animeList.removeWhere((m) => m.id == listId || m.idMal == listId);
+        fetchUserAnimeList();
+      } else {
+        mangaList.removeWhere((m) => m.id == listId || m.idMal == listId);
+        fetchUserMangaList();
+      }
+
+      if (serviceHandler.anilistService.isLoggedIn.value) {
+        final anilistAuth = Get.find<AnilistAuth>();
+        final targetList =
+            isAnime ? anilistAuth.animeList : anilistAuth.mangaList;
+        final matchedAniList = targetList
+            .firstWhereOrNull((m) => m.idMal == listId || m.id == listId);
+        if (matchedAniList != null && matchedAniList.id != null) {
+          anilistAuth.deleteMediaFromList(matchedAniList.id!, isAnime: isAnime);
+        }
+      }
+    } else {
+      Logger.i('Error deleting entry: ${req.body}');
+      snackBar(
+          "Failed to delete ${isAnime ? "anime" : "manga"} from your list.");
+    }
+  }
+
+  RxList<TrackedMedia> continueWatching = <TrackedMedia>[].obs;
+
+  RxList<TrackedMedia> continueReading = <TrackedMedia>[].obs;
+
+  @override
+  Rx<TrackedMedia> currentMedia = TrackedMedia().obs;
+
+  @override
+  void setCurrentMedia(String id, {bool isManga = false}) {
+    final offlineStorage = Get.find<OfflineStorageController>();
+    if (isManga) {
+      final savedManga = offlineStorage.getMangaById(id);
+      final number = savedManga?.currentChapter?.number?.toInt() ?? 0;
+      currentMedia.value = mangaList.firstWhere((el) => el.id == id,
+          orElse: () => TrackedMedia(
+              episodeCount: number.toString(),
+              chapterCount: number.toString(),
+              totalEpisodes: savedManga?.chapters?.length.toString() ?? '??'));
+    } else {
+      final savedAnime = offlineStorage.getAnimeById(id);
+      final number = savedAnime?.currentEpisode?.number.toInt() ?? 0;
+      currentMedia.value = animeList.firstWhere((el) => el.id == id,
+          orElse: () => TrackedMedia(
+              episodeCount: number.toString(),
+              chapterCount: number.toString()));
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    AuthKeys.malAuthToken.delete();
+    AuthKeys.malRefreshToken.delete();
+    AuthKeys.malSessionId.delete();
+    isLoggedIn.value = false;
+    profileData.value = Profile();
+    // animeList.value = [];
+    // mangaList.value = [];
+    continueWatching.value = [];
+    continueReading.value = [];
+  }
+
+  @override
+  Future<void> refresh() async {
+    Future.wait([
+      fetchUserAnimeList(),
+      fetchUserMangaList(),
+    ]);
+  }
+}

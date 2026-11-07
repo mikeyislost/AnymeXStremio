@@ -1,0 +1,131 @@
+import 'package:anymex/controllers/settings/methods.dart';
+import 'package:anymex/database/isar_models/offline_media.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/screens/anime/details_page.dart';
+import 'package:anymex/utils/function.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/helper/tv_wrapper.dart';
+import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
+
+class AnimeCard extends StatelessWidget {
+  final OfflineMedia data;
+  final RxInt cardtype;
+
+  const AnimeCard({super.key, required this.data, required this.cardtype});
+  @override
+  Widget build(BuildContext context) {
+    final tag = 'library-${data.id}';
+    return AnymexOnTap(
+      margin: 0,
+      scale: 1,
+      onTap: () {
+        navigateWithAnimation(() => AnimeDetailsPage(
+            media: Media.fromOfflineMedia(data, ItemType.anime),
+            tag: tag));
+      },
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Hero(
+                    tag: tag,
+                    transitionOnUserGestures: true,
+                    flightShuttleBuilder: AnymeXImage.heroFlightShuttleBuilder,
+                    child: AnymeXImage(
+                      imageUrl: data.poster ?? '',
+                      radius: 12.multiplyRadius(),
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 4, 5, 2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.only(
+                          bottomRight: Radius.circular(12.multiplyRadius()),
+                        ),
+                        color: context.colors.secondaryContainer,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Iconsax.star5,
+                            size: 16,
+                            color: context.colors.primary,
+                          ),
+                          const SizedBox(width: 3),
+                          AnymeXText(data.rating ?? '0.0',
+                            variant: TextVariant.bold,
+                          ),
+                          const SizedBox(width: 3),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 4, 5, 2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(12.multiplyRadius()),
+                          bottomRight: Radius.circular(12.multiplyRadius()),
+                        ),
+                        color: context.colors.secondaryContainer,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Iconsax.play5,
+                            size: 16,
+                            color: context.colors.primary,
+                          ),
+                          const SizedBox(width: 3),
+                          AnymeXText(data.currentEpisode?.number ?? '??',
+                            variant: TextVariant.bold,
+                          ),
+                          const SizedBox(width: 3),
+                        ],
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              width: double.infinity,
+              child: AnymeXText(data.name ?? '??',
+                size: 13,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                isMarquee: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

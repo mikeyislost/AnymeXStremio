@@ -1,0 +1,353 @@
+import 'dart:io';
+
+import 'package:anymex/utils/extensions.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
+import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+
+class GitHubRepoDialog extends StatefulWidget {
+  final ItemType type;
+  final String managerId;
+
+  const GitHubRepoDialog({
+    super.key,
+    required this.type,
+    required this.managerId,
+  });
+
+  @override
+  State<GitHubRepoDialog> createState() => _GitHubRepoDialogState();
+
+  void show({
+    required BuildContext context,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => GitHubRepoDialog(type: type, managerId: managerId),
+    );
+  }
+}
+
+class _GitHubRepoDialogState extends State<GitHubRepoDialog> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  String? _errorMessage;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  String? _validateUrl(String text) {
+    if (text.trim().isEmpty) {
+      return 'Please enter at least one GitHub repository URL';
+    }
+    return null;
+  }
+
+  void _handleSubmit() async {
+    final text = _controller.text.trim();
+    final error = _validateUrl(text);
+
+    setState(() {
+      _errorMessage = error;
+    });
+
+    if (error == null) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final urls = text
+            .split(RegExp(r'[\n,]'))
+            .map((u) => u.trim())
+            .where((u) => u.isNotEmpty)
+            .toList();
+
+        if (widget.managerId.toLowerCase().contains('kotatsu')) {
+          snackBar("Adding Kotatsu repository. This will take at least 1-2 minutes, please wait...");
+        }
+
+        await Extensions().addRepos(widget.type, urls, widget.managerId);
+
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'Failed to add repositories: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Dialog(
+      insetPadding:
+          Platform.isIOS ? const EdgeInsets.symmetric(horizontal: 8) : null,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.opaque(0.15),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainer.opaque(0.3),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      HugeIcons.strokeRoundedGithub,
+                      color: colorScheme.onPrimaryContainer,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AnymeXText(
+                          'Add ${widget.type.name.toUpperCase()} Repository',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        AnymeXText(
+                          'Enter GitHub repository URL',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnymeXText(
+                    'Repository URL',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _errorMessage != null
+                            ? colorScheme.error
+                            : colorScheme.outline.opaque(0.3),
+                        width: 1,
+                      ),
+                      color: colorScheme.surfaceContainerLowest,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        decoration: InputDecoration(
+                            hintText: 'https://github.com/username/repo.json',
+                            hintStyle: TextStyle(
+                              color: colorScheme.onSurfaceVariant.opaque(0.6),
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(
+                              HugeIcons.strokeRoundedLink01,
+                              color: colorScheme.onSurfaceVariant,
+                              size: 18,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                        onSubmitted: (_) => _handleSubmit(),
+                        onChanged: (value) {
+                          if (_errorMessage != null) {
+                            setState(() {
+                              _errorMessage = null;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          HugeIcons.strokeRoundedAlert02,
+                          size: 16,
+                          color: colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AnymeXText(
+                            _errorMessage!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.error,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (widget.managerId.toLowerCase().contains('kotatsu')) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          HugeIcons.strokeRoundedAlert02,
+                          size: 16,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AnymeXText(
+                            'Note: Adding Kotatsu repository will take at least 1-2 minutes because it needs to download and convert the extension plugin on first load.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () => Navigator.of(context).pop(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: AnymeXText(
+                            'Cancel',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _isLoading ? null : _handleSubmit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isLoading
+                              ? SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: ExpressiveLoadingIndicator(
+                                    color: colorScheme.onPrimary,
+                                  ),
+                                )
+                              : AnymeXText(
+                                  'Add Repository',
+                                  style: theme.textTheme.labelLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onPrimary,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

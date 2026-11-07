@@ -1,0 +1,1230 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:isolate';
+
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/database/isar_models/chapter.dart';
+import 'package:anymex/database/isar_models/episode.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/utils/extension_utils.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:dart_discord_presence/dart_discord_presence.dart';
+import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
+
+enum DiscordKeys { token, profile }
+
+class DiscordProfile {
+  final String id;
+  final String username;
+  final String discriminator;
+  final String? avatar;
+  final String? banner;
+  final String? email;
+  final bool verified;
+  final int? premiumType;
+
+  DiscordProfile({
+    required this.id,
+    required this.username,
+    required this.discriminator,
+    this.avatar,
+    this.banner,
+    this.email,
+    required this.verified,
+    this.premiumType,
+  });
+
+  String get displayName =>
+      discriminator == '0' ? username : '$username#$discriminator';
+
+  String get avatarUrl {
+    if (avatar != null) {
+      return 'https://cdn.discordapp.com/avatars/$id/$avatar.png?size=256';
+    }
+    final defaultAvatarNum = discriminator == '0'
+        ? (int.parse(id) >> 22) % 6
+        : int.parse(discriminator) % 5;
+    return 'https://cdn.discordapp.com/embed/avatars/$defaultAvatarNum.png';
+  }
+
+  String? get bannerUrl {
+    if (banner != null) {
+      return 'https://cdn.discordapp.com/banners/$id/$banner.png?size=600';
+    }
+    return null;
+  }
+
+  String get premiumTypeName {
+    switch (premiumType) {
+      case 1:
+        return 'Nitro Classic';
+      case 2:
+        return 'Nitro';
+      case 3:
+        return 'Nitro Basic';
+      default:
+        return 'None';
+    }
+  }
+
+  factory DiscordProfile.fromJson(Map<String, dynamic> json) {
+    return DiscordProfile(
+      id: json['id'],
+      username: json['username'],
+      discriminator: json['discriminator'] ?? '0',
+      avatar: json['avatar'],
+      banner: json['banner'],
+      email: json['email'],
+      verified: json['verified'] ?? false,
+      premiumType: json['premium_type'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'username': username,
+      'discriminator': discriminator,
+      'avatar': avatar,
+      'banner': banner,
+      'email': email,
+      'verified': verified,
+      'premium_type': premiumType,
+    };
+  }
+}
+
+class DiscordRPCController extends GetxController with WidgetsBindingObserver {
+  static const String _applicationId = '1435544312296505394';
+  static const String _gatewayUrl =
+      'wss://gateway.discord.gg/?v=10&encoding=json';
+  static const String _apiBaseUrl = 'https://discord.com/api/v10';
+
+  DiscordRPC? _discordRPC;
+  StreamSubscription? _onReadySub;
+  StreamSubscription? _onDisconnectedSub;
+
+  WebSocket? _gatewaySocket;
+  Timer? _heartbeatTimer;
+  int? _heartbeatInterval;
+  int? _sequenceNumber;
+
+  bool _heartbeatAckReceived = true;
+  Completer<void>? _connectCompleter;
+
+  final _isConnected = false.obs;
+  final _isMobile = (Platform.isAndroid || Platform.isIOS).obs;
+  final _token = ''.obs;
+  final Rx<DiscordProfile?> profile = Rx<DiscordProfile?>(null);
+  final _isLoading = false.obs;
+  final _enabled = true.obs;
+  final Map<String, String> _assetCache = {};
+  Future<void>? _pendingPresenceUpdate;
+
+  bool get isConnected => _isConnected.value;
+  bool get isMobile => _isMobile.value;
+  bool get isLoggedIn => _token.value.isNotEmpty;
+  bool get isLoading => _isLoading.value;
+  bool get _isIncognito =>
+      Get.isRegistered<Settings>() && Get.find<Settings>().isIncognito.value;
+  bool get isEnabled => _enabled.value && !_isIncognito;
+  DiscordProfile? get userProfile => profile.value;
+
+  static DiscordRPCController get instance => Get.find<DiscordRPCController>();
+
+  Future<void> _enqueuePresenceUpdate(Future<void> Function() updateFn) async {
+    final previous = _pendingPresenceUpdate;
+    final completer = Completer<void>();
+    _pendingPresenceUpdate = completer.future;
+
+    try {
+      if (previous != null) {
+        await previous.catchError((_) {});
+      }
+      await updateFn();
+    } finally {
+      completer.complete();
+    }
+  }
+
+  @override
+  Future<void> onInit() async {
+    super.onInit();
+    WidgetsBinding.instance.addObserver(this);
+    _enabled.value = General.discordRpcEnabled.get<bool>(true);
+    await _loadToken();
+    if (_token.value.isNotEmpty && _enabled.value) {
+      await _loadProfile();
+      await connect();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_enabled.value || _token.value.isEmpty || !isMobile) return;
+
+    if (state == AppLifecycleState.resumed) {
+      print('App resumed: Reconnecting to Discord RPC');
+      _reconnect();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      print('App backgrounded/screen off/detached: Clearing RPC connection');
+      _cleanBackgroundDisconnect();
+    }
+  }
+
+  Future<void> _reconnect() async {
+    await _disconnect();
+    await connect();
+  }
+
+  Future<void> _cleanBackgroundDisconnect() async {
+    await clearPresence();
+    await Future.delayed(const Duration(milliseconds: 150));
+    await _disconnect();
+  }
+
+  Future<void> _loadToken() async {
+    _token.value = DiscordKeys.token.get('');
+    if (!isMobile) {
+      _token.value = 'DESKTOP';
+    }
+  }
+
+  Future<void> _saveToken(String token) async {
+    DiscordKeys.token.set(token);
+    _token.value = token;
+  }
+
+  Future<void> _loadProfile() async {
+    final profileJson = DiscordKeys.profile.get<String?>(null);
+    if (profileJson != null) {
+      try {
+        profile.value = DiscordProfile.fromJson(jsonDecode(profileJson));
+      } catch (e) {
+        print('Error loading profile: $e');
+      }
+    }
+  }
+
+  Future<void> _saveProfile(DiscordProfile userProfile) async {
+    DiscordKeys.profile.set<String>(jsonEncode(userProfile.toJson()));
+    profile.value = userProfile;
+  }
+
+  Future<void> fetchUserProfile() async {
+    if (_token.value.isEmpty) {
+      print('No token available');
+      return;
+    }
+
+    _isLoading.value = true;
+    try {
+      final response = await http.get(
+        Uri.parse('$_apiBaseUrl/users/@me'),
+        headers: {
+          'Authorization': _token.value,
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final userProfile = DiscordProfile.fromJson(data);
+        await _saveProfile(userProfile);
+        print('Profile fetched: ${userProfile.displayName}');
+      } else if (response.statusCode == 401) {
+        print('Invalid token, logging out');
+        await logout();
+        snackBar('Session expired. Please login again.');
+      } else {
+        print('Failed to fetch profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching profile: $e');
+    } finally {
+      _isLoading.value = false;
+    }
+  }
+
+  Future<void> onLoginSuccess(String token) async {
+    await _saveToken(token);
+    await fetchUserProfile();
+    await connect();
+    snackBar(
+        'Successfully logged in as ${profile.value?.displayName ?? "User"}');
+  }
+
+  Future<void> connect() async {
+    if (!_enabled.value) {
+      return;
+    }
+    if (_isConnected.value) {
+      print('Already connected to Discord RPC');
+      return;
+    }
+
+    if (_connectCompleter != null && !_connectCompleter!.isCompleted) {
+      return _connectCompleter!.future;
+    }
+    _connectCompleter = Completer<void>();
+
+    try {
+      if (isMobile) {
+        if (_token.value.isEmpty) {
+          print('No token found. Please login first.');
+          return;
+        }
+        await _connectMobileGateway();
+      } else {
+        await _initializeDesktopRPC();
+      }
+    } catch (e) {
+      print('Error connecting: $e');
+    } finally {
+      if (_connectCompleter != null && !_connectCompleter!.isCompleted) {
+        _connectCompleter!.complete();
+      }
+    }
+  }
+
+  Future<void> _initializeDesktopRPC() async {
+    try {
+      if (!DiscordRPC.isAvailable) {
+        print('Discord RPC not available on this platform');
+        _isConnected.value = false;
+        return;
+      }
+      _discordRPC = DiscordRPC();
+      _onReadySub?.cancel();
+      _onReadySub = _discordRPC!.onReady.listen((event) {
+        _isConnected.value = true;
+        print('Connected to Discord RPC (Desktop) as ${event.user.username}');
+      });
+      _onDisconnectedSub?.cancel();
+      _onDisconnectedSub = _discordRPC!.onDisconnected.listen((event) {
+        _isConnected.value = false;
+        print('Disconnected from Discord RPC (Desktop): ${event.message}');
+      });
+
+      await _discordRPC!.initialize(_applicationId);
+      _isConnected.value = true;
+      print('Initialized Discord RPC (Desktop)');
+
+      await updateBrowsingPresence(
+        activity: kDebugMode ? 'Working on the App' : 'Browsing Stuff',
+        details: kDebugMode ? "Coding" : 'Idle',
+      );
+    } catch (e) {
+      print('Failed to connect to Discord RPC: $e');
+      _isConnected.value = false;
+    }
+  }
+
+  bool _canUseDesktopRpc(String action) {
+    if (isMobile) {
+      return true;
+    }
+    final connected = _discordRPC != null && _isConnected.value;
+    if (!connected) {
+      _isConnected.value = false;
+      print('Skipping $action: Discord RPC is not connected (Desktop)');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _connectMobileGateway() async {
+    try {
+      _gatewaySocket = await WebSocket.connect(_gatewayUrl);
+
+      _gatewaySocket!.listen(
+        _handleGatewayMessage,
+        onError: (error) {
+          print('Gateway error: $error');
+          _isConnected.value = false;
+        },
+        onDone: () {
+          print('Gateway connection closed');
+          _isConnected.value = false;
+          _heartbeatTimer?.cancel();
+        },
+      );
+
+      print('Connected to Discord Gateway (Mobile)');
+    } catch (e) {
+      print('Failed to connect to Discord Gateway: $e');
+      _isConnected.value = false;
+    }
+  }
+
+  void _handleGatewayMessage(dynamic message) {
+    final data = jsonDecode(message);
+    final op = data['op'];
+
+    _sequenceNumber = data['s'];
+
+    switch (op) {
+      case 10: // Hello
+        _heartbeatInterval = data['d']['heartbeat_interval'];
+        _heartbeatAckReceived = true;
+        _identify();
+        _startHeartbeat();
+        break;
+      case 0: // Dispatch
+        final event = data['t'];
+        if (event == 'READY') {
+          _isConnected.value = true;
+          print('Discord Gateway Ready (Mobile)');
+          updateBrowsingPresence(
+            activity: kDebugMode ? 'Working on the App' : 'Browsing Stuff',
+            details: kDebugMode ? "Coding" : 'Idle',
+          );
+        }
+        break;
+      case 11: // Heartbeat ACK
+        _heartbeatAckReceived = true;
+        print('Heartbeat acknowledged');
+        break;
+    }
+  }
+
+  void _identify() {
+    final payload = {
+      'op': 2,
+      'd': {
+        'token': _token.value,
+        'properties': {
+          '\$os': Platform.operatingSystem,
+          '\$browser': 'AnymeX',
+          '\$device': 'AnymeX Mobile',
+        },
+        'presence': {
+          'status': 'online',
+          'afk': false,
+        },
+      },
+    };
+
+    _gatewaySocket?.add(jsonEncode(payload));
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    if (_heartbeatInterval != null) {
+      _heartbeatTimer = Timer.periodic(
+        Duration(milliseconds: _heartbeatInterval!),
+        (_) => _sendHeartbeat(),
+      );
+    }
+  }
+
+  void _sendHeartbeat() {
+    if (!_heartbeatAckReceived) {
+      print('Heartbeat ACK missed. Reconnecting...');
+      _reconnect();
+      return;
+    }
+
+    _heartbeatAckReceived = false;
+    final payload = {
+      'op': 1,
+      'd': _sequenceNumber,
+    };
+    _gatewaySocket?.add(jsonEncode(payload));
+  }
+
+  Future<String> _processImageUrl(String? url) async {
+    try {
+      if (Platform.isAndroid || Platform.isIOS) {
+        final processedUrl = await urlToDcAsset(url ?? _getAppIconUrl());
+        print('Processed image URL: $processedUrl');
+        return processedUrl;
+      }
+
+      if (url == null || url.isEmpty) {
+        return _getAppIconUrl();
+      }
+
+      return url;
+    } catch (e) {
+      print('Error processing image URL: $e');
+      return _getAppIconUrl();
+    }
+  }
+
+  Future<String> urlToDcAsset(String url) async {
+    if (_assetCache.containsKey(url)) {
+      return _assetCache[url]!;
+    }
+    try {
+      print('Converting URL to Discord asset: $url');
+
+      final resp = await Dio().post(
+        "https://discord.com/api/v9/applications/$_applicationId/external-assets",
+        options: Options(
+          headers: {
+            'Authorization': _token.value,
+            'Content-Type': 'application/json',
+          },
+          sendTimeout: const Duration(seconds: 4),
+          receiveTimeout: const Duration(seconds: 4),
+        ),
+        data: jsonEncode({
+          "urls": [url]
+        }),
+      );
+
+      print('Discord asset conversion response: ${resp.statusCode}');
+
+      if (resp.statusCode == 200 && resp.data != null && resp.data.isNotEmpty) {
+        final assetPath = "mp:${resp.data[0]['external_asset_path']}";
+        print('Successfully converted to asset: $assetPath');
+        _assetCache[url] = assetPath;
+        return assetPath;
+      } else {
+        print('Failed to convert asset: ${resp.statusCode} - ${resp.data}');
+        return url;
+      }
+    } catch (e) {
+      print('Error converting URL to Discord asset: $e');
+      return url;
+    }
+  }
+
+  bool shouldHideNsfw(Media media) {
+    final hideNsfw = DiscordRpcKeys.hideNsfw.get<bool>(false);
+    if (!hideNsfw) return false;
+    if (media.isAdult == true) return true;
+    final genres = media.genres;
+    final adultKeywords = {'hentai', 'ecchi', 'erotica', 'adult', '18+'};
+    for (final g in genres) {
+      if (adultKeywords.contains(g.toLowerCase())) return true;
+    }
+    return false;
+  }
+
+  String formatPresenceString(String template, Map<String, String> variables) {
+    var result = template;
+    for (final entry in variables.entries) {
+      result = result.replaceAll(entry.key, entry.value);
+    }
+    return result;
+  }
+
+  Future<String> formatPresenceStringAsync(
+      String template, Map<String, String> variables) async {
+    try {
+      return await Isolate.run(() {
+        var result = template;
+        for (final entry in variables.entries) {
+          result = result.replaceAll(entry.key, entry.value);
+        }
+        return result;
+      });
+    } catch (_) {
+      return formatPresenceString(template, variables);
+    }
+  }
+
+  Future<void> updateAnimePresence({
+    required Media anime,
+    required Episode episode,
+    required String totalEpisodes,
+  }) async {
+    return _enqueuePresenceUpdate(() async {
+      if (!isEnabled) return;
+      if (shouldHideNsfw(anime)) {
+        await clearPresence();
+        return;
+      }
+      if (!_isConnected.value) await connect();
+      if (!_isConnected.value || !_canUseDesktopRpc('updateAnimePresence')) {
+        print('Discord not connected');
+        return;
+      }
+
+      final currentSeconds =
+          Duration(milliseconds: episode.timeStampInMilliseconds ?? 0).inSeconds;
+      final totalSeconds =
+          Duration(milliseconds: episode.durationInMilliseconds ?? 0).inSeconds;
+      final startTime =
+          DateTime.now().subtract(Duration(seconds: currentSeconds));
+      final endTime =
+          DateTime.now().add(Duration(seconds: totalSeconds - currentSeconds));
+      final episodeNumber = episode.number.toString();
+      final episodeName = episode.title ?? 'Episode $episodeNumber';
+      final coverUrl = anime.cover ?? anime.poster;
+      final anilistUrl = 'https://anilist.co/anime/${anime.id}';
+      final animeTitle = anime.title;
+      final showTimestamps = DiscordRpcKeys.showTimestamps.get<bool>(true);
+
+      final template =
+          DiscordRpcKeys.animeWatchingFormat.get<String>('Watching \$anime');
+      final formattedWatching = await formatPresenceStringAsync(
+        template,
+        {
+          '\$anime': animeTitle,
+          '\$title': animeTitle,
+          '\$episode': episodeNumber,
+          '\$totalEpisodes': totalEpisodes,
+          '\$total': totalEpisodes,
+        },
+      );
+
+      var detailsText = animeTitle;
+      var stateText = 'Episode $episodeNumber';
+      if (!episodeName.toLowerCase().contains('episode') &&
+          episodeName.trim().isNotEmpty) {
+        stateText = 'Episode $episodeNumber – $episodeName';
+      }
+      if (totalEpisodes.isNotEmpty && totalEpisodes != '0') {
+        stateText = '$stateText ($totalEpisodes eps)';
+      }
+
+      if (template != 'Watching \$anime' && template.trim().isNotEmpty) {
+        if (formattedWatching.contains(episodeNumber)) {
+          final stripped = formattedWatching.replaceAll(animeTitle, '').trim();
+          stateText = stripped.isNotEmpty ? stripped : formattedWatching;
+          if (stateText.startsWith('-') ||
+              stateText.startsWith('–') ||
+              stateText.startsWith(':')) {
+            stateText = stateText.substring(1).trim();
+          }
+        } else if (formattedWatching.trim() != animeTitle.trim()) {
+          detailsText = formattedWatching;
+        }
+      }
+
+      final largeImg = await _processImageUrl(coverUrl);
+      final smallImg = await _processImageUrl(_getAppIconUrl());
+
+      if (isMobile) {
+        final presencePayload = jsonEncode({
+          'op': 3,
+          'd': {
+            'since': null,
+            'activities': [
+              {
+                'application_id': _applicationId,
+                'name': 'AnymeX',
+                'type': 3, // Watching
+                'details': detailsText,
+                'state': stateText,
+                if (showTimestamps && totalSeconds > 0)
+                  'timestamps': {
+                    'start': startTime.millisecondsSinceEpoch,
+                    'end': endTime.millisecondsSinceEpoch,
+                  },
+                'assets': {
+                  'large_image': largeImg,
+                  'large_text': animeTitle,
+                  'small_image': smallImg,
+                  'small_text': 'AnymeX',
+                },
+                'buttons': [
+                  'View Anime',
+                  'Watch on AnymeX',
+                ],
+                'metadata': {
+                  'button_urls': [
+                    anilistUrl,
+                    'https://github.com/RyanYuuki/AnymeX/',
+                  ],
+                }
+              }
+            ],
+            'status': 'online',
+            'afk': false,
+          },
+        });
+        _gatewaySocket?.add(presencePayload);
+        print('Anime presence updated successfully (Mobile)');
+      } else {
+        try {
+          await _discordRPC!.setPresence(
+            DiscordPresence(
+              type: DiscordActivityType.watching,
+              details: detailsText,
+              state: stateText,
+              timestamps: showTimestamps && totalSeconds > 0
+                  ? DiscordTimestamps(
+                      start: startTime.millisecondsSinceEpoch ~/ 1000,
+                      end: endTime.millisecondsSinceEpoch ~/ 1000,
+                    )
+                  : null,
+              largeAsset: DiscordAsset(
+                key: largeImg,
+                text: animeTitle,
+              ),
+              smallAsset: DiscordAsset(
+                key: smallImg,
+                text: 'AnymeX',
+              ),
+              buttons: [
+                DiscordButton(label: 'View Anime', url: anilistUrl),
+                const DiscordButton(
+                  label: 'Watch on AnymeX',
+                  url: 'https://github.com/RyanYuuki/AnymeX/',
+                ),
+              ],
+            ),
+          );
+          print('Anime presence updated successfully');
+        } catch (e) {
+          print('Error updating anime presence: $e');
+        }
+      }
+    });
+  }
+
+  Future<void> updateAnimePresencePaused({
+    required Media anime,
+    required Episode episode,
+    required String totalEpisodes,
+  }) async {
+    return _enqueuePresenceUpdate(() async {
+      if (!isEnabled) return;
+      if (shouldHideNsfw(anime)) {
+        await clearPresence();
+        return;
+      }
+      if (!_isConnected.value) await connect();
+      if (!_isConnected.value ||
+          !_canUseDesktopRpc('updateAnimePresencePaused')) {
+        print('Discord not connected');
+        return;
+      }
+
+      final episodeNumber = episode.number.toString();
+      final coverUrl = anime.cover ?? anime.poster;
+      final anilistUrl = 'https://anilist.co/anime/${anime.id}';
+      final animeTitle = anime.title;
+
+      final currentSeconds =
+          Duration(milliseconds: episode.timeStampInMilliseconds ?? 0).inSeconds;
+      final totalSeconds =
+          Duration(milliseconds: episode.durationInMilliseconds ?? 0).inSeconds;
+      final timeDisplay = (currentSeconds > 0 && totalSeconds > 0)
+          ? ' • ${_formatDuration(Duration(seconds: currentSeconds))} / ${_formatDuration(Duration(seconds: totalSeconds))}'
+          : '';
+
+      final detailsText = animeTitle;
+      final stateText = 'Paused • Episode $episodeNumber$timeDisplay';
+
+      final largeImg = await _processImageUrl(coverUrl);
+      final smallImg = await _processImageUrl(_getAppIconUrl());
+
+      if (isMobile) {
+        final presencePayload = jsonEncode({
+          'op': 3,
+          'd': {
+            'since': null,
+            'activities': [
+              {
+                'application_id': _applicationId,
+                'name': 'AnymeX',
+                'type': 3, // Watching
+                'details': detailsText,
+                'state': stateText,
+                'assets': {
+                  'large_image': largeImg,
+                  'large_text': animeTitle,
+                  'small_image': smallImg,
+                  'small_text': 'AnymeX',
+                },
+                'buttons': [
+                  'View Anime',
+                  'Watch on AnymeX',
+                ],
+                'metadata': {
+                  'button_urls': [
+                    anilistUrl,
+                    'https://github.com/RyanYuuki/AnymeX/',
+                  ],
+                }
+              }
+            ],
+            'status': 'online',
+            'afk': false,
+          },
+        });
+        _gatewaySocket?.add(presencePayload);
+        print('Paused anime presence updated successfully (Mobile)');
+      } else {
+        try {
+          await _discordRPC!.setPresence(
+            DiscordPresence(
+              type: DiscordActivityType.watching,
+              details: detailsText,
+              state: stateText,
+              largeAsset: DiscordAsset(
+                key: largeImg,
+                text: animeTitle,
+              ),
+              smallAsset: DiscordAsset(
+                key: smallImg,
+                text: 'AnymeX',
+              ),
+              buttons: [
+                DiscordButton(label: 'View Anime', url: anilistUrl),
+                const DiscordButton(
+                  label: 'Watch on AnymeX',
+                  url: 'https://github.com/RyanYuuki/AnymeX/',
+                ),
+              ],
+            ),
+          );
+          print('Paused anime presence updated successfully');
+        } catch (e) {
+          print('Error updating paused anime presence: $e');
+        }
+      }
+    });
+  }
+
+  Future<void> updateMangaPresence({
+    required Media manga,
+    required Chapter chapter,
+    required String totalChapters,
+    int currentPage = 1,
+    int? totalPages,
+  }) async {
+    return _enqueuePresenceUpdate(() async {
+      if (!isEnabled) return;
+      if (shouldHideNsfw(manga)) {
+        await clearPresence();
+        return;
+      }
+      if (!_isConnected.value) await connect();
+      if (!_isConnected.value || !_canUseDesktopRpc('updateMangaPresence')) {
+        print('Discord not connected');
+        return;
+      }
+
+      final coverUrl = manga.cover ?? manga.poster;
+      final anilistUrl = 'https://anilist.co/manga/${manga.id}';
+      final mangaTitle = manga.title;
+      final chapterNumber = chapter.number?.toString() ?? 'Unknown';
+      final effectiveTotalPages = totalPages ?? chapter.totalPages ?? 1;
+
+      final template =
+          DiscordRpcKeys.mangaReadingFormat.get<String>('Reading \$manga');
+      final formattedReading = await formatPresenceStringAsync(
+        template,
+        {
+          '\$manga': mangaTitle,
+          '\$title': mangaTitle,
+          '\$chapter': chapterNumber,
+          '\$totalChapters': totalChapters,
+          '\$total': totalChapters,
+          '\$page': currentPage.toString(),
+          '\$totalPages': effectiveTotalPages.toString(),
+        },
+      );
+
+      var detailsText = mangaTitle;
+      var stateText =
+          'Chapter $chapterNumber/$totalChapters • Page $currentPage/$effectiveTotalPages';
+
+      if (template != 'Reading \$manga' && template.trim().isNotEmpty) {
+        if (formattedReading.contains(chapterNumber)) {
+          final stripped = formattedReading.replaceAll(mangaTitle, '').trim();
+          stateText = stripped.isNotEmpty ? stripped : formattedReading;
+          if (stateText.startsWith('-') ||
+              stateText.startsWith('–') ||
+              stateText.startsWith(':')) {
+            stateText = stateText.substring(1).trim();
+          }
+        } else if (formattedReading.trim() != mangaTitle.trim()) {
+          detailsText = formattedReading;
+        }
+      }
+
+      final largeImg = await _processImageUrl(coverUrl);
+      final smallImg = await _processImageUrl(_getAppIconUrl());
+
+      if (isMobile) {
+        final presencePayload = jsonEncode({
+          'op': 3,
+          'd': {
+            'since': null,
+            'activities': [
+              {
+                'application_id': _applicationId,
+                'name': 'AnymeX',
+                'type': 0, // Playing
+                'details': detailsText,
+                'state': stateText,
+                'assets': {
+                  'large_image': largeImg,
+                  'large_text': mangaTitle,
+                  'small_image': smallImg,
+                  'small_text': 'AnymeX',
+                },
+                'buttons': [
+                  'View Manga',
+                  'Read on AnymeX',
+                ],
+                'metadata': {
+                  'button_urls': [
+                    anilistUrl,
+                    'https://github.com/RyanYuuki/AnymeX/',
+                  ],
+                }
+              }
+            ],
+            'status': 'online',
+            'afk': false,
+          },
+        });
+        _gatewaySocket?.add(presencePayload);
+        print('Manga presence updated successfully (Mobile)');
+      } else {
+        try {
+          await _discordRPC!.setPresence(
+            DiscordPresence(
+              type: DiscordActivityType.playing,
+              details: detailsText,
+              state: stateText,
+              largeAsset: DiscordAsset(
+                key: largeImg,
+                text: mangaTitle,
+              ),
+              smallAsset: DiscordAsset(
+                key: smallImg,
+                text: 'AnymeX',
+              ),
+              buttons: [
+                DiscordButton(label: 'View Manga', url: anilistUrl),
+                const DiscordButton(
+                  label: 'Read on AnymeX',
+                  url: 'https://github.com/RyanYuuki/AnymeX/',
+                ),
+              ],
+            ),
+          );
+          print('Manga presence updated successfully');
+        } catch (e) {
+          print('Error updating manga presence: $e');
+        }
+      }
+    });
+  }
+
+  Future<void> updateMediaPresence({required Media media}) async {
+    return _enqueuePresenceUpdate(() async {
+      if (!isEnabled) return;
+      if (shouldHideNsfw(media)) {
+        await clearPresence();
+        return;
+      }
+      if (!_isConnected.value) await connect();
+      if (!_isConnected.value || !_canUseDesktopRpc('updateMediaPresence')) {
+        print('Discord not connected');
+        return;
+      }
+
+      final anilistUrl =
+          'https://anilist.co/${media.mediaType.isAnime ? 'anime' : 'manga'}/${media.id}';
+      final mediaTitle = media.title;
+      final type = media.mediaType.name.capitalizeFirst ?? '';
+
+      final isAnime = media.mediaType.isAnime;
+      final isManga = media.mediaType.isManga;
+      final defaultTemplate = isAnime
+          ? DiscordRpcKeys.animeDetailsFormat.get<String>('Viewing \$anime')
+          : (isManga
+              ? DiscordRpcKeys.mangaDetailsFormat.get<String>('Viewing \$manga')
+              : DiscordRpcKeys.novelDetailsFormat.get<String>('Viewing \$novel'));
+
+      final formattedState = await formatPresenceStringAsync(
+        defaultTemplate,
+        {
+          '\$anime': mediaTitle,
+          '\$manga': mediaTitle,
+          '\$novel': mediaTitle,
+          '\$media': mediaTitle,
+          '\$title': mediaTitle,
+          '\$type': type,
+        },
+      );
+
+      final detailsText = mediaTitle;
+      var stateText = formattedState.replaceAll(mediaTitle, '').trim();
+      if (stateText.isEmpty || stateText == 'Viewing') {
+        stateText = 'Viewing $type Details';
+      } else if (stateText.startsWith('-') ||
+          stateText.startsWith('–') ||
+          stateText.startsWith(':')) {
+        stateText = stateText.substring(1).trim();
+      }
+
+      final largeImg = await _processImageUrl(media.cover ?? media.poster);
+      final smallImg = await _processImageUrl(_getAppIconUrl());
+
+      if (isMobile) {
+        final presencePayload = jsonEncode({
+          'op': 3,
+          'd': {
+            'since': null,
+            'activities': [
+              {
+                'application_id': _applicationId,
+                'name': 'AnymeX',
+                'type': 0,
+                'details': detailsText,
+                'state': stateText,
+                'assets': {
+                  'large_image': largeImg,
+                  'large_text': mediaTitle,
+                  'small_image': smallImg,
+                  'small_text': 'AnymeX',
+                },
+                'buttons': [
+                  'View $type',
+                  '${media.mediaType.isAnime ? 'Watch' : 'Read'} on AnymeX',
+                ],
+                'metadata': {
+                  'button_urls': [
+                    anilistUrl,
+                    'https://github.com/RyanYuuki/AnymeX',
+                  ],
+                }
+              }
+            ],
+            'status': 'online',
+            'afk': false,
+          },
+        });
+        _gatewaySocket?.add(presencePayload);
+        print('Media presence updated successfully (Mobile)');
+      } else {
+        try {
+          await _discordRPC!.setPresence(
+            DiscordPresence(
+              type: DiscordActivityType.watching,
+              details: detailsText,
+              state: stateText,
+              largeAsset: DiscordAsset(
+                key: largeImg,
+                text: mediaTitle,
+              ),
+              smallAsset: DiscordAsset(
+                key: smallImg,
+                text: 'AnymeX',
+              ),
+              buttons: [
+                DiscordButton(label: 'View $type', url: anilistUrl),
+                const DiscordButton(
+                  label: 'Watch on AnymeX',
+                  url: 'https://github.com/RyanYuuki/AnymeX/',
+                ),
+              ],
+            ),
+          );
+          print('Media presence updated successfully');
+        } catch (e) {
+          print('Error updating media presence: $e');
+        }
+      }
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    } else {
+      return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+  }
+
+  Future<void> updateBrowsingPresence({
+    String? activity,
+    String? details,
+  }) async {
+    return _enqueuePresenceUpdate(() async {
+      if (!isEnabled) return;
+      if (!_isConnected.value) await connect();
+      if (!_isConnected.value || !_canUseDesktopRpc('updateBrowsingPresence')) {
+        print('Discord not connected');
+        return;
+      }
+
+      final template =
+          DiscordRpcKeys.idleFormat.get<String>('Browsing \$status');
+      final formattedState = await formatPresenceStringAsync(
+        template,
+        {
+          '\$status': details ?? activity ?? 'AnymeX',
+          '\$title': activity ?? 'Using AnymeX',
+        },
+      );
+
+      final detailsText = activity ?? 'Using AnymeX';
+      var stateText = formattedState;
+      if (detailsText.trim().toLowerCase() ==
+          stateText.trim().toLowerCase()) {
+        stateText = 'Idle';
+      }
+
+      final iconImg = await _processImageUrl(_getAppIconUrl());
+
+      if (isMobile) {
+        final presencePayload = jsonEncode({
+          'op': 3,
+          'd': {
+            'since': null,
+            'activities': [
+              {
+                'application_id': _applicationId,
+                'name': 'AnymeX',
+                'type': 0,
+                'details': detailsText,
+                'state': stateText,
+                'assets': {
+                  'large_image': iconImg,
+                  'large_text': 'AnymeX - Anime & Manga',
+                },
+                'buttons': [
+                  'Download AnymeX',
+                ],
+                'metadata': {
+                  'button_urls': [
+                    'https://github.com/RyanYuuki/AnymeX/',
+                  ],
+                }
+              }
+            ],
+            'status': 'online',
+            'afk': false,
+          },
+        });
+        _gatewaySocket?.add(presencePayload);
+        print('Browsing presence updated successfully (Mobile)');
+      } else {
+        try {
+          await _discordRPC!.setPresence(
+            DiscordPresence(
+              type: DiscordActivityType.playing,
+              details: detailsText,
+              state: stateText,
+              largeAsset: DiscordAsset(
+                key: iconImg,
+                text: 'AnymeX - Anime & Manga',
+              ),
+            ),
+          );
+          print('Browsing presence updated successfully');
+        } catch (e) {
+          print('Error updating browsing presence: $e');
+        }
+      }
+    });
+  }
+
+  Future<void> clearPresence() async {
+    if (!_isConnected.value) return;
+
+    if (isMobile) {
+      final payload = {
+        'op': 3,
+        'd': {
+          'since': null,
+          'activities': [],
+          'status': 'online',
+          'afk': false,
+        },
+      };
+      _gatewaySocket?.add(jsonEncode(payload));
+      print('Presence cleared successfully');
+    } else {
+      if (_discordRPC != null) {
+        try {
+          await _discordRPC!.clearPresence();
+          print('Presence cleared successfully');
+        } catch (e) {
+          print('Error clearing presence: $e');
+        }
+      }
+    }
+  }
+
+  String _getAppIconUrl() {
+    return 'https://raw.githubusercontent.com/RyanYuuki/AnymeX/main/assets/images/logo.png';
+  }
+
+  Future<void> pause() async {
+    await clearPresence();
+    await _disconnect();
+  }
+
+  Future<void> _disconnect() async {
+    if (isMobile) {
+      _heartbeatTimer?.cancel();
+      await _gatewaySocket?.close();
+      _gatewaySocket = null;
+      _sequenceNumber = null;
+    } else {
+      await _onReadySub?.cancel();
+      _onReadySub = null;
+      await _onDisconnectedSub?.cancel();
+      _onDisconnectedSub = null;
+      if (_discordRPC != null) {
+        try {
+          await _discordRPC!.dispose();
+        } catch (e) {
+          print('Error disconnecting from Discord RPC: $e');
+        }
+        _discordRPC = null;
+      }
+    }
+    _isConnected.value = false;
+  }
+
+  Future<void> setEnabled(bool value) async {
+    _enabled.value = value;
+    General.discordRpcEnabled.set(value);
+    if (value) {
+      if (_token.value.isNotEmpty) {
+        await _loadProfile();
+        await connect();
+      }
+    } else {
+      await clearPresence();
+      await _disconnect();
+    }
+  }
+
+  Future<void> logout() async {
+    await clearPresence();
+    await _disconnect();
+
+    DiscordKeys.profile.delete();
+    DiscordKeys.token.delete();
+    _token.value = '';
+    profile.value = null;
+
+    snackBar('Logged out from Discord');
+  }
+
+  @override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
+    clearPresence();
+    _disconnect();
+    super.onClose();
+  }
+}

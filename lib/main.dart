@@ -1,0 +1,849 @@
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
+import 'package:anymex/screens/stremio/stremio_home_page.dart';
+import 'dart:async';
+import 'dart:io';
+import 'dart:ui';
+
+import 'package:anymex/screens/downloads/controller/download_search_controller.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_badge.dart';
+import 'package:rhttp/rhttp.dart';
+import 'package:anymex/controllers/cacher/cache_controller.dart';
+import 'package:anymex/screens/downloads/controller/download_controller.dart';
+import 'package:anymex/controllers/discord/discord_rpc.dart';
+import 'package:anymex/controllers/offline/offline_storage_controller.dart';
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/controllers/track/track_binding_controller.dart';
+import 'package:anymex/controllers/stats/stats_tracker.dart';
+import 'package:anymex/screens/stats/user_stats_page.dart';
+import 'package:anymex/screens/stats/controller/user_stats_controller.dart';
+import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
+import 'package:anymex/controllers/services/anilist/anilist_data.dart';
+import 'package:anymex/controllers/services/mal/mal_service.dart';
+import 'package:anymex/controllers/services/simkl/simkl_service.dart';
+import 'package:anymex/controllers/services/storage/storage_manager_service.dart';
+import 'package:anymex/controllers/services/community_service.dart';
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/controllers/source/source_controller.dart';
+import 'package:anymex/controllers/sync/gist_sync_controller.dart';
+import 'package:anymex/controllers/theme.dart';
+import 'package:anymex/controllers/ui/greeting.dart';
+import 'package:anymex/database/database.dart';
+import 'package:anymex/firebase_options.dart';
+import 'package:anymex/screens/anime/home_page.dart';
+import 'package:anymex/screens/anime/widgets/comments/controller/comment_preloader.dart';
+import 'package:anymex/screens/extensions/ExtensionScreen.dart';
+import 'package:anymex/screens/home_page.dart';
+import 'package:anymex/screens/library/my_library.dart';
+import 'package:anymex/screens/library/history_page.dart';
+import 'package:anymex/screens/search/search_view.dart';
+import 'package:anymex/screens/manga/home_page.dart';
+import 'package:anymex/screens/novel/home_page.dart';
+import 'package:anymex/widgets/common/lazy_indexed_stack.dart';
+import 'package:anymex/widgets/common/media_mode_selector.dart';
+import 'package:anymex/widgets/common/home_continue_button.dart';
+import 'package:anymex/controllers/media_mode_controller.dart';
+import 'package:anymex/services/fcm_service.dart'
+    hide firebaseMessagingBackgroundHandler;
+import 'package:anymex/services/commentum_service.dart';
+import 'package:anymex/controllers/watchium/watchium_service.dart';
+import 'package:anymex/utils/logger.dart';
+import 'package:anymex/utils/notification.dart';
+import 'package:anymex/services/anilist_notification_service.dart';
+import 'package:anymex/screens/notifications/notification_controller.dart';
+import 'package:anymex/utils/deeplink.dart';
+import 'package:anymex/utils/external_font_loader.dart';
+import 'package:anymex/utils/register_protocol/register_protocol.dart';
+import 'package:anymex/widgets/common/anymex_scaffold.dart';
+import 'package:anymex/widgets/common/navbar.dart';
+import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_splash_screen.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_titlebar.dart';
+import 'package:anymex/widgets/helper/platform_builder.dart';
+import 'package:anymex/widgets/non_widgets/settings_sheet.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
+import 'package:app_links/app_links.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get/get.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter_iconly/flutter_iconly.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:isar_community/isar.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
+
+late Isar isar;
+final appLinks = AppLinks();
+
+FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+
+class MyHttpoverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (cert, String host, int port) => true;
+  }
+}
+
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus
+      };
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
+  Widget buildOverscrollIndicator(
+          BuildContext context, Widget child, ScrollableDetails details) =>
+      child;
+}
+
+void initDeepLinkListener(List<String> args) async {
+  if (args.isNotEmpty) {
+    for (final arg in args) {
+      try {
+        final uri = Uri.parse(arg);
+        final schemes = {
+          'dar',
+          'anymex',
+          'sugoireads',
+          'mangayomi',
+          'cloudstreamrepo',
+          'sora',
+          'tachiyomi',
+          'aniyomi',
+          'http',
+          'https',
+        };
+        if (uri.hasScheme && schemes.contains(uri.scheme.toLowerCase())) {
+          Deeplink.handleDeepLink(uri);
+          break;
+        }
+      } catch (_) {}
+    }
+  }
+
+  try {
+    final initialUri = await appLinks.getInitialLink();
+    if (initialUri != null) Deeplink.handleDeepLink(initialUri);
+  } catch (err) {
+    errorSnackBar('Error getting initial deep link: $err');
+  }
+
+  appLinks.uriLinkStream.listen(
+    (uri) => Deeplink.handleDeepLink(uri),
+    onError: (err) => errorSnackBar('Error Opening link: $err'),
+  );
+}
+
+Future<void> safeCall(FutureOr<void> Function() function,
+    {String? errorMessage}) async {
+  try {
+    await function();
+  } catch (e) {
+    if (errorMessage != null) {
+      Logger.e("$errorMessage: $e");
+    } else {
+      debugPrint("Error: $e");
+    }
+  }
+}
+
+void main(List<String> args) async {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    await safeCall(() => ExternalFontLoader.loadAllFonts(),
+        errorMessage: 'Failed to load external fonts');
+
+    await Logger.init();
+
+    await safeCall(() => Rhttp.init(),
+        errorMessage: 'Failed to initialize Rhttp');
+
+    await safeCall(() => dotenv.load(fileName: ".env"),
+        errorMessage: 'Failed to load .env file');
+
+    if (!Platform.isLinux) {
+      await safeCall(
+          () => Firebase.initializeApp(
+                options: DefaultFirebaseOptions.currentPlatform,
+              ),
+          errorMessage: 'Failed to initialize Firebase');
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    }
+
+    if (Platform.isWindows || Platform.isLinux) {
+      await safeCall(() {
+        [
+          'dar',
+          'anymex',
+          'sugoireads',
+          'mangayomi',
+          'cloudstreamrepo',
+          'sora',
+          'tachiyomi',
+          'aniyomi'
+        ].forEach(registerProtocolHandler);
+      }, errorMessage: 'Failed to register protocol handlers');
+    }
+
+    await safeCall(() => Database().init(),
+        errorMessage: 'CRITICAL: Database initialization failed');
+
+    HttpOverrides.global = MyHttpoverrides();
+
+    _initializeGetxController();
+
+    await safeCall(() => initDeepLinkListener(args),
+        errorMessage: 'Failed to initialize deep link listener');
+
+    await safeCall(() => initializeDateFormatting(),
+        errorMessage: 'Failed to initialize date formatting');
+
+    await safeCall(() => MediaKit.ensureInitialized(),
+        errorMessage: 'Failed to initialize MediaKit');
+
+    await safeCall(() async {
+      if (!Platform.isAndroid && !Platform.isIOS) {
+        await windowManager.ensureInitialized();
+        await AnymeXTitleBar.initialize();
+      } else {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+            systemNavigationBarDividerColor: Colors.transparent,
+            systemNavigationBarContrastEnforced: false,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.dark,
+            statusBarColor: Colors.transparent,
+            statusBarBrightness: Brightness.dark));
+      }
+    }, errorMessage: 'Failed to initialize window manager or system UI');
+
+    FlutterError.onError = (FlutterErrorDetails details) async {
+      FlutterError.presentError(details);
+      Logger.e("FLUTTER ERROR: ${details.exceptionAsString()}");
+      Logger.e("STACK: ${details.stack}");
+    };
+
+    runApp(
+      ChangeNotifierProvider(
+        create: (context) => ThemeProvider(),
+        child: const MainApp(),
+      ),
+    );
+  }, (error, stackTrace) async {
+    Logger.e("CRASH: $error");
+    Logger.e("STACK: $stackTrace");
+  }, zoneSpecification: ZoneSpecification(
+    print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
+      if (Logger.isInitialized) {
+        Logger.i(line);
+      } else {
+        parent.print(zone, line);
+      }
+    },
+  ));
+}
+
+void _initializeGetxController() async {
+  await safeCall(() {
+    Get.put(Settings());
+    Get.put(OfflineStorageController());
+    Get.put(AnilistAuth());
+    Get.put(CommunityService());
+    Get.put(AnilistData());
+    Get.put(SimklService());
+    Get.put(MalService());
+    Get.put(DiscordRPCController());
+    Get.put(StremioService(), permanent: true);
+    if (!Get.isRegistered<SourceController>()) {
+      Get.put(SourceController());
+    }
+    Get.put(ServiceHandler());
+    Get.put(TrackBindingController());
+    Get.put(GreetingController());
+    Get.put(CommentumService());
+    Get.put(CommentPreloader());
+    Get.put(WatchiumService(), permanent: true);
+    Get.put(GistSyncController(), permanent: true);
+    Get.put(DownloadController(), permanent: true);
+    Get.put(NotificationService(), permanent: true);
+    Get.put(AnilistNotificationService(), permanent: true);
+    Get.put(NotificationController(), permanent: true);
+    Get.put(StatsTracker());
+    Get.lazyPut(() => CacheController());
+    Get.lazyPut(() => MediaModeController());
+    Get.lazyPut(() => DownloadSearchController());
+  }, errorMessage: 'Failed to register GetX controllers');
+
+  await safeCall(() => StorageManagerService().enforceImageCacheLimit(),
+      errorMessage: 'Failed to enforce image cache limit');
+}
+
+class MainApp extends StatefulWidget {
+  const MainApp({super.key});
+
+  @override
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> {
+  bool _showMainApp = false;
+  bool _isFullScreen = false;
+
+  late FocusNode focusNode;
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
+      if (_isFullScreen) {
+        AnymeXTitleBar.setFullScreen(false);
+      } else {
+        BuildContext escapeContext = Get.context!;
+        if (Navigator.of(escapeContext).canPop()) {
+          Navigator.pop(escapeContext);
+        }
+      }
+      return KeyEventResult.handled;
+    } else if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.f11) {
+      AnymeXTitleBar.toggleFullScreen();
+      return KeyEventResult.handled;
+    } else if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.enter) {
+      final isAltPressed = HardwareKeyboard.instance.logicalKeysPressed
+              .contains(LogicalKeyboardKey.altLeft) ||
+          HardwareKeyboard.instance.logicalKeysPressed
+              .contains(LogicalKeyboardKey.altRight);
+      if (isAltPressed) {
+        AnymeXTitleBar.toggleFullScreen();
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    AnymeXTitleBar.isFullScreen
+        .addListener(() => _isFullScreen = AnymeXTitleBar.isFullScreen.value);
+
+    focusNode = FocusNode();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        precacheImage(const AssetImage('assets/images/bg_glass.webp'), context);
+        final customBg = Get.find<Settings>().liquidBackgroundPath;
+        if (customBg.isNotEmpty) {
+          precacheImage(FileImage(File(customBg)), context);
+        }
+      }
+    });
+
+    if (!Platform.isLinux) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        safeCall(() => FcmService.init(),
+            errorMessage: 'Failed to initialize FCM');
+      });
+    }
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showMainApp = true;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    Logger.dispose();
+    focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Provider.of<ThemeProvider>(context);
+
+    return Focus(
+      focusNode: focusNode,
+      onKeyEvent: _handleKeyEvent,
+      child: GetMaterialApp(
+        scrollBehavior: MyCustomScrollBehavior(),
+        debugShowCheckedModeBanner: false,
+        title: "AnymeX",
+        theme: theme.lightTheme,
+        darkTheme: theme.darkTheme,
+        themeMode: theme.isSystemMode
+            ? ThemeMode.system
+            : theme.isLightMode
+                ? ThemeMode.light
+                : ThemeMode.dark,
+        home: _showMainApp ? const FilterScreen() : const AnymeXSplashScreen(),
+        builder: (context, child) {
+          if (PlatformDispatcher.instance.views.length > 1) {
+            return child!;
+          }
+          final isDesktop = Platform.isWindows;
+
+          if (isDesktop) {
+            return Stack(
+              children: [
+                RepaintBoundary(child: child!),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: AnymeXTitleBar.titleBar(),
+                ),
+                // const FpsMeter(),
+              ],
+            );
+          }
+          return Stack(
+            children: [
+              child!,
+              // const FpsMeter(),
+            ],
+          );
+        },
+        enableLog: true,
+        logWriterCallback: (text, {isError = false}) async {
+          Logger.d(text);
+        },
+      ),
+    );
+  }
+}
+
+class FilterScreen extends StatefulWidget {
+  const FilterScreen({super.key});
+
+  @override
+  State<FilterScreen> createState() => _FilterScreenState();
+}
+
+class _FilterScreenState extends State<FilterScreen> {
+  int _selectedIndex = 1;
+  int _mobileSelectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _mobileSelectedIndex = 0;
+    _selectedIndex = 1;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = Get.find<Settings>();
+      settings.checkForUpdates(context);
+      settings.showWelcomeDialog(context);
+    });
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  void _onMobileItemTapped(int index) {
+    setState(() {
+      _mobileSelectedIndex = index;
+    });
+  }
+
+  List<String> _getNavTabs(ServiceHandler authService, Settings settings) {
+    return settings.navigationTabOrder;
+  }
+
+  Widget _getWidgetForTab(String tabKey) {
+    switch (tabKey) {
+      case 'Home':
+        return const HomePage();
+      case 'Discover':
+        return const AnimeHomePage();
+      case 'Search':
+        return const SearchPage(searchTerm: '');
+      case 'Library':
+        return const MyLibrary();
+      case 'History':
+        return const AnymeXHistoryPage();
+      case 'Stats':
+        return const UserStatsPage();
+      case 'Anime':
+        return const AnimeHomePage(type: ItemType.anime);
+      case 'Manga':
+        return const MangaHomePage();
+      case 'Novel':
+        return const NovelHomePage();
+      case 'Extensions':
+        return const ExtensionScreen(isTabScreen: true);
+      case 'Stremio':
+        return const StremioHomePage();
+      default:
+        return const HomePage();
+    }
+  }
+
+  NavItem _getNavItemForTab(String tabKey, bool isSimkl, Function(int) onTap,
+      {bool isDesktop = false}) {
+    final settings = Get.find<Settings>();
+    Widget? subWidget;
+    final mediaModeController = Get.isRegistered<MediaModeController>()
+        ? Get.find<MediaModeController>()
+        : Get.put(MediaModeController());
+
+    if (tabKey == 'Home') {
+      if (!isDesktop &&
+          settings.showHomeContinueWatching.value &&
+          mediaModeController.animeHistory.isNotEmpty) {
+        subWidget = const HomeContinueWatchingBar();
+      }
+    } else if (!settings.useLegacyNavbar) {
+      if (tabKey == 'Discover') {
+        subWidget = MediaModeSelector(
+          isVertical: isDesktop,
+          showPlayButton: false,
+        );
+      } else if (tabKey == 'Library') {
+        subWidget = MediaModeSelector(
+          isVertical: isDesktop,
+          showPlayButton: false,
+          isLibraryOrHistory: true,
+        );
+      } else if (tabKey == 'History') {
+        subWidget = MediaModeSelector(
+          isVertical: isDesktop,
+          showPlayButton: true,
+          isLibraryOrHistory: true,
+        );
+      } else if (tabKey == 'Stats') {
+        final statsController = Get.isRegistered<UserStatsController>()
+            ? Get.find<UserStatsController>()
+            : Get.put(UserStatsController());
+        subWidget = Obx(() => MediaModeSelector(
+              isVertical: isDesktop,
+              customOptions: const ['All', 'Anime', 'Manga', 'Novel'],
+              selectedOption: statsController.activeFilter.value,
+              onOptionSelected: (val) =>
+                  statsController.activeFilter.value = val,
+            ));
+      }
+    }
+
+    switch (tabKey) {
+      case 'Home':
+        return NavItem(
+          unselectedIcon: IconlyLight.home,
+          selectedIcon: IconlyBold.home,
+          onTap: onTap,
+          label: 'Home',
+          subWidget: subWidget,
+        );
+      case 'Discover':
+        return NavItem(
+          unselectedIcon: Iconsax.discover_13,
+          selectedIcon: Iconsax.discover5,
+          onTap: onTap,
+          label: 'Discover',
+          subWidget: subWidget,
+        );
+      case 'Search':
+        return NavItem(
+          unselectedIcon: IconlyLight.search,
+          selectedIcon: IconlyBold.search,
+          onTap: onTap,
+          label: 'Search',
+          subWidget: subWidget,
+        );
+      case 'Library':
+        return NavItem(
+          unselectedIcon: HugeIcons.strokeRoundedLibrary,
+          selectedIcon: HugeIcons.strokeRoundedLibrary,
+          onTap: onTap,
+          label: 'Library',
+          subWidget: subWidget,
+        );
+      case 'History':
+        return NavItem(
+          unselectedIcon: Iconsax.clock,
+          selectedIcon: Iconsax.clock5,
+          onTap: onTap,
+          label: 'History',
+          subWidget: subWidget,
+        );
+      case 'Anime':
+        return NavItem(
+          unselectedIcon: Icons.movie_filter_outlined,
+          selectedIcon: Icons.movie_filter_rounded,
+          onTap: onTap,
+          label: isSimkl ? 'Movies' : 'Anime',
+          subWidget: subWidget,
+        );
+      case 'Manga':
+        return NavItem(
+          unselectedIcon: isSimkl ? Iconsax.monitor : Iconsax.book,
+          selectedIcon: isSimkl ? Iconsax.monitor5 : Iconsax.book,
+          onTap: onTap,
+          label: isSimkl ? 'Series' : 'Manga',
+          subWidget: subWidget,
+        );
+      case 'Novel':
+        return NavItem(
+          unselectedIcon: Icons.auto_stories_outlined,
+          selectedIcon: Icons.auto_stories_rounded,
+          onTap: onTap,
+          label: 'Novel',
+          subWidget: subWidget,
+        );
+      case 'Extensions':
+        return NavItem(
+          unselectedIcon: Icons.extension_outlined,
+          selectedIcon: Icons.extension_rounded,
+          onTap: onTap,
+          label: 'Extensions',
+          subWidget: subWidget,
+        );
+      case 'Stremio':
+        return NavItem(
+          unselectedIcon: Icons.live_tv_outlined,
+          selectedIcon: Icons.live_tv_rounded,
+          onTap: onTap,
+          label: 'Movies & TV',
+          subWidget: subWidget,
+        );
+      case 'Stats':
+        return NavItem(
+          unselectedIcon: IconlyLight.chart,
+          selectedIcon: IconlyBold.chart,
+          onTap: onTap,
+          label: 'Stats',
+          subWidget: subWidget,
+        );
+      default:
+        return NavItem(
+          unselectedIcon: IconlyLight.home,
+          selectedIcon: IconlyBold.home,
+          onTap: onTap,
+          label: tabKey,
+          subWidget: subWidget,
+        );
+    }
+  }
+
+  @override
+  void dispose() {
+    Logger.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = Get.put(ServiceHandler());
+    return AnymeXScaffold(
+        resizeToAvoidBottomInset: false,
+        body: PlatformBuilder(
+          strictMode: false,
+          desktopBuilder: _buildDesktopLayout(context, authService),
+          androidBuilder: _buildAndroidLayout(authService),
+        ));
+  }
+
+  Widget _buildDesktopLayout(BuildContext context, ServiceHandler authService) {
+    final settings = Get.find<Settings>();
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Provider.of<ThemeProvider>(context).isOled
+          ? Colors.black
+          : Colors.transparent,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Obx(() {
+            final mediaModeController = Get.put(MediaModeController());
+            final _ = mediaModeController.rxMode.value;
+            final isSimkl = authService.serviceType.value == ServicesType.simkl;
+            final navTabs = _getNavTabs(authService, settings);
+            final navRailWidth = settings.navBarStyle == 0 ? 120.0 : 120.0;
+            final validIndex = _selectedIndex.clamp(0, navTabs.length);
+
+            return SizedBox(
+                width: navRailWidth,
+                child: ListView(
+                  children: [
+                    ResponsiveNavBar(
+                      isDesktop: true,
+                      currentIndex: validIndex,
+                      margin: const EdgeInsets.fromLTRB(12, 18, 12, 10),
+                      borderRadius: BorderRadius.circular(50),
+                      items: [
+                        NavItem(
+                            unselectedIcon: IconlyBold.profile,
+                            selectedIcon: IconlyBold.profile,
+                            onTap: (index) {
+                              return SettingsSheet.show(context);
+                            },
+                            label: 'Profile',
+                            altIcon: Obx(() {
+                              final count = Get.find<SourceController>()
+                                  .extensionUpdatesCount
+                                  .value;
+                              int unread = 0;
+                              try {
+                                if (Get.isRegistered<AnilistAuth>()) {
+                                  unread += Get.find<AnilistAuth>()
+                                      .unreadAnilistCount
+                                      .value;
+                                }
+                              } catch (_) {}
+                              try {
+                                if (Get.isRegistered<CommentumService>()) {
+                                  unread += Get.find<CommentumService>()
+                                      .unreadNotificationCount
+                                      .value;
+                                }
+                              } catch (_) {}
+                              final avatar = CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainer
+                                      .withValues(alpha: 0.3),
+                                  child: authService.isLoggedIn.value
+                                      ? ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(59),
+                                          child: AnymeXImage(
+                                              width: 40,
+                                              height: 40,
+                                              fit: BoxFit.cover,
+                                              radius: 0,
+                                              imageUrl: authService.profileData
+                                                      .value.avatar ??
+                                                  ''),
+                                        )
+                                      : const Icon((IconlyBold.profile)));
+                              if (unread > 0) {
+                                return AnymeXBadge(
+                                  label: unread > 99 ? '99+' : '$unread',
+                                  backgroundColor:
+                                      Theme.of(context).colorScheme.error,
+                                  textColor: Colors.white,
+                                  offset: const Offset(0, 0),
+                                  child: avatar,
+                                );
+                              }
+                              if (count > 0) {
+                                return AnymeXBadge(
+                                  label: count.toString(),
+                                  offset: const Offset(0, 0),
+                                  child: avatar,
+                                );
+                              }
+                              return avatar;
+                            })),
+                        for (final tab in navTabs)
+                          _getNavItemForTab(tab, isSimkl, _onItemTapped,
+                              isDesktop: true),
+                      ],
+                    ),
+                  ],
+                ));
+          }),
+          Expanded(
+            child: Obx(() {
+              final navTabs = _getNavTabs(authService, settings);
+              final desktopRoutes = [
+                const SizedBox.shrink(),
+                for (final tab in navTabs) _getWidgetForTab(tab),
+              ];
+              final validIndex =
+                  _selectedIndex.clamp(0, desktopRoutes.length - 1);
+              return LazyIndexedStack(
+                index: validIndex,
+                children: desktopRoutes,
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAndroidLayout(ServiceHandler authService) {
+    final settings = Get.find<Settings>();
+    return Obx(() {
+      final isSimkl = authService.serviceType.value == ServicesType.simkl;
+      final navTabs = _getNavTabs(authService, settings);
+      final mobileRoutes = [
+        for (final tab in navTabs) _getWidgetForTab(tab),
+      ];
+      final validIndex = _mobileSelectedIndex.clamp(0, mobileRoutes.length - 1);
+
+      return PopScope(
+          canPop: false,
+          onPopInvoked: (bool didPop) async {
+            if (didPop) return;
+            final homeIndex = navTabs.indexOf('Home');
+            if (validIndex != homeIndex && homeIndex != -1) {
+              setState(() {
+                _mobileSelectedIndex = homeIndex;
+              });
+            } else {
+              const MethodChannel("com.ryan.anymex/utils")
+                  .invokeMethod("exitApp");
+            }
+          },
+          child: Scaffold(
+            resizeToAvoidBottomInset: false,
+            body: Stack(
+              children: [
+                LazyIndexedStack(
+                  index: validIndex,
+                  children: mobileRoutes,
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: ResponsiveNavBar(
+                    isDesktop: false,
+                    currentIndex: validIndex,
+                    margin: EdgeInsets.only(
+                        bottom: settings.bottomNavBarMargin,
+                        left: 32,
+                        right: 32,
+                        top: 10),
+                    items: [
+                      for (final tab in navTabs)
+                        _getNavItemForTab(tab, isSimkl, _onMobileItemTapped,
+                            isDesktop: false),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            extendBody: true,
+          ));
+    });
+  }
+}

@@ -1,0 +1,902 @@
+import 'dart:io';
+
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/database/isar_models/chapter.dart';
+import 'package:anymex/database/isar_models/episode.dart';
+import 'package:anymex/database/isar_models/offline_media.dart';
+import 'package:anymex/models/Anilist/anilist_media_user.dart';
+import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/models/Media/relation.dart';
+import 'package:anymex/models/mangaupdates/news_item.dart';
+import 'package:anymex/models/models_convertor/carousel/carousel_data.dart';
+import 'package:anymex/models/models_convertor/carousel_mapper.dart';
+import 'package:anymex/utils/string_extensions.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:html/parser.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+extension StringExtensions on String {
+  String get getUrlWithoutDomain {
+    final uri = Uri.parse(replaceAll(' ', '%20'));
+    String out = uri.path;
+    if (uri.query.isNotEmpty) {
+      out += '?${uri.query}';
+    }
+    if (uri.fragment.isNotEmpty) {
+      out += '#${uri.fragment}';
+    }
+    return out;
+  }
+}
+
+String convertAniListStatus(String? status, {bool isManga = false}) {
+  switch (status?.toUpperCase()) {
+    case 'CURRENT':
+      return isManga ? "CURRENTLY READING" : 'CURRENTLY WATCHING';
+    case 'PLANNING':
+      return 'PLANNING TO ${isManga ? 'READ' : 'WATCH'}';
+    case 'COMPLETED':
+      return 'COMPLETED';
+    case 'DROPPED':
+      return 'DROPPED';
+    case 'PAUSED':
+      return 'PAUSED';
+    case 'REPEATING':
+      return isManga ? "REREADING" : 'REWATCHING';
+    default:
+      return 'ADD TO LIST';
+  }
+}
+
+Future<void> snackString(
+  String? s, {
+  String? clipboard,
+}) async {
+  var context = Get.context;
+
+  if (context != null && s != null && s.isNotEmpty) {
+    var theme = context.colors;
+
+    try {
+      final snackBar = SnackBar(
+        content: GestureDetector(
+          onTap: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+          child: AnymeXText(
+            s,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Linotte',
+              fontSize: 16.0,
+              fontWeight: FontWeight.w600,
+              color: theme.onSurface,
+            ),
+          ),
+        ),
+        backgroundColor: theme.surface,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
+          left: 32,
+          right: 32,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        duration: const Duration(seconds: 2),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    } catch (e, stackTrace) {
+      debugPrint('Error showing SnackBar: $e');
+      debugPrint(stackTrace.toString());
+    }
+  } else {
+    debugPrint('No valid context or string provided.');
+  }
+}
+
+class ChapterRecognition {
+  static const _numberPattern = r"([0-9]+)(\.[0-9]+)?(\.?[a-z]+)?";
+
+  static final _unwanted =
+      RegExp(r"\b(?:v|ver|vol|version|volume|season|s)[^a-z]?[0-9]+");
+
+  static final _unwantedWhiteSpace = RegExp(r"\s(?=extra|special|omake)");
+
+  static dynamic parseChapterNumber(String mangaTitle, String chapterName) {
+    var name = chapterName.toLowerCase();
+
+    name = name.replaceAll(mangaTitle.toLowerCase(), "").trim();
+
+    name = name.replaceAll(',', '.').replaceAll('-', '.');
+
+    name = name.replaceAll(_unwantedWhiteSpace, "");
+
+    name = name.replaceAll(_unwanted, "");
+
+    final episodeMatch = RegExp(r"e(\d+)").firstMatch(name);
+    if (episodeMatch != null) {
+      return int.parse(episodeMatch.group(1)!);
+    }
+
+    const numberPat = "*$_numberPattern";
+    const ch = r"(?<=ch\.)";
+    var match = RegExp("$ch $numberPat").firstMatch(name);
+    if (match != null) {
+      return _convertToIntIfWhole(_getChapterNumberFromMatch(match));
+    }
+
+    match = RegExp(_numberPattern).firstMatch(name);
+    if (match != null) {
+      return _convertToIntIfWhole(_getChapterNumberFromMatch(match));
+    }
+
+    return 0;
+  }
+
+  static dynamic _convertToIntIfWhole(double value) {
+    return value % 1 == 0 ? value.toInt() : value;
+  }
+
+  static double _getChapterNumberFromMatch(Match match) {
+    final initial = double.parse(match.group(1)!);
+    final subChapterDecimal = match.group(2);
+    final subChapterAlpha = match.group(3);
+    final addition = _checkForDecimal(subChapterDecimal, subChapterAlpha);
+    return initial + addition;
+  }
+
+  static double _checkForDecimal(String? decimal, String? alpha) {
+    if (decimal != null && decimal.isNotEmpty) {
+      return double.parse(decimal);
+    }
+
+    if (alpha != null && alpha.isNotEmpty) {
+      if (alpha.contains("extra")) {
+        return 0.99;
+      }
+      if (alpha.contains("omake")) {
+        return 0.98;
+      }
+      if (alpha.contains("special")) {
+        return 0.97;
+      }
+      final trimmedAlpha = alpha.replaceFirst('.', '');
+      if (trimmedAlpha.length == 1) {
+        return _parseAlphaPostFix(trimmedAlpha[0]);
+      }
+    }
+
+    return 0.0;
+  }
+
+  static double _parseAlphaPostFix(String alpha) {
+    final number = alpha.codeUnitAt(0) - ('a'.codeUnitAt(0) - 1);
+    if (number >= 10) return 0.0;
+    return number / 10.0;
+  }
+}
+
+class EpisodeInfo {
+  final String number;
+  final String? season;
+
+  const EpisodeInfo({
+    required this.number,
+    this.season,
+  });
+}
+
+EpisodeInfo parseEpisodeInfo(dynamic rawNumber, [String? title]) {
+  final cleanTitle = title?.trim() ?? '';
+  if (cleanTitle.isNotEmpty) {
+    for (final reg in [
+      RegExp(r'(?:^|[\s_.:\(\[-])S(\d+)[\s:_.-]*E(\d+)(?![\d\w])', caseSensitive: false),
+      RegExp(r'(?:^|[\s_.:\(\[-])Season\s*(\d+)[\s,:-]+(?:Episode|Ep\.?)\s*(\d+)(?![\d\w])', caseSensitive: false),
+      RegExp(r'(?:^|[\s_.:\(\[-])(\d+)x(\d+)(?![\d\w])', caseSensitive: false),
+      RegExp(r'(?:^|[\s_.:\(\[-])S(\d+)[\s:_.-]+(?:Ep\.?|Episode\s+)?(\d+)(?![\d\w])', caseSensitive: false),
+    ]) {
+      final match = reg.firstMatch(cleanTitle);
+      if (match != null) {
+        final season = int.tryParse(match.group(1)!);
+        final episode = int.tryParse(match.group(2)!);
+        if (episode != null) {
+          return EpisodeInfo(
+            number: episode.toString(),
+            season: season?.toString(),
+          );
+        }
+      }
+    }
+
+    final epMatch = RegExp(r'(?:^|[\s_.:\(\[-])(?:Episode|Ep\.?)\s*(\d+)(?![\d\w])', caseSensitive: false).firstMatch(cleanTitle);
+    if (epMatch != null) {
+      final episode = int.tryParse(epMatch.group(1)!);
+      if (episode != null) {
+        return EpisodeInfo(number: episode.toString());
+      }
+    }
+  }
+
+  final cleanNum = rawNumber?.toString().trim() ?? '';
+  if (cleanNum.isNotEmpty) {
+    for (final reg in [
+      RegExp(r'(?:^|[\s_.:\(\[-])S(\d+)[\s:_.-]*E(\d+)(?![\d\w])', caseSensitive: false),
+      RegExp(r'(?:^|[\s_.:\(\[-])Season\s*(\d+)[\s,:-]+(?:Episode|Ep\.?)\s*(\d+)(?![\d\w])', caseSensitive: false),
+      RegExp(r'(?:^|[\s_.:\(\[-])(\d+)x(\d+)(?![\d\w])', caseSensitive: false),
+    ]) {
+      final match = reg.firstMatch(cleanNum);
+      if (match != null) {
+        final season = int.tryParse(match.group(1)!);
+        final episode = int.tryParse(match.group(2)!);
+        if (episode != null) {
+          return EpisodeInfo(
+            number: episode.toString(),
+            season: season?.toString(),
+          );
+        }
+      }
+    }
+
+    final parsed = double.tryParse(cleanNum);
+    if (parsed != null) {
+      if (parsed == parsed.toInt()) {
+        return EpisodeInfo(number: parsed.toInt().toString());
+      }
+      final rounded = double.parse(parsed.toStringAsFixed(2));
+      if (rounded == rounded.toInt()) {
+        return EpisodeInfo(number: rounded.toInt().toString());
+      }
+      return EpisodeInfo(
+        number: rounded.toString().replaceAll(RegExp(r'\.?0+$'), ''),
+      );
+    }
+    return EpisodeInfo(number: cleanNum);
+  }
+
+  return const EpisodeInfo(number: '1');
+}
+
+String formatEpisodeNumberLabel(dynamic rawNumber, {String? title}) {
+  return parseEpisodeInfo(rawNumber, title).number;
+}
+
+Episode DEpisodeToEpisode(DEpisode chapter) {
+  final info = parseEpisodeInfo(chapter.episodeNumber, chapter.name);
+  final sortMap = <String, String>{};
+  if (chapter.sortMap != null) {
+    sortMap.addAll(chapter.sortMap!);
+  }
+  if (info.season != null && !sortMap.containsKey('season') && !sortMap.containsKey('Season')) {
+    sortMap['season'] = info.season!;
+  }
+
+  return Episode(
+    number: info.number,
+    link: chapter.url,
+    sortKeys: sortMap.isNotEmpty ? sortMap.keys.toList() : null,
+    sortVals: sortMap.isNotEmpty ? sortMap.values.toList() : null,
+    title: chapter.name,
+    thumbnail: chapter.thumbnail,
+    desc: chapter.description,
+    filler: chapter.filler,
+    dateUpload: chapter.dateUpload,
+  );
+}
+
+int? extractSeason(Episode? episode) {
+  if (episode == null) return null;
+  final sortMap = episode.sortMap;
+  for (final entry in sortMap.entries) {
+    if (entry.key.toLowerCase().contains('season')) {
+      final match = RegExp(r'\d+').firstMatch(entry.value);
+      if (match != null) {
+        final parsed = int.tryParse(match.group(0)!);
+        if (parsed != null && parsed > 0) return parsed;
+      }
+      final keyMatch = RegExp(r'\d+').firstMatch(entry.key);
+      if (keyMatch != null) {
+        final parsed = int.tryParse(keyMatch.group(0)!);
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    }
+  }
+  for (final key in episode.sortKeys ?? <String>[]) {
+    if (key.toLowerCase().contains('season') ||
+        RegExp(r'\bs\d+\b', caseSensitive: false).hasMatch(key)) {
+      final match = RegExp(r'\d+').firstMatch(key);
+      if (match != null) {
+        final parsed = int.tryParse(match.group(0)!);
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    }
+  }
+  for (final val in episode.sortVals ?? <String>[]) {
+    if (val.toLowerCase().contains('season')) {
+      final match = RegExp(r'\d+').firstMatch(val);
+      if (match != null) {
+        final parsed = int.tryParse(match.group(0)!);
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    }
+  }
+  if (episode.title != null && episode.title!.isNotEmpty) {
+    final match = RegExp(r'(?:s|season)\s*(\d+)', caseSensitive: false)
+        .firstMatch(episode.title!);
+    if (match != null) {
+      final parsed = int.tryParse(match.group(1)!);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+  }
+  return null;
+}
+
+String calcTime(String timestamp, {String format = "dd-MM-yyyy"}) {
+  if (timestamp.trim().isEmpty) return "";
+
+  DateTime? dateTime;
+  final cleanTimestamp = timestamp.trim();
+  final parsedInt = int.tryParse(cleanTimestamp);
+
+  if (parsedInt != null) {
+    if (cleanTimestamp.length == 10) {
+      dateTime = DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000);
+    } else if (cleanTimestamp.length == 13) {
+      dateTime = DateTime.fromMillisecondsSinceEpoch(parsedInt);
+    } else if (cleanTimestamp.length == 16) {
+      dateTime = DateTime.fromMillisecondsSinceEpoch(parsedInt ~/ 1000);
+    } else {
+      if (parsedInt > 9999999999) {
+        dateTime = DateTime.fromMillisecondsSinceEpoch(parsedInt);
+      } else {
+        dateTime = DateTime.fromMillisecondsSinceEpoch(parsedInt * 1000);
+      }
+    }
+  } else {
+    dateTime = DateTime.tryParse(cleanTimestamp);
+  }
+
+  if (dateTime == null) {
+    return timestamp;
+  }
+
+  final now = DateTime.now();
+  final difference = now.difference(dateTime);
+
+  if (difference.inDays <= 14 && difference.inDays >= 0) {
+    if (difference.inDays == 0) {
+      if (difference.inHours < 1) {
+        return "${difference.inMinutes} minutes ago";
+      }
+      return "${difference.inHours} hours ago";
+    }
+    return "${difference.inDays} days ago";
+  }
+
+  return DateFormat(format).format(dateTime);
+}
+
+String dateFormatHour(String timestamp) {
+  final dateTime = DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
+  return DateFormat.Hm().format(dateTime);
+}
+
+List<Chapter> DEpisodeToChapter(List<DEpisode> chapters, String title) {
+  return chapters.map((e) {
+    return Chapter(
+      title: e.name,
+      link: e.url,
+      scanlator: e.scanlator,
+
+      /// so previously i was using this, now trying to extract from episode itself
+      // number:
+      //     ChapterRecognition.parseChapterNumber(title, e.name!).toDouble(),
+      number: e.episodeNumber.toDouble(),
+      releaseDate: e.dateUpload != null && e.dateUpload!.isNotEmpty
+          ? calcTime(e.dateUpload!)
+          : DateFormat('dd-MM-yyyy').format(DateTime.now()),
+    );
+  }).toList();
+}
+
+int calculateChunkSize(List<Episode> episodes) {
+  final total = episodes.length;
+  if (total <= 12) {
+    return total;
+  } else if (total <= 50) {
+    return 12;
+  } else if (total <= 250) {
+    return 25;
+  } else if (total <= 500) {
+    return 50;
+  } else {
+    return 75;
+  }
+}
+
+List<List<Episode>> chunkEpisodes(List<Episode> episodes, int chunkSize) {
+  if (episodes.isEmpty) {
+    return [];
+  }
+
+  final chunks = List.generate(
+    (episodes.length / chunkSize).ceil(),
+    (index) => episodes.sublist(
+      index * chunkSize,
+      (index + 1) * chunkSize > episodes.length
+          ? episodes.length
+          : (index + 1) * chunkSize,
+    ),
+  );
+
+  return [
+    episodes,
+    ...chunks,
+  ];
+}
+
+int calculateChapterChunkSize(List<Chapter> chapters) {
+  final total = chapters.length;
+  if (total <= 12) {
+    return total;
+  } else if (total <= 50) {
+    return 12;
+  } else if (total <= 250) {
+    return 25;
+  } else if (total <= 500) {
+    return 50;
+  } else {
+    return 75;
+  }
+}
+
+List<List<Chapter>> chunkChapter(List<Chapter> chapters, int chunkSize) {
+  if (chapters.isEmpty) {
+    return [];
+  }
+
+  final chunks = List.generate(
+    (chapters.length / chunkSize).ceil(),
+    (index) => chapters.sublist(
+      index * chunkSize,
+      (index + 1) * chunkSize > chapters.length
+          ? chapters.length
+          : (index + 1) * chunkSize,
+    ),
+  );
+
+  return [
+    chapters,
+    ...chunks,
+  ];
+}
+
+int findChunkIndexFromProgress(
+  int userProgress,
+  List<List<Episode>> chunks, {
+  bool isManga = false,
+}) {
+  if (chunks.isEmpty || chunks.length <= 1) return 0;
+  if (userProgress <= 0) return 1;
+
+  for (int i = 1; i < chunks.length; i++) {
+    final chunk = chunks[i];
+    if (chunk.isEmpty) continue;
+
+    final firstEp =
+        double.tryParse(chunk.first.number.toString())?.toInt() ?? 0;
+    final lastEp = double.tryParse(chunk.last.number.toString())?.toInt() ?? 0;
+
+    final minEp = firstEp < lastEp ? firstEp : lastEp;
+    final maxEp = firstEp > lastEp ? firstEp : lastEp;
+
+    if (userProgress >= minEp && userProgress <= maxEp) {
+      return i;
+    }
+  }
+
+  return chunks.length - 1;
+}
+
+int findChapterChunkIndexFromProgress(
+  int userProgress,
+  List<List<Chapter>> chunks,
+) {
+  if (chunks.isEmpty || chunks.length <= 1) return 0;
+  if (userProgress <= 0) return 1;
+
+  for (int i = 1; i < chunks.length; i++) {
+    final chunk = chunks[i];
+    if (chunk.isEmpty) continue;
+
+    final firstChapter = chunk.first.number?.toInt() ?? 0;
+    final lastChapter = chunk.last.number?.toInt() ?? 0;
+
+    final minCh = firstChapter < lastChapter ? firstChapter : lastChapter;
+    final maxCh = firstChapter > lastChapter ? firstChapter : lastChapter;
+
+    if (userProgress >= minCh && userProgress <= maxCh) {
+      return i;
+    }
+  }
+
+  return chunks.length - 1;
+}
+
+enum DataVariant {
+  regular,
+  recommendation,
+  relation,
+  anilist,
+  extension,
+  offline,
+  library,
+  underrated
+}
+
+List<CarouselData> convertData(List<dynamic> data,
+    {DataVariant variant = DataVariant.regular, bool isManga = false}) {
+  return data.map<CarouselData>((e) {
+    switch (variant) {
+      case DataVariant.extension:
+        return (e as DMedia).toCarouselData(variant: variant, isManga: isManga);
+      case DataVariant.offline:
+        return (e as OfflineMedia)
+            .toCarouselData(variant: variant, isManga: isManga);
+      case DataVariant.relation:
+        return (e as Relation)
+            .toCarouselData(variant: variant, isManga: isManga);
+      case DataVariant.anilist:
+        return (e as TrackedMedia)
+            .toCarouselData(variant: variant, isManga: isManga);
+      default:
+        return (e as Media).toCarouselData(variant: variant, isManga: isManga);
+    }
+  }).toList();
+}
+
+String formatTimeAgo(int millisecondsSinceEpoch) {
+  final now = DateTime.now();
+  final date = DateTime.fromMillisecondsSinceEpoch(millisecondsSinceEpoch);
+
+  final difference = now.difference(date);
+
+  if (difference.inSeconds < 60) {
+    return "${difference.inSeconds} seconds ago";
+  } else if (difference.inMinutes < 60) {
+    return "${difference.inMinutes} minutes ago";
+  } else if (difference.inHours < 24) {
+    return "${difference.inHours} hours ago";
+  } else if (difference.inDays < 7) {
+    return "${difference.inDays} days ago";
+  } else {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
+}
+
+Media convertOfflineToMedia(OfflineMedia offlineMedia) {
+  return Media(
+      id: offlineMedia.mediaId ?? '0',
+      idMal: offlineMedia.idMal ?? '0',
+      romajiTitle: offlineMedia.jname ?? '',
+      title: offlineMedia.english ?? offlineMedia.name ?? '',
+      description: offlineMedia.description ?? '',
+      poster: offlineMedia.poster ?? '',
+      cover: offlineMedia.cover,
+      totalEpisodes: offlineMedia.totalEpisodes ?? '',
+      type: offlineMedia.type ?? '',
+      season: offlineMedia.season ?? '',
+      premiered: offlineMedia.premiered ?? '',
+      duration: offlineMedia.duration ?? '',
+      status: offlineMedia.status ?? '',
+      rating: offlineMedia.rating ?? '',
+      popularity: offlineMedia.popularity ?? '',
+      format: offlineMedia.format ?? '',
+      aired: offlineMedia.aired ?? '',
+      totalChapters: offlineMedia.totalChapters ?? '',
+      genres: offlineMedia.genres ?? [],
+      studios: offlineMedia.studios ?? [],
+      characters: [],
+      relations: [],
+      recommendations: [],
+      nextAiringEpisode: null,
+      rankings: [],
+      serviceType: ServicesType.values[offlineMedia.serviceIndex ?? 0]);
+}
+
+List<TrackedMedia> filterListByStatus(
+    List<TrackedMedia> animeList, String status,
+    {bool isMAL = false}) {
+  switch (status.toUpperCase()) {
+    case 'WATCHING':
+      return animeList
+          .where((anime) => anime.watchingStatus == 'CURRENT')
+          .toList();
+    case 'READING':
+      return animeList
+          .where((anime) => anime.watchingStatus == 'CURRENT')
+          .toList();
+    case 'COMPLETED TV':
+      return animeList
+          .where((anime) =>
+              ((anime.watchingStatus == 'COMPLETED') && anime.format == 'TV'))
+          .toList();
+    case 'COMPLETED':
+      return animeList
+          .where((anime) => ((anime.watchingStatus == 'COMPLETED')))
+          .toList();
+    case 'COMPLETED MOVIE':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'MOVIE')
+          .toList();
+    case 'COMPLETED OVA':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'OVA')
+          .toList();
+    case 'COMPLETED SPECIAL':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'SPECIAL')
+          .toList();
+    case 'COMPLETED ONA':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'ONA')
+          .toList();
+    case 'COMPLETED TV SHORT':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'TV_SHORT')
+          .toList();
+    case 'PAUSED':
+      return animeList
+          .where((anime) => anime.watchingStatus == 'PAUSED')
+          .toList();
+    case 'DROPPED':
+      return animeList
+          .where((anime) => anime.watchingStatus == 'DROPPED')
+          .toList();
+    case 'PLANNING':
+      return animeList
+          .where((anime) => anime.watchingStatus == 'PLANNING')
+          .toList();
+    case 'REWATCHING':
+      return animeList
+          .where((anime) => anime.watchingStatus == "REPEATING")
+          .toList();
+    case 'REREADING':
+      return animeList
+          .where((anime) => anime.watchingStatus == "REPEATING")
+          .toList();
+    case 'COMPLETED MANGA':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'MANGA')
+          .toList();
+    case 'COMPLETED NOVEL':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'NOVEL')
+          .toList();
+    case 'COMPLETED ONE SHOT':
+      return animeList
+          .where((anime) =>
+              anime.watchingStatus == 'COMPLETED' && anime.format == 'ONE_SHOT')
+          .toList();
+
+    case 'CURRENTLY WATCHING':
+      return animeList
+          .where((anime) => anime.watchingStatus == 'CURRENT')
+          .toList();
+    case 'CURRENTLY READING':
+      return animeList
+          .where((anime) => anime.watchingStatus == 'CURRENT')
+          .toList();
+    case 'ALL':
+      return animeList;
+    default:
+      return [];
+  }
+}
+
+List<TrackedMedia> filterListByLabel(
+    List<TrackedMedia> animeList, String label) {
+  return animeList.where((anime) {
+    if ((label == "Continue Watching" ||
+            label == "Continue Watching (Movies)" ||
+            label == "Continue Watching (Shows)") &&
+        anime.watchingStatus == 'CURRENT') {
+      return true;
+    }
+    if (label == "Continue Reading" && anime.watchingStatus == 'CURRENT') {
+      return true;
+    }
+    if ((label == "Completed TV" || label == "Completed Movies") &&
+        anime.watchingStatus == 'COMPLETED') {
+      return true;
+    }
+    if ((label == "Completed Manga" || label == "Completed Shows") &&
+        anime.watchingStatus == 'COMPLETED') {
+      return true;
+    }
+    if (label == "Completed Movie" && anime.watchingStatus == 'COMPLETED') {
+      return true;
+    }
+    if ((label == "Paused Animes" || label == "Paused Movies") &&
+        anime.watchingStatus == 'PAUSED') {
+      return true;
+    }
+    if ((label == "Paused Manga" || label == "Paused Shows") &&
+        anime.watchingStatus == 'PAUSED') {
+      return true;
+    }
+    if ((label == "Dropped Animes" || label == "Dropped Movies") &&
+        anime.watchingStatus == 'DROPPED') {
+      return true;
+    }
+    if ((label == "Dropped Manga" || label == "Dropped Shows") &&
+        anime.watchingStatus == 'DROPPED') {
+      return true;
+    }
+    if ((label == "Planning Animes" || label == "Planning Movies") &&
+        anime.watchingStatus == 'PLANNING') {
+      return true;
+    }
+    if ((label == "Planning Manga" || label == "Planning Shows") &&
+        anime.watchingStatus == 'PLANNING') {
+      return true;
+    }
+    if (label == "Rewatching Animes" && anime.watchingStatus == 'REPEATING') {
+      return true;
+    }
+    if (label == "Rewatching Manga" && anime.watchingStatus == 'REPEATING') {
+      return true;
+    }
+
+    return false;
+  }).toList();
+}
+
+int getResponsiveCrossAxisVal(double screenWidth, {int itemWidth = 150}) {
+  if (!screenWidth.isFinite || itemWidth <= 0) {
+    return 1;
+  }
+  final count = (screenWidth / itemWidth).floor();
+  return count.clamp(1, 12);
+}
+
+Future<bool> isTv() async {
+  if (!Platform.isAndroid) return false;
+  DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+  AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+  bool isTV = androidInfo.systemFeatures.contains('android.software.leanback');
+  return isTV;
+}
+
+Future<void> navigate(dynamic page) async {
+  await Navigator.push(Get.context!, MaterialPageRoute(builder: (c) => page()));
+}
+
+Future<void> navigateWithAnimation(dynamic page) async {
+  await Navigator.push(
+    Get.context!,
+    PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page(),
+      transitionDuration: const Duration(milliseconds: 260),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final fadeAnim = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOut,
+        );
+        return FadeTransition(
+          opacity: fadeAnim,
+          child: child,
+        );
+      },
+    ),
+  );
+}
+
+Future<void> navigateWithSlide(dynamic page) async {
+  await Navigator.push(
+    Get.context!,
+    PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page(),
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 250),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final offsetAnim = Tween<Offset>(
+          begin: const Offset(0, 0.08),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        ));
+        final fadeAnim = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeIn,
+        );
+        return FadeTransition(
+          opacity: fadeAnim,
+          child: SlideTransition(
+            position: offsetAnim,
+            child: child,
+          ),
+        );
+      },
+    ),
+  );
+}
+
+extension SizedBoxExt on num {
+  SizedBox width() {
+    return SizedBox(width: toDouble());
+  }
+
+  SizedBox height() {
+    return SizedBox(height: toDouble());
+  }
+}
+
+extension RemoveDuplicates<T extends Media> on List<T> {
+  List<T> removeDupes() {
+    final seenIds = <String>{};
+    return where((media) {
+      final isDuplicate = seenIds.contains(media.id);
+      seenIds.add(media.id);
+      return !isDuplicate;
+    }).toList();
+  }
+}
+
+String getRandomTag({String? addition}) {
+  if (addition != null) {
+    return '$addition-${DateTime.now().millisecond}';
+  }
+  return DateTime.now().millisecond.toString();
+}
+
+Widget buildNewsSection(BuildContext context, List<NewsItem> news) {
+  if (news.isEmpty) return const SizedBox.shrink();
+  final colorScheme = context.colors;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: news.take(5).map((item) {
+      final decodedTitle = parse(item.title).body?.text ?? item.title;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: InkWell(
+          onTap: () => launchUrl(Uri.parse(item.url)),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface.opaque(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colorScheme.outline.opaque(0.1)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AnymeXText(decodedTitle,
+                    size: 13,
+                    maxLines: 2,
+                    variant: TextVariant.semiBold,
+                  ),
+                ),
+                Icon(Icons.open_in_new, size: 16, color: colorScheme.primary),
+              ],
+            ),
+          ),
+        ),
+      );
+    }).toList(),
+  );
+}

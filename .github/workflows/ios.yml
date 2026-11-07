@@ -1,0 +1,119 @@
+name: Build iOS IPA
+
+# Builds an unsigned .ipa for sideloading (Feather / AltStore / Sideloadly).
+# Runs on every push to main, or manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: "3.41.6"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast (Linux) static check of the code so mistakes fail in ~5 minutes
+  # instead of after a full iOS build.
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Create placeholder .env
+        run: touch .env
+
+      - name: Install packages
+        run: flutter pub get
+
+      - name: Analyze (errors fail the build)
+        run: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings \
+            lib/controllers/services/stremio \
+            lib/screens/stremio \
+            lib/screens/anime/watch/controller/player_controller.dart \
+            lib/screens/settings/sub_settings/settings_accounts.dart \
+            lib/screens/settings/sub_settings/settings_ui.dart \
+            lib/screens/library/widgets/history_model.dart \
+            lib/controllers/settings/settings.dart \
+            lib/main.dart
+
+  ios:
+    needs: analyze
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      # Optional repo secrets (Settings → Secrets and variables → Actions).
+      # AL_CLIENT_ID / AL_CLIENT_SECRET are needed for AniList login; the
+      # rest can be left unset.
+      - name: Setup environment
+        shell: bash
+        env:
+          AL_CLIENT_ID: ${{ secrets.AL_CLIENT_ID }}
+          AL_CLIENT_SECRET: ${{ secrets.AL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
+          CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          cat > .env << EOF
+          AL_CLIENT_ID=$AL_CLIENT_ID
+          AL_CLIENT_SECRET=$AL_CLIENT_SECRET
+          SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID
+          SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET
+          MAL_CLIENT_ID=$MAL_CLIENT_ID
+          MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
+          CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
+          TMDB_API_KEY=$TMDB_API_KEY
+          EOF
+
+      - name: Build iOS (unsigned)
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign
+          mkdir -p build/ios/iphoneos/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -qr AnymeX-Stremio.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AnymeX-Stremio-ipa
+          path: build/ios/iphoneos/AnymeX-Stremio.ipa
+
+      # Always-current download link: Releases → "latest-ios".
+      - name: Publish to the latest-ios release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-ios
+          name: Latest iOS build
+          body: "Built from ${{ github.sha }}"
+          prerelease: true
+          make_latest: false
+          files: build/ios/iphoneos/AnymeX-Stremio.ipa

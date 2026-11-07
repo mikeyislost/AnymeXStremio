@@ -1,0 +1,187 @@
+import 'package:anymex/database/data_keys/keys.dart';
+
+class PlayerSettings {
+  double speed;
+  String resizeMode;
+  bool showSubtitle;
+  int subtitleSize;
+  String subtitleColor;
+  String subtitleFont;
+  String subtitleBackgroundColor;
+  String subtitleOutlineColor;
+  int skipDuration;
+  int seekDuration;
+  double bottomMargin;
+  bool transculentControls;
+  bool defaultPortraitMode;
+  String defaultOrientation;
+  int playerStyle;
+  int subtitleOutlineWidth;
+  bool autoSkipOP;
+  bool autoSkipED;
+  bool autoSkipOnce;
+  bool autoSkipRecap;
+  bool enableSwipeControls;
+  int markAsCompleted;
+  bool transitionSubtitle;
+  bool autoTranslate;
+  String translateTo;
+  bool autoSkipFiller;
+  double subtitleOpacity;
+  double subtitleBottomMargin;
+  String subtitleOutlineType;
+  bool enableScreenshot;
+  bool playerMenuAnimation;
+  String hardwareDecoder;
+  String preferredSubtitleLanguage;
+  String videoOutput;
+  String audioOutput;
+  bool enableHoldToSeek;
+  bool enableSlideToSeek;
+  bool useMediaSession;
+
+  PlayerSettings({
+    this.speed = 1.0,
+    this.resizeMode = "Contain",
+    this.subtitleSize = 16,
+    this.subtitleColor = "White",
+    this.subtitleFont = 'Linotte',
+    this.subtitleBackgroundColor = "None",
+    this.subtitleOutlineColor = "Black",
+    this.showSubtitle = true,
+    this.skipDuration = 85,
+    this.seekDuration = 10,
+    this.bottomMargin = 5,
+    this.playerStyle = 0,
+    this.transculentControls = false,
+    this.defaultPortraitMode = false,
+    this.defaultOrientation = 'landscape',
+    this.subtitleOutlineWidth = 1,
+    this.autoSkipED = false,
+    this.autoSkipOP = false,
+    this.autoSkipOnce = false,
+    this.autoSkipRecap = false,
+    this.enableSwipeControls = true,
+    this.markAsCompleted = 90,
+    this.autoTranslate = false,
+    this.translateTo = 'en',
+    this.transitionSubtitle = false,
+    this.subtitleOpacity = 1.0,
+    this.subtitleBottomMargin = 10.0,
+    this.subtitleOutlineType = "Outline",
+    this.autoSkipFiller = false,
+    this.enableScreenshot = false,
+    this.playerMenuAnimation = true,
+    this.hardwareDecoder = 'hw+',
+    this.preferredSubtitleLanguage = 'none',
+    this.videoOutput = 'gpu',
+    this.audioOutput = 'auto',
+    this.enableHoldToSeek = true,
+    this.enableSlideToSeek = true,
+    this.useMediaSession = false,
+  });
+
+  factory PlayerSettings.fromDB() {
+    final defaults = PlayerSettings();
+    final storedSubtitleColor =
+        PlayerSettingsKeys.subtitleColor.get<String>(defaults.subtitleColor);
+    final storedSubtitleBackgroundColor = PlayerSettingsKeys
+        .subtitleBackgroundColor
+        .get<String>(defaults.subtitleBackgroundColor);
+
+    return PlayerSettings(
+      speed: PlayerSettingsKeys.speed.get<double>(defaults.speed),
+      resizeMode:
+          PlayerSettingsKeys.resizeMode.get<String>(defaults.resizeMode),
+      showSubtitle:
+          PlayerSettingsKeys.showSubtitle.get<bool>(defaults.showSubtitle),
+      subtitleSize:
+          PlayerSettingsKeys.subtitleSize.get<int>(defaults.subtitleSize),
+      subtitleColor:
+          storedSubtitleColor == 'None' ? 'Default' : storedSubtitleColor,
+      subtitleFont:
+          PlayerSettingsKeys.subtitleFont.get<String>(defaults.subtitleFont),
+      subtitleBackgroundColor: storedSubtitleBackgroundColor == 'Default'
+          ? 'None'
+          : storedSubtitleBackgroundColor,
+      subtitleOutlineColor: PlayerSettingsKeys.subtitleOutlineColor
+          .get<String>(defaults.subtitleOutlineColor),
+      skipDuration:
+          PlayerSettingsKeys.skipDuration.get<int>(defaults.skipDuration),
+      seekDuration:
+          PlayerSettingsKeys.seekDuration.get<int>(defaults.seekDuration),
+      bottomMargin:
+          PlayerSettingsKeys.bottomMargin.get<double>(defaults.bottomMargin),
+      transculentControls: PlayerSettingsKeys.transculentControls
+          .get<bool>(defaults.transculentControls),
+      defaultPortraitMode: PlayerSettingsKeys.defaultPortraitMode
+          .get<bool>(defaults.defaultPortraitMode),
+      defaultOrientation: PlayerSettingsKeys.defaultOrientation
+          .get<String>(defaults.defaultOrientation),
+      playerStyle:
+          PlayerSettingsKeys.playerStyle.get<int>(defaults.playerStyle),
+      subtitleOutlineWidth: PlayerSettingsKeys.subtitleOutlineWidth
+          .get<int>(defaults.subtitleOutlineWidth),
+      autoSkipOP: PlayerSettingsKeys.autoSkipOP.get<bool>(defaults.autoSkipOP),
+      autoSkipED: PlayerSettingsKeys.autoSkipED.get<bool>(defaults.autoSkipED),
+      autoSkipOnce:
+          PlayerSettingsKeys.autoSkipOnce.get<bool>(defaults.autoSkipOnce),
+      autoSkipRecap:
+          PlayerSettingsKeys.autoSkipRecap.get<bool>(defaults.autoSkipRecap),
+      enableSwipeControls: PlayerSettingsKeys.enableSwipeControls
+          .get<bool>(defaults.enableSwipeControls),
+      markAsCompleted:
+          PlayerSettingsKeys.markAsCompleted.get<int>(defaults.markAsCompleted),
+      transitionSubtitle: PlayerSettingsKeys.transitionSubtitle
+          .get<bool>(defaults.transitionSubtitle),
+      autoTranslate:
+          PlayerSettingsKeys.autoTranslate.get<bool>(defaults.autoTranslate),
+      translateTo:
+          PlayerSettingsKeys.translateTo.get<String>(defaults.translateTo),
+      subtitleOpacity: PlayerSettingsKeys.subtitleOpacity
+          .get<double>(defaults.subtitleOpacity),
+      subtitleBottomMargin: PlayerSettingsKeys.subtitleBottomMargin
+          .get<double>(defaults.subtitleBottomMargin),
+      subtitleOutlineType: PlayerSettingsKeys.subtitleOutlineType
+          .get<String>(defaults.subtitleOutlineType),
+      autoSkipFiller:
+          PlayerSettingsKeys.autoSkipFiller.get<bool>(defaults.autoSkipFiller),
+      enableScreenshot: PlayerSettingsKeys.enableScreenshot
+          .get<bool>(defaults.enableScreenshot),
+      playerMenuAnimation: PlayerSettingsKeys.playerMenuAnimation
+          .get<bool>(defaults.playerMenuAnimation),
+      hardwareDecoder: _readHardwareDecoder(),
+      preferredSubtitleLanguage: PlayerSettingsKeys.preferredSubtitleLanguage
+          .get<String>(defaults.preferredSubtitleLanguage),
+      videoOutput: PlayerSettingsKeys.videoOutput
+          .get<String>(defaults.videoOutput),
+      audioOutput: PlayerSettingsKeys.audioOutput
+          .get<String>(defaults.audioOutput),
+      enableHoldToSeek: PlayerSettingsKeys.enableHoldToSeek
+          .get<bool>(defaults.enableHoldToSeek),
+      enableSlideToSeek: PlayerSettingsKeys.enableSlideToSeek
+          .get<bool>(defaults.enableSlideToSeek),
+      useMediaSession: PlayerSettingsKeys.useMediaSession
+          .get<bool>(defaults.useMediaSession),
+    );
+  }
+}
+
+String _normalizeHardwareDecoder(String value) {
+  switch (value) {
+    case 'hw+':
+    case 'hw':
+    case 'sw':
+      return value;
+    default:
+      return 'hw+';
+  }
+}
+
+String _readHardwareDecoder() {
+  final stored = PlayerSettingsKeys.hardwareDecoder.get<String>('');
+  if (stored.isEmpty) {
+    return 'hw+';
+  }
+  return _normalizeHardwareDecoder(stored);
+}

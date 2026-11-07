@@ -1,0 +1,971 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/models/custom_card_style.dart';
+import 'package:anymex/models/player/player_adaptor.dart';
+import 'package:anymex/models/ui/ui_adaptor.dart';
+import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
+import 'package:anymex/screens/onboarding/welcome_dialog.dart';
+import 'package:anymex/utils/function.dart';
+import 'package:anymex/utils/logger.dart';
+import 'package:anymex/utils/shaders.dart';
+import 'package:anymex/utils/updater.dart';
+import 'package:anymex/screens/anime/watch/controls/themes/setup/media_indicator_theme_registry.dart';
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_displaymode/flutter_displaymode.dart';
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:get/get.dart';
+
+Settings get settingsController => Get.find<Settings>();
+
+class Settings extends GetxController {
+  late Rx<UISettings> uiSettings;
+  late Rx<PlayerSettings> playerSettings;
+  final RxString discordUrl = 'https://discord.gg/GKVvSyXDUD'.obs;
+  final RxString telegramUrl = 'https://t.me/AnymeX_Discussion'.obs;
+  final RxBool showJoinDialog = true.obs;
+  bool linksFetched = false;
+  VoidCallback? onLinksReady;
+
+  final canShowUpdate = true.obs;
+  final playerControlThemeRx = 'default'.obs;
+  final mediaIndicatorThemeRx = 'default'.obs;
+  final readerControlThemeRx = 'default'.obs;
+  final chapterStyleRx = 'compact'.obs;
+  late final Rx<CardCustomization> customCardStyleRx;
+
+  CardCustomization get customCardStyle => customCardStyleRx.value;
+  CardCustomization get cardCustomization => customCardStyleRx.value;
+
+  set customCardStyle(CardCustomization style) {
+    customCardStyleRx.value = style;
+    UISettingsKeys.customCardStyleJson.set(jsonEncode(style.toJson()));
+  }
+
+  set cardCustomization(CardCustomization style) {
+    customCardStyle = style;
+  }
+
+  void updateCustomCardStyle(CardCustomization Function(CardCustomization) update) {
+    customCardStyle = update(customCardStyleRx.value);
+  }
+
+  RxBool useAlternateTitle = false.obs;
+  RxBool isIncognito = false.obs;
+  RxBool enableBetaUpdates = false.obs;
+  RxBool writeLogToFile = false.obs;
+  RxBool showHomeContinueWatching = true.obs;
+  Rxn<DisplayMode> preferredDisplayMode = Rxn<DisplayMode>();
+  Rxn<DisplayMode> activeDisplayMode = Rxn<DisplayMode>();
+  RxList<DisplayMode> supportedModes = <DisplayMode>[].obs;
+  RxString customLogDirectory = ''.obs;
+
+  RxString downloadPath = ''.obs;
+  RxInt concurrentDownloads = 3.obs;
+  RxInt downloadChunks = 1.obs;
+  RxInt hlsParallelSegments = 3.obs;
+  RxBool enableJxlCompression = false.obs;
+
+  RxBool isTV = false.obs;
+  final _selectedShader = ''.obs;
+  final _selectedProfile = 'MID-END'.obs;
+  final mpvPath = ''.obs;
+  RxString bridgeMode = 'sidecar'.obs;
+
+  String get _defaultBridgeMode {
+    return 'sidecar';
+  }
+
+  String get selectedShader => _selectedShader.value;
+
+  set selectedShader(String value) {
+    _selectedShader.value = value;
+    PlayerUiKeys.selectedShaderLegacy.set(value);
+  }
+
+  String get selectedProfile => _selectedProfile.value;
+
+  set selectedProfile(String value) {
+    _selectedProfile.value = value;
+    PlayerUiKeys.selectedProfile.set(value);
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    _fetchInviteLinks();
+
+    playerSettings = Rx<PlayerSettings>(PlayerSettings.fromDB());
+    uiSettings = Rx<UISettings>(UISettings.fromDB());
+    uiSettings.value.normalizeMaps();
+
+    selectedShader = PlayerUiKeys.selectedShaderLegacy.get<String>("");
+    selectedProfile = PlayerUiKeys.selectedProfile.get<String>("MID-END");
+    playerControlThemeRx.value =
+        PlayerUiKeys.playerControlTheme.get<String>('default');
+    final savedIndicatorTheme =
+        PlayerUiKeys.mediaIndicatorTheme.get<String>('default');
+    mediaIndicatorThemeRx.value = MediaIndicatorThemeRegistry.themes
+            .any((t) => t.id == savedIndicatorTheme)
+        ? savedIndicatorTheme
+        : 'default';
+    readerControlThemeRx.value =
+        ReaderKeys.readerControlTheme.get<String>('default');
+    chapterStyleRx.value = ReaderKeys.chapterStyle.get<String>('compact');
+
+    final savedCardStyleJson =
+        UISettingsKeys.customCardStyleJson.get<String>('');
+    CardCustomization initialCustomStyle = const CardCustomization();
+    if (savedCardStyleJson.isNotEmpty) {
+      try {
+        initialCustomStyle =
+            CardCustomization.fromJson(jsonDecode(savedCardStyleJson));
+      } catch (_) {}
+    }
+    customCardStyleRx = Rx<CardCustomization>(initialCustomStyle);
+
+    useAlternateTitle.value = General.useAlternateTitle.get<bool>(false);
+    isIncognito.value = General.incognitoMode.get<bool>(false);
+    enableBetaUpdates.value = General.enableBetaUpdates.get<bool>(false);
+    writeLogToFile.value = General.writeLogToFile.get<bool>(false);
+    showHomeContinueWatching.value =
+        General.showHomeContinueWatching.get<bool>(true);
+    customLogDirectory.value = General.customLogDirectory.get<String>("");
+
+    downloadPath.value = DownloadKeys.downloadPath.get<String>("");
+    concurrentDownloads.value = DownloadKeys.concurrentDownloads.get<int>(3);
+    downloadChunks.value = DownloadKeys.downloadChunks.get<int>(1);
+    hlsParallelSegments.value = DownloadKeys.hlsParallelSegments.get<int>(3);
+    enableJxlCompression.value =
+        DownloadKeys.enableJxlCompression.get<bool>(false);
+
+    bridgeMode.value = PluginKeys.bridgeMode.get<String>(_defaultBridgeMode);
+    _updateBridgeDispatcher();
+    Logger.setFileLoggingEnabled(writeLogToFile.value,
+        customPath: customLogDirectory.value);
+
+    isTv().then((e) {
+      isTV.value = e;
+    });
+    PlayerShaders.createMpvConfigFolder();
+    PlayerShaders.getMpvPath().then((e) {
+      mpvPath.value = e;
+    });
+
+    if (Platform.isAndroid) {
+      _initDisplayModes();
+    }
+  }
+
+  void toggleIncognito([bool? value]) {
+    final next = value ?? !isIncognito.value;
+    isIncognito.value = next;
+    General.incognitoMode.set(next);
+  }
+
+  Future<void> _initDisplayModes() async {
+    try {
+      final modes = await FlutterDisplayMode.supported;
+      supportedModes.value = modes;
+
+      final savedStr = General.preferredDisplayMode.get<String?>();
+      if (savedStr != null) {
+        preferredDisplayMode.value = modes.firstWhere(
+          (m) => m.toString() == savedStr,
+          orElse: () => DisplayMode.auto,
+        );
+        await applyDisplayRefreshMode();
+      } else {
+        final validModes = modes
+            .where((m) =>
+                m != DisplayMode.auto &&
+                m.id != 0 &&
+                m.width != 0 &&
+                m.height != 0)
+            .toList();
+
+        if (Platform.isAndroid && validModes.isNotEmpty) {
+          validModes.sort((a, b) => b.refreshRate.compareTo(a.refreshRate));
+          preferredDisplayMode.value = validModes.first;
+          await FlutterDisplayMode.setHighRefreshRate();
+        } else {
+          preferredDisplayMode.value = DisplayMode.auto;
+        }
+      }
+
+      activeDisplayMode.value = await FlutterDisplayMode.active;
+    } catch (e) {
+      Logger.e("Error initializing display modes: $e");
+    }
+  }
+
+  Future<void> applyDisplayRefreshMode() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final savedStr = General.preferredDisplayMode.get<String?>();
+      if (savedStr != null) {
+        final mode = preferredDisplayMode.value ?? DisplayMode.auto;
+        await FlutterDisplayMode.setPreferredMode(mode);
+      } else {
+        await FlutterDisplayMode.setHighRefreshRate();
+      }
+      await Future.delayed(const Duration(milliseconds: 100));
+      activeDisplayMode.value = await FlutterDisplayMode.active;
+    } catch (e) {
+      Logger.e("Error setting display refresh mode: $e");
+    }
+  }
+
+  Future<void> savePreferredDisplayMode(DisplayMode mode) async {
+    preferredDisplayMode.value = mode;
+    General.preferredDisplayMode.set(mode.toString());
+    await applyDisplayRefreshMode();
+  }
+
+  String getPreferredRefreshRateLabel() {
+    final mode = preferredDisplayMode.value;
+    if (mode == null || mode == DisplayMode.auto) {
+      return "Auto";
+    }
+    return "${mode.width}x${mode.height} @ ${mode.refreshRate.toInt()}Hz";
+  }
+
+  Future<void> _fetchInviteLinks() async {
+    try {
+      final response = await http.get(Uri.parse(
+          'https://raw.githubusercontent.com/RyanYuuki/AnymeX/main/github_assets/links.json'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['discord'] != null) {
+          discordUrl.value = data['discord'];
+        }
+        if (data['telegram'] != null) {
+          telegramUrl.value = data['telegram'];
+        }
+        final joinVal = data['showJoinDialog'];
+        if (joinVal != null) {
+          showJoinDialog.value = joinVal as bool;
+        }
+      }
+    } catch (e) {
+      Logger.e("Failed to fetch invite links: $e");
+    } finally {
+      linksFetched = true;
+      onLinksReady?.call();
+    }
+  }
+
+  void checkForUpdates(BuildContext context, {bool manualCheck = false}) {
+    // This is a custom build (AnymeX + Stremio). Don't auto-prompt to install
+    // official AnymeX releases, which would replace it; manual checks still work.
+    if (!manualCheck) return;
+    UpdateManager().checkForUpdates(
+      context,
+      RxBool(true),
+      isBeta: enableBetaUpdates.value,
+      manualCheck: manualCheck,
+    );
+  }
+
+  void saveBetaUpdateToggle(bool value) {
+    enableBetaUpdates.value = value;
+    General.enableBetaUpdates.set(value);
+  }
+
+  Future<void> saveWriteLogToFile(bool value) async {
+    writeLogToFile.value = value;
+    General.writeLogToFile.set(value);
+    await Logger.setFileLoggingEnabled(value);
+  }
+
+  Future<void> saveCustomLogDirectory(String value) async {
+    customLogDirectory.value = value;
+    General.customLogDirectory.set(value);
+    if (writeLogToFile.value) {
+      await Logger.setFileLoggingEnabled(true, customPath: value);
+    }
+  }
+
+  void _updateBridgeDispatcher() {
+    Get.find<ExtensionManager>().setBridgeType(BridgeType.sidecar);
+  }
+
+  void saveBridgeMode(String value) {
+    bridgeMode.value = value;
+    PluginKeys.bridgeMode.set(value);
+    _updateBridgeDispatcher();
+  }
+
+  void saveDownloadPath(String value) {
+    downloadPath.value = value;
+    DownloadKeys.downloadPath.set(value);
+  }
+
+  void saveConcurrentDownloads(int value) {
+    concurrentDownloads.value = value;
+    DownloadKeys.concurrentDownloads.set(value);
+  }
+
+  void saveDownloadChunks(int value) {
+    downloadChunks.value = value;
+    DownloadKeys.downloadChunks.set(value);
+  }
+
+  void saveHlsParallelSegments(int value) {
+    hlsParallelSegments.value = value;
+    DownloadKeys.hlsParallelSegments.set(value);
+  }
+
+  void saveEnableJxlCompression(bool value) {
+    enableJxlCompression.value = value;
+    DownloadKeys.enableJxlCompression.set(value);
+  }
+
+  void saveShowHomeContinueWatching(bool value) {
+    showHomeContinueWatching.value = value;
+    General.showHomeContinueWatching.set(value);
+  }
+
+  void showWelcomeDialog(BuildContext context) {
+    if (General.isFirstTime.get<bool>(true)) {
+      showWelcomeDialogg(context);
+      return;
+    }
+
+    if (linksFetched) {
+      _checkAndShowJoinDialog(context);
+    } else {
+      onLinksReady = () {
+        _checkAndShowJoinDialog(context);
+      };
+    }
+  }
+
+  void _checkAndShowJoinDialog(BuildContext context) {
+    final showOnline = showJoinDialog.value;
+    if (showOnline) {
+      showDiscordJoinDialog(context);
+    } else {
+      final count = General.joinDialogShowCount.get<int>(0);
+      if (count < 3) {
+        General.joinDialogShowCount.set(count + 1);
+        showDiscordJoinDialog(context);
+      }
+    }
+  }
+
+  T _getUISetting<T>(T Function(UISettings settings) getter) {
+    return getter(uiSettings.value);
+  }
+
+  T _getPlayerSetting<T>(T Function(PlayerSettings settings) getter) {
+    return getter(playerSettings.value);
+  }
+
+  bool get usePosterColor => _getUISetting((s) => s.usePosterColor);
+  set usePosterColor(bool value) {
+    uiSettings.update((s) => s?.usePosterColor = value);
+    UISettingsKeys.usePosterColor.set(value);
+  }
+
+  bool get liquidMode => _getUISetting((s) => s.liquidMode);
+  set liquidMode(bool value) {
+    uiSettings.update((s) => s?.liquidMode = value);
+    UISettingsKeys.liquidMode.set(value);
+  }
+
+  bool get retainOriginalColor => _getUISetting((s) => s.retainOriginalColor);
+  set retainOriginalColor(bool value) {
+    uiSettings.update((s) => s?.retainOriginalColor = value);
+    UISettingsKeys.retainOriginalColor.set(value);
+  }
+
+  String get liquidBackgroundPath =>
+      _getUISetting((s) => s.liquidBackgroundPath);
+  set liquidBackgroundPath(String value) {
+    uiSettings.update((s) => s?.liquidBackgroundPath = value);
+    UISettingsKeys.liquidBackgroundPath.set(value);
+  }
+
+  bool get transculentBar => _getUISetting((s) => s.translucentTabBar);
+  set transculentBar(bool value) {
+    uiSettings.update((s) => s?.translucentTabBar = value);
+    UISettingsKeys.translucentTabBar.set(value);
+  }
+
+  int get cardStyle => _getUISetting((s) => s.cardStyle);
+  set cardStyle(int value) {
+    uiSettings.update((s) => s?.cardStyle = value);
+    UISettingsKeys.cardStyle.set(value);
+  }
+
+  int get historyCardStyle => _getUISetting((s) => s.historyCardStyle);
+  set historyCardStyle(int value) {
+    uiSettings.update((s) => s?.historyCardStyle = value);
+    UISettingsKeys.historyCardStyle.set(value);
+  }
+
+  int get carouselStyle => _getUISetting((s) => s.carouselStyle);
+  set carouselStyle(int value) {
+    uiSettings.update((s) => s?.carouselStyle = value);
+    UISettingsKeys.carouselStyle.set(value);
+  }
+
+  int get navBarStyle => _getUISetting((s) => s.navBarStyle);
+  set navBarStyle(int value) {
+    uiSettings.update((s) => s?.navBarStyle = value);
+    UISettingsKeys.navBarStyle.set(value);
+  }
+
+  String get appFontFamily => _getUISetting((s) => s.appFontFamily);
+  set appFontFamily(String value) {
+    uiSettings.update((s) => s?.appFontFamily = value);
+    UISettingsKeys.appFontFamily.set(value);
+  }
+
+  double get glowDensity => _getUISetting((s) => s.glowDensity);
+  set glowDensity(double value) {
+    uiSettings.update((s) => s?.glowDensity = value);
+    UISettingsKeys.glowDensity.set(value);
+  }
+
+  bool get enableAnimation => _getUISetting((s) => s.enableAnimation);
+  set enableAnimation(bool value) {
+    uiSettings.update((s) => s?.enableAnimation = value);
+    UISettingsKeys.enableAnimation.set(value);
+  }
+
+  bool get disableGradient => _getUISetting((s) => s.disableGradient);
+  set disableGradient(bool value) {
+    uiSettings.update((s) => s?.disableGradient = value);
+    UISettingsKeys.disableGradient.set(value);
+  }
+
+  bool get useLegacyHeader => _getUISetting((s) => s.useLegacyHeader);
+  set useLegacyHeader(bool value) {
+    uiSettings.update((s) => s?.useLegacyHeader = value);
+    UISettingsKeys.useLegacyHeader.set(value);
+  }
+
+  bool get useGrainTexture => _getUISetting((s) => s.useGrainTexture);
+  set useGrainTexture(bool value) {
+    uiSettings.update((s) => s?.useGrainTexture = value);
+    UISettingsKeys.useGrainTexture.set(value);
+  }
+
+  double get grainIntensity => _getUISetting((s) => s.grainIntensity);
+  set grainIntensity(double value) {
+    uiSettings.update((s) => s?.grainIntensity = value);
+    UISettingsKeys.grainIntensity.set(value);
+  }
+
+  bool get enableImmersiveMode => _getUISetting((s) => s.enableImmersiveMode);
+  set enableImmersiveMode(bool value) {
+    uiSettings.update((s) => s?.enableImmersiveMode = value);
+    UISettingsKeys.enableImmersiveMode.set(value);
+    applyImmersiveMode(value);
+  }
+
+  static void applyImmersiveMode(bool enable) {
+    if (enable) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+  }
+
+  bool get useLegacyNavbar => _getUISetting((s) => s.useLegacyNavbar);
+  set useLegacyNavbar(bool value) {
+    uiSettings.update((s) => s?.useLegacyNavbar = value);
+    UISettingsKeys.useLegacyNavbar.set(value);
+    uiSettings.refresh();
+    update();
+  }
+
+  bool get useComputedBlur => _getUISetting((s) => s.useComputedBlur);
+  set useComputedBlur(bool value) {
+    uiSettings.update((s) => s?.useComputedBlur = value);
+    UISettingsKeys.useComputedBlur.set(value);
+    uiSettings.refresh();
+    update();
+  }
+
+  int get detailsBlurStyle => _getUISetting((s) => s.detailsBlurStyle);
+  set detailsBlurStyle(int value) {
+    uiSettings.update((s) => s?.detailsBlurStyle = value);
+    UISettingsKeys.detailsBlurStyle.set(value);
+    if (value == 1) {
+      useComputedBlur = true;
+    }
+    uiSettings.refresh();
+    update();
+  }
+
+  int get detailsBlurScope => _getUISetting((s) => s.detailsBlurScope);
+  set detailsBlurScope(int value) {
+    uiSettings.update((s) => s?.detailsBlurScope = value);
+    UISettingsKeys.detailsBlurScope.set(value);
+    fullScreenBlur = value == 1;
+    uiSettings.refresh();
+    update();
+  }
+
+  bool get fullScreenBlur => _getUISetting((s) => s.fullScreenBlur);
+  set fullScreenBlur(bool value) {
+    uiSettings.update((s) => s?.fullScreenBlur = value);
+    UISettingsKeys.fullScreenBlur.set(value);
+    uiSettings.refresh();
+    update();
+  }
+
+  bool get tintBlur => _getUISetting((s) => s.tintBlur);
+  set tintBlur(bool value) {
+    uiSettings.update((s) => s?.tintBlur = value);
+    UISettingsKeys.tintBlur.set(value);
+    uiSettings.refresh();
+    update();
+  }
+
+  bool get usePosterForBlur => _getUISetting((s) => s.usePosterForBlur);
+  set usePosterForBlur(bool value) {
+    uiSettings.update((s) => s?.usePosterForBlur = value);
+    UISettingsKeys.usePosterForBlur.set(value);
+    uiSettings.refresh();
+    update();
+  }
+
+  Map<String, bool> get homePageCards => _getUISetting((s) => s.homePageCards);
+  Map<String, bool> get homePageCardsMal =>
+      _getUISetting((s) => s.homePageCardsMal);
+  Map<String, bool> get homePageCardsSimkl =>
+      _getUISetting((s) => s.homePageCardsSimkl);
+
+  String get _currentTabOrderKey {
+    final service = Get.isRegistered<ServiceHandler>()
+        ? Get.find<ServiceHandler>().serviceType.value.name
+        : 'none';
+    final mode = useLegacyNavbar ? 'legacy' : 'modern';
+    return 'navigationTabOrder_${mode}_$service';
+  }
+
+  List<String> get navigationTabOrder {
+    final raw = KvHelper.get<String>(_currentTabOrderKey, defaultVal: '');
+    final isDesktop =
+        Get.context != null && MediaQuery.of(Get.context!).size.width > 600;
+    final authService =
+        Get.isRegistered<ServiceHandler>() ? Get.find<ServiceHandler>() : null;
+    final isExtensionsService =
+        authService?.serviceType.value == ServicesType.extensions;
+
+    final defaultTabs = useLegacyNavbar
+        ? (isExtensionsService
+            ? [
+                'Home',
+                'Anime',
+                'Manga',
+                'Stremio',
+                'Library',
+                'Stats',
+                if (isDesktop) 'Extensions'
+              ]
+            : (isDesktop
+                ? ['Home', 'Anime', 'Manga', 'Stremio', 'Library', 'Stats', 'Extensions']
+                : ['Home', 'Anime', 'Manga', 'Stremio', 'Library', 'Stats']))
+        : (isExtensionsService
+            ? [
+                'Home',
+                'Discover',
+                'Stremio',
+                'Library',
+                'History',
+                'Stats',
+                if (isDesktop) 'Extensions'
+              ]
+            : (isDesktop
+                ? [
+                    'Home',
+                    'Discover',
+                    'Stremio',
+                    'Library',
+                    'History',
+                    'Stats',
+                    'Extensions'
+                  ]
+                : ['Home', 'Discover', 'Stremio', 'Library', 'History', 'Stats']));
+
+    if (raw.isEmpty) {
+      return defaultTabs;
+    }
+    try {
+      final List<dynamic> list = jsonDecode(raw);
+      final strings = list.map((e) => e.toString()).toList();
+      if (strings.isNotEmpty) {
+        // One-time: add the Movies & TV (Stremio) tab to saved layouts.
+        final stremioFlag = '${_currentTabOrderKey}_stremio_added';
+        if (!strings.contains('Stremio') &&
+            !KvHelper.get<bool>(stremioFlag, defaultVal: false)) {
+          final anchor = strings.indexOf(
+              strings.contains('Discover') ? 'Discover' : 'Manga');
+          strings.insert(anchor == -1 ? strings.length.clamp(0, 1) : anchor + 1,
+              'Stremio');
+          KvHelper.set(_currentTabOrderKey, jsonEncode(strings));
+          KvHelper.set(stremioFlag, true);
+        }
+        return strings;
+      }
+    } catch (_) {}
+    return defaultTabs;
+  }
+
+  set navigationTabOrder(List<String> order) {
+    KvHelper.set(_currentTabOrderKey, jsonEncode(order));
+    uiSettings.refresh();
+    update();
+  }
+
+  double get bottomNavBarMargin => _getUISetting((s) => s.bottomNavBarMargin);
+  set bottomNavBarMargin(double value) {
+    uiSettings.update((s) => s?.bottomNavBarMargin = value);
+    UISettingsKeys.bottomNavBarMargin.set(value);
+  }
+
+  double get glowMultiplier => _getUISetting((s) => s.glowMultiplier);
+  set glowMultiplier(double value) {
+    uiSettings.update((s) => s?.glowMultiplier = value);
+    UISettingsKeys.glowMultiplier.set(value);
+  }
+
+  double get radiusMultiplier => _getUISetting((s) => s.radiusMultiplier);
+  set radiusMultiplier(double value) {
+    uiSettings.update((s) => s?.radiusMultiplier = value);
+    UISettingsKeys.radiusMultiplier.set(value);
+  }
+
+  double get blurMultiplier => _getUISetting((s) => s.blurMultipler);
+  set blurMultiplier(double value) {
+    uiSettings.update((s) => s?.blurMultipler = value);
+    UISettingsKeys.blurMultipler.set(value);
+  }
+
+  double get cardRoundness => _getUISetting((s) => s.cardRoundness);
+  set cardRoundness(double value) {
+    uiSettings.update((s) => s?.cardRoundness = value);
+    UISettingsKeys.cardRoundness.set(value);
+  }
+
+  bool get saikouLayout => _getUISetting((s) => s.saikouLayout);
+  set saikouLayout(bool value) {
+    uiSettings.update((s) => s?.saikouLayout = value);
+    UISettingsKeys.saikouLayout.set(value);
+  }
+
+  bool get enablePosterKenBurns => _getUISetting((s) => s.enablePosterKenBurns);
+  set enablePosterKenBurns(bool value) {
+    uiSettings.update((s) => s?.enablePosterKenBurns = value);
+    UISettingsKeys.enablePosterKenBurns.set(value);
+  }
+
+  double get tabBarHeight => _getUISetting((s) => s.tabBarHeight);
+  set tabBarHeight(double value) {
+    uiSettings.update((s) => s?.tabBarHeight = value);
+    UISettingsKeys.tabBarHeight.set(value);
+  }
+
+  double get tabBarWidth => _getUISetting((s) => s.tabBarWidth);
+  set tabBarWidth(double value) {
+    uiSettings.update((s) => s?.tabBarWidth = value);
+    UISettingsKeys.tabBarWidth.set(value);
+  }
+
+  double get tabBarRoundness => _getUISetting((s) => s.tabBarRoundness);
+  set tabBarRoundness(double value) {
+    uiSettings.update((s) => s?.tabBarRoundness = value);
+    UISettingsKeys.tabBarRoundness.set(value);
+  }
+
+  bool get compactCards => _getUISetting((s) => s.compactCards);
+  set compactCards(bool value) {
+    uiSettings.update((s) => s?.compactCards = value);
+    UISettingsKeys.compactCards.set(value);
+  }
+
+  int get animationDuration => _getUISetting((s) => s.animationDuration);
+  set animationDuration(int value) {
+    uiSettings.update((s) => s?.animationDuration = value);
+    UISettingsKeys.animationDuration.set(value);
+  }
+
+  bool get defaultPortraitMode =>
+      _getPlayerSetting((s) => s.defaultPortraitMode);
+  set defaultPortraitMode(bool value) {
+    playerSettings.update((s) => s?.defaultPortraitMode = value);
+    PlayerSettingsKeys.defaultPortraitMode.set(value);
+  }
+
+  String get defaultOrientation =>
+      _getPlayerSetting((s) => s.defaultOrientation);
+  set defaultOrientation(String value) {
+    playerSettings.update((s) => s?.defaultOrientation = value);
+    PlayerSettingsKeys.defaultOrientation.set(value);
+  }
+
+  double get speed => _getPlayerSetting((s) => s.speed);
+  set speed(double value) {
+    playerSettings.update((s) => s?.speed = value);
+    PlayerSettingsKeys.speed.set(value);
+  }
+
+  String get resizeMode => _getPlayerSetting((s) => s.resizeMode);
+  set resizeMode(String value) {
+    playerSettings.update((s) => s?.resizeMode = value);
+    PlayerSettingsKeys.resizeMode.set(value);
+  }
+
+  bool get showSubtitle => _getPlayerSetting((s) => s.showSubtitle);
+  set showSubtitle(bool value) {
+    playerSettings.update((s) => s?.showSubtitle = value);
+    PlayerSettingsKeys.showSubtitle.set(value);
+  }
+
+  int get subtitleSize => _getPlayerSetting((s) => s.subtitleSize);
+  set subtitleSize(int value) {
+    playerSettings.update((s) => s?.subtitleSize = value);
+    PlayerSettingsKeys.subtitleSize.set(value);
+  }
+
+  String get subtitleColor => _getPlayerSetting((s) => s.subtitleColor);
+  set subtitleColor(String value) {
+    playerSettings.update((s) => s?.subtitleColor = value);
+    PlayerSettingsKeys.subtitleColor.set(value);
+  }
+
+  String get subtitleFont => _getPlayerSetting((s) => s.subtitleFont);
+  set subtitleFont(String value) {
+    playerSettings.update((s) => s?.subtitleFont = value);
+    PlayerSettingsKeys.subtitleFont.set(value);
+  }
+
+  String get subtitleBackgroundColor =>
+      _getPlayerSetting((s) => s.subtitleBackgroundColor);
+  set subtitleBackgroundColor(String value) {
+    playerSettings.update((s) => s?.subtitleBackgroundColor = value);
+    PlayerSettingsKeys.subtitleBackgroundColor.set(value);
+  }
+
+  String get subtitleOutlineColor =>
+      _getPlayerSetting((s) => s.subtitleOutlineColor);
+  set subtitleOutlineColor(String value) {
+    playerSettings.update((s) => s?.subtitleOutlineColor = value);
+    PlayerSettingsKeys.subtitleOutlineColor.set(value);
+  }
+
+  int get skipDuration => _getPlayerSetting((s) => s.skipDuration);
+  set skipDuration(int value) {
+    playerSettings.update((s) => s?.skipDuration = value);
+    PlayerSettingsKeys.skipDuration.set(value);
+  }
+
+  int get seekDuration => _getPlayerSetting((s) => s.seekDuration);
+  set seekDuration(int value) {
+    playerSettings.update((s) => s?.seekDuration = value);
+    PlayerSettingsKeys.seekDuration.set(value);
+  }
+
+  bool get transitionSubtitle => _getPlayerSetting((s) => s.transitionSubtitle);
+  set transitionSubtitle(bool value) {
+    playerSettings.update((s) => s?.transitionSubtitle = value);
+    PlayerSettingsKeys.transitionSubtitle.set(value);
+  }
+
+  double get bottomMargin => _getPlayerSetting((s) => s.bottomMargin);
+  set bottomMargin(double value) {
+    playerSettings.update((s) => s?.bottomMargin = value);
+    PlayerSettingsKeys.bottomMargin.set(value);
+  }
+
+  int get playerStyle => _getPlayerSetting((s) => s.playerStyle);
+  set playerStyle(int value) {
+    playerSettings.update((s) => s?.playerStyle = value);
+    PlayerSettingsKeys.playerStyle.set(value);
+  }
+
+  String get playerControlTheme => playerControlThemeRx.value;
+  set playerControlTheme(String value) {
+    playerControlThemeRx.value = value;
+    PlayerUiKeys.playerControlTheme.set(value);
+  }
+
+  String get mediaIndicatorTheme => mediaIndicatorThemeRx.value;
+  set mediaIndicatorTheme(String value) {
+    mediaIndicatorThemeRx.value = value;
+    PlayerUiKeys.mediaIndicatorTheme.set(value);
+  }
+
+  String get readerControlTheme => readerControlThemeRx.value;
+  set readerControlTheme(String value) {
+    readerControlThemeRx.value = value;
+    ReaderKeys.readerControlTheme.set(value);
+  }
+
+  String get chapterStyle => chapterStyleRx.value;
+  set chapterStyle(String value) {
+    chapterStyleRx.value = value;
+    ReaderKeys.chapterStyle.set(value);
+  }
+
+  int get subtitleOutlineWidth =>
+      _getPlayerSetting((s) => s.subtitleOutlineWidth);
+  set subtitleOutlineWidth(int value) {
+    playerSettings.update((s) => s?.subtitleOutlineWidth = value);
+    PlayerSettingsKeys.subtitleOutlineWidth.set(value);
+  }
+
+  bool get autoSkipOP => _getPlayerSetting((s) => s.autoSkipOP);
+  set autoSkipOP(bool value) {
+    playerSettings.update((s) => s?.autoSkipOP = value);
+    PlayerSettingsKeys.autoSkipOP.set(value);
+  }
+
+  bool get autoSkipED => _getPlayerSetting((s) => s.autoSkipED);
+  set autoSkipED(bool value) {
+    playerSettings.update((s) => s?.autoSkipED = value);
+    PlayerSettingsKeys.autoSkipED.set(value);
+  }
+
+  bool get autoSkipOnce => _getPlayerSetting((s) => s.autoSkipOnce);
+  set autoSkipOnce(bool value) {
+    playerSettings.update((s) => s?.autoSkipOnce = value);
+    PlayerSettingsKeys.autoSkipOnce.set(value);
+  }
+
+  bool get autoSkipRecap => _getPlayerSetting((s) => s.autoSkipRecap);
+  set autoSkipRecap(bool value) {
+    playerSettings.update((s) => s?.autoSkipRecap = value);
+    PlayerSettingsKeys.autoSkipRecap.set(value);
+  }
+
+  bool get autoSkipFiller => _getPlayerSetting((s) => s.autoSkipFiller);
+  set autoSkipFiller(bool value) {
+    playerSettings.update((s) => s?.autoSkipFiller = value);
+    PlayerSettingsKeys.autoSkipFiller.set(value);
+  }
+
+  bool get enableScreenshot => _getPlayerSetting((s) => s.enableScreenshot);
+  set enableScreenshot(bool value) {
+    playerSettings.update((s) => s?.enableScreenshot = value);
+    PlayerSettingsKeys.enableScreenshot.set(value);
+  }
+
+  bool get enableHoldToSeek => _getPlayerSetting((s) => s.enableHoldToSeek);
+  set enableHoldToSeek(bool value) {
+    playerSettings.update((s) => s?.enableHoldToSeek = value);
+    PlayerSettingsKeys.enableHoldToSeek.set(value);
+  }
+
+  bool get enableSlideToSeek => _getPlayerSetting((s) => s.enableSlideToSeek);
+  set enableSlideToSeek(bool value) {
+    playerSettings.update((s) => s?.enableSlideToSeek = value);
+    PlayerSettingsKeys.enableSlideToSeek.set(value);
+  }
+
+  bool get useMediaSession => _getPlayerSetting((s) => s.useMediaSession);
+  set useMediaSession(bool value) {
+    playerSettings.update((s) => s?.useMediaSession = value);
+    PlayerSettingsKeys.useMediaSession.set(value);
+  }
+
+  bool get playerMenuAnimation =>
+      _getPlayerSetting((s) => s.playerMenuAnimation);
+  set playerMenuAnimation(bool value) {
+    playerSettings.update((s) => s?.playerMenuAnimation = value);
+    PlayerSettingsKeys.playerMenuAnimation.set(value);
+  }
+
+  String get hardwareDecoder => _getPlayerSetting((s) => s.hardwareDecoder);
+  set hardwareDecoder(String value) {
+    final normalized = switch (value) {
+      'hw+' => 'hw+',
+      'hw' => 'hw',
+      'sw' => 'sw',
+      _ => 'hw+',
+    };
+    playerSettings.update((s) => s?.hardwareDecoder = normalized);
+    PlayerSettingsKeys.hardwareDecoder.set(normalized);
+    if (Get.isRegistered<PlayerController>()) {
+      unawaited(Get.find<PlayerController>().reloadActivePlayer());
+    }
+  }
+
+  String get videoOutput => _getPlayerSetting((s) => s.videoOutput);
+  set videoOutput(String value) {
+    final normalized = switch (value) {
+      'gpu' => 'gpu',
+      'gpu-next' => 'gpu-next',
+      'mediacodec_embed' => 'mediacodec_embed',
+      'auto' => 'auto',
+      _ => 'auto',
+    };
+    playerSettings.update((s) => s?.videoOutput = normalized);
+    PlayerSettingsKeys.videoOutput.set(normalized);
+    if (Get.isRegistered<PlayerController>()) {
+      unawaited(Get.find<PlayerController>().reloadActivePlayer());
+    }
+  }
+
+  String get audioOutput => _getPlayerSetting((s) => s.audioOutput);
+  set audioOutput(String value) {
+    playerSettings.update((s) => s?.audioOutput = value);
+    PlayerSettingsKeys.audioOutput.set(value);
+    if (Get.isRegistered<PlayerController>()) {
+      unawaited(Get.find<PlayerController>().reloadActivePlayer());
+    }
+  }
+
+  bool get enableSwipeControls =>
+      _getPlayerSetting((s) => s.enableSwipeControls);
+  set enableSwipeControls(bool value) {
+    playerSettings.update((s) => s?.enableSwipeControls = value);
+    PlayerSettingsKeys.enableSwipeControls.set(value);
+  }
+
+  int get markAsCompleted => _getPlayerSetting((s) => s.markAsCompleted);
+  set markAsCompleted(int value) {
+    playerSettings.update((s) => s?.markAsCompleted = value);
+    PlayerSettingsKeys.markAsCompleted.set(value);
+  }
+
+  String get preferredSubtitleLanguage =>
+      _getPlayerSetting((s) => s.preferredSubtitleLanguage);
+  set preferredSubtitleLanguage(String value) {
+    playerSettings.update((s) => s?.preferredSubtitleLanguage = value);
+    PlayerSettingsKeys.preferredSubtitleLanguage.set(value);
+  }
+
+  void updateHomePageCard(String key, bool value) {
+    final currentCards = Map<String, bool>.from(uiSettings.value.homePageCards);
+    currentCards[key] = value;
+    uiSettings.update((s) => s?.homePageCards = currentCards);
+    UISettingsKeys.homePageCards.set(jsonEncode(currentCards));
+  }
+
+  void updateHomePageCardMal(String key, bool value) {
+    final currentCards =
+        Map<String, bool>.from(uiSettings.value.homePageCardsMal);
+    currentCards[key] = value;
+    uiSettings.update((s) => s?.homePageCardsMal = currentCards);
+    UISettingsKeys.homePageCardsMal.set(jsonEncode(currentCards));
+  }
+
+  void updateHomePageCardSimkl(String key, bool value) {
+    final currentCards =
+        Map<String, bool>.from(uiSettings.value.homePageCardsSimkl);
+    currentCards[key] = value;
+    uiSettings.update((s) => s?.homePageCardsSimkl = currentCards);
+    UISettingsKeys.homePageCardsSimkl.set(jsonEncode(currentCards));
+  }
+}

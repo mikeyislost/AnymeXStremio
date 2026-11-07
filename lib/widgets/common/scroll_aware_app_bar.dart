@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/mixins/scroll_aware_app_bar_mixin.dart';
+import 'package:anymex/widgets/common/animated_app_bar.dart';
+
+class CustomAnimatedAppBar extends StatefulWidget {
+  final ValueNotifier<bool> isVisible;
+  final Duration animationDuration;
+  final Curve animationCurve;
+  final ScrollController? scrollController;
+  final Widget headerContent;
+  final Color? backgroundColor;
+  final SystemUiOverlayStyle? visibleStatusBarStyle;
+  final SystemUiOverlayStyle? hiddenStatusBarStyle;
+  static const double kAppBarOffset = 20.0;
+  final double scrollThreshold;
+  final double? height;
+
+  const CustomAnimatedAppBar({
+    super.key,
+    required this.isVisible,
+    this.animationDuration = const Duration(milliseconds: 450),
+    this.animationCurve = Curves.easeInOut,
+    this.scrollController,
+    required this.headerContent,
+    this.backgroundColor,
+    this.visibleStatusBarStyle = SystemUiOverlayStyle.dark,
+    this.hiddenStatusBarStyle = SystemUiOverlayStyle.light,
+    this.scrollThreshold = 10.0,
+    this.height,
+  });
+
+  @override
+  State<CustomAnimatedAppBar> createState() => _CustomAnimatedAppBarState();
+}
+
+class _CustomAnimatedAppBarState extends State<CustomAnimatedAppBar>
+    with ScrollAwareAppBarMixin<CustomAnimatedAppBar> {
+  // Add a ValueNotifier for tracking scroll position
+  late ValueNotifier<bool> _isAtTopNotifier;
+
+  @override
+  ScrollController get scrollController {
+    assert(widget.scrollController != null);
+    return widget.scrollController!;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    final bool isAtTopInitial = widget.scrollController != null && widget.scrollController!.hasClients
+        ? widget.scrollController!.offset <= widget.scrollThreshold
+        : true;
+    _isAtTopNotifier = ValueNotifier<bool>(isAtTopInitial);
+
+    _getEffectiveIsVisibleNotifier().addListener(_updateSystemOverlayStyle);
+
+    if (widget.scrollController != null) {
+      widget.scrollController!.addListener(_onScrollChanged);
+    }
+
+    _updateSystemOverlayStyle();
+  }
+
+  @override
+  void didUpdateWidget(CustomAnimatedAppBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.scrollController != oldWidget.scrollController) {
+      if (oldWidget.scrollController != null) {
+        oldWidget.scrollController!.removeListener(handleScroll);
+        oldWidget.scrollController!.removeListener(_onScrollChanged);
+      }
+      if (widget.scrollController != null) {
+        widget.scrollController!.addListener(handleScroll);
+        widget.scrollController!.addListener(_onScrollChanged);
+      }
+      isAppBarVisible.value = true;
+      final bool isAtTop = widget.scrollController != null &&
+              widget.scrollController!.hasClients
+          ? widget.scrollController!.offset <= widget.scrollThreshold
+          : true;
+      _isAtTopNotifier.value = isAtTop;
+    }
+  }
+
+  @override
+  void dispose() {
+    _getEffectiveIsVisibleNotifier().removeListener(_updateSystemOverlayStyle);
+
+    // Remove scroll listener
+    if (widget.scrollController != null) {
+      widget.scrollController!.removeListener(_onScrollChanged);
+    }
+
+    _isAtTopNotifier.dispose();
+    super.dispose();
+  }
+
+  // Scroll listener that updates immediately
+  void _onScrollChanged() {
+    final bool isAtTop = scrollController.offset <= widget.scrollThreshold;
+    if (_isAtTopNotifier.value != isAtTop) {
+      _isAtTopNotifier.value = isAtTop;
+    }
+  }
+
+  ValueNotifier<bool> _getEffectiveIsVisibleNotifier() {
+    return widget.scrollController != null ? isAppBarVisible : widget.isVisible;
+  }
+
+  void _updateSystemOverlayStyle() {
+    final bool isVisible = _getEffectiveIsVisibleNotifier().value;
+    final SystemUiOverlayStyle baseStyle = isVisible
+        ? (widget.visibleStatusBarStyle ?? SystemUiOverlayStyle.dark)
+        : (widget.hiddenStatusBarStyle ?? SystemUiOverlayStyle.light);
+
+    if (settingsController.enableImmersiveMode) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+
+    SystemChrome.setSystemUIOverlayStyle(
+      baseStyle.copyWith(
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarContrastEnforced: false,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _getEffectiveIsVisibleNotifier(),
+      builder: (BuildContext context, bool isVisible, Widget? child) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: _isAtTopNotifier,
+          builder: (BuildContext context, bool isAtTop, Widget? child) {
+            return AnimatedAppBar(
+              isVisible: isVisible,
+              animationDuration: widget.animationDuration,
+              animationCurve: widget.animationCurve,
+              offset: CustomAnimatedAppBar.kAppBarOffset,
+              topPadding: 10,
+              bottomPadding: 10,
+              content: widget.headerContent,
+              isAtTop: isAtTop,
+              height: widget.height,
+            );
+          },
+        );
+      },
+    );
+  }
+}

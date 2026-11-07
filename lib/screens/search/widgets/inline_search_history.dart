@@ -1,0 +1,215 @@
+import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
+
+class InlineSearchHistory extends StatelessWidget {
+  final RxList<String> searchTerms;
+  final Function(String) onTermSelected;
+  final Function(List<String>) onHistoryUpdated;
+  final bool isManga;
+
+  const InlineSearchHistory({
+    super.key,
+    required this.searchTerms,
+    required this.onTermSelected,
+    required this.onHistoryUpdated,
+    this.isManga = false,
+  });
+
+  void _deleteTerm(String term) {
+    List<String> updatedTerms = List.from(searchTerms);
+    updatedTerms.remove(term);
+    _saveToDatabase(updatedTerms);
+    onHistoryUpdated(updatedTerms);
+  }
+
+  void _clearAllHistory() {
+    _saveToDatabase([]);
+    onHistoryUpdated([]);
+  }
+
+  void _saveToDatabase(List<String> terms) {
+    if (Get.isRegistered<Settings>() && Get.find<Settings>().isIncognito.value) {
+      return;
+    }
+    DynamicKeys.searchHistory.set(
+      '${isManga ? 'manga' : 'anime'}_${serviceHandler.serviceType.value.name}',
+      terms,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (searchTerms.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final displayedTerms = searchTerms.reversed.toList();
+    final bottomMargin = MediaQuery.paddingOf(context).bottom + 32.0;
+
+    return Container(
+      margin: EdgeInsets.fromLTRB(16.0, 8.0, 16.0, bottomMargin),
+      decoration: BoxDecoration(
+        color: context.colors.surface.opaque(0.3),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: context.colors.outline.opaque(0.1, iReallyMeanIt: true),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 20, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: context.colors.primary
+                            .opaque(0.15, iReallyMeanIt: true),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Iconsax.clock,
+                        size: 16,
+                        color: context.colors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    AnymeXText('Recent Searches',
+                      variant: TextVariant.semiBold,
+                      size: 15,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .opaque(0.9, iReallyMeanIt: true),
+                    ),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: _clearAllHistory,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color:
+                          context.colors.error.opaque(0.1, iReallyMeanIt: true),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Iconsax.trash,
+                          size: 12,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .error
+                              .opaque(0.8, iReallyMeanIt: true),
+                        ),
+                        const SizedBox(width: 4),
+                        AnymeXText("Clear",
+                          size: 11,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .error
+                              .opaque(0.8, iReallyMeanIt: true),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: ListView.separated(
+                physics: const BouncingScrollPhysics(),
+                itemCount: displayedTerms.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final term = displayedTerms[index];
+
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => onTermSelected(term),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .opaque(0.3, iReallyMeanIt: true),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .opaque(0.05, iReallyMeanIt: true),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Iconsax.search_normal_1,
+                              size: 16,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .opaque(0.6, iReallyMeanIt: true),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: AnymeXText(term,
+                                variant: TextVariant.semiBold,
+                                size: 14,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .opaque(0.9, iReallyMeanIt: true),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => _deleteTerm(term),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Icon(
+                                  Iconsax.close_square,
+                                  size: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .opaque(0.4, iReallyMeanIt: true),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

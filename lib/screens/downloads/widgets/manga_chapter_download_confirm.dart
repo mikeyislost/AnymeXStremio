@@ -1,0 +1,220 @@
+import 'package:anymex/database/isar_models/chapter.dart';
+import 'package:anymex/database/isar_models/offline_media.dart';
+import 'package:anymex/screens/downloads/controller/download_controller.dart';
+import 'package:anymex/screens/downloads/controller/download_search_controller.dart';
+import 'package:anymex/screens/downloads/widgets/download_permission_dialog.dart';
+import 'package:anymex/utils/language.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
+import 'package:anymex/utils/theme_extensions.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_button.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/non_widgets/snackbar.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
+import 'package:hugeicons/hugeicons.dart';
+
+class MangaChapterDownloadConfirm extends StatelessWidget {
+  final List<Chapter> chapters;
+  final Source source;
+  final OfflineMedia media;
+  final bool isFromMetadataPage;
+
+  const MangaChapterDownloadConfirm({
+    super.key,
+    required this.chapters,
+    required this.source,
+    required this.media,
+    this.isFromMetadataPage = true,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    required List<Chapter> chapters,
+    required Source source,
+    required OfflineMedia media,
+    bool isFromMetadataPage = true,
+  }) async {
+    if (!await DownloadPermissionDialog.checkAndPrompt(context)) {
+      return;
+    }
+    if (!context.mounted) return;
+    await AnymeXSheet.custom(
+      MangaChapterDownloadConfirm(
+        chapters: chapters,
+        source: source,
+        media: media,
+        isFromMetadataPage: isFromMetadataPage,
+      ),
+      context,
+      showDragHandle: true,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.colors;
+    final count = chapters.length;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: theme.primaryContainer.opaque(0.3),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(HugeIcons.strokeRoundedDownload04,
+                  color: theme.primary, size: 24),
+            ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AnymeXText('Start Manga Download',
+                      variant: TextVariant.bold,
+                      size: 16,
+                    ),
+                    AnymeXText(media.name ?? '',
+                      size: 13,
+                      maxLines: 1,
+                      color: theme.onSurface.opaque(0.6),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.surfaceContainer.opaque(0.4),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.outline.opaque(0.12)),
+            ),
+            child: Column(
+              children: [
+                _buildInfoRow(
+                  theme: theme,
+                  icon: HugeIcons.strokeRoundedBook02,
+                  label: 'Chapters',
+                  value: count.toString(),
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  theme: theme,
+                  icon: HugeIcons.strokeRoundedGlobe,
+                  label: 'Source',
+                  value: (source.lang ?? '').isNotEmpty
+                      ? '${source.name ?? 'Unknown'} (${completeLanguageName(source.lang!)})'
+                      : (source.name ?? 'Unknown'),
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  theme: theme,
+                  icon: HugeIcons.strokeRoundedFolder01,
+                  label: 'Location',
+                  value: 'AnymeX/Downloads/Manga',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.primary.opaque(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.primary.opaque(0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    size: 16, color: theme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AnymeXText('Images will be downloaded in full quality. Each chapter is stored in its own folder.',
+                    size: 12,
+                    color: theme.primary.opaque(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          SafeArea(
+            child: AnymeXContainerButton(
+              onTap: () => _startDownload(context),
+              color: theme.primary,
+              radius: 16,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(HugeIcons.strokeRoundedDownload04,
+                      size: 20, color: theme.onPrimary),
+                  const SizedBox(width: 8),
+                  AnymeXText('Download $count Chapter${count != 1 ? 's' : ''}',
+                    size: 15,
+                    variant: TextVariant.semiBold,
+                    color: theme.onPrimary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      );
+  }
+
+  void _startDownload(BuildContext context) {
+    final downloadController = Get.find<DownloadController>();
+    Navigator.pop(context);
+
+    if (Get.isRegistered<DownloadSearchController>()) {
+      Get.find<DownloadSearchController>().resetDetail();
+    }
+
+    downloadController.enqueueMangaDownloadBatch(
+      chapters: chapters,
+      source: source,
+      media: media,
+      isFromMetadataPage: isFromMetadataPage,
+    );
+
+    snackBar('Downloading ${chapters.length} chapter${chapters.length != 1 ? 's' : ''}...');
+  }
+
+  Widget _buildInfoRow({
+    required ColorScheme theme,
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: theme.primary),
+        const SizedBox(width: 10),
+        AnymeXText(label,
+          size: 13,
+          color: theme.onSurface.opaque(0.6),
+        ),
+        const Spacer(),
+        Flexible(
+          child: AnymeXText(value,
+            size: 13,
+            variant: TextVariant.semiBold,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
