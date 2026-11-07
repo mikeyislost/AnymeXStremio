@@ -629,6 +629,7 @@ class StremioService extends GetxController {
   }) {
     if (!isLoggedIn.value || !syncEnabled.value) return;
     if (duration.inMilliseconds < 1000 || position.inMilliseconds <= 0) return;
+    _recentPlayback[media.id] = DateTime.now();
     final key = '${media.id}#${episode.link ?? episode.number}';
     final session =
         (_session?.key == key) ? _session! : (_session = _Session(key));
@@ -864,12 +865,17 @@ class StremioService extends GetxController {
       final status = (total != null && total > 0 && progress >= total)
           ? 'COMPLETED'
           : (repeating ? 'REPEATING' : 'CURRENT');
-      await anilist.updateListEntry(UpdateListEntryParams(
-        listId: anilistId,
-        progress: progress,
-        status: status,
-        isAnime: true,
-      ));
+      _suppressTrackerHook = true;
+      try {
+        await anilist.updateListEntry(UpdateListEntryParams(
+          listId: anilistId,
+          progress: progress,
+          status: status,
+          isAnime: true,
+        ));
+      } finally {
+        _suppressTrackerHook = false;
+      }
       Logger.i('Stremio → AniList: $anilistId progress $progress ($status)');
     } catch (e) {
       Logger.i('Stremio → AniList sync failed: $e');
@@ -927,6 +933,115 @@ class StremioService extends GetxController {
     _anilistTargets[key] = result;
     return result;
   }
+
+  // ---- AnymeX tracker progress → Stremio ------------------------------------
+
+  final Map<String, DateTime> _recentPlayback = {};
+  bool _suppressTrackerHook = false;
+
+  /// Called whenever AnymeX updates AniList / MyAnimeList progress (player,
+  /// +1 buttons, list editor). Marks those episodes watched in Stremio and,
+  /// when nothing is playing, moves Continue Watching to the next episode.
+  void onTrackerProgress({
+    required ServicesType service,
+    required String mediaId,
+    int? progress,
+    String? status,
+    String? title,
+    String? poster,
+  }) {
+    if (_suppressTrackerHook) return;
+    if (!isLoggedIn.value || !syncEnabled.value || !syncAnime.value) return;
+    if (progress == null || progress <= 0) return;
+    unawaited(_applyTrackerProgress(
+        service, mediaId, progress, status, title, poster));
+  }
+
+  Future<void> _applyTrackerProgress(ServicesType service, String mediaId,
+      int progress, String? status, String? title, String? poster) async {
+    final authKey = _authKey;
+    if (authKey == null) return;
+    try {
+      final media = anymex.Media(
+        id: mediaId,
+        title: title ?? '?',
+        poster: poster ?? '',
+        serviceType: service,
+      );
+      final pb = await _animePlayback(media, Episode(number: '$progress'));
+      if (pb == null) {
+        Logger.i('AnymeX → Stremio: no Stremio match for $mediaId');
+        return;
+      }
+      final item = await getLibraryItem(pb.libraryId) ??
+          StremioLibraryItem.create(
+            id: pb.libraryId,
+            type: pb.type,
+            name: pb.name,
+            poster: pb.poster,
+          );
+      if (item.name.isEmpty || item.name == '?') item.raw['name'] = pb.name;
+
+      // Mark every episode up to `progress` as watched.
+      if (pb.videos.isNotEmpty) {
+        final wb = WatchedBitField.construct(
+            item.watchedField, WatchedBitField.orderedVideoIds(pb.videos));
+        for (var n = 1; n <= progress; n++) {
+          final epPb = await _animePlayback(media, Episode(number: '$n'));
+          if (epPb != null) wb.setVideo(epPb.videoId, true);
+        }
+        item.watchedField = wb.serialize();
+      }
+      item.lastWatched = DateTime.now();
+
+      // Don't move Continue Watching while the player is reporting itself.
+      final recent = _recentPlayback[mediaId];
+      final playing = recent != null &&
+          DateTime.now().difference(recent) < const Duration(minutes: 3);
+      if (!playing) {
+        final completed = (status ?? '').toUpperCase() == 'COMPLETED';
+        final next = await _animePlayback(media, Episode(number: '${progress + 1}'));
+        final nextExists = next != null &&
+            next.videoId != pb.videoId &&
+            (pb.videos.isEmpty ||
+                pb.videos.any((v) => v.id == next.videoId && v.isReleased));
+        if (!completed && nextExists) {
+          item.videoId = next.videoId;
+          item.overallTimeWatched = item.overallTimeWatched + item.timeWatched;
+          item.timeWatched = 0;
+          item.flaggedWatched = 0;
+          item.timeOffset = 1;
+        } else {
+          item.timeOffset = 0;
+        }
+      }
+      item.touch();
+      _libraryCache[item.id] = item;
+      _rebuildLists();
+      await api.datastorePut(authKey, [item]);
+      Logger.i('AnymeX → Stremio: ${pb.libraryId} watched up to $progress');
+    } catch (e) {
+      Logger.i('AnymeX → Stremio sync failed for $mediaId: $e');
+    }
+  }
+
+  /// For the self test: what an AniList/MAL anime maps to in Stremio.
+  Future<String> describeAnimeMapping(
+      ServicesType service, String mediaId, int episode) async {
+    final media = anymex.Media(id: mediaId, serviceType: service);
+    final pb = await _animePlayback(media, Episode(number: '$episode'));
+    if (pb == null) {
+      throw Exception('no Stremio match (no Kitsu/IMDb mapping for $mediaId)');
+    }
+    return '${pb.libraryId} → ${pb.videoId} ("${pb.name}", ${pb.type}, '
+        '${pb.videos.length} videos in meta)';
+  }
+
+  /// For the self test: AniList id for a Kitsu id / IMDb id.
+  Future<String?> debugAnilistFromKitsu(String kitsuId) =>
+      _anilistFromKitsu(kitsuId);
+  Future<List<String>> debugAnilistFromImdb(String imdbId) =>
+      _anilistFromImdb(imdbId);
 
   /// Commentum (comments) id for a Stremio title: the AniList id when the
   /// title is anime and you comment as an AniList user (so it's the same

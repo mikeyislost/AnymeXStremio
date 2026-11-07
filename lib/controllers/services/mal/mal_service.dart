@@ -1,3 +1,4 @@
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'dart:math' show Random;
@@ -900,6 +901,17 @@ class MalService extends GetxController implements BaseService, OnlineService {
   @override
   Future<void> updateListEntry(UpdateListEntryParams params) async {
     if (!isLoggedIn.value) return;
+    // AnymeX+: mirror anime progress to Stremio.
+    if (params.isAnime && params.progress != null) {
+      try {
+        StremioService.to.onTrackerProgress(
+          service: ServicesType.mal,
+          mediaId: params.listId,
+          progress: params.progress,
+          status: params.status,
+        );
+      } catch (_) {}
+    }
     final listId = params.listId;
     final score = params.score;
     final status = params.status;

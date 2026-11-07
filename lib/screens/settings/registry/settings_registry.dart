@@ -11,6 +11,7 @@ import 'package:anymex/screens/settings/sub_settings/settings_donation.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_downloads.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_extensions.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_logs.dart';
+import 'package:anymex/screens/settings/sub_settings/settings_self_test.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_network.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_performance.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_player.dart';
@@ -1357,6 +1358,28 @@ abstract final class SettingsRegistry {
           category: 'Logs',
           icon: HugeIcons.strokeRoundedFolder01,
           searchTags: ['folder', 'documents', 'path'],
+        ),
+      ],
+    ),
+    SettingsCategory(
+      id: 'self_test',
+      groupTitle: 'Extensions & Diagnostics',
+      title: 'Self Test',
+      description: 'Run a quick or full check of the app and save a report',
+      icon: Icons.fact_check_rounded,
+      destination: () => const SettingsSelfTest(),
+      items: [
+        SettingItem(
+          title: 'Quick test',
+          category: 'Self Test',
+          icon: Icons.bolt_rounded,
+          searchTags: ['diagnostics', 'debug', 'check', 'report'],
+        ),
+        SettingItem(
+          title: 'Full test',
+          category: 'Self Test',
+          icon: Icons.fact_check_rounded,
+          searchTags: ['diagnostics', 'debug', 'comprehensive', 'report'],
         ),
       ],
     ),

@@ -1,64 +1,73 @@
 I would just like to note that this app is built using claude code. I do not know how to code but i wanted an app that combines functionality from both apps for my own personal use.
 
-# AnymeX + Stremio
+<div align="center">
+<img src='assets/images/logo.png' alt='AnymeX+ Icon' style="border-radius: 50px; height: 150px; width: 150px;">
 
-A personal build of [AnymeX](https://github.com/RyanYuuki/AnymeX) (anime/manga tracker and player) with Stremio built in:
+<p align="center">
+  <img src="https://img.shields.io/badge/platforms-ios_windows-06599d?color=white&labelColor=black&style=for-the-badge"/>
+  <a href="https://github.com/mikeyislost/AnymeXStremio/releases"><img src="https://img.shields.io/github/downloads/mikeyislost/AnymeXStremio/total?color=white&labelColor=black&label=Downloads&style=for-the-badge" alt="Downloads"></a>
+</p>
+</div>
 
-- **Stremio account login**: email/password, or a code via stremio.com/link for Google/Apple/Facebook accounts
-- **Your Stremio addons**, synced from your account (Cinemeta when logged out). Add or remove addons by URL.
-- **Movies & TV tab**: Stremio Continue Watching, every addon catalog, and search
-- **Details pages** with seasons, episodes, and the same watched checkmarks Stremio shows (long-press an episode to toggle it)
-- **Streams from all your stream addons**, played in the AnymeX player. Torrent streams play through AnymeX's built-in torrent engine on iOS.
-- **Progress sync back to Stremio**: anything you watch updates Stremio's Continue Watching and watched episodes, and advances to the next episode when you finish one. Anime watched through AniList/MAL is matched to its Stremio entry (Kitsu or IMDb, via ani.zip) and synced too.
-- AniList, MyAnimeList, Simkl and Discord Rich Presence work as in upstream AnymeX.
+# AnymeX+: AnymeX with Stremio
 
-Settings → Accounts → **Stremio** has the login, sync switches and addon list.
+**AnymeX+** is a personal build of [AnymeX](https://github.com/RyanYuuki/AnymeX) with [Stremio](https://www.stremio.com/) built in, so anime, movies and TV live in one app.
+
+- **Movies & TV tab:** Stremio Continue Watching, your addons' catalogs and search
+- **Stremio account and addons:** sign in, and your addons come with you
+- **Progress syncs both ways:** what you watch here shows in Stremio, and anime progress (AniList / MAL) updates Stremio too
+- **Stremio library** in the Library tab, plus comments on movies and shows
+- **AniList, MyAnimeList, Simkl and Discord** work as in AnymeX
+- **Self Test** in Settings checks everything and saves a report
+
+> [!IMPORTANT]
+> AnymeX+ is a personal, unofficial build. It is not affiliated with AnymeX or Stremio, and it does not host or provide any content. Streams come from addons and extensions you add yourself.
 
 ## Downloads
 
-Every update is published as its own release, **AnymeX+ v1.0.N** (counting up from v1.0.1), under [Releases](https://github.com/mikeyislost/AnymeXStremio/releases). Each one has:
-- `AnymeX-Stremio-vX.Y.N.ipa`: iPhone
-- `AnymeX-Stremio-vX.Y.N-Windows-Setup.exe`: Windows installer (installs alongside official AnymeX)
-- `AnymeX-Stremio-vX.Y.N-Windows-Portable.zip`: unzip and run `anymex.exe`
-- a changelog of what changed since the previous release
+<div align="center">
+  <p>
+    <a href="https://github.com/mikeyislost/AnymeXStremio/releases/latest"><img src="https://img.shields.io/github/v/release/mikeyislost/AnymeXStremio?color=white&labelColor=black&display_name=tag&style=for-the-badge&label=Latest" alt="Latest Release"/></a>
+  </p>
 
-Windows may show a SmartScreen warning because the app isn't code-signed. Click **More info → Run anyway**.
+### Windows
+  <p>
+    <a href="https://github.com/mikeyislost/AnymeXStremio/releases/latest"><img src="https://img.shields.io/badge/Installer-Setup.exe-white?style=for-the-badge&labelColor=black" alt="Windows installer"/></a>
+    <a href="https://github.com/mikeyislost/AnymeXStremio/releases/latest"><img src="https://img.shields.io/badge/Portable-.zip-white?style=for-the-badge&labelColor=black" alt="Windows portable"/></a>
+  </p>
+</div>
 
-## In-app updates
+<div align="center">
 
-AnymeX+ checks this repo's releases on launch (and from Settings → About → check for updates):
-- **Windows:** downloads the new installer, runs it and closes the app so it can update.
-- **iPhone:** opens Feather on the AnymeX+ source so you can tap update (or downloads the IPA if Feather isn't installed).
+### iOS Sideloading Sources
+  <p>
+    <a href="https://intradeus.github.io/http-protocol-redirector?r=altstore://source?url=https://github.com/mikeyislost/AnymeXStremio/releases/latest/download/source.json"><img alt="AltStore Source" src="https://img.shields.io/badge/open_in_app-_?style=for-the-badge&label=AltStore&labelColor=black&color=white"></a>
+    <a href="https://intradeus.github.io/http-protocol-redirector?r=feather://source/https://github.com/mikeyislost/AnymeXStremio/releases/latest/download/source.json"><img alt="Feather Source" src="https://img.shields.io/badge/open_in_app-_?style=for-the-badge&label=Feather&labelColor=black&color=white"></a>
+    <a href="https://intradeus.github.io/http-protocol-redirector?r=sidestore://source?url=https://github.com/mikeyislost/AnymeXStremio/releases/latest/download/source.json"><img alt="SideStore Source" src="https://img.shields.io/badge/open_in_app-_?style=for-the-badge&label=SideStore&labelColor=black&color=white"></a>
+    <a href="https://github.com/mikeyislost/AnymeXStremio/releases/latest/download/source.json"><img alt="Direct Source URL" src="https://img.shields.io/badge/copy_%2F_paste-_?style=for-the-badge&label=Direct%20Source%20URL&labelColor=black&color=white"></a>
+  </p>
+</div>
 
-## Stremio library & AniList
+AnymeX+ uses its own bundle ID, so it installs next to the official AnymeX. The app checks for updates on launch.
 
-- **Library tab → Stremio** chip: your synced Stremio library (filter by Movies/Series, searchable).
-- Long-press any Stremio card (library or Continue Watching) to add/remove it from your library or remove it from Continue Watching. Title pages have the same buttons.
-- Anime watched in **Movies & TV** updates your AniList progress (matched through Kitsu/IMDb ids). Toggle under Settings → Accounts → Stremio.
+<details>
+<summary>Building it yourself</summary>
 
-## Install on iPhone with Feather
+Every push to `main` builds iOS and Windows with GitHub Actions and publishes a release.
 
-In Feather → **Sources** → add:
+AniList login needs a free AniList API client:
+1. Create a client at https://anilist.co/settings/developer with the redirect URL `anymex://callback`
+2. Add `AL_CLIENT_ID` and `AL_CLIENT_SECRET` under Settings → Secrets and variables → Actions
 
-```
-https://github.com/mikeyislost/AnymeXStremio/releases/latest/download/source.json
-```
+Optional secrets: `MAL_CLIENT_ID` / `MAL_CLIENT_SECRET`, `SIMKL_CLIENT_ID` / `SIMKL_CLIENT_SECRET`, `TMDB_API_KEY`.
+</details>
 
-It shows up as **AnymeX+** (bundle ID `com.mikeyislost.anymexstremio`, so it installs separately from official AnymeX), and every new release appears as an update. (The older `latest-ios/source.json` link keeps working too.)
+## Credits
 
-## How builds work
+- [AnymeX](https://github.com/RyanYuuki/AnymeX) by Ryan and contributors, the app this is built on (MIT, see [LICENSE-AnymeX.md](LICENSE-AnymeX.md))
+- [stremio-core](https://github.com/Stremio/stremio-core), for how Stremio's library and watched state work
+- Comments run on AnymeX's Commentum service
 
-Every push to `main` runs **Actions → Build & Release**: it checks the code, builds iOS and Windows in parallel, then publishes one release with all files.
+## License
 
-AniList login needs your own (free) AniList API client:
-1. https://anilist.co/settings/developer → Create New Client, Redirect URL `anymex://callback`
-2. In this repo: Settings → Secrets and variables → Actions → add `AL_CLIENT_ID` and `AL_CLIENT_SECRET`
-3. Re-run the workflow
-
-(Optional: `MAL_CLIENT_ID`/`MAL_CLIENT_SECRET`, `SIMKL_CLIENT_ID`/`SIMKL_CLIENT_SECRET`, `TMDB_API_KEY`.)
-
-## Credits & licenses
-
-- AnymeX © 2024 Ryan, MIT, see `LICENSE-AnymeX.md`
-- Stremio library/watched-state formats follow [stremio-core](https://github.com/Stremio/stremio-core) (MIT)
-- Not affiliated with Stremio or AnymeX
+MIT. See [LICENSE](LICENSE).

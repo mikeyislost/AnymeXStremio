@@ -1,3 +1,4 @@
+import 'package:anymex/controllers/services/stremio/stremio_service.dart';
 import 'dart:convert';
 import 'dart:math' show min;
 
@@ -1713,17 +1714,35 @@ averageScore
   Rx<Profile> get profileData => anilistAuth.profileData;
 
   @override
-  Future<void> updateListEntry(UpdateListEntryParams params) =>
-      anilistAuth.updateListEntry(
-          listId: params.listId,
-          malId: params.syncIds?[0],
-          score: params.score,
-          status: params.status,
+  Future<void> updateListEntry(UpdateListEntryParams params) async {
+    await anilistAuth.updateListEntry(
+        listId: params.listId,
+        malId: params.syncIds?[0],
+        score: params.score,
+        status: params.status,
+        progress: params.progress,
+        isAnime: params.isAnime,
+        startedAt: params.startedAt,
+        completedAt: params.completedAt,
+        isPrivate: params.isPrivate);
+    // AnymeX+: mirror anime progress to Stremio.
+    if (params.isAnime && params.progress != null) {
+      try {
+        final tracked = anilistAuth.animeList
+            .firstWhereOrNull((m) => m.id == params.listId);
+        StremioService.to.onTrackerProgress(
+          service: ServicesType.anilist,
+          mediaId: params.listId,
           progress: params.progress,
-          isAnime: params.isAnime,
-          startedAt: params.startedAt,
-          completedAt: params.completedAt,
-          isPrivate: params.isPrivate);
+          status: params.status,
+          title: tracked?.title,
+          poster: tracked?.poster,
+        );
+      } catch (e) {
+        Logger.i('Stremio progress mirror failed: $e');
+      }
+    }
+  }
 
   @override
   Future<void> deleteListEntry(String listId, {bool isAnime = true}) async =>

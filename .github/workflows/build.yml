@@ -81,6 +81,11 @@ jobs:
             lib/screens/library \
             lib/utils/function.dart \
             lib/controllers/settings/settings.dart \
+            lib/controllers/services/anilist/anilist_data.dart \
+            lib/controllers/services/mal/mal_service.dart \
+            lib/utils/self_test.dart \
+            lib/screens/settings/sub_settings/settings_self_test.dart \
+            lib/screens/settings/registry/settings_registry.dart \
             lib/main.dart
 
   ios:
