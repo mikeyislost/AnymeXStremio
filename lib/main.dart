@@ -628,7 +628,8 @@ class _FilterScreenState extends State<FilterScreen> {
           unselectedIcon: Icons.live_tv_outlined,
           selectedIcon: Icons.live_tv_rounded,
           onTap: onTap,
-          label: 'Movies & TV',
+          // "Movies & TV" doesn't fit the expanded pill on phones.
+          label: isDesktop ? 'Movies & TV' : 'Movies',
           subWidget: subWidget,
         );
       case 'Stats':

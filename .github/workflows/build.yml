@@ -79,6 +79,7 @@ jobs:
             lib/utils/color_extractor.dart \
             lib/utils/updater.dart \
             lib/screens/library \
+            lib/utils/function.dart \
             lib/controllers/settings/settings.dart \
             lib/main.dart
 
@@ -114,6 +115,7 @@ jobs:
           MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
           CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          COMMENTS_BASE_URL: ${{ secrets.COMMENTS_BASE_URL }}
         run: |
           cat > .env << EOF
           AL_CLIENT_ID=$AL_CLIENT_ID
@@ -124,6 +126,7 @@ jobs:
           MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
           CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
           TMDB_API_KEY=$TMDB_API_KEY
+          COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
           EOF
 
       - name: Build iOS (unsigned)
@@ -194,6 +197,7 @@ jobs:
           MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
           CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          COMMENTS_BASE_URL: ${{ secrets.COMMENTS_BASE_URL }}
         run: |
           cat > .env << EOF
           AL_CLIENT_ID=$AL_CLIENT_ID
@@ -204,6 +208,7 @@ jobs:
           MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
           CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
           TMDB_API_KEY=$TMDB_API_KEY
+          COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
           EOF
           # Stamp the version into the app and the installer.
           sed -i -E "s/^version: .*/version: $VERSION+$BUILD/" pubspec.yaml

@@ -84,7 +84,7 @@ Media stremioMediaFromPreview(StremioMetaPreview m) {
     largePoster: poster,
     cover: m.background,
     description: m.description ?? '',
-    rating: m.imdbRating ?? m.releaseInfo ?? '',
+    rating: m.imdbRating ?? '?',
     genres: m.genres,
     status: stremioTypeLabel(m.type, plural: false),
     serviceType: ServicesType.extensions,

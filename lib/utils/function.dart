@@ -783,6 +783,12 @@ Future<void> navigate(dynamic page) async {
 }
 
 Future<void> navigateWithAnimation(dynamic page) async {
+  // iOS: use the standard page route so swipe-from-edge to go back works
+  // (as in AnymeX v3.2.0). The fade transition below has no back gesture.
+  if (Platform.isIOS) {
+    await navigate(page);
+    return;
+  }
   await Navigator.push(
     Get.context!,
     PageRouteBuilder(

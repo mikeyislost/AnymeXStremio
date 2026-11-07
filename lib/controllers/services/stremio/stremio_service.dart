@@ -928,6 +928,49 @@ class StremioService extends GetxController {
     return result;
   }
 
+  /// Commentum (comments) id for a Stremio title: the AniList id when the
+  /// title is anime and you comment as an AniList user (so it's the same
+  /// thread as AnymeX's anime page), otherwise its IMDb/Stremio id.
+  final Map<String, String> _commentIds = {};
+
+  Future<String> commentMediaId(StremioMeta meta, {int? season}) async {
+    final cacheKey = '${meta.id}|${season ?? 0}';
+    final cached = _commentIds[cacheKey];
+    if (cached != null) return cached;
+    String id = meta.id.replaceAll(':', '_');
+    try {
+      final handler = Get.find<ServiceHandler>();
+      final usesAnilist = handler.serviceType.value == ServicesType.anilist ||
+          (handler.serviceType.value == ServicesType.extensions &&
+              handler.anilistService.isLoggedIn.value);
+      if (usesAnilist) {
+        String? anilistId;
+        if (meta.id.startsWith('kitsu:')) {
+          anilistId = await _anilistFromKitsu(meta.id.split(':')[1]);
+        } else if (meta.id.startsWith('tt')) {
+          final candidates = await _anilistFromImdb(meta.id);
+          if (candidates.length == 1 || (candidates.isNotEmpty && season == null)) {
+            anilistId = candidates.first;
+          } else if (candidates.isNotEmpty) {
+            for (final c in candidates.take(8)) {
+              final eps = await _aniZipEpisodesFor(c);
+              if (eps != null && eps.values.any((v) => v.$1 == season)) {
+                anilistId = c;
+                break;
+              }
+            }
+            anilistId ??= candidates.first;
+          }
+        }
+        if (anilistId != null) id = anilistId;
+      }
+    } catch (e) {
+      Logger.i('Stremio comment id lookup failed: $e');
+    }
+    _commentIds[cacheKey] = id;
+    return id;
+  }
+
   Future<String?> _anilistFromKitsu(String kitsuId) async {
     try {
       final resp = await http

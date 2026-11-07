@@ -9,6 +9,7 @@ import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/screens/anime/widgets/comments/comments_section.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/screens/stremio/stremio_player_bridge.dart';
 import 'package:anymex/screens/stremio/stremio_widgets.dart';
@@ -29,6 +30,7 @@ import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart' show Obx;
+import 'package:hugeicons/hugeicons.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -58,7 +60,12 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
   bool _loading = true;
   String? _error;
   int? _season;
-  int _page = 0; // 0 = Info, 1 = Watch (same tabs as AnymeX)
+  int _page = 0; // 0 = Info, 1 = Watch, 2 = Comments (same tabs as AnymeX)
+
+  // Comments (Commentum v2), resolved when the tab is first opened.
+  Media? _commentMedia;
+  bool _resolvingComments = false;
+  int? _commentSeason;
   WatchedBitField? _watched;
   StremioLibraryItem? _libraryItem;
 
@@ -237,8 +244,10 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
               SliverToBoxAdapter(child: _quickActions(context, _meta!)),
               if (_page == 0)
                 SliverToBoxAdapter(child: _infoTab(context, _meta!))
+              else if (_page == 1)
+                ..._watchTab(context, _meta!)
               else
-                ..._watchTab(context, _meta!),
+                ..._commentsTab(context, _meta!),
             ],
             const SliverToBoxAdapter(child: SizedBox(height: 180)),
           ],
@@ -359,6 +368,66 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         ),
       ),
     );
+  }
+
+  // Comments tab ---------------------------------------------------------------
+
+  /// Commentum needs an id in the commenting account's id space: anime is
+  /// matched to its AniList entry (same thread as AnymeX's anime page),
+  /// movies and series use their IMDb id.
+  Future<void> _resolveCommentMedia() async {
+    final meta = _meta;
+    if (meta == null || _resolvingComments) return;
+    final season = meta.isSingleVideo
+        ? null
+        : (_season == 0 ? null : _season);
+    if (_commentMedia != null && _commentSeason == season) return;
+    setState(() => _resolvingComments = true);
+    final id = await _service.commentMediaId(meta, season: season);
+    if (!mounted) return;
+    final poster = meta.poster ?? meta.background ?? '';
+    setState(() {
+      _commentSeason = season;
+      _commentMedia = Media(
+        id: id,
+        title: meta.name,
+        romajiTitle: meta.name,
+        englishTitle: meta.name,
+        poster: poster,
+        largePoster: poster,
+        cover: meta.background,
+        description: meta.description ?? '',
+        aired: meta.releaseInfo ?? '?',
+        serviceType: ServicesType.anilist,
+      );
+      _resolvingComments = false;
+    });
+  }
+
+  List<Widget> _commentsTab(BuildContext context, StremioMeta meta) {
+    final media = _commentMedia;
+    if (media == null || _resolvingComments) {
+      if (media == null && !_resolvingComments) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _resolveCommentMedia());
+      }
+      return const [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(40),
+            child: Center(child: AnymeXProgressIndicator()),
+          ),
+        ),
+      ];
+    }
+    return [
+      SliverToBoxAdapter(
+        child: CommentSection(
+          key: ValueKey('stremio-comments-${media.id}'),
+          media: media,
+        ),
+      ),
+    ];
   }
 
   Widget _errorView(BuildContext context) {
@@ -603,6 +672,15 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         unselectedIcon: Iconsax.play,
         label: 'Watch',
         onTap: (i) => setState(() => _page = i),
+      ),
+      NavItem(
+        selectedIcon: HugeIcons.strokeRoundedComment01,
+        unselectedIcon: HugeIcons.strokeRoundedComment02,
+        label: 'Comments',
+        onTap: (i) {
+          setState(() => _page = i);
+          _resolveCommentMedia();
+        },
       ),
     ];
     final child = Column(
