@@ -4,6 +4,7 @@
 import 'dart:math' as math;
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/plus/card_menu.dart';
 import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -14,10 +15,7 @@ import 'package:anymex/models/models_convertor/carousel_mapper.dart';
 import 'package:anymex/plus/stremio/ui/stremio_details_page.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
-import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
-import 'package:anymex/widgets/anymex_widgets/anymex_tile.dart';
-import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:anymex/widgets/common/cards/card_gate.dart';
 import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/helper/tv_wrapper.dart';
@@ -218,86 +216,14 @@ StremioMetaPreview stremioPreviewFromLibraryItem(StremioLibraryItem i) =>
     StremioMetaPreview(id: i.id, type: i.type, name: i.name, poster: i.poster);
 
 /// Long-press actions for a Stremio title (Continue Watching / library).
+/// Long-press / right-click menu for a Movies & TV card.
 void showStremioItemActions({
   required String type,
   required String id,
   required String name,
   String? poster,
-}) {
-  final context = Get.context;
-  if (context == null) return;
-  final service = StremioService.to;
-  if (!service.isLoggedIn.value) {
-    openStremioDetails(type, id, title: name, poster: poster);
-    return;
-  }
-  final inLibrary = service.isInLibrary(id);
-  final inCw = service.isInContinueWatching(id);
-
-  Future<void> run(Future<void> Function() action, String done) async {
-    Navigator.of(context).pop();
-    try {
-      await action();
-      snackBar(done);
-    } catch (e) {
-      snackBar('Stremio: $e');
-    }
-  }
-
-  AnymeXSheet.custom(
-    Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-          child: AnymeXText(name,
-              size: 16,
-              variant: TextVariant.bold,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis),
-        ),
-        AnymeXTile(
-          icon: Icons.info_outline_rounded,
-          title: 'Open',
-          onTap: () {
-            Navigator.of(context).pop();
-            openStremioDetails(type, id, title: name, poster: poster);
-          },
-        ),
-        if (inCw)
-          AnymeXTile(
-            icon: Icons.history_toggle_off_rounded,
-            title: 'Remove from Continue Watching',
-            subtitle: 'Also removed in Stremio',
-            showChevron: false,
-            onTap: () => run(() => service.dismissFromContinueWatching(id),
-                'Removed from Continue Watching'),
-          ),
-        if (inLibrary)
-          AnymeXTile(
-            icon: Icons.bookmark_remove_rounded,
-            title: 'Remove from Library',
-            showChevron: false,
-            onTap: () => run(
-                () => service.removeFromLibrary(id), 'Removed from Library'),
-          )
-        else
-          AnymeXTile(
-            icon: Icons.bookmark_add_rounded,
-            title: 'Add to Library',
-            showChevron: false,
-            onTap: () => run(
-                () => service.addToLibrary(
-                    id: id, type: type, name: name, poster: poster),
-                'Added to Library'),
-          ),
-      ],
-    ),
-    context,
-    showDragHandle: true,
-  );
-}
+}) =>
+    PlusCardMenu.stremio(type: type, id: id, name: name, poster: poster);
 
 /// One grid cell: an AnymeX media card that opens the Stremio details page.
 class StremioGridCard extends StatelessWidget {
@@ -315,6 +241,8 @@ class StremioGridCard extends StatelessWidget {
       onTap: () => openStremioDetails(item.type, item.id,
           tag: tag, title: item.name, poster: item.poster),
       onLongPress: () => showStremioItemActions(
+          type: item.type, id: item.id, name: item.name, poster: item.poster),
+      onSecondaryTap: () => showStremioItemActions(
           type: item.type, id: item.id, name: item.name, poster: item.poster),
       child: MediaCardGate(
         itemData: data,

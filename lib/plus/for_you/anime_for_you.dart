@@ -1,7 +1,8 @@
 // AnymeX+: "For you" for anime. Seeds come from your AniList list (your
 // scores, what you finished, your favourites); picks come from AniList's
 // "if you liked this" recommendations for those seeds plus AnymeX's AI
-// Picks, ranked by ranking.dart.
+// Picks, ranked by ranking.dart. Like / Love / Dislike from the anime page
+// count too: Dislike makes that anime's recommendations count against.
 
 import 'dart:async';
 import 'dart:convert';
@@ -34,8 +35,12 @@ class AnimeForYou {
   static Future<void>? _running;
 
   /// Seeds and genre taste from your list. Scores are AniList's 0-100.
+  static const maxDislikedSeeds = 8;
+
   static ({List<ForYouSeed> seeds, Map<String, double> genres}) seedsFrom(
-      List<TrackedMedia> list, List<AnimeFavourite> favourites) {
+      List<TrackedMedia> list, List<AnimeFavourite> favourites,
+      {Map<String, TasteMark> marks = const {},
+      Map<String, ({String title, List<String> genres})> notes = const {}}) {
     final favIds = {for (final f in favourites) f.id};
     final scores = <double>[
       for (final m in list)
@@ -53,6 +58,7 @@ class AnimeForYou {
             scores.length);
 
     final weighted = <(TrackedMedia, double, bool, bool)>[];
+    final disliked = <String>{};
     for (final m in list) {
       final id = m.id;
       if (id == null || (m.type ?? 'ANIME').toUpperCase() != 'ANIME') continue;
@@ -72,16 +78,43 @@ class AnimeForYou {
           (m.userProgress ?? int.tryParse(m.episodeCount ?? '') ?? 0) >= 3) {
         w = 0.6;
       }
-      final loved = favIds.contains(id);
+      final mark = marks[PlusTaste.animeKey(id)] ?? TasteMark.none;
+      final loved = favIds.contains(id) || mark == TasteMark.love;
       if (loved) w = math.max(w + 1.5, 2.0);
-      weighted.add((m, w, loved, liked));
+      if (mark == TasteMark.like) {
+        w = math.max(w, 1.0) + 1.0;
+        liked = true;
+      }
+      if (mark == TasteMark.dislike) {
+        w = -1.5;
+        disliked.add(id);
+      }
+      weighted.add((m, w, loved && mark != TasteMark.dislike, liked));
     }
+
+    // Marked anime that aren't on your list or in your favourites.
+    final known = {...weighted.map((e) => e.$1.id), ...favIds};
+    final extra = <(String, String, List<String>, TasteMark)>[];
+    marks.forEach((key, mark) {
+      if (!key.startsWith('al:') || mark == TasteMark.none) return;
+      final id = key.substring(3);
+      if (known.contains(id)) return;
+      final note = notes[key];
+      extra.add((id, note?.title ?? '?', note?.genres ?? const [], mark));
+    });
+    double markWeight(TasteMark m) => switch (m) {
+          TasteMark.love => 2.5,
+          TasteMark.like => 1.5,
+          TasteMark.dislike => -1.5,
+          TasteMark.none => 0.0,
+        };
 
     final genres = genreProfile([
       for (final (m, w, _, _) in weighted)
         if (w != 0) (m.genres, w),
       for (final f in favourites)
         if (!weighted.any((e) => e.$1.id == f.id)) (f.genres, 2.0),
+      for (final (_, _, genres, mark) in extra) (genres, markWeight(mark)),
     ]);
 
     final seeds = <ForYouSeed>[
@@ -96,11 +129,34 @@ class AnimeForYou {
           ),
       // Favourites that aren't on your list.
       for (final f in favourites)
-        if (!weighted.any((e) => e.$1.id == f.id))
+        if (!weighted.any((e) => e.$1.id == f.id) &&
+            marks[PlusTaste.animeKey(f.id)] != TasteMark.dislike)
           ForYouSeed(key: f.id, title: f.title, weight: 2.0, loved: true),
+      for (final (id, title, _, mark) in extra)
+        if (mark != TasteMark.dislike)
+          ForYouSeed(
+            key: id,
+            title: title,
+            weight: markWeight(mark),
+            loved: mark == TasteMark.love,
+            liked: mark == TasteMark.like,
+          ),
     ]..sort((a, b) => b.weight.compareTo(a.weight));
+    // Disliked anime: what they recommend counts against a pick.
+    final against = <ForYouSeed>[
+      for (final (m, _, _, _) in weighted)
+        if (disliked.contains(m.id))
+          ForYouSeed(
+              key: m.id!, title: m.title ?? m.romajiTitle ?? '?', weight: -1.5),
+      for (final (id, title, _, mark) in extra)
+        if (mark == TasteMark.dislike)
+          ForYouSeed(key: id, title: title, weight: -1.5),
+    ];
     return (
-      seeds: seeds.take(maxSeeds).toList(),
+      seeds: [
+        ...seeds.where((s) => s.weight > 0).take(maxSeeds),
+        ...against.take(maxDislikedSeeds),
+      ],
       genres: genres,
     );
   }
@@ -147,6 +203,8 @@ class AnimeForYou {
     final sig = _fnv([
       for (final m in list) '${m.id}:${m.score}:${m.watchingStatus}',
       for (final f in favourites) 'f${f.id}',
+      for (final e in PlusTaste.marks.entries)
+        if (e.key.startsWith('al:')) '${e.key}=${e.value.name}',
       ...PlusTaste.hidden,
       ...PlusTaste.lessGenresFor('anime').entries.map((e) => '${e.key}${e.value}'),
     ].join('|'));
@@ -173,7 +231,8 @@ class AnimeForYou {
   static Future<void> _compute(List<TrackedMedia> list,
       List<AnimeFavourite> favourites, String sig) async {
     try {
-      final (:seeds, :genres) = seedsFrom(list, favourites);
+      final (:seeds, :genres) = seedsFrom(list, favourites,
+          marks: Map.of(PlusTaste.marks), notes: Map.of(PlusTaste.notes));
       final candidates = <String, ForYouCandidate>{};
       final recs = await _recommendationsFor(seeds.map((s) => s.key).toList());
       recs.forEach((seedKey, nodes) => addCandidates(candidates, seedKey, nodes));
@@ -207,6 +266,9 @@ class AnimeForYou {
           if (m.id != null) ...['al:${m.id}', m.id!],
         for (final f in favourites) ...['al:${f.id}', f.id],
         ...PlusTaste.hidden,
+        // Anything you marked (liked ones are seeds; disliked never show).
+        for (final k in PlusTaste.marks.keys)
+          if (k.startsWith('al:')) ...[k, k.substring(3)],
       };
       final result = rankPicks(
         seeds: allSeeds,

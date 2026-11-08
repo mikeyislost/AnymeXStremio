@@ -1,3 +1,4 @@
+import 'package:anymex/plus/backup.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -1217,6 +1218,7 @@ class BackupRestoreService extends GetxController {
       }
 
       await _applyBackupData(data, merge: merge, options: options);
+      PlusBackup.afterRestore(); // AnymeX+
 
       if (archive != null && options.extensionFiles) {
         await _restoreExtensionFiles(archive);

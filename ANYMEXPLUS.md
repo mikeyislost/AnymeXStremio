@@ -36,7 +36,13 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/list_card_badge.dart` | Your score next to your progress on Library cards |
 | `plus/rate_prompt.dart` | "Rate it?" sheet after the player marks a show Completed |
 | `plus/missed_sequels.dart` | "Missed sequels" Home row (sequels of completed AniList anime not on your list) |
-| `plus/for_you/` | "For you" rows: `ranking.dart` (shared scoring, unit-tested), `anime_for_you.dart` (Home: AniList list, scores, favourites, AniList recommendations + AI Picks), `movies_for_you.dart` (Movies & TV: Stremio library/history + Like/Love, TMDB recommendations), `taste.dart` (Like/Love and "Not interested", saved on the device), `for_you_row.dart` (the rows), `taste_buttons.dart` (Like/Love on the Movies & TV page; Simkl rating) |
+| `plus/for_you/` | "For you" rows: `ranking.dart` (shared scoring, unit-tested; disliked titles count against), `anime_for_you.dart` (Home: AniList list, scores, favourites, Like/Love/Dislike, AniList recommendations + AI Picks), `movies_for_you.dart` (Movies & TV: Stremio library/history + Like/Love/Dislike, TMDB recommendations), `taste.dart` (Like/Love/Dislike and "Not interested", saved on the device), `for_you_row.dart` (the rows), `taste_buttons.dart` (Like/Love/Dislike on the Movies & TV and anime pages; Simkl rating) |
+| `plus/card_menu.dart` | One card menu for anime and Movies & TV (long-press on iPhone, right-click on Windows): Open, Play next episode, Library, Like/Love/Dislike, Not interested |
+| `plus/skip_times.dart` | Skip intro / recap / credits on Movies & TV from TheIntroDB (v4, by IMDb id) or the video's chapter marks; fills the player's AniSkip times |
+| `plus/up_next.dart` | "Up next" card on Movies & TV episodes: countdown from the credits, else a Next episode button from your watched point |
+| `plus/mini_player.dart` | Windows mini player (small, always on top) |
+| `plus/error_log.dart` | Last 50 errors kept on the device (from `Logger.e`, secrets blanked), shown in the Self Test |
+| `plus/backup.dart` | After AnymeX restores a backup, AnymeX+ settings (already in it) take effect without a restart |
 | `plus/row_perf.dart` | Smoother rows: AnymeX's card animation plays only when a row first shows; rows load small posters (TMDB w342, Metahub medium) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
@@ -57,11 +63,14 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `database/kv_helper.dart` | A missing setting is no longer logged as an error |
 | `controllers/services/storage/storage_manager_service.dart` | Over the image-cache limit, the oldest images are removed instead of all of them |
 | `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home; nearby rows stay built (`cacheExtent` 1200) |
-| `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode; comments built as you scroll |
+| `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode; comments built as you scroll; Like / Love / Dislike on the Overview tab (`PlusAnimeTasteRow`) |
 | `screens/anime/widgets/comments/comments_section.dart` | `asSliver` mode: comments are built as you scroll |
 | `screens/anime/widgets/episode_section.dart` | Extensions / Stremio stream source switch |
 | `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet |
-| `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open; after a show is marked Completed, `RatePrompt` asks for a score when the player closes |
+| `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open; after a show is marked Completed, `RatePrompt` asks for a score when the player closes; Movies & TV skip times (`plusAttachSkipTimes`) at the top of `_initializeAniSkip`; leaving the player ends the mini player |
+| `screens/anime/watch/watch_view.dart` | `PlusUpNext` card; mini player (`PlusMiniPlayerOverlay`, controls hidden while it's on) |
+| `utils/logger.dart` | `Logger.e` also feeds `PlusErrorLog` |
+| `controllers/services/backup_restore/backup_restore_service.dart` | `PlusBackup.afterRestore()` after a restore |
 | `screens/library/controller/library_controller.dart`, `my_library.dart`, `widgets/library_deps.dart` | "Stremio" chip in the Library |
 | `screens/library/widgets/history_model.dart` | History items from Stremio open the Stremio page |
 | `screens/settings/sub_settings/settings_accounts.dart` | Stremio account in Accounts |
@@ -73,7 +82,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `utils/external_font_loader.dart` | Subtitle fonts load after launch (`ensureBundledFonts`) |
 | `utils/function.dart` | iOS swipe-back on pushed pages |
 | `widgets/anime/media_header.dart` | Poster tap can be turned off (Stremio pages) |
-| `widgets/common/reusable_carousel.dart` | Long-press actions for Stremio items; card animation only when the row first shows (`PlusRowPerf.shouldAnimate`) |
+| `widgets/common/reusable_carousel.dart` | Long-press actions for Stremio items; right-click opens `PlusCardMenu`; card animation only when the row first shows (`PlusRowPerf.shouldAnimate`) |
 | `widgets/common/navbar.dart`, `navbar/styles/*`, `widgets/header/header.dart` | No blur layer when blur is off |
 
 **Removed from AnymeX:** `firebase_options.dart`, `services/fcm_service.dart` and the three Firebase packages (pushes can't reach a sideloaded build).

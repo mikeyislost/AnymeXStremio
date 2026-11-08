@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:async';
+import 'package:anymex/plus/error_log.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/services.dart';
@@ -251,6 +252,7 @@ Pretty Name: ${info.prettyName}
       {Object? error, StackTrace? stackTrace, String? loggerName}) {
     final errorLoggerName = loggerName ?? 'ERROR';
     _writeLogEntry(message, errorLoggerName, 900);
+    PlusErrorLog.add(message, error: error); // AnymeX+: Self Test error log
 
     if (error != null) {
       _writeLogEntry('ERROR: $error', errorLoggerName, 900);

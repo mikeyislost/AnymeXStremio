@@ -10,6 +10,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/error_log.dart';
 import 'package:anymex/plus/launch_timer.dart';
 import 'package:anymex/controllers/discord/discord_rpc.dart';
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
@@ -257,6 +258,11 @@ class SelfTestRunner extends GetxController {
           b.writeln('                  $line');
         }
       }
+    }
+    await PlusErrorLog.ensureLoaded();
+    if (PlusErrorLog.entries.isNotEmpty) {
+      b.writeln();
+      b.writeln(PlusErrorLog.report());
     }
     b.writeln();
     b.writeln('(No passwords, tokens or API keys are included in this report.)');

@@ -1,6 +1,7 @@
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
+import 'package:anymex/plus/card_menu.dart';
 import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
@@ -157,6 +158,8 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
       onTap: () => _navigateToDetailsPage(itemData, tag),
       child: GestureDetector(
         onLongPress: () => widget.type == ItemType.novel ? {} : _showPeekPopup(context, itemData, tag),
+        // AnymeX+: right-click opens the card menu (PlusCardMenu).
+        onSecondaryTap: () => _showCardMenu(context, itemData, tag),
         child: card,
       ),
     );
@@ -181,6 +184,17 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
     final media = Media.fromCarouselData(itemData, mediaType);
     if (media.userStatus != null && media.userStatus!.isNotEmpty) return;
     MediaPeekPopup.show(context, media, mediaType, tag);
+  }
+
+  void _showCardMenu(BuildContext context, CarouselData itemData, String tag) {
+    if (widget.type == ItemType.novel) return;
+    final stremioRef = StremioIds.parse(itemData.id ?? '');
+    if (stremioRef != null || widget.type != ItemType.anime) {
+      _showPeekPopup(context, itemData, tag);
+      return;
+    }
+    final media = Media.fromCarouselData(itemData, ItemType.anime);
+    PlusCardMenu.anime(context, media, tag);
   }
 
   MediaCardGate _buildCard(CarouselData itemData, String tag) {

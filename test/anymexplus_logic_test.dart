@@ -7,7 +7,14 @@ import 'package:anymex/controllers/service_handler/service_handler.dart'
     show ServicesType;
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/backup.dart';
+import 'package:anymex/plus/card_menu.dart';
+import 'package:anymex/plus/error_log.dart';
+import 'package:anymex/controllers/services/backup_restore/backup_restore_service.dart'
+    show categorizeSettingKey, SettingCategory;
 import 'package:anymex/plus/continue_watching_row.dart';
+import 'package:anymex/plus/skip_times.dart';
+import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/plus/custom_lists.dart';
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
@@ -410,6 +417,8 @@ void main() {
       expect(MoviesForYou.seedWeight(
               input(watched: false, mark: TasteMark.like), now: now),
           1.0);
+      expect(MoviesForYou.seedWeight(input(mark: TasteMark.dislike), now: now),
+          -1.5);
     });
 
     test('TMDB genres and results', () {
@@ -427,10 +436,154 @@ void main() {
           {'id': 2, 'title': 'No poster'}, 'movie'), isNull);
     });
 
+    test('Disliked seeds count against and never give a reason', () {
+      const liked = ForYouSeed(key: 'a', title: 'A', weight: 1);
+      const disliked = ForYouSeed(key: 'd', title: 'D', weight: -1.5);
+      final picks = rankPicks(
+        seeds: [liked, disliked],
+        candidates: [
+          cand('both', {'a': 1.0, 'd': 1.0}),
+          cand('liked', {'a': 0.8}),
+          cand('onlyBad', {'d': 1.0}),
+        ],
+      );
+      expect(picks.map((p) => p.key), ['liked', 'both']);
+      expect(picks.last.reason, 'Because you watched A');
+    });
+
+    test('anime marks: like, love and dislike', () {
+      final list = [
+        TrackedMedia(id: '1', title: 'Liked', watchingStatus: 'COMPLETED'),
+        TrackedMedia(id: '2', title: 'Hated', score: '90', watchingStatus: 'COMPLETED', genres: ['Mecha']),
+      ];
+      final r = AnimeForYou.seedsFrom(list, const [], marks: {
+        'al:1': TasteMark.like,
+        'al:2': TasteMark.dislike,
+        'al:7': TasteMark.love,
+      }, notes: {
+        'al:7': (title: 'Off list', genres: ['Drama']),
+      });
+      final byKey = {for (final s in r.seeds) s.key: s};
+      expect(byKey['1']!.liked, isTrue);
+      expect(byKey['2']!.weight, lessThan(0));
+      expect(byKey['7']!.loved, isTrue);
+      expect(byKey['7']!.title, 'Off list');
+      expect(r.genres['Mecha'], lessThan(0));
+    });
+
     test('Like and Love become Simkl ratings', () {
+      expect(PlusTasteButtons.simklRatingFor(TasteMark.dislike), 4);
       expect(PlusTasteButtons.simklRatingFor(TasteMark.like), 8);
       expect(PlusTasteButtons.simklRatingFor(TasteMark.love), 10);
       expect(PlusTasteButtons.simklRatingFor(TasteMark.none), isNull);
+    });
+  });
+  group('Skip times and Up next', () {
+    test('Stremio playbacks map to IMDb + episode', () {
+      final ep = PlusSkipTimes.targetFor('stremio|series|tt0903747|s2', 'tt0903747:2:5')!;
+      expect(ep.imdb, 'tt0903747');
+      expect(ep.season, 2);
+      expect(ep.episode, 5);
+      final movie = PlusSkipTimes.targetFor('stremio|movie|tt1375666', 'tt1375666')!;
+      expect(movie.season, isNull);
+      expect(PlusSkipTimes.targetFor('stremio|series|kitsu:1', 'kitsu:1:3'), isNull);
+      expect(PlusSkipTimes.targetFor('21', null), isNull);
+    });
+
+    test('TheIntroDB answers become skip times', () {
+      final t = PlusSkipTimes.fromIntroDbJson({
+        'intro': [
+          {'start_ms': null, 'end_ms': 62500}
+        ],
+        'recap': [],
+        'credits': [
+          {'start_ms': 2500000, 'end_ms': null}
+        ],
+      }, 2600)!;
+      expect(t.op!.start, 0);
+      expect(t.op!.end, 63);
+      expect(t.recap, isNull);
+      expect(t.ed!.start, 2500);
+      expect(t.ed!.end, 2600);
+      expect(PlusSkipTimes.fromIntroDbJson({'intro': []}, 100), isNull);
+    });
+
+    test('chapter names become skip times', () {
+      expect(PlusSkipTimes.chapterKind('Opening Credits'), 'intro');
+      expect(PlusSkipTimes.chapterKind('Previously On'), 'recap');
+      expect(PlusSkipTimes.chapterKind('End Credits'), 'credits');
+      expect(PlusSkipTimes.chapterKind('Episode'), isNull);
+      expect(PlusSkipTimes.chapterKind('Edward'), isNull);
+      final t = PlusSkipTimes.fromChapters([
+        (title: 'Intro', start: 0),
+        (title: 'Episode', start: 45.2),
+        (title: 'Credits', start: 1300),
+      ], 1400)!;
+      expect(t.op!.end, 46);
+      expect(t.ed!.start, 1300);
+      expect(t.ed!.end, 1400);
+    });
+
+    test('Up next: credits countdown, else button then end countdown', () {
+      var s = PlusUpNext.stateAt(
+          position: 1305, duration: 1400, creditsStart: 1300, watchedPoint: 0.8);
+      expect(s.show, isTrue);
+      expect(s.countdown, 5);
+      expect(s.playNow, isFalse);
+      s = PlusUpNext.stateAt(
+          position: 1311, duration: 1400, creditsStart: 1300, watchedPoint: 0.8);
+      expect(s.playNow, isTrue);
+      s = PlusUpNext.stateAt(position: 1000, duration: 1400, watchedPoint: 0.8);
+      expect(s.show, isFalse);
+      s = PlusUpNext.stateAt(position: 1200, duration: 1400, watchedPoint: 0.8);
+      expect(s.show, isTrue);
+      expect(s.countdown, isNull);
+      s = PlusUpNext.stateAt(position: 1394, duration: 1400, watchedPoint: 0.8);
+      expect(s.countdown, 6);
+      expect(s.playNow, isFalse);
+    });
+  });
+  group('Error log and backup', () {
+    test('errors are kept (50 max), stacks joined, secrets blanked', () {
+      PlusErrorLog.entries.clear();
+      final t = DateTime(2026, 11, 8, 12);
+      for (var i = 0; i < 55; i++) {
+        PlusErrorLog.add('e$i', now: t.add(Duration(minutes: i)));
+      }
+      expect(PlusErrorLog.entries.length, 50);
+      expect(PlusErrorLog.entries.first.message, 'e5');
+      PlusErrorLog.add('STACK: at foo', now: t.add(const Duration(minutes: 54)));
+      expect(PlusErrorLog.entries.length, 50);
+      expect(PlusErrorLog.entries.last.message, contains('STACK: at foo'));
+      PlusErrorLog.add('GET https://x.org/a?api_key=abc123&b=1 Bearer eyJhbGc.x.y '
+          'https://torrentio.strem.fun/realdebrid=ABCDEFGHIJKLMNOPQRSTUVWXYZ123/stream');
+      final m = PlusErrorLog.entries.last.message;
+      expect(m, isNot(contains('abc123')));
+      expect(m, isNot(contains('eyJhbGc')));
+      expect(m, isNot(contains('ABCDEFGHIJKLMNOP')));
+      expect(PlusErrorLog.report(), startsWith('AnymeX+ recent errors (50)'));
+      PlusErrorLog.entries.clear();
+    });
+
+    test('AnymeX+ settings go into the backup', () {
+      for (final k in ['anymexplus_stremio_rows', 'anymexplus_stream_prefs',
+          'stremio_sync_enabled', 'anymexplus_stremio_sync_routes',
+          'anymexplus_taste_marks', 'anymexplus_foryou_hidden']) {
+        expect(categorizeSettingKey(k), SettingCategory.general, reason: k);
+      }
+      expect(categorizeSettingKey('stremio_auth_key'), SettingCategory.authTokens);
+      expect(PlusBackup.isPlusKey('anymexplus_taste_marks'), isTrue);
+    });
+  });
+  group('Card menu', () {
+    test('Play picks the right episode', () {
+      const ids = ['e1', 'e2', 'e3'];
+      expect(PlusCardMenu.nextIndex(ids, null), 0);
+      expect(PlusCardMenu.nextIndex(ids, 'e1'), 1);
+      expect(PlusCardMenu.nextIndex(ids, 'e2', partway: true), 1);
+      expect(PlusCardMenu.nextIndex(ids, 'e3'), 2);
+      expect(PlusCardMenu.nextIndex(ids, 'gone'), 0);
+      expect(PlusCardMenu.nextIndex(const [], 'e1'), -1);
     });
   });
   group('Row scrolling', () {

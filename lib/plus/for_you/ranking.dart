@@ -7,6 +7,8 @@
 //   • plus how well its genres match your taste (from your whole list);
 //   • plus a little for being well rated overall;
 //   • minus genres you've marked "Not interested" on before.
+// Seeds can weigh less than zero (dropped, disliked): what they recommend
+// counts against a pick, and a pick only they recommend never shows.
 // Each pick keeps the seed that counted most, for "Because you loved X".
 
 import 'dart:math' as math;
@@ -162,7 +164,7 @@ List<ForYouPick> rankPicks({
     if (c.votes.isEmpty) continue;
     var fromSeeds = 0.0;
     ForYouSeed? best;
-    var bestPart = -1.0;
+    var bestPart = 0.0; // only a seed that adds can be the reason
     c.votes.forEach((seedKey, strength) {
       final seed = seedsByKey[seedKey];
       if (seed == null) return;

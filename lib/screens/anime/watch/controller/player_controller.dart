@@ -25,7 +25,9 @@ import 'package:anymex/models/Media/media.dart' as anymex;
 import 'package:anymex/models/player/player_adaptor.dart';
 import 'package:anymex/screens/anime/watch/controller/player_utils.dart';
 import 'package:anymex/utils/external_player.dart';
+import 'package:anymex/plus/mini_player.dart';
 import 'package:anymex/plus/rate_prompt.dart';
+import 'package:anymex/plus/skip_times.dart';
 import 'package:anymex/utils/pip_controller.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/bottom_sheet.dart';
 import 'package:anymex/screens/anime/watch/player/base_player.dart';
@@ -684,6 +686,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     }
     delete();
     RatePrompt.showIfPending(); // AnymeX+
+    PlusMiniPlayer.exit(); // AnymeX+: leaving the player restores the window
     super.onClose();
   }
 
@@ -1219,6 +1222,14 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     currentSkipInterval.value = null;
     _cancelAutoSkipTimer();
     _autoSkipCancelledForCurrentSegment = false;
+    skipTimes = null;
+    // AnymeX+: Movies & TV skip times (TheIntroDB / chapter marks).
+    final plusSkip = PlusSkipTimes.targetFor(
+        anilistData.id, currentEpisode.value.link);
+    if (plusSkip != null) {
+      plusAttachSkipTimes(this, plusSkip);
+      return;
+    }
     String malId = anilistData.idMal;
     final serviceType = anilistData.serviceType;
 

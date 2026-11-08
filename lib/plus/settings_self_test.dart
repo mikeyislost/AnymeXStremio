@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:anymex/plus/error_log.dart';
 import 'package:anymex/plus/self_test.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_button.dart';
@@ -290,6 +291,8 @@ class _SettingsSelfTestState extends State<SettingsSelfTest> {
                   ],
                 ),
               ],
+              const SizedBox(height: 16),
+              const PlusErrorLogSection(),
               for (final entry in groups.entries) ...[
                 const SizedBox(height: 16),
                 AnymeXSectionBuilder(
@@ -313,5 +316,108 @@ class _SettingsSelfTestState extends State<SettingsSelfTest> {
         }),
       ),
     );
+  }
+}
+
+/// The last 50 errors on this device, newest first, with Copy and Clear.
+class PlusErrorLogSection extends StatefulWidget {
+  const PlusErrorLogSection({super.key});
+
+  @override
+  State<PlusErrorLogSection> createState() => _PlusErrorLogSectionState();
+}
+
+class _PlusErrorLogSectionState extends State<PlusErrorLogSection> {
+  bool _showAll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    PlusErrorLog.ensureLoaded();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Obx(() {
+      final list = PlusErrorLog.entries.reversed.toList();
+      final shown = _showAll ? list : list.take(5).toList();
+      return AnymeXSectionBuilder(
+        title: 'Recent errors (${list.length})',
+        children: [
+          if (list.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: AnymeXText('No errors saved on this device',
+                  size: 13, color: colors.onSurfaceVariant),
+            )
+          else ...[
+            for (final e in shown)
+              AnymeXTile(
+                icon: Icons.error_outline_rounded,
+                title: e.message.split('\n').first,
+                subtitle: _when(e.time),
+                maxLines: 2,
+                showChevron: false,
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(
+                      text: '[${e.time.toLocal()}]\n${e.message}'));
+                  snackBar('Error copied');
+                },
+              ),
+            if (list.length > shown.length || _showAll && list.length > 5)
+              AnymeXTile(
+                icon: _showAll
+                    ? Icons.expand_less_rounded
+                    : Icons.expand_more_rounded,
+                title: _showAll ? 'Show fewer' : 'Show all ${list.length}',
+                showChevron: false,
+                onTap: () => setState(() => _showAll = !_showAll),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+              child: Row(children: [
+                Expanded(
+                  child: AnymeXButton(
+                    onTap: () async {
+                      await Clipboard.setData(
+                          ClipboardData(text: PlusErrorLog.report()));
+                      snackBar('Errors copied to clipboard');
+                    },
+                    height: 42,
+                    backgroundColor: colors.primary,
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnymeXText('Copy all',
+                        variant: TextVariant.bold, color: colors.onPrimary),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AnymeXButton(
+                    onTap: () async {
+                      await PlusErrorLog.clear();
+                      snackBar('Error log cleared');
+                    },
+                    height: 42,
+                    variant: ButtonVariant.outline,
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnymeXText('Clear',
+                        variant: TextVariant.bold, color: colors.primary),
+                  ),
+                ),
+              ]),
+            ),
+          ],
+        ],
+      );
+    });
+  }
+
+  static String _when(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 1) return 'Just now';
+    if (d.inHours < 1) return '${d.inMinutes} min ago';
+    if (d.inDays < 1) return '${d.inHours} h ago';
+    return '${d.inDays} d ago';
   }
 }

@@ -24,6 +24,7 @@ import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/ui_extensions/sizing.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:anymex/screens/anime/widgets/episode_list_builder.dart';
+import 'package:anymex/plus/for_you/taste_buttons.dart';
 import 'package:anymex/plus/movie_watch_card.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/screens/manga/reading_page.dart';
@@ -651,6 +652,8 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // AnymeX+: Like / Love / Dislike (For you).
+                  if (controller.isAnime) PlusAnimeTasteRow(media: mediaData),
                   Obx(() {
                     if (controller.isAnilistLoading.value) {
                       return _buildStatsShimmer(context).bottomSpacing(16);

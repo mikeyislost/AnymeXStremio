@@ -6,6 +6,8 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/isar_models/video.dart' as model;
 import 'package:anymex/models/Media/media.dart' as anymex;
+import 'package:anymex/plus/mini_player.dart';
+import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/screens/anime/watch/controls/themes/setup/themed_controls.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/double_tap_seek.dart';
@@ -200,7 +202,8 @@ class _WatchScreenState extends State<WatchScreen> {
                       )),
                   if (!PlayerKeys.useLibass.get<bool>(false))
                     SubtitleText(controller: controller),
-                  if (!isPip) ...[
+                  // AnymeX+: the mini player (Windows) shows only the video.
+                  if (!isPip && !PlusMiniPlayer.active.value) ...[
                     PlayerOverlay(controller: controller),
                     BufferingOverlay(controller: controller),
                     DoubleTapSeekWidget(
@@ -236,6 +239,7 @@ class _WatchScreenState extends State<WatchScreen> {
                       controller: controller,
                     ),
                     ShaderOsd(controller: controller),
+                    PlusUpNext(controller: controller), // AnymeX+
                     Positioned(
                       right: 0,
                       top: 0,
@@ -301,6 +305,7 @@ class _WatchScreenState extends State<WatchScreen> {
                     ),
                     const _WatchiumOverlays(),
                   ],
+                  if (!isPip) PlusMiniPlayerOverlay(controller: controller),
                 ],
               );
             }),

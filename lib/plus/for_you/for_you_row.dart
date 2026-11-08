@@ -8,6 +8,7 @@ import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/models/models_convertor/carousel/carousel_data.dart';
 import 'package:anymex/models/models_convertor/carousel_mapper.dart';
+import 'package:anymex/plus/card_menu.dart';
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
@@ -18,13 +19,10 @@ import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/screens/anime/details_page.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
-import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
-import 'package:anymex/widgets/anymex_widgets/anymex_tile.dart';
 import 'package:anymex/widgets/common/cards/card_gate.dart';
 import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/helper/tv_wrapper.dart';
-import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -134,53 +132,28 @@ class PlusForYouRow extends StatelessWidget {
   }
 
   void _actions(BuildContext context, ForYouPick p, String tag) {
-    AnymeXSheet.custom(
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-            child: AnymeXText(p.title,
-                size: 16,
-                variant: TextVariant.bold,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-            child: AnymeXText(p.reason,
-                size: 12.5,
-                color: context.colors.onSurfaceVariant,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-          ),
-          AnymeXTile(
-            icon: Icons.info_outline_rounded,
-            title: 'Open',
-            onTap: () {
-              Navigator.of(context).pop();
-              open(p, tag);
-            },
-          ),
-          AnymeXTile(
-            icon: Icons.thumb_down_alt_outlined,
-            title: 'Not interested',
-            subtitle: 'Hide it and show fewer like it',
-            showChevron: false,
-            onTap: () {
-              Navigator.of(context).pop();
-              PlusTaste.hide(
-                  key: p.key, id: p.id, kind: p.kind, genres: p.genres);
-              onHidden(p);
-              snackBar("Got it. You'll see fewer picks like this");
-            },
-          ),
-        ],
-      ),
-      context,
-      showDragHandle: true,
-    );
+    void hidden() => onHidden(p);
+    if (p.kind == 'anime') {
+      PlusCardMenu.anime(
+        context,
+        Media.fromCarouselData(cardData(p), ItemType.anime),
+        tag,
+        reason: p.reason,
+        genres: p.genres,
+        onHidden: hidden,
+      );
+    } else {
+      PlusCardMenu.stremio(
+        type: p.kind,
+        id: p.id,
+        name: p.title,
+        poster: p.poster,
+        reason: p.reason,
+        hideKey: p.key,
+        genres: p.genres,
+        onHidden: hidden,
+      );
+    }
   }
 
   @override
@@ -222,6 +195,7 @@ class PlusForYouRow extends StatelessWidget {
                       onTap: () => open(p, tag),
                       child: GestureDetector(
                         onLongPress: () => _actions(context, p, tag),
+                        onSecondaryTap: () => _actions(context, p, tag),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

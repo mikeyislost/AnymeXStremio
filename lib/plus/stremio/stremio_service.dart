@@ -270,6 +270,18 @@ class StremioService extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _readSettings();
+    unawaited(_restoreFromDisk());
+    unawaited(StremioDiskCache.prune());
+  }
+
+  /// Re-reads the saved settings (after AnymeX restores a backup).
+  void reloadSettings() {
+    _readSettings();
+    libraryRevision.value++;
+  }
+
+  void _readSettings() {
     try {
       syncEnabled.value = KvHelper.get<bool>(_kSyncEnabled, defaultVal: true);
       syncAnime.value = KvHelper.get<bool>(_kSyncAnime, defaultVal: true);
@@ -291,8 +303,6 @@ class StremioService extends GetxController {
     } catch (e) {
       Logger.e('Stremio: failed to restore session: $e');
     }
-    unawaited(_restoreFromDisk());
-    unawaited(StremioDiskCache.prune());
   }
 
   /// Library refreshed from Stremio this session (the device copy must not

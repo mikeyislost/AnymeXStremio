@@ -54,7 +54,9 @@ class MoviesForYou {
   /// How much one title counts as a seed. Finished, or watched for a good
   /// while, counts 1; being in your library adds a little; Like adds 1 and
   /// Love adds 2; things you watched long ago count up to half as much.
+  /// Dislike is -1.5: what it recommends counts against.
   static double seedWeight(MovieSeedInput i, {DateTime? now}) {
+    if (i.mark == TasteMark.dislike) return -1.5;
     final hours = i.watchedMs / 3600000;
     final full = i.type == 'movie' ? 1.5 : 6.0;
     var base = i.watched ? 1.0 : 0.0;
@@ -68,7 +70,7 @@ class MoviesForYou {
     final bonus = switch (i.mark) {
       TasteMark.love => 2.0,
       TasteMark.like => 1.0,
-      TasteMark.none => 0.0,
+      TasteMark.dislike || TasteMark.none => 0.0,
     };
     return base + bonus;
   }
@@ -160,9 +162,17 @@ class MoviesForYou {
       final seeds = <ForYouSeed>[];
       final seedGenres = <(List<String>, double)>[];
       final seedTmdb = <String, (String, int)>{}; // seed id → (movie|tv, id)
-      for (final (i, w) in ranked) {
-        if (seeds.length >= maxSeeds) break;
-        if (w < 0.5) break;
+      final against = [
+        for (final (i, w) in ranked)
+          if (w < 0) (i, w)
+      ].take(8);
+      for (final (i, w) in [
+        ...ranked.where((e) => e.$2 >= 0.5).take(maxSeeds * 2),
+        ...against,
+      ]) {
+        if (w > 0 && seeds.where((s) => s.weight > 0).length >= maxSeeds) {
+          continue;
+        }
         final found = await _find(i.id, i.type);
         if (found == null) continue;
         seeds.add(ForYouSeed(
@@ -175,7 +185,7 @@ class MoviesForYou {
         seedGenres.add((found.genres, w));
         seedTmdb[i.id] = (found.kind, found.id);
       }
-      if (seeds.isEmpty) {
+      if (!seeds.any((s) => s.weight > 0)) {
         picks.clear();
         return;
       }
@@ -219,7 +229,10 @@ class MoviesForYou {
           final imdb = imdbs[j];
           final p = part[j];
           if (imdb == null || libraryIds.contains(imdb)) continue;
-          if (PlusTaste.hidden.contains(imdb)) continue;
+          if (PlusTaste.hidden.contains(imdb) ||
+              PlusTaste.marks.containsKey(imdb)) {
+            continue;
+          }
           out.add(ForYouPick(
             key: p.key,
             id: imdb,
