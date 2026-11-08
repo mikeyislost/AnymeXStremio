@@ -5,7 +5,7 @@ name: Build & Release
 # Feather source file and a changelog of what changed since the last release.
 #
 # Pushes to `beta` build "AnymeX+ β" instead: a GitHub pre-release tagged
-# like AnymeX's betas (v1.1.2-beta, then v1.1.2+1-beta, ...), with its own
+# v1.1.2-beta, then v1.1.2-beta+1, v1.1.2-beta+2, ..., with its own
 # app ID, icon and data so it installs next to the stable app, and its own
 # Feather source (feather branch). Shipping a beta = merging beta into main
 # (the "Ship beta as release" workflow does that), which builds vX.Y.Z.
@@ -45,7 +45,7 @@ jobs:
       # 1.9.9 -> 2.0.0). Next = latest stable release + 1; an old tag like
       # 1.0.10 counts as 1.1.0. Setting a higher version in pubspec.yaml
       # (e.g. 2.0.0) starts there instead. Betas are rounds of the next
-      # stable version: v1.1.2-beta, v1.1.2+1-beta, v1.1.2+2-beta ...
+      # stable version: v1.1.2-beta, v1.1.2-beta+1, v1.1.2-beta+2 ...
       # Re-running a commit that already has a release reuses its version.
       - name: Compute version
         id: ver
@@ -55,7 +55,7 @@ jobs:
           CHANNEL=stable
           if [ "$GITHUB_REF_NAME" = "beta" ]; then CHANNEL=beta; fi
           if [ "$CHANNEL" = beta ]; then
-            EXISTING=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?-beta$' | sort -V | tail -n 1 || true)
+            EXISTING=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-beta(\+[0-9]+)?|(\+[0-9]+)?-beta)$' | sort -V | tail -n 1 || true)
           else
             EXISTING=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
           fi
@@ -73,7 +73,7 @@ jobs:
               TAG="$VERSION"
             fi
           fi
-          # File names avoid "+": 1.1.2+1-beta -> 1.1.2-beta.1
+          # File names avoid "+": 1.1.2-beta+1 -> 1.1.2-beta.1
           if [[ "$TAG" == *+* ]]; then
             ROUND="${TAG#*+}"; FILE_VER="$VERSION-beta.${ROUND%-beta}"
           else
@@ -317,7 +317,7 @@ jobs:
           if [ "$RELEASE_CHANNEL" = beta ]; then
             PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD^ 2>/dev/null || true)
           else
-            PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-beta' HEAD^ 2>/dev/null || true)
+            PREV=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-beta*' HEAD^ 2>/dev/null || true)
           fi
           {
             if [ "$RELEASE_CHANNEL" = beta ]; then

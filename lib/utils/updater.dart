@@ -231,8 +231,9 @@ class UpdateManager {
 
     if (currentHasTag && latestHasTag) {
       final priority = ['alpha', 'beta', 'rc'];
-      final currentTag = currentSplit[1].toLowerCase();
-      final latestTag = latestSplit[1].toLowerCase();
+      // "beta+3" → "beta" (the round number was compared above).
+      final currentTag = currentSplit[1].toLowerCase().split('+')[0];
+      final latestTag = latestSplit[1].toLowerCase().split('+')[0];
 
       final currentIndex = priority.indexOf(currentTag);
       final latestIndex = priority.indexOf(latestTag);

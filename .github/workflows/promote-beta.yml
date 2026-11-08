@@ -3,7 +3,7 @@ name: Ship beta as release
 # One button (Actions tab → "Ship beta as release" → Run workflow) to turn
 # the current beta into the official release: merges `beta` into `main`
 # and starts the normal build, which publishes vX.Y.Z (the version the
-# betas were tagged for, e.g. v1.1.2-beta → v1.1.2).
+# betas were tagged for, e.g. v1.1.2-beta+3 → v1.1.2).
 on:
   workflow_dispatch:
 

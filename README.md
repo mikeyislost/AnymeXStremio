@@ -69,7 +69,7 @@ AnymeX+ uses its own bundle ID, so it installs next to the official AnymeX. The 
 | **Icon** | White logo | Orange logo with a BETA tag |
 | **iOS bundle ID** | `com.mikeyislost.anymexstremio` | `com.mikeyislost.anymexstremio.beta` |
 | **Windows** | AnymeXStremio | AnymeXStremio Beta |
-| **Releases** | `v1.1.2` | pre-releases `v1.1.2-beta`, `v1.1.2+1-beta`, ... |
+| **Releases** | `v1.1.2` | pre-releases `v1.1.2-beta`, `v1.1.2-beta+1`, ... |
 
 Fixes and new features go to the beta first. The beta is a separate app with its own sign-ins and library, so it can't break your normal install. Once a beta is ready it ships as the next stable release.
 

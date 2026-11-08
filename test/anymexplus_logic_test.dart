@@ -143,6 +143,13 @@ void main() {
       ];
       expect(AppChannel.newestBeta(list)?['tag_name'], 'v1.1.1+1-beta');
     });
+    test('vX.Y.Z-beta+N tags count as betas', () {
+      final list = [
+        {'tag_name': 'v1.1.1+1-beta', 'prerelease': true, 'published_at': '2026-11-07T23:22:00Z'},
+        {'tag_name': 'v1.1.1-beta+3', 'prerelease': true, 'published_at': '2026-11-08T01:00:00Z'},
+      ];
+      expect(AppChannel.newestBeta(list)?['tag_name'], 'v1.1.1-beta+3');
+    });
     test('no betas → null', () {
       expect(AppChannel.newestBeta([
         {'tag_name': 'v1.0.10', 'prerelease': false, 'published_at': '2026-11-07T17:59:17Z'},
