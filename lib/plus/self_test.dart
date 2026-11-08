@@ -1301,13 +1301,7 @@ class SelfTestRunner extends GetxController {
           final body = jsonDecode(r.body);
           String tag = '?';
           if (beta && body is List) {
-            for (final rel in body) {
-              final t = (rel is Map ? rel['tag_name'] : null)?.toString() ?? '';
-              if (t.endsWith('-beta') && rel['prerelease'] == true) {
-                tag = t;
-                break;
-              }
-            }
+            tag = AppChannel.newestBeta(body)?['tag_name']?.toString() ?? '?';
           } else if (body is Map) {
             tag = body['tag_name']?.toString() ?? '?';
           }

@@ -35,6 +35,27 @@ class AppChannel {
   static String get versionTag => _env('APP_VERSION_TAG');
 
   /// Version to show and compare for updates (beta tag included).
+  /// The newest beta in a GitHub releases list. Picked by publish date:
+  /// GitHub lists releases by tag name, which puts v1.1.1-beta above the
+  /// newer v1.1.1+1-beta.
+  static Map<String, dynamic>? newestBeta(List<dynamic> releases) {
+    Map<String, dynamic>? best;
+    DateTime? bestAt;
+    for (final r in releases) {
+      if (r is! Map<String, dynamic>) continue;
+      final tag = (r['tag_name'] ?? '').toString();
+      if (r['draft'] == true || r['prerelease'] != true) continue;
+      if (!tag.endsWith('-beta')) continue;
+      final at = DateTime.tryParse(
+          (r['published_at'] ?? r['created_at'] ?? '').toString());
+      if (best == null || (at != null && (bestAt == null || at.isAfter(bestAt)))) {
+        best = r;
+        bestAt = at;
+      }
+    }
+    return best;
+  }
+
   static Future<String> version() async {
     final tag = versionTag;
     if (tag.isNotEmpty) return tag;

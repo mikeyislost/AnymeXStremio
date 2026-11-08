@@ -5,6 +5,7 @@
 
 import 'package:anymex/controllers/service_handler/service_handler.dart'
     show ServicesType;
+import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/stremio/stremio_disk_cache.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -129,6 +130,23 @@ void main() {
       expect(back.poster, preview.poster);
       expect(back.releaseInfo, preview.releaseInfo);
       expect(back.genres, preview.genres);
+    });
+  });
+
+  group('Beta updates', () {
+    test('newest beta is picked by date, not list order', () {
+      // GitHub's own order (by tag name).
+      final list = [
+        {'tag_name': 'v1.1.1-beta', 'prerelease': true, 'published_at': '2026-11-07T19:46:30Z'},
+        {'tag_name': 'v1.1.1+1-beta', 'prerelease': true, 'published_at': '2026-11-07T23:22:00Z'},
+        {'tag_name': 'v1.0.10', 'prerelease': false, 'published_at': '2026-11-07T17:59:17Z'},
+      ];
+      expect(AppChannel.newestBeta(list)?['tag_name'], 'v1.1.1+1-beta');
+    });
+    test('no betas → null', () {
+      expect(AppChannel.newestBeta([
+        {'tag_name': 'v1.0.10', 'prerelease': false, 'published_at': '2026-11-07T17:59:17Z'},
+      ]), isNull);
     });
   });
 }

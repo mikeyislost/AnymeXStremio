@@ -253,21 +253,14 @@ class UpdateManager {
   }) async {
     try {
       if (isBeta) {
-        // Newest beta pre-release (GitHub lists newest first).
+        // Newest beta pre-release (by date; GitHub's list order is by tag).
         final response = await http.get(
           Uri.parse(_releasesListUrl),
           headers: {'Accept': 'application/vnd.github.v3+json'},
         );
         if (response.statusCode != 200) return null;
         final List<dynamic> list = json.decode(response.body);
-        for (final r in list) {
-          if (r is! Map<String, dynamic>) continue;
-          final tag = (r['tag_name'] ?? '').toString();
-          if (r['draft'] == true || r['prerelease'] != true) continue;
-          if (!tag.endsWith('-beta')) continue;
-          return r;
-        }
-        return null;
+        return AppChannel.newestBeta(list);
       }
 
       final response = await http.get(
