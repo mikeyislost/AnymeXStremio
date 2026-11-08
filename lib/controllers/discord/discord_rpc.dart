@@ -118,6 +118,27 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
   bool _heartbeatAckReceived = true;
   Completer<void>? _connectCompleter;
 
+  // AnymeX+: keep the Discord connection through short trips out of the
+  // app (Control Center, notifications, the app switcher) and reconnect
+  // when Discord closes it on its own, instead of waiting for the next
+  // status update.
+  int _lifecycleGen = 0;
+  bool _wentToBackground = false;
+  Timer? _retryTimer;
+  int _retryAttempts = 0;
+
+  /// Close code of the last connection Discord closed (for the Self Test).
+  int? lastCloseCode;
+  static const _retryDelays = [
+    Duration(seconds: 2),
+    Duration(seconds: 5),
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+    Duration(seconds: 60),
+  ];
+  // Discord's "your login isn't valid" style closes: retrying won't help.
+  static const _fatalCloseCodes = {4004, 4010, 4011, 4012, 4013, 4014};
+
   final _isConnected = false.obs;
   final _isMobile = (Platform.isAndroid || Platform.isIOS).obs;
   final _token = ''.obs;
@@ -168,27 +189,48 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_enabled.value || _token.value.isEmpty || !isMobile) return;
+    final gen = ++_lifecycleGen;
 
     if (state == AppLifecycleState.resumed) {
-      print('App resumed: Reconnecting to Discord RPC');
-      _reconnect();
+      // AnymeX+: start over only if the app really went to the background;
+      // otherwise just connect if the connection dropped meanwhile.
+      if (_wentToBackground) {
+        print('App resumed: Reconnecting to Discord RPC');
+        _wentToBackground = false;
+        _retryAttempts = 0;
+        _reconnect();
+      } else if (!_isConnected.value && !_connecting) {
+        _retryAttempts = 0;
+        connect();
+      }
     } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       print('App backgrounded/screen off/detached: Clearing RPC connection');
-      _cleanBackgroundDisconnect();
+      _wentToBackground = true;
+      _cleanBackgroundDisconnect(gen);
     }
+    // AnymeX+: inactive/hidden alone (Control Center, notifications, the app
+    // switcher) keep the connection; AnymeX used to drop it here, and a
+    // quick return could then close the new connection too.
   }
 
   Future<void> _reconnect() async {
     await _disconnect();
+    // AnymeX+: let a sign-in that was in progress finish (it stops once its
+    // socket is gone), so a fresh connection is opened.
+    final pending = _connectCompleter;
+    if (pending != null && !pending.isCompleted) await pending.future;
     await connect();
   }
 
-  Future<void> _cleanBackgroundDisconnect() async {
+  bool get _connecting =>
+      _connectCompleter != null && !_connectCompleter!.isCompleted;
+
+  Future<void> _cleanBackgroundDisconnect([int? gen]) async {
     await clearPresence();
     await Future.delayed(const Duration(milliseconds: 150));
+    // AnymeX+: already back in the app; don't close the new connection.
+    if (gen != null && gen != _lifecycleGen) return;
     await _disconnect();
   }
 
@@ -284,6 +326,13 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
           return;
         }
         await _connectMobileGateway();
+        // AnymeX+: wait briefly for Discord to accept the login, so the
+        // status update that asked for the connection isn't dropped.
+        for (var i = 0;
+            i < 60 && _gatewaySocket != null && !_isConnected.value;
+            i++) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
       } else {
         await _initializeDesktopRPC();
       }
@@ -344,18 +393,33 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
 
   Future<void> _connectMobileGateway() async {
     try {
-      _gatewaySocket = await WebSocket.connect(_gatewayUrl);
+      // AnymeX+: close a connection that never finished signing in.
+      final old = _gatewaySocket;
+      _gatewaySocket = null;
+      unawaited(old?.close());
 
-      _gatewaySocket!.listen(
-        _handleGatewayMessage,
+      final socket = await WebSocket.connect(_gatewayUrl);
+      _gatewaySocket = socket;
+
+      // AnymeX+: only the current connection counts; one we closed on
+      // purpose (reconnect, background, logout) is ignored, and one Discord
+      // closed is retried.
+      socket.listen(
+        (message) {
+          if (identical(_gatewaySocket, socket)) _handleGatewayMessage(message);
+        },
         onError: (error) {
           print('Gateway error: $error');
-          _isConnected.value = false;
+          if (identical(_gatewaySocket, socket)) _isConnected.value = false;
         },
         onDone: () {
           print('Gateway connection closed');
+          if (!identical(_gatewaySocket, socket)) return;
+          _gatewaySocket = null;
           _isConnected.value = false;
           _heartbeatTimer?.cancel();
+          lastCloseCode = socket.closeCode;
+          _scheduleRetry(closeCode: socket.closeCode);
         },
       );
 
@@ -363,14 +427,35 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
     } catch (e) {
       print('Failed to connect to Discord Gateway: $e');
       _isConnected.value = false;
+      _scheduleRetry();
     }
+  }
+
+  /// AnymeX+: try again a few times, waiting longer each time, while the
+  /// app is open. Coming back to the app starts over.
+  void _scheduleRetry({int? closeCode}) {
+    if (!isMobile || !_enabled.value || _token.value.isEmpty) return;
+    if (closeCode != null && _fatalCloseCodes.contains(closeCode)) return;
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+    if (_retryAttempts >= _retryDelays.length) return;
+    final delay = _retryDelays[_retryAttempts++];
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () {
+      if (_isConnected.value || _gatewaySocket != null) return;
+      connect();
+    });
   }
 
   void _handleGatewayMessage(dynamic message) {
     final data = jsonDecode(message);
     final op = data['op'];
 
-    _sequenceNumber = data['s'];
+    // AnymeX+: keep the last sequence number (non-dispatch messages have
+    // none), which heartbeats must send back.
+    final seq = data['s'];
+    if (seq is int) _sequenceNumber = seq;
 
     switch (op) {
       case 10: // Hello
@@ -383,6 +468,8 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
         final event = data['t'];
         if (event == 'READY') {
           _isConnected.value = true;
+          _retryAttempts = 0;
+          lastCloseCode = null;
           print('Discord Gateway Ready (Mobile)');
           updateBrowsingPresence(
             activity: kDebugMode ? 'Working on the App' : 'Browsing Stuff',
@@ -393,6 +480,20 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
       case 11: // Heartbeat ACK
         _heartbeatAckReceived = true;
         print('Heartbeat acknowledged');
+        break;
+      // AnymeX+: Discord asks clients to reconnect from time to time.
+      case 7: // Reconnect
+        print('Discord asked to reconnect');
+        _reconnect();
+        break;
+      case 9: // Invalid session: wait a moment, then sign in again
+        print('Discord session invalid, reconnecting');
+        Future.delayed(const Duration(seconds: 3), () {
+          if (WidgetsBinding.instance.lifecycleState ==
+              AppLifecycleState.resumed) {
+            _reconnect();
+          }
+        });
         break;
     }
   }
@@ -1172,10 +1273,14 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
   }
 
   Future<void> _disconnect() async {
+    _retryTimer?.cancel();
     if (isMobile) {
       _heartbeatTimer?.cancel();
-      await _gatewaySocket?.close();
+      // AnymeX+: forget the socket before closing it, so its close isn't
+      // mistaken for Discord dropping the connection.
+      final socket = _gatewaySocket;
       _gatewaySocket = null;
+      await socket?.close();
       _sequenceNumber = null;
     } else {
       await _onReadySub?.cancel();

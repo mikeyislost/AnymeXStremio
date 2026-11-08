@@ -1,5 +1,6 @@
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/launch_timer.dart';
+import 'package:anymex/plus/splash_gate.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
 import 'dart:async';
@@ -375,7 +376,9 @@ class _MainAppState extends State<MainApp> {
       }
     });
 
-    Future.delayed(const Duration(seconds: 3), () {
+    // AnymeX+: Home as soon as it's ready (see SplashGate) instead of
+    // always after 3 seconds.
+    SplashGate.wait().then((_) {
       if (mounted) {
         setState(() {
           _showMainApp = true;
@@ -411,7 +414,13 @@ class _MainAppState extends State<MainApp> {
             : theme.isLightMode
                 ? ThemeMode.light
                 : ThemeMode.dark,
-        home: _showMainApp ? const FilterScreen() : const AnymeXSplashScreen(),
+        // AnymeX+: a short fade, since the splash can now end mid-animation.
+        home: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: _showMainApp
+              ? const FilterScreen(key: ValueKey('home'))
+              : const AnymeXSplashScreen(key: ValueKey('splash')),
+        ),
         builder: (context, child) {
           if (PlatformDispatcher.instance.views.length > 1) {
             return child!;

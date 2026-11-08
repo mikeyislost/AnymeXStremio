@@ -302,6 +302,17 @@ class StremioService extends GetxController {
   AppLifecycleListener? _lifecycle;
   DateTime _lastLibraryRefresh = DateTime.fromMillisecondsSinceEpoch(0);
 
+  /// For this long after the library was downloaded or checked for changes,
+  /// a title that isn't in it is taken as not in your Stremio library,
+  /// without asking Stremio about it again (saves up to 2 requests each
+  /// time a new show or movie starts syncing). After that, Stremio is asked
+  /// as before, in case it was added on another device since.
+  static const trustLibraryFor = Duration(minutes: 10);
+  DateTime? _libraryCheckedAt;
+  bool get _libraryTrusted =>
+      _libraryCheckedAt != null &&
+      DateTime.now().difference(_libraryCheckedAt!) < trustLibraryFor;
+
   @override
   void onReady() {
     super.onReady();
@@ -521,6 +532,7 @@ class StremioService extends GetxController {
     library.clear();
     _libraryCache.clear();
     _libraryFresh = false;
+    _libraryCheckedAt = null;
     _librarySaveTimer?.cancel();
     unawaited(StremioDiskCache.remove(_kDiskAddons));
     unawaited(StremioDiskCache.remove(_kDiskLibrary));
@@ -850,6 +862,7 @@ class StremioService extends GetxController {
         }
       }
       _libraryFresh = true;
+      _libraryCheckedAt = DateTime.now();
       _rebuildLists();
     } catch (e) {
       Logger.e('Stremio: failed to load library: $e');
@@ -973,6 +986,7 @@ class StremioService extends GetxController {
   Future<StremioLibraryItem?> getLibraryItem(String id,
       {bool refresh = false}) async {
     if (!refresh && _libraryCache.containsKey(id)) return _libraryCache[id];
+    if (!refresh && _libraryTrusted) return null;
     final key = _authKey;
     if (key == null) return null;
     try {

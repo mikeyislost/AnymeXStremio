@@ -815,8 +815,13 @@ class SelfTestRunner extends GetxController {
           }
           final d = DiscordRPCController.instance;
           if (!d.isLoggedIn) return const Outcome.info('not connected (optional)');
-          return Outcome(d.isConnected ? SelfTestStatus.pass : SelfTestStatus.warn,
-              d.isConnected ? 'connected, status updates active' : 'logged in but gateway not connected');
+          if (d.isConnected) {
+            return const Outcome.pass('connected, status updates active');
+          }
+          final code = d.lastCloseCode;
+          return Outcome.warn('logged in but not connected right now'
+              '${code != null ? ' (Discord closed the connection, code $code)' : ''}; '
+              'it reconnects by itself, and when something plays');
         }, quick: true),
         _TestCase('Accounts', 'AniList login still valid', () async {
           final token = AuthKeys.authToken.get<String?>();
@@ -1065,7 +1070,8 @@ class SelfTestRunner extends GetxController {
           return Outcome.info(
               'progress → Stremio: ${_stremio.syncEnabled.value ? 'on' : 'off'} · '
               'AniList/MAL anime → Stremio: ${_stremio.syncAnime.value ? 'on' : 'off'} · '
-              'Movies & TV → AniList: ${_stremio.syncToAnilist.value ? 'on' : 'off'}');
+              'Movies & TV → AniList: ${_stremio.syncToAnilist.value ? 'on' : 'off'} · '
+              'Movies & TV → Simkl: ${_stremio.syncToSimkl.value ? 'on' : 'off'}');
         }, quick: true),
         _TestCase('Stremio', 'Subtitles', () async {
           await _stremio.ensureAddons();
