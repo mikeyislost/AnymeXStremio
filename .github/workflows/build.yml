@@ -169,6 +169,20 @@ jobs:
         if: env.RELEASE_CHANNEL == 'beta'
         run: python3 scripts/beta_build.py ios
 
+      # Reuse downloaded CocoaPods and Rust packages between builds (a new
+      # package lock starts a fresh cache).
+      - name: Cache CocoaPods and Rust packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ios-deps-${{ runner.os }}-${{ hashFiles('pubspec.lock', 'ios/PodFile') }}
+          restore-keys: ios-deps-${{ runner.os }}-
+
       - name: Build iOS (unsigned)
         run: |
           flutter pub get
@@ -326,9 +340,9 @@ jobs:
             fi
             echo "## What's new"
             if [ -n "$PREV" ]; then
-              git log "$PREV"..HEAD --no-merges --format='- %s' | grep -v '^- Merge' | sed 's/ \[skip ci\]//' || true
+              git log "$PREV"..HEAD --no-merges --format='%s%x1f%b%x1e' | python3 scripts/release_notes.py
             else
-              git log -n 15 --no-merges --format='- %s' | sed 's/ \[skip ci\]//'
+              git log -n 15 --no-merges --format='%s%x1f%b%x1e' | python3 scripts/release_notes.py
             fi
             echo
             echo "## Install"
@@ -359,7 +373,7 @@ jobs:
               "version": version, "buildVersion": build, "date": now,
               "localizedDescription": notes or f"Version {version}",
               "downloadURL": f"https://github.com/{repo}/releases/download/v{version}/{ipa_name}",
-              "size": size, "minOSVersion": "13.0",
+              "size": size, "minOSVersion": "15.0",
           }]
           # Older versions, so Feather can show the history / downgrade.
           try:
@@ -382,7 +396,7 @@ jobs:
                       "version": tag[1:], "date": rel.get("published_at") or now,
                       "localizedDescription": (rel.get("body") or "").split("## Install")[0].replace("## What's new", "").strip()[:1500],
                       "downloadURL": ipa["browser_download_url"], "size": ipa["size"],
-                      "minOSVersion": "13.0",
+                      "minOSVersion": "15.0",
                   })
           except Exception as e:
               print("Could not list older releases:", e)
@@ -466,7 +480,7 @@ jobs:
             "versions": [{
               "version": version, "buildVersion": build, "date": now,
               "localizedDescription": notes, "downloadURL": ipa["url"],
-              "size": ipa["size"], "minOSVersion": "13.0",
+              "size": ipa["size"], "minOSVersion": "15.0",
             }],
           }
           source = {

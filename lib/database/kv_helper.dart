@@ -25,7 +25,8 @@ class KvHelper {
 
     if (result?.value == null) {
       if (defaultVal != null) return defaultVal;
-      Logger.e('Key $key not found');
+      // AnymeX+: a setting that was never changed is normal, not an error;
+      // logging it filled the log file (and the self test's error list).
       return null as T;
     }
 

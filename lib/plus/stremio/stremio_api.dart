@@ -180,6 +180,27 @@ class StremioApi {
         .toList();
   }
 
+  /// When each library item last changed: {id: mtime}. Lets the app
+  /// download only changed items.
+  Future<Map<String, DateTime>> datastoreMeta(String authKey) async {
+    final result = await _call('datastoreMeta', {
+      'authKey': authKey,
+      'collection': 'libraryItem',
+    });
+    final out = <String, DateTime>{};
+    if (result is! List) return out;
+    for (final e in result) {
+      if (e is! List || e.length < 2) continue;
+      final id = e[0]?.toString() ?? '';
+      final t = e[1];
+      final at = t is num
+          ? DateTime.fromMillisecondsSinceEpoch(t.toInt(), isUtc: true)
+          : DateTime.tryParse(t?.toString() ?? '');
+      if (id.isNotEmpty && at != null) out[id] = at;
+    }
+    return out;
+  }
+
   Future<void> datastorePut(
       String authKey, List<StremioLibraryItem> changes) async {
     if (changes.isEmpty) return;

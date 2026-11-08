@@ -19,6 +19,7 @@ import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/models/Media/media.dart' as anymex;
 import 'package:anymex/utils/logger.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
@@ -270,11 +271,35 @@ class StremioService extends GetxController {
     });
   }
 
+  AppLifecycleListener? _lifecycle;
+  DateTime _lastLibraryRefresh = DateTime.fromMillisecondsSinceEpoch(0);
+
   @override
   void onReady() {
     super.onReady();
     refreshAddons();
-    if (isLoggedIn.value) refreshContinueWatching();
+    if (isLoggedIn.value) {
+      refreshContinueWatching();
+      unawaited(flushPending());
+    }
+    _lifecycle = AppLifecycleListener(onResume: _onAppResume);
+  }
+
+  @override
+  void onClose() {
+    _lifecycle?.dispose();
+    super.onClose();
+  }
+
+  /// Back in the app: pick up progress made on other devices (Continue
+  /// Watching) and send anything that failed while offline.
+  void _onAppResume() {
+    if (!isLoggedIn.value) return;
+    unawaited(flushPending());
+    if (DateTime.now().difference(_lastLibraryRefresh) >
+        const Duration(minutes: 2)) {
+      unawaited(refreshContinueWatching());
+    }
   }
 
   void setSyncEnabled(bool v) {
@@ -358,6 +383,8 @@ class StremioService extends GetxController {
     _librarySaveTimer?.cancel();
     unawaited(StremioDiskCache.remove(_kDiskAddons));
     unawaited(StremioDiskCache.remove(_kDiskLibrary));
+    _pending.clear();
+    unawaited(StremioDiskCache.remove(_kDiskPending));
     KvHelper.remove(_kAuthKey);
     KvHelper.remove(_kUser);
     if (key != null) unawaited(api.logout(key));
@@ -673,10 +700,13 @@ class StremioService extends GetxController {
     final key = _authKey;
     if (key == null) return;
     libraryLoading.value = true;
+    _lastLibraryRefresh = DateTime.now();
     try {
-      final items = await api.datastoreGet(key, all: true);
-      for (final item in items) {
-        _libraryCache[item.id] = item;
+      if (_libraryCache.isEmpty || !await _refreshLibraryChanges(key)) {
+        final items = await api.datastoreGet(key, all: true);
+        for (final item in items) {
+          _libraryCache[item.id] = item;
+        }
       }
       _libraryFresh = true;
       _rebuildLists();
@@ -684,6 +714,118 @@ class StremioService extends GetxController {
       Logger.e('Stremio: failed to load library: $e');
     } finally {
       libraryLoading.value = false;
+    }
+  }
+
+  /// Asks Stremio when each library item last changed and downloads only
+  /// the ones that changed since the copy on the phone (instead of the
+  /// whole library). False when that isn't possible; the caller then
+  /// downloads everything.
+  Future<bool> _refreshLibraryChanges(String key) async {
+    try {
+      final remote = await api.datastoreMeta(key);
+      if (remote.isEmpty) return false;
+      final changed = <String>[];
+      remote.forEach((id, mtime) {
+        final local = _libraryCache[id]?.mtime;
+        if (local == null || mtime.isAfter(local)) changed.add(id);
+      });
+      // Gone from Stremio entirely.
+      _libraryCache.removeWhere((id, _) => !remote.containsKey(id));
+      for (var i = 0; i < changed.length; i += 100) {
+        final end = i + 100 < changed.length ? i + 100 : changed.length;
+        final items = await api.datastoreGet(key, ids: changed.sublist(i, end));
+        for (final item in items) {
+          _libraryCache[item.id] = item;
+        }
+      }
+      Logger.i('Stremio: library refresh, ${changed.length} of '
+          '${remote.length} items changed');
+      return true;
+    } catch (e) {
+      Logger.i('Stremio: quick library refresh failed, loading all: $e');
+      return false;
+    }
+  }
+
+  // ---- updates made while offline -------------------------------------------
+
+  static const _kDiskPending = 'stremio/pending';
+  final Map<String, Map<String, dynamic>> _pending = {};
+  bool _pendingLoaded = false;
+  bool _flushing = false;
+
+  /// Saves a library item to Stremio. If that fails (offline, server down)
+  /// the item is kept on the phone and sent later. True when it got there.
+  Future<bool> _putOrQueue(String authKey, StremioLibraryItem item) async {
+    try {
+      await api.datastorePut(authKey, [item]);
+      await _loadPending();
+      if (_pending.remove(item.id) != null) _savePending();
+      if (_pending.isNotEmpty) unawaited(flushPending());
+      return true;
+    } catch (e) {
+      await _loadPending();
+      _pending[item.id] = Map<String, dynamic>.from(item.toJson());
+      _savePending();
+      Logger.i('Stremio: keeping ${item.id} to send later ($e)');
+      return false;
+    }
+  }
+
+  Future<void> _loadPending() async {
+    if (_pendingLoaded) return;
+    _pendingLoaded = true;
+    final saved = await StremioDiskCache.read(_kDiskPending);
+    if (saved?.value is! List) return;
+    for (final e in (saved!.value as List).whereType<Map>()) {
+      final m = Map<String, dynamic>.from(e);
+      final id = m['_id']?.toString() ?? '';
+      if (id.isNotEmpty) _pending.putIfAbsent(id, () => m);
+    }
+  }
+
+  void _savePending() {
+    unawaited(StremioDiskCache.write(_kDiskPending, _pending.values.toList()));
+  }
+
+  /// Updates waiting to be sent (for the self test).
+  Future<int> pendingCount() async {
+    await _loadPending();
+    return _pending.length;
+  }
+
+  /// Sends updates that failed earlier. If Stremio already has a newer copy
+  /// of an item (changed on another device since), that copy wins.
+  Future<void> flushPending() async {
+    final authKey = _authKey;
+    if (authKey == null || _flushing) return;
+    await _loadPending();
+    if (_pending.isEmpty) return;
+    _flushing = true;
+    try {
+      final ids = _pending.keys.toList();
+      final remote = await api.datastoreGet(authKey, ids: ids);
+      final remoteMtime = {for (final r in remote) r.id: r.mtime};
+      final toSend = <StremioLibraryItem>[];
+      for (final id in ids) {
+        final local = StremioLibraryItem(_pending[id]!);
+        final theirs = remoteMtime[id];
+        final mine = local.mtime;
+        if (theirs == null || mine == null || mine.isAfter(theirs)) {
+          toSend.add(local);
+        }
+      }
+      if (toSend.isNotEmpty) await api.datastorePut(authKey, toSend);
+      for (final id in ids) {
+        _pending.remove(id);
+      }
+      _savePending();
+      Logger.i('Stremio: sent ${toSend.length} update(s) saved while offline');
+    } catch (e) {
+      Logger.i('Stremio: offline updates still waiting: $e');
+    } finally {
+      _flushing = false;
     }
   }
 
@@ -729,7 +871,7 @@ class StremioService extends GetxController {
     if (watched) item.lastWatched = DateTime.now();
     item.touch();
     _libraryCache[item.id] = item;
-    await api.datastorePut(key, [item]);
+    await _putOrQueue(key, item);
   }
 
   // ---- playback sync --------------------------------------------------------
@@ -1219,6 +1361,29 @@ class StremioService extends GetxController {
         isFinal: false));
   }
 
+  /// The app is going to the background: send the current position now
+  /// instead of waiting for the next [reportInterval] report, so nothing
+  /// is lost if the app is then closed.
+  void flushPlayback({
+    required anymex.Media media,
+    required Episode episode,
+    required Duration position,
+    required Duration duration,
+  }) {
+    if (!isLoggedIn.value || !syncEnabled.value) return;
+    if (duration.inMilliseconds < 1000 || position.inMilliseconds <= 0) return;
+    final key = '${media.id}#${episode.link ?? episode.number}';
+    final session =
+        (_session?.key == key) ? _session! : (_session = _Session(key));
+    if (session.reporting) return;
+    if (DateTime.now().difference(session.lastReport) <
+        const Duration(seconds: 5)) {
+      return;
+    }
+    unawaited(_report(session, media, episode, position, duration,
+        isFinal: false));
+  }
+
   /// Called when an episode is closed or switched. Applies the "finished"
   /// rules (advance Continue Watching to the next episode).
   void onPlaybackStopped({
@@ -1327,7 +1492,7 @@ class StremioService extends GetxController {
 
       item.touch();
       _libraryCache[item.id] = item;
-      await api.datastorePut(authKey, [item]);
+      await _putOrQueue(authKey, item);
 
       session.lastReport = DateTime.now();
       session.lastPositionMs = posMs;
@@ -1599,7 +1764,7 @@ class StremioService extends GetxController {
       item.touch();
       _libraryCache[item.id] = item;
       _rebuildLists();
-      await api.datastorePut(authKey, [item]);
+      await _putOrQueue(authKey, item);
       Logger.i('AnymeX → Stremio: ${pb.libraryId} watched up to $progress');
     } catch (e) {
       Logger.i('AnymeX → Stremio sync failed for $mediaId: $e');

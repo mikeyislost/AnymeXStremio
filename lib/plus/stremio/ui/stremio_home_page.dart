@@ -91,7 +91,10 @@ class _StremioHomePageState extends State<StremioHomePage> {
               final cw = _service.continueWatching.toList();
               final loggedIn = _service.isLoggedIn.value;
               final loading = _service.addonsLoading.value;
-              final rows = _boardCatalogs(addons);
+              // Rows from addons already marked as not responding are
+              // skipped instead of asked (and failing) every time.
+              final rows = _boardCatalogs(
+                  addons.where(_service.isAddonUsable).toList());
               return CustomScrollView(
                 controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),

@@ -10,6 +10,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/launch_timer.dart';
 import 'package:anymex/controllers/discord/discord_rpc.dart';
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
 import 'package:anymex/controllers/settings/settings.dart';
@@ -400,6 +401,17 @@ class SelfTestRunner extends GetxController {
 
   List<_TestCase> _tests() => [
         // ---- App & device --------------------------------------------------
+        _TestCase('App', 'Launch time', () async {
+          final first = LaunchTimer.firstFrame;
+          final home = LaunchTimer.home;
+          if (first == null) return Outcome.info('Not measured yet');
+          final parts = ['first screen in ${first.inMilliseconds} ms'];
+          if (home != null) {
+            parts.add('Home in ${(home.inMilliseconds / 1000).toStringAsFixed(1)} s'
+                ' (includes the splash screen)');
+          }
+          return Outcome.info(parts.join(' · '));
+        }, quick: true),
         _TestCase('App', 'Version & build', () async {
           final i = await PackageInfo.fromPlatform();
           return Outcome.info(
@@ -873,6 +885,16 @@ class SelfTestRunner extends GetxController {
         _TestCase('Stremio', 'Account', () => _needStremio(() async {
               final user = await _stremio.api.getUser(_stremio.authKey!);
               return Outcome.pass('session valid (${user['email'] ?? 'account'})');
+            }), quick: true),
+        _TestCase('Stremio', 'Updates waiting to send', () => _needStremio(() async {
+              final n = await _stremio.pendingCount();
+              if (n == 0) return const Outcome.pass('none (everything reached Stremio)');
+              await _stremio.flushPending();
+              final left = await _stremio.pendingCount();
+              return Outcome(left == 0 ? SelfTestStatus.pass : SelfTestStatus.warn,
+                  left == 0
+                      ? '$n update(s) made offline were sent now'
+                      : '$left update(s) still waiting; they are sent when Stremio can be reached');
             }), quick: true),
         _TestCase('Stremio', 'Installed addons', () async {
           await _stremio.ensureAddons();

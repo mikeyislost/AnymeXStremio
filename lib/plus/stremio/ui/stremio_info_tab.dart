@@ -3,12 +3,14 @@
 // pages); movies and TV come from Simkl when a Simkl client id is set, and
 // otherwise from the addon's metadata (Cinemeta) plus TVmaze for shows.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/anilist/anilist_data.dart';
 import 'package:anymex/plus/simkl_auth_v2.dart';
+import 'package:anymex/plus/stremio/stremio_disk_cache.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/models/Media/media.dart';
@@ -89,6 +91,42 @@ class StremioInfo {
 class StremioInfoLoader {
   static final Map<String, StremioInfo> _cache = {};
 
+  /// Simkl, TMDB and TVmaze answers are saved on the device this long, so
+  /// the Info tab opens without waiting after the app restarts.
+  static const Duration savedFor = Duration(days: 7);
+
+  /// Cache key for a URL, without the app's own keys in it.
+  static String _keyFor(Uri uri) {
+    const private = {'api_key', 'client_id', 'app-name', 'app-version'};
+    final params = Map<String, String>.from(uri.queryParameters)
+      ..removeWhere((k, _) => private.contains(k));
+    final keys = params.keys.toList()..sort();
+    final q = keys.map((k) => '$k=${params[k]}').join('&');
+    return 'info|${uri.host}${uri.path}?$q';
+  }
+
+  /// GET that returns the body of a 200 answer, using a copy saved in the
+  /// last [savedFor] when there is one (or an older one when offline).
+  static Future<String?> _getBody(Uri uri,
+      {Map<String, String>? headers,
+      Duration timeout = const Duration(seconds: 12)}) async {
+    final key = _keyFor(uri);
+    final saved = await StremioDiskCache.read(key);
+    final savedBody = saved?.value is String ? saved!.value as String : null;
+    if (savedBody != null && saved!.isFresherThan(savedFor)) return savedBody;
+    try {
+      final r = await http.get(uri, headers: headers).timeout(timeout);
+      if (r.statusCode == 200) {
+        unawaited(StremioDiskCache.write(key, r.body));
+        return r.body;
+      }
+      Logger.i('Stremio info: HTTP ${r.statusCode} from ${uri.host}');
+    } catch (e) {
+      if (savedBody == null) rethrow;
+    }
+    return savedBody;
+  }
+
   /// AniList (anime) → Simkl (needs a client id) → addon metadata.
   static Future<StremioInfo> load(StremioMeta meta, {int? season}) async {
     final key = '${meta.id}|${season ?? 0}';
@@ -125,6 +163,22 @@ class StremioInfoLoader {
   /// /redirect endpoint. Works without a Simkl login (search needs one for
   /// apps registered with Simkl's newer AUTH V2).
   static Future<(String, String)?> simklIdForImdb(String imdb) async {
+    final diskKey = 'info|simkl-id|$imdb';
+    final saved = await StremioDiskCache.read(diskKey);
+    if (saved?.value is List &&
+        (saved!.value as List).length == 2 &&
+        saved.isFresherThan(const Duration(days: 30))) {
+      final v = saved.value as List;
+      return (v[0].toString(), v[1].toString());
+    }
+    final found = await _simklIdForImdbNetwork(imdb);
+    if (found != null) {
+      unawaited(StremioDiskCache.write(diskKey, [found.$1, found.$2]));
+    }
+    return found;
+  }
+
+  static Future<(String, String)?> _simklIdForImdbNetwork(String imdb) async {
     final client = http.Client();
     try {
       final req = http.Request(
@@ -154,17 +208,13 @@ class StremioInfoLoader {
     final (kind, simklId) = found;
     if (kind == 'anime') return null; // anime info comes from AniList
     final isMovie = kind == 'movies';
-    final resp = await http
-        .get(
-            SimklAuthV2.withAppParams(Uri.parse(
-                'https://api.simkl.com/${isMovie ? 'movies' : 'tv'}/$simklId?extended=full')),
-            headers: SimklAuthV2.baseHeaders)
-        .timeout(const Duration(seconds: 15));
-    if (resp.statusCode != 200) {
-      Logger.i('Stremio info: Simkl details HTTP ${resp.statusCode}');
-      return null;
-    }
-    final data = Map<String?, dynamic>.from(jsonDecode(resp.body) as Map);
+    final body = await _getBody(
+        SimklAuthV2.withAppParams(Uri.parse(
+            'https://api.simkl.com/${isMovie ? 'movies' : 'tv'}/$simklId?extended=full')),
+        headers: SimklAuthV2.baseHeaders,
+        timeout: const Duration(seconds: 15));
+    if (body == null) return null;
+    final data = Map<String?, dynamic>.from(jsonDecode(body) as Map);
     data['id'] = '$simklId*${isMovie ? 'MOVIE' : 'SERIES'}';
     data['__isMovie'] = isMovie;
     final media = Media.fromSimkl(data, isMovie);
@@ -186,12 +236,10 @@ class StremioInfoLoader {
   static Future<List<_CastMember>> _tmdbCast(String imdb, bool isMovie) async {
     final key = _tmdbKey;
     if (key == null) return const [];
-    final find = await http
-        .get(Uri.parse('https://api.themoviedb.org/3/find/$imdb'
-            '?api_key=$key&external_source=imdb_id'))
-        .timeout(const Duration(seconds: 12));
-    if (find.statusCode != 200) return const [];
-    final data = jsonDecode(find.body);
+    final find = await _getBody(Uri.parse('https://api.themoviedb.org/3/find/$imdb'
+        '?api_key=$key&external_source=imdb_id'));
+    if (find == null) return const [];
+    final data = jsonDecode(find);
     if (data is! Map) return const [];
     final movies = data['movie_results'] is List ? data['movie_results'] as List : const [];
     final shows = data['tv_results'] is List ? data['tv_results'] as List : const [];
@@ -203,11 +251,10 @@ class StremioInfoLoader {
     final path = useMovie
         ? 'movie/${hit['id']}/credits'
         : 'tv/${hit['id']}/aggregate_credits';
-    final credits = await http
-        .get(Uri.parse('https://api.themoviedb.org/3/$path?api_key=$key'))
-        .timeout(const Duration(seconds: 12));
-    if (credits.statusCode != 200) return const [];
-    final c = jsonDecode(credits.body);
+    final credits = await _getBody(
+        Uri.parse('https://api.themoviedb.org/3/$path?api_key=$key'));
+    if (credits == null) return const [];
+    final c = jsonDecode(credits);
     final list = c is Map && c['cast'] is List ? c['cast'] as List : const [];
     final out = <_CastMember>[];
     for (final e in list.whereType<Map>().take(25)) {
@@ -257,11 +304,10 @@ class StremioInfoLoader {
     if (cast.isNotEmpty) return cast;
     if (!isMovie && imdb != null) {
       try {
-        final r = await http
-            .get(Uri.parse('https://api.tvmaze.com/lookup/shows?imdb=$imdb'))
-            .timeout(const Duration(seconds: 12));
-        if (r.statusCode == 200) {
-          final show = jsonDecode(r.body);
+        final r = await _getBody(
+            Uri.parse('https://api.tvmaze.com/lookup/shows?imdb=$imdb'));
+        if (r != null) {
+          final show = jsonDecode(r);
           if (show is Map && show['id'] != null) {
             cast.addAll(await _tvmazeCast(show['id']));
           }
@@ -274,11 +320,10 @@ class StremioInfoLoader {
 
   static Future<List<_CastMember>> _tvmazeCast(dynamic showId) async {
     final out = <_CastMember>[];
-    final c = await http
-        .get(Uri.parse('https://api.tvmaze.com/shows/$showId/cast'))
-        .timeout(const Duration(seconds: 12));
-    if (c.statusCode != 200) return out;
-    for (final e in (jsonDecode(c.body) as List).whereType<Map>()) {
+    final c = await _getBody(
+        Uri.parse('https://api.tvmaze.com/shows/$showId/cast'));
+    if (c == null) return out;
+    for (final e in (jsonDecode(c) as List).whereType<Map>()) {
       final person = e['person'] is Map ? e['person'] as Map : {};
       final character = e['character'] is Map ? e['character'] as Map : {};
       final name = person['name']?.toString() ?? '';
@@ -361,11 +406,10 @@ class StremioInfoLoader {
     Map<String, dynamic>? show;
     if (isSeries && imdb != null) {
       try {
-        final r = await http
-            .get(Uri.parse('https://api.tvmaze.com/lookup/shows?imdb=$imdb'))
-            .timeout(const Duration(seconds: 12));
-        if (r.statusCode == 200) {
-          show = Map<String, dynamic>.from(jsonDecode(r.body) as Map);
+        final r = await _getBody(
+            Uri.parse('https://api.tvmaze.com/lookup/shows?imdb=$imdb'));
+        if (r != null) {
+          show = Map<String, dynamic>.from(jsonDecode(r) as Map);
         }
       } catch (e) {
         Logger.i('Stremio info: TVmaze lookup failed: $e');

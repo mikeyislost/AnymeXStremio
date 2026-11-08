@@ -700,6 +700,16 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
       if (!kDebugMode) {
         _trackLocally();
       }
+      // AnymeX+: send the position to Stremio now, so closing the app from
+      // the background doesn't lose up to 45 seconds of progress.
+      if (!isOffline.value) {
+        StremioService.to.flushPlayback(
+          media: anilistData,
+          episode: currentEpisode.value,
+          position: currentPosition.value,
+          duration: episodeDuration.value,
+        );
+      }
     }
 
     if (state == AppLifecycleState.detached) {

@@ -26,22 +26,25 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/self_test.dart`, `plus/settings_self_test.dart` | Self Test page and its checks |
 | `plus/app_channel.dart` | Stable vs beta build (from `.env`) |
 | `plus/maybe_blur.dart` | Blur that is skipped when blur is 0 |
+| `plus/launch_timer.dart` | Launch time shown in the Self Test |
 
 ## Hooks in AnymeX files
 
 | AnymeX file | AnymeX+ change |
 | --- | --- |
-| `main.dart` | Registers StremioService; Movies & TV tab; Firebase removed; startup steps run together; subtitle fonts, downloads, Gist sync and watch parties start after the first frame; beta window title |
+| `main.dart` | Registers StremioService; Movies & TV tab; Firebase removed; startup steps run together; subtitle fonts, downloads, Gist sync and watch parties start after the first frame; launch timing; print() kept out of the log file; beta window title |
 | `controllers/settings/settings.dart` | Stremio tab; Anime tab folded into Home (one-time tab migration) |
 | `controllers/services/anilist/anilist_data.dart` | AniList progress → Stremio |
 | `controllers/services/mal/mal_service.dart` | MAL progress → Stremio |
 | `controllers/services/simkl/simkl_service.dart`, `simkl_api.dart` | Simkl sign-in uses `plus/simkl_auth_v2.dart`; requests go through its client (refresh on 401) |
 | `database/database.dart` | Beta keeps its own database folder on Windows |
+| `database/kv_helper.dart` | A missing setting is no longer logged as an error |
+| `controllers/services/storage/storage_manager_service.dart` | Over the image-cache limit, the oldest images are removed instead of all of them |
 | `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home |
 | `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode |
 | `screens/anime/widgets/episode_section.dart` | Extensions / Stremio stream source switch |
 | `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet |
-| `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync; iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open |
+| `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open |
 | `screens/library/controller/library_controller.dart`, `my_library.dart`, `widgets/library_deps.dart` | "Stremio" chip in the Library |
 | `screens/library/widgets/history_model.dart` | History items from Stremio open the Stremio page |
 | `screens/settings/sub_settings/settings_accounts.dart` | Stremio account in Accounts |
@@ -71,4 +74,4 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `scripts/` | Version numbers, beta app renaming, beta icons, colour-call update |
 | `beta/` | Beta icons |
 | `test/` | Unit tests for AnymeX+ logic |
-| `ios/`, `windows/` | App ID, name and icons for AnymeX+ |
+| `ios/`, `windows/` | App ID, name and icons for AnymeX+; iOS 15 minimum |

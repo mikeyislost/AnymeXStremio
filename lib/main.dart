@@ -1,4 +1,5 @@
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/launch_timer.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
 import 'dart:async';
@@ -62,6 +63,7 @@ import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/non_widgets/settings_sheet.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -157,6 +159,7 @@ Future<void> safeCall(FutureOr<void> Function() function,
 }
 
 void main(List<String> args) async {
+  LaunchTimer.start();
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
@@ -240,8 +243,11 @@ void main(List<String> args) async {
     Logger.e("STACK: $stackTrace");
   }, zoneSpecification: ZoneSpecification(
     print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
-      if (Logger.isInitialized) {
-        Logger.i(line);
+      // AnymeX+: leftover print() calls (from the app and its packages) go
+      // to the debug console only, not the log file; real log lines use
+      // Logger.
+      if (kDebugMode && Logger.isInitialized) {
+        Logger.d(line, 'PRINT');
       } else {
         parent.print(zone, line);
       }
@@ -358,6 +364,7 @@ class _MainAppState extends State<MainApp> {
     focusNode = FocusNode();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      LaunchTimer.markFirstFrame();
       _startDeferredServices();
       if (mounted) {
         precacheImage(const AssetImage('assets/images/bg_glass.webp'), context);
@@ -373,6 +380,8 @@ class _MainAppState extends State<MainApp> {
         setState(() {
           _showMainApp = true;
         });
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => LaunchTimer.markHome());
       }
     });
   }

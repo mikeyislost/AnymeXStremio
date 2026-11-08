@@ -159,8 +159,45 @@ class StorageManagerService {
     final thresholdBytes = (getThresholdGb() * _bytesPerGb).round();
     final cacheBytes = await getImageCacheSizeBytes();
     if (cacheBytes < thresholdBytes) return false;
-    await clearImageCache();
+    // AnymeX+: drop the oldest cached images until the cache is at 80% of
+    // the limit, instead of wiping every poster at once.
+    final toFree = cacheBytes - (thresholdBytes * 0.8).round();
+    final freed = await _trimOldestImages(toFree);
+    if (freed < toFree) await clearImageCache();
     return true;
+  }
+
+  Future<int> _trimOldestImages(int bytesToFree) async {
+    final dirs = [
+      await AnymeXCacheManager.getCacheDirectory(),
+      await AnymeXCacheManager.getResizedCacheDirectory(),
+      await AnymeXCacheManager.getLegacyCacheDirectory(),
+      await AnymeXCacheManager.getLegacyResizedCacheDirectory(),
+    ];
+    final files = <(File, DateTime, int)>[];
+    for (final dir in dirs) {
+      if (!await dir.exists()) continue;
+      try {
+        await for (final e in dir.list(recursive: true, followLinks: false)) {
+          if (e is! File) continue;
+          try {
+            final stat = await e.stat();
+            files.add((e, stat.modified, stat.size));
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    files.sort((a, b) => a.$2.compareTo(b.$2));
+    var freed = 0;
+    for (final (file, _, size) in files) {
+      if (freed >= bytesToFree) break;
+      try {
+        await file.delete();
+        freed += size;
+      } catch (_) {}
+    }
+    PaintingBinding.instance.imageCache.clear();
+    return freed;
   }
 
   Future<void> factoryResetIsar() async {
