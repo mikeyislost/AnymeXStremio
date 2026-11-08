@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "34",
-      "versionDate": "2026-11-08T06:06:31Z",
-      "versionDescription": "Beta v1.1.1-beta+8\n\n- Beta 8: faster builds, easier AnymeX updates\n  - AnymeX's own colour calls are back as they were: 117 AnymeX files no longer differ from AnymeX, so merges touch 36 files instead of 155\n  - The weekly AnymeX check now also tries the merge and runs the checks; a \"Ship AnymeX update to beta\" button puts a ready merge in a beta\n  - Builds: the iPhone and Windows builds start right away and run alongside the checks (the release still waits for them); the compiled Rust network library is kept between builds; rhttp's Rust packages are pinned\n- wip: colour calls back, build speed-ups (lock file pending)",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B8/AnymeX-Stremio-v1.1.1-beta.8.ipa",
-      "size": 75296603,
+      "buildVersion": "35",
+      "versionDate": "2026-11-08T06:25:13Z",
+      "versionDescription": "Beta v1.1.1-beta+9\n\n- Beta 9: your score on Library cards, rate prompt, custom lists on Home\n  - Library: cards show your score next to your progress when you've scored a show (AnymeX Desk #87)\n  - After the last episode marks a show Completed, a sheet asks for a 1-10 score once you're out of the player (AniList; Desk #117)\n  - Home: your AniList custom anime lists as rows (Desk #98)",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B9/AnymeX-Stremio-v1.1.1-beta.9.ipa",
+      "size": 75302559,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "34",
-          "date": "2026-11-08T06:06:31Z",
-          "localizedDescription": "Beta v1.1.1-beta+8\n\n- Beta 8: faster builds, easier AnymeX updates\n  - AnymeX's own colour calls are back as they were: 117 AnymeX files no longer differ from AnymeX, so merges touch 36 files instead of 155\n  - The weekly AnymeX check now also tries the merge and runs the checks; a \"Ship AnymeX update to beta\" button puts a ready merge in a beta\n  - Builds: the iPhone and Windows builds start right away and run alongside the checks (the release still waits for them); the compiled Rust network library is kept between builds; rhttp's Rust packages are pinned\n- wip: colour calls back, build speed-ups (lock file pending)",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B8/AnymeX-Stremio-v1.1.1-beta.8.ipa",
-          "size": 75296603,
+          "buildVersion": "35",
+          "date": "2026-11-08T06:25:13Z",
+          "localizedDescription": "Beta v1.1.1-beta+9\n\n- Beta 9: your score on Library cards, rate prompt, custom lists on Home\n  - Library: cards show your score next to your progress when you've scored a show (AnymeX Desk #87)\n  - After the last episode marks a show Completed, a sheet asks for a 1-10 score once you're out of the player (AniList; Desk #117)\n  - Home: your AniList custom anime lists as rows (Desk #98)",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B9/AnymeX-Stremio-v1.1.1-beta.9.ipa",
+          "size": 75302559,
           "minOSVersion": "15.0"
         }
       ]
