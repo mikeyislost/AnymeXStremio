@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "37",
-      "versionDate": "2026-11-08T18:19:34Z",
-      "versionDescription": "Beta v1.1.1-beta+10\n\n- For you: picks on Home and Movies & TV, Like/Love, Not interested\n  - Home: For you row from your AniList list, scores and favourites (AniList recommendations + AI Picks), with a reason under each card\n  - Movies & TV: For you row from your Stremio library and history plus Like/Love (TMDB recommendations)\n  - Like/Love buttons on Movies & TV titles; sent to Simkl as 8/10 ratings when Sync to Simkl is on\n  - Long-press a pick: Not interested hides it and shows fewer like it\n  - Unit tests for the ranking, seeds and TMDB parsing\n- Retire the legacy Feather link; source URLs as plain text in the README",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B10/AnymeX-Stremio-v1.1.1-beta.10.ipa",
-      "size": 75337534,
+      "buildVersion": "38",
+      "versionDate": "2026-11-08T19:59:41Z",
+      "versionDescription": "Beta v1.1.1-beta+11\n\n- Fix blank For you rows; smoother scrolling\n  - For you (Home and Movies & TV): cards get the normal card height, so they draw instead of leaving a blank space\n  - Card animation plays once, when a row first shows, not every time a row or card comes back on screen\n  - Nearby rows stay built on Home and Movies & TV; Movies & TV rows are kept when scrolled away instead of reloading\n  - Movies & TV rows load small posters (details page keeps the large one)",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B11/AnymeX-Stremio-v1.1.1-beta.11.ipa",
+      "size": 75335566,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "37",
-          "date": "2026-11-08T18:19:34Z",
-          "localizedDescription": "Beta v1.1.1-beta+10\n\n- For you: picks on Home and Movies & TV, Like/Love, Not interested\n  - Home: For you row from your AniList list, scores and favourites (AniList recommendations + AI Picks), with a reason under each card\n  - Movies & TV: For you row from your Stremio library and history plus Like/Love (TMDB recommendations)\n  - Like/Love buttons on Movies & TV titles; sent to Simkl as 8/10 ratings when Sync to Simkl is on\n  - Long-press a pick: Not interested hides it and shows fewer like it\n  - Unit tests for the ranking, seeds and TMDB parsing\n- Retire the legacy Feather link; source URLs as plain text in the README",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B10/AnymeX-Stremio-v1.1.1-beta.10.ipa",
-          "size": 75337534,
+          "buildVersion": "38",
+          "date": "2026-11-08T19:59:41Z",
+          "localizedDescription": "Beta v1.1.1-beta+11\n\n- Fix blank For you rows; smoother scrolling\n  - For you (Home and Movies & TV): cards get the normal card height, so they draw instead of leaving a blank space\n  - Card animation plays once, when a row first shows, not every time a row or card comes back on screen\n  - Nearby rows stay built on Home and Movies & TV; Movies & TV rows are kept when scrolled away instead of reloading\n  - Movies & TV rows load small posters (details page keeps the large one)",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B11/AnymeX-Stremio-v1.1.1-beta.11.ipa",
+          "size": 75335566,
           "minOSVersion": "15.0"
         }
       ]
