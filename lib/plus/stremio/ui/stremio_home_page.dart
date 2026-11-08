@@ -1,6 +1,7 @@
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_account_page.dart';
+import 'package:anymex/plus/stremio/ui/stremio_rows_editor.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
@@ -93,8 +94,10 @@ class _StremioHomePageState extends State<StremioHomePage> {
               final loading = _service.addonsLoading.value;
               // Rows from addons already marked as not responding are
               // skipped instead of asked (and failing) every time.
-              final rows = _boardCatalogs(
-                  addons.where(_service.isAddonUsable).toList());
+              // Your order, minus hidden rows (Edit rows button).
+              final rows = _service.arrangeRows(
+                  _boardCatalogs(addons.where(_service.isAddonUsable).toList()),
+                  (r) => StremioService.rowKey(r.$1, r.$2));
               return CustomScrollView(
                 controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -165,6 +168,11 @@ class _StremioHomePageState extends State<StremioHomePage> {
                   HeaderActionButton(
                     icon: IconlyLight.category,
                     onTap: () => navigate(() => const StremioBrowsePage()),
+                  ),
+                  HeaderActionButton(
+                    icon: Icons.tune_rounded,
+                    onTap: () => showStremioRowsEditor(context,
+                        stremioRowEntries(_boardCatalogs(_service.addons.toList()))),
                   ),
                   HeaderActionButton(
                     icon: IconlyLight.profile,

@@ -156,4 +156,26 @@ void main() {
       ]), isNull);
     });
   });
+
+  group('Stream filters', () {
+    test('quality from stream text', () {
+      expect(streamQualityOf('Torrentio\n4k HDR'), '4K');
+      expect(streamQualityOf('Show.S01E02.2160p.WEB-DL'), '4K');
+      expect(streamQualityOf('[RD+] Torrentio 1080p'), '1080p');
+      expect(streamQualityOf('720p WEBRip'), '720p');
+      expect(streamQualityOf('480p'), 'SD');
+      expect(streamQualityOf('Direct link'), '');
+    });
+    test('size from stream text', () {
+      expect(streamSizeGbOf('👤 12 💾 2.3 GB ⚙️ ThePirateBay'), closeTo(2.3, 0.001));
+      expect(streamSizeGbOf('💾 700 MB'), closeTo(700 / 1024, 0.001));
+      expect(streamSizeGbOf('1,5 GiB'), closeTo(1.5, 0.001));
+      expect(streamSizeGbOf('no size here'), isNull);
+    });
+    test('remembered choice is per show, not per episode', () {
+      expect(StremioService.streamTitleKey(null, 'tt0903747:1:2'), 'tt0903747');
+      expect(StremioService.streamTitleKey(null, 'kitsu:7442:5'), 'kitsu:7442');
+      expect(StremioService.streamTitleKey('tt0111161', 'tt0111161'), 'tt0111161');
+    });
+  });
 }

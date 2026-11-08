@@ -430,11 +430,10 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       ];
     }
     return [
-      SliverToBoxAdapter(
-        child: CommentSection(
-          key: ValueKey('stremio-comments-${media.id}'),
-          media: media,
-        ),
+      CommentSection(
+        key: ValueKey('stremio-comments-${media.id}'),
+        media: media,
+        asSliver: true,
       ),
     ];
   }
@@ -777,11 +776,37 @@ class StremioStreamsSheet extends StatefulWidget {
   State<StremioStreamsSheet> createState() => _StremioStreamsSheetState();
 }
 
+enum _SizeSort { none, smallest, largest }
+
 class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
   final Map<String, List<StremioStream>> _byAddon = {};
   final List<String> _addonOrder = [];
   int _pending = 0;
   bool _started = false;
+
+  // AnymeX+: filters and the choice remembered for this title.
+  String? _quality;
+  String? _addonFilter;
+  _SizeSort _sizeSort = _SizeSort.none;
+  late final String _titleKey =
+      StremioService.streamTitleKey(widget.meta?.id, widget.videoId);
+  late final ({String? addon, String? quality}) _pref =
+      StremioService.to.streamPrefFor(_titleKey);
+
+  bool _isPreferred(StremioStream s) =>
+      _pref.addon != null &&
+      s.addonName == _pref.addon &&
+      ((_pref.quality ?? '').isEmpty || s.quality == _pref.quality);
+
+  bool _matches(StremioStream s) =>
+      (_quality == null || s.quality == _quality) &&
+      (_addonFilter == null || s.addonName == _addonFilter);
+
+  /// Your usual picks first, the rest in the addon's order.
+  List<StremioStream> _ordered(List<StremioStream> list) {
+    final pref = list.where(_isPreferred).toList();
+    return [...pref, ...list.where((e) => !_isPreferred(e))];
+  }
 
   @override
   void initState() {
@@ -836,6 +861,7 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
       }
       return;
     }
+    StremioService.to.rememberStreamChoice(_titleKey, s);
     final all = _all.where((e) => e.isPlayable).toList();
     if (widget.onPlay != null) {
       await widget.onPlay!(s, all);
@@ -849,6 +875,62 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
     }
     // Back from the player: close the picker so the details page refreshes.
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Widget _chip(String label, bool selected, VoidCallback onTap) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ChoiceChip(
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        selected: selected,
+        onSelected: (_) => setState(onTap),
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        showCheckmark: false,
+        selectedColor: colors.primaryContainer,
+        side: BorderSide(
+            color: colors.onSurface.opaque(0.12, iReallyMeanIt: true)),
+      ),
+    );
+  }
+
+  /// Quality, addon and size filters (only the options these streams have).
+  Widget _filterBar(BuildContext context) {
+    final all = _all;
+    final qualities =
+        streamQualities.where((q) => all.any((s) => s.quality == q)).toList();
+    final addonsWithStreams =
+        _addonOrder.where((a) => (_byAddon[a] ?? const []).isNotEmpty).toList();
+    final hasSizes = all.any((s) => s.sizeGb != null);
+    final sizeLabel = switch (_sizeSort) {
+      _SizeSort.none => 'Size',
+      _SizeSort.smallest => 'Smallest first',
+      _SizeSort.largest => 'Largest first',
+    };
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        children: [
+          if (qualities.length > 1) ...[
+            _chip('All', _quality == null, () => _quality = null),
+            for (final q in qualities)
+              _chip(q, _quality == q, () => _quality = _quality == q ? null : q),
+          ],
+          if (addonsWithStreams.length > 1)
+            for (final a in addonsWithStreams)
+              _chip(a, _addonFilter == a,
+                  () => _addonFilter = _addonFilter == a ? null : a),
+          if (hasSizes)
+            _chip(sizeLabel, _sizeSort != _SizeSort.none, () {
+              _sizeSort = _SizeSort
+                  .values[(_sizeSort.index + 1) % _SizeSort.values.length];
+            }),
+        ],
+      ),
+    );
   }
 
   @override
@@ -873,20 +955,49 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
         ),
       ));
     }
-    for (final addonName in _addonOrder) {
-      final streams = _byAddon[addonName];
-      if (streams == null) continue;
-      children.add(Padding(
-        padding: const EdgeInsets.fromLTRB(6, 12, 6, 6),
-        child: AnymeXText(
-          streams.isEmpty ? '$addonName — no streams' : addonName,
-          size: 13,
-          variant: TextVariant.bold,
-          color: streams.isEmpty ? colors.onSurfaceVariant : colors.primary,
-        ),
-      ));
-      for (final s in streams) {
-        children.add(_StreamTile(stream: s, onTap: () => _select(s)));
+    if (_sizeSort != _SizeSort.none) {
+      // One list across addons, by file size (unknown sizes last).
+      final list = _all.where(_matches).toList()
+        ..sort((a, b) {
+          final x = a.sizeGb, y = b.sizeGb;
+          if (x == null && y == null) return 0;
+          if (x == null) return 1;
+          if (y == null) return -1;
+          return _sizeSort == _SizeSort.smallest
+              ? x.compareTo(y)
+              : y.compareTo(x);
+        });
+      for (final s in list) {
+        children.add(_StreamTile(
+            stream: s, preferred: _isPreferred(s), onTap: () => _select(s)));
+      }
+    } else {
+      // Your usual addon first.
+      final order = [
+        if (_pref.addon != null && _addonOrder.contains(_pref.addon))
+          _pref.addon!,
+        ..._addonOrder.where((a) => a != _pref.addon),
+      ];
+      for (final addonName in order) {
+        if (_addonFilter != null && addonName != _addonFilter) continue;
+        final all = _byAddon[addonName];
+        if (all == null) continue;
+        final streams = _ordered(all.where(_matches).toList());
+        children.add(Padding(
+          padding: const EdgeInsets.fromLTRB(6, 12, 6, 6),
+          child: AnymeXText(
+            streams.isEmpty
+                ? '$addonName — ${all.isEmpty ? 'no streams' : 'none match'}'
+                : addonName,
+            size: 13,
+            variant: TextVariant.bold,
+            color: streams.isEmpty ? colors.onSurfaceVariant : colors.primary,
+          ),
+        ));
+        for (final s in streams) {
+          children.add(_StreamTile(
+              stream: s, preferred: _isPreferred(s), onTap: () => _select(s)));
+        }
       }
     }
     if (_pending == 0 && _started && _all.isEmpty && _addonOrder.isNotEmpty) {
@@ -925,6 +1036,7 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
           ),
         ),
         const SizedBox(height: 8),
+        if (_all.isNotEmpty) _filterBar(context),
         if (_pending > 0 || !_started)
           ClipRRect(
             borderRadius: BorderRadius.circular(50),
@@ -955,7 +1067,11 @@ class _StreamTile extends StatelessWidget {
   final StremioStream stream;
   final VoidCallback onTap;
 
-  const _StreamTile({required this.stream, required this.onTap});
+  /// Matches the addon and quality you picked last time for this title.
+  final bool preferred;
+
+  const _StreamTile(
+      {required this.stream, required this.onTap, this.preferred = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1018,6 +1134,13 @@ class _StreamTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         color: colors.onSurfaceVariant,
                       ),
+                    ],
+                    if (preferred) ...[
+                      const SizedBox(height: 4),
+                      AnymeXText('★ Your usual pick',
+                          size: 11,
+                          variant: TextVariant.semiBold,
+                          color: colors.primary),
                     ],
                   ],
                 ),

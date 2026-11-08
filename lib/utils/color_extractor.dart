@@ -1,12 +1,11 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:anymex/controllers/services/storage/anymex_cache_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 
 final Map<String, Color> _colorCache = {};
 
@@ -51,38 +50,8 @@ class ImageColorExtractor {
 
       if (bytes == null || bytes.isEmpty) return null;
 
-      // Keep the buffer, descriptor and codec alive until the frame has been
-      // decoded. Disposing the descriptor first frees its image generator
-      // while Flutter's io thread is still decoding with it, which crashed
-      // the app on iOS (EXC_BAD_ACCESS on io.worker) when opening a details
-      // page.
-      final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-      ui.ImageDescriptor? descriptor;
-      ui.Codec? codec;
-      late final ui.FrameInfo frame;
-      try {
-        descriptor = await ui.ImageDescriptor.encoded(buffer);
-        codec = await descriptor.instantiateCodec(
-          targetWidth: 32,
-          targetHeight: 32,
-        );
-        frame = await codec.getNextFrame();
-      } finally {
-        codec?.dispose();
-        descriptor?.dispose();
-        buffer.dispose();
-      }
-
-      final image = frame.image;
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-      image.dispose();
-
-      if (byteData == null) return null;
-
-      final rawBytes = byteData.buffer.asUint8List();
-
-      final colorInt = await Isolate.run(() => _findDominantColorInt(rawBytes));
+      final colorInt =
+          await Isolate.run(() => _extractDominantColorInt(bytes!));
       if (colorInt != null) {
         final dominantColor = Color(colorInt);
         _cacheColor(imageUrl, dominantColor);
@@ -91,6 +60,18 @@ class ImageColorExtractor {
     } catch (_) {}
 
     return null;
+  }
+
+  static int? _extractDominantColorInt(Uint8List sourceBytes) {
+    final decoded = img.decodeImage(sourceBytes);
+    if (decoded == null) return null;
+
+    final small = img.copyResize(decoded, width: 32, height: 32,
+        interpolation: img.Interpolation.average);
+    final rgba = small.convert(numChannels: 4);
+    final pixels = rgba.getBytes(order: img.ChannelOrder.rgba);
+
+    return _findDominantColorInt(pixels);
   }
 
   static int? _findDominantColorInt(Uint8List pixels) {

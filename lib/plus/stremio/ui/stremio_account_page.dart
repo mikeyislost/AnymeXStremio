@@ -206,6 +206,17 @@ class _StremioAccountPageState extends State<StremioAccountPage> {
                     onChanged: _service.setSyncToAnilist,
                   ),
                   CustomSwitchTile(
+                    icon: Icons.history_rounded,
+                    title: 'Update Simkl from Movies & TV',
+                    description: _service.simklLoggedIn
+                        ? 'Movies and episodes you finish in Movies & TV are '
+                            'added to your Simkl history'
+                        : 'Log in to Simkl (Settings → Accounts) to use this',
+                    switchValue: _service.syncToSimkl.value,
+                    disabled: !loggedIn || !_service.simklLoggedIn,
+                    onChanged: _service.setSyncToSimkl,
+                  ),
+                  CustomSwitchTile(
                     icon: Icons.animation_rounded,
                     title: 'Include anime from AniList / MAL',
                     description:

@@ -2,7 +2,9 @@
 
 AnymeX+ is [AnymeX](https://github.com/RyanYuuki/AnymeX) with Stremio built in. This file lists everything AnymeX+ adds or changes, so new AnymeX versions can be merged in without hunting for our edits.
 
-**Based on:** RyanYuuki/AnymeX commit `033b388` (Nov 7 2026).
+**Based on:** RyanYuuki/AnymeX commit `dc8142e` (Nov 8 2026).
+
+A weekly check (**AnymeX updates** workflow) opens an issue here when AnymeX has new commits, listing the files and which ones AnymeX+ changes.
 
 ## Merging a new AnymeX version
 
@@ -41,7 +43,8 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `database/kv_helper.dart` | A missing setting is no longer logged as an error |
 | `controllers/services/storage/storage_manager_service.dart` | Over the image-cache limit, the oldest images are removed instead of all of them |
 | `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home |
-| `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode |
+| `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode; comments built as you scroll |
+| `screens/anime/widgets/comments/comments_section.dart` | `asSliver` mode: comments are built as you scroll |
 | `screens/anime/widgets/episode_section.dart` | Extensions / Stremio stream source switch |
 | `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet |
 | `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open |
@@ -54,7 +57,6 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `utils/updater.dart` | Updates from this repo; beta app follows beta pre-releases |
 | `utils/notification.dart` | Firebase push removed; local notifications set up on their own |
 | `utils/external_font_loader.dart` | Subtitle fonts load after launch (`ensureBundledFonts`) |
-| `utils/color_extractor.dart` | iOS crash fix when decoding poster colours |
 | `utils/function.dart` | iOS swipe-back on pushed pages |
 | `widgets/anime/media_header.dart` | Poster tap can be turned off (Stremio pages) |
 | `widgets/common/reusable_carousel.dart` | Long-press actions for Stremio items |
@@ -71,6 +73,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `.github/workflows/build.yml` | Builds iOS + Windows; `main` → release, `beta` → pre-release |
 | `.github/workflows/check.yml` | `wip/*` branches: analyze + tests, no release |
 | `.github/workflows/promote-beta.yml` | "Ship beta as release" button |
+| `.github/workflows/upstream-check.yml` | Weekly check for new AnymeX commits (opens an issue) |
 | `scripts/` | Version numbers, beta app renaming, beta icons, colour-call update |
 | `beta/` | Beta icons |
 | `test/` | Unit tests for AnymeX+ logic |

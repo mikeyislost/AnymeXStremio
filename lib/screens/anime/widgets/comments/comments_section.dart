@@ -39,12 +39,18 @@ class CommentSection extends StatefulWidget {
   final bool showInlineInput;
   final bool showHeader;
 
+  /// AnymeX+: build as slivers (place it straight in a CustomScrollView) so
+  /// comments are built as you scroll instead of all at once. Opening a
+  /// specific comment still builds the whole list, so it can be scrolled to.
+  final bool asSliver;
+
   const CommentSection({
     super.key,
     required this.media,
     this.scrollToCommentId,
     this.showInlineInput = true,
     this.showHeader = true,
+    this.asSliver = false,
   });
 
   @override
@@ -328,9 +334,67 @@ class _CommentSectionState extends State<CommentSection>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (widget.asSliver) {
+      if (widget.scrollToCommentId != null) {
+        return SliverToBoxAdapter(child: _buildBox(context));
+      }
+      return _buildSliver(context);
+    }
+    return _buildBox(context);
+  }
+
+  BoxDecoration _cardDecoration(ColorScheme colorScheme) => BoxDecoration(
+        color: colorScheme.surfaceContainer.opaque(0.35, iReallyMeanIt: true),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.onSurface.opaque(0.08, iReallyMeanIt: true),
+          width: 1,
+        ),
+      );
+
+  /// Header and comment box above the list.
+  List<Widget> _buildTopChildren(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    return [
+      if (widget.showHeader) _buildHeader(context, controller),
+      if (widget.showInlineInput) ...[
+        if (controller.isLoggedIn)
+          _buildCommentInput(context, controller)
+        else
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+            alignment: Alignment.center,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest
+                  .opaque(0.2, iReallyMeanIt: true),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.onSurface
+                    .opaque(0.08, iReallyMeanIt: true),
+                width: 1,
+              ),
+            ),
+            child: AnymeXText(
+              'You need to be logged in to comment.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: null,
+            ),
+          ),
+      ],
+      const SizedBox(height: 8),
+    ];
+  }
 
+  Widget _buildBox(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification.metrics.extentAfter < 350 &&
@@ -343,55 +407,71 @@ class _CommentSectionState extends State<CommentSection>
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainer.opaque(0.35, iReallyMeanIt: true),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colorScheme.onSurface.opaque(0.08, iReallyMeanIt: true),
-            width: 1,
-          ),
-        ),
+        decoration: _cardDecoration(colorScheme),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (widget.showHeader) _buildHeader(context, controller),
-            if (widget.showInlineInput) ...[
-              if (controller.isLoggedIn)
-                _buildCommentInput(context, controller)
-              else
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                  margin: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-                  alignment: Alignment.center,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest
-                        .opaque(0.2, iReallyMeanIt: true),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colorScheme.onSurface
-                          .opaque(0.08, iReallyMeanIt: true),
-                      width: 1,
-                    ),
-                  ),
-                  child: AnymeXText(
-                    'You need to be logged in to comment.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: null,
-                  ),
-                ),
-            ],
-            const SizedBox(height: 8),
+            ..._buildTopChildren(context),
             _buildCommentsList(context, controller),
           ],
         ),
       ),
     );
+  }
+
+  /// AnymeX+: the same card, as slivers; comments are built as they
+  /// scroll into view.
+  Widget _buildSliver(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      sliver: DecoratedSliver(
+        decoration: _cardDecoration(colorScheme),
+        sliver: SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _buildTopChildren(context),
+              ),
+            ),
+            _buildCommentsSliver(context, controller),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCommentsSliver(
+      BuildContext context, CommentSectionController controller) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Obx(() {
+      if (controller.isLoading.value || controller.comments.isEmpty) {
+        // Loading and empty states are small: same as the normal list.
+        return SliverToBoxAdapter(
+            child: _buildCommentsList(context, controller));
+      }
+      final comments = controller.comments.toList();
+      return SliverMainAxisGroup(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            sliver: SliverList.separated(
+              itemCount: comments.length,
+              separatorBuilder: (context, index) => AnymeXContainer(
+                height: 1,
+                margin: const EdgeInsets.only(left: 48, top: 16, bottom: 16),
+                color: colorScheme.outlineVariant.opaque(0.15),
+              ),
+              itemBuilder: (context, index) => _buildCommentWithReplies(
+                  context, comments[index], controller, 0,
+                  isParentLocked: false),
+            ),
+          ),
+          SliverToBoxAdapter(child: _buildLoadMoreFooter(context, controller)),
+        ],
+      );
+    });
   }
 
   Widget _buildHeader(
@@ -864,77 +944,83 @@ class _CommentSectionState extends State<CommentSection>
                   isParentLocked: false);
             },
           ),
-          Obx(() {
-            if (controller.isLoadingMore.value) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      AnymeXText(
-                        'Loading more comments...',
-                        size: 13,
-                        color: colorScheme.onSurfaceVariant,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: null,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-            if (!controller.hasMore.value && controller.comments.isNotEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnymeXContainer(
-                        width: 32,
-                        height: 1,
-                        color: colorScheme.outlineVariant.opaque(0.25),
-                      ),
-                      const SizedBox(width: 10),
-                      AnymeXText(
-                        "You're all caught up",
-                        size: 12,
-                        color: colorScheme.onSurfaceVariant.opaque(0.6),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: null,
-                      ),
-                      const SizedBox(width: 10),
-                      AnymeXContainer(
-                        width: 32,
-                        height: 1,
-                        color: colorScheme.outlineVariant.opaque(0.25),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          }),
+          _buildLoadMoreFooter(context, controller),
         ],
       );
     });
+  }
+
+  Widget _buildLoadMoreFooter(
+      BuildContext context, CommentSectionController controller) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Obx(() {
+  if (controller.isLoadingMore.value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            AnymeXText(
+              'Loading more comments...',
+              size: 13,
+              color: colorScheme.onSurfaceVariant,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  if (!controller.hasMore.value && controller.comments.isNotEmpty) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnymeXContainer(
+              width: 32,
+              height: 1,
+              color: colorScheme.outlineVariant.opaque(0.25),
+            ),
+            const SizedBox(width: 10),
+            AnymeXText(
+              "You're all caught up",
+              size: 12,
+              color: colorScheme.onSurfaceVariant.opaque(0.6),
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: null,
+            ),
+            const SizedBox(width: 10),
+            AnymeXContainer(
+              width: 32,
+              height: 1,
+              color: colorScheme.outlineVariant.opaque(0.25),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  return const SizedBox.shrink();
+});
   }
 
   String _getTotalCommentCount(List<Comment> comments) {

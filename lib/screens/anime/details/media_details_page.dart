@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:ui';
+import 'package:anymex/widgets/anymex_widgets/anymex_titlebar.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/utils/media_share.dart';
 import 'package:anymex/models/Media/media.dart';
@@ -109,11 +111,11 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
   void _resolveDynamicColor(Media media, {bool allowExtract = false}) {
     final usePoster = settingsController.usePosterForBlur;
-    final targetUrl = usePoster
-        ? media.poster
-        : (media.cover?.isNotEmpty == true ? media.cover! : '');
+    final effectiveCover =
+        (media.cover?.isNotEmpty == true ? media.cover! : media.poster);
+    final targetUrl = usePoster ? media.poster : effectiveCover;
 
-    if (usePoster && _posterColor.value.isEmpty && media.color.isNotEmpty) {
+    if (_posterColor.value.isEmpty && media.color.isNotEmpty) {
       _posterColor.value = media.color;
     }
 
@@ -173,6 +175,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Platform.isWindows && mounted) {
+        AnymeXTitleBar.isTransparent.value = true;
+      }
       final route = ModalRoute.of(context);
       if (route != null && route.animation != null) {
         if (route.animation!.isCompleted) {
@@ -205,6 +210,11 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
             tag: widget.media.uniqueId)) {
       Get.delete<CommentSectionController>(tag: widget.media.uniqueId);
     }
+    if (Platform.isWindows) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AnymeXTitleBar.isTransparent.value = false;
+      });
+    }
     super.dispose();
   }
 
@@ -234,6 +244,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
       Widget buildScaffold(BuildContext themedContext) {
         return AnymeXScaffold(
+          extendBehindTitleBar: true,
           color: _posterColor.value,
           extendBody: true,
           resizeToAvoidBottomInset: false,
@@ -248,11 +259,11 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                 UISettingsKeys.detailsBackdropBrightness.get<double>(1.0);
             final media = controller.media.value;
             final posterUrl = media.poster;
-            final coverUrl =
-                (media.cover?.isNotEmpty == true ? media.cover! : '');
+            final effectiveCover =
+                (media.cover?.isNotEmpty == true ? media.cover! : posterUrl);
             final usePoster = settingsController.usePosterForBlur;
-            final blurSourceUrl = usePoster ? posterUrl : coverUrl;
-            final blurFallbackUrl = usePoster ? posterUrl : '';
+            final blurSourceUrl = usePoster ? posterUrl : effectiveCover;
+            final blurFallbackUrl = usePoster ? effectiveCover : posterUrl;
             final tintBlur = settingsController.tintBlur;
             final colors = themedContext.colors;
             final blurColor = tintBlur ? colors.primary.opaque(0.4) : null;
@@ -284,6 +295,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                             posterUrl: controller.media.value.poster,
                             userStatus: controller.mediaStatus.value,
                             userProgress: '${controller.mediaProgress.value}',
+                            extendBehindTitleBar: Platform.isWindows,
                             onShare: () => MediaShare.showOptions(
                               context: themedContext,
                               baseMedia: controller.media.value,
@@ -396,16 +408,8 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                     left: 0,
                     right: 0,
                     height: washHeight,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                              color: Colors.transparent, width: 2.0),
-                        ),
-                      ),
-                      child: RepaintBoundary(
-                        child: buildBlurredImage(height: washHeight),
-                      ),
+                    child: RepaintBoundary(
+                      child: buildBlurredImage(height: washHeight),
                     ),
                   ),
                   Positioned(
@@ -415,10 +419,6 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                     height: washHeight + 1.0,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        border: const Border(
-                          bottom: BorderSide(
-                              color: Colors.transparent, width: 2.0),
-                        ),
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -967,13 +967,13 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
             );
           }),
         ),
-        SliverToBoxAdapter(
-          child: CommentSection(
-            media: media,
-            scrollToCommentId: widget.scrollToCommentId,
-            showInlineInput: false,
-            showHeader: false,
-          ),
+        // AnymeX+: comments are built as you scroll.
+        CommentSection(
+          media: media,
+          scrollToCommentId: widget.scrollToCommentId,
+          showInlineInput: false,
+          showHeader: false,
+          asSliver: true,
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],

@@ -1,0 +1,39 @@
+name: AnymeX updates
+
+# Once a week, checks whether AnymeX has commits AnymeX+ hasn't merged yet
+# and keeps one open issue ("AnymeX updates to merge") listing them, with
+# the files AnymeX+ also changes flagged. Also runs on demand.
+on:
+  schedule:
+    - cron: "17 14 * * 1"   # Mondays, mid-morning Eastern
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare with AnymeX
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/upstream_check.py > report.md
+          if [ ! -s report.md ]; then
+            echo "AnymeX+ is up to date with AnymeX."
+            exit 0
+          fi
+          cat report.md
+          gh label create upstream-update --color FF6B35 \
+            --description "New AnymeX changes to merge" 2>/dev/null || true
+          NUM=$(gh issue list --label upstream-update --state open --json number -q '.[0].number')
+          if [ -n "$NUM" ]; then
+            gh issue edit "$NUM" --body-file report.md
+          else
+            gh issue create --title "AnymeX updates to merge" \
+              --label upstream-update --body-file report.md
+          fi

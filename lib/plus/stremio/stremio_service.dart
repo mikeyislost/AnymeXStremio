@@ -17,6 +17,9 @@ import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/kv_helper.dart';
+import 'package:anymex/database/data_keys/keys.dart' show AuthKeys;
+import 'package:anymex/controllers/services/simkl/simkl_service.dart';
+import 'package:anymex/plus/simkl_auth_v2.dart';
 import 'package:anymex/models/Media/media.dart' as anymex;
 import 'package:anymex/utils/logger.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
@@ -155,6 +158,9 @@ class StremioService extends GetxController {
   static const _kSyncEnabled = 'stremio_sync_enabled';
   static const _kSyncToAnilist = 'stremio_sync_to_anilist';
   static const _kAnimeStreamSource = 'anymexplus_anime_stream_source';
+  static const _kSyncToSimkl = 'anymexplus_stremio_sync_to_simkl';
+  static const _kRowLayout = 'anymexplus_stremio_rows';
+  static const _kStreamPrefs = 'anymexplus_stream_prefs';
 
   // On-device copies (see StremioDiskCache).
   static const _kDiskAddons = 'stremio/addons';
@@ -185,6 +191,14 @@ class StremioService extends GetxController {
   /// Anime watched from Movies & TV (Stremio) updates AniList progress.
   final RxBool syncToAnilist = true.obs;
 
+  /// Movies and episodes watched from Movies & TV are added to your Simkl
+  /// history (when you're logged in to Simkl).
+  final RxBool syncToSimkl = true.obs;
+
+  /// Home rows in your order (row keys, see [rowKey]) and the hidden ones.
+  final RxList<String> rowOrder = <String>[].obs;
+  final RxSet<String> hiddenRows = <String>{}.obs;
+
   /// Where the anime Watch tab gets streams: 'extensions' or 'stremio'.
   final RxString animeStreamSource = 'extensions'.obs;
 
@@ -211,6 +225,9 @@ class StremioService extends GetxController {
       syncAnime.value = KvHelper.get<bool>(_kSyncAnime, defaultVal: true);
       syncToAnilist.value =
           KvHelper.get<bool>(_kSyncToAnilist, defaultVal: true);
+      syncToSimkl.value = KvHelper.get<bool>(_kSyncToSimkl, defaultVal: true);
+      _loadRowLayout();
+      _loadStreamPrefs();
       animeStreamSource.value = KvHelper.get<String>(_kAnimeStreamSource,
           defaultVal: 'extensions');
       final key = KvHelper.get<String?>(_kAuthKey);
@@ -315,6 +332,119 @@ class StremioService extends GetxController {
   void setSyncToAnilist(bool v) {
     syncToAnilist.value = v;
     KvHelper.set(_kSyncToAnilist, v);
+  }
+
+  void setSyncToSimkl(bool v) {
+    syncToSimkl.value = v;
+    KvHelper.set(_kSyncToSimkl, v);
+  }
+
+  bool get simklLoggedIn {
+    try {
+      return Get.find<SimklService>().isLoggedIn.value;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ---- home rows layout -----------------------------------------------------
+
+  static String rowKey(StremioAddon addon, StremioCatalog catalog) =>
+      '${addon.transportUrl}|${catalog.type}|${catalog.id}';
+
+  void _loadRowLayout() {
+    try {
+      final raw = KvHelper.get<String>(_kRowLayout, defaultVal: '');
+      if (raw.isEmpty) return;
+      final m = jsonDecode(raw);
+      if (m is! Map) return;
+      rowOrder.assignAll(
+          (m['order'] is List ? m['order'] as List : const []).map((e) => '$e'));
+      hiddenRows
+        ..clear()
+        ..addAll((m['hidden'] is List ? m['hidden'] as List : const [])
+            .map((e) => '$e'));
+    } catch (_) {}
+  }
+
+  /// Saves the home rows' order and which are hidden.
+  void saveRowLayout(List<String> order, Set<String> hidden) {
+    rowOrder.assignAll(order);
+    hiddenRows
+      ..clear()
+      ..addAll(hidden);
+    KvHelper.set(_kRowLayout,
+        jsonEncode({'order': order, 'hidden': hidden.toList()}));
+  }
+
+  void resetRowLayout() => saveRowLayout(const [], const {});
+
+  /// Puts rows in your order and drops hidden ones (unless
+  /// [includeHidden]). Rows you haven't placed yet (e.g. from a new addon)
+  /// keep the addon's order, after yours.
+  List<T> arrangeRows<T>(List<T> rows, String Function(T) keyOf,
+      {bool includeHidden = false}) {
+    final index = <String, int>{
+      for (var i = 0; i < rowOrder.length; i++) rowOrder[i]: i
+    };
+    final hidden = hiddenRows;
+    final placed = <T>[], rest = <T>[];
+    for (final r in rows) {
+      final k = keyOf(r);
+      if (!includeHidden && hidden.contains(k)) continue;
+      (index.containsKey(k) ? placed : rest).add(r);
+    }
+    placed.sort((a, b) => index[keyOf(a)]!.compareTo(index[keyOf(b)]!));
+    return [...placed, ...rest];
+  }
+
+  // ---- remembered stream choices -------------------------------------------
+
+  /// Per title (and '*' for your last pick anywhere): addon name and quality.
+  final Map<String, Map<String, String>> _streamPrefs = {};
+
+  void _loadStreamPrefs() {
+    try {
+      final raw = KvHelper.get<String>(_kStreamPrefs, defaultVal: '');
+      if (raw.isEmpty) return;
+      final m = jsonDecode(raw);
+      if (m is! Map) return;
+      m.forEach((k, v) {
+        if (v is Map) {
+          _streamPrefs['$k'] = v.map((a, b) => MapEntry('$a', '$b'));
+        }
+      });
+    } catch (_) {}
+  }
+
+  /// The addon and quality you picked last time for [titleKey] (or, if
+  /// never, your last pick anywhere).
+  ({String? addon, String? quality}) streamPrefFor(String titleKey) {
+    final p = _streamPrefs[titleKey] ?? _streamPrefs['*'];
+    return (addon: p?['addon'], quality: p?['quality']);
+  }
+
+  void rememberStreamChoice(String titleKey, StremioStream stream) {
+    final pref = {
+      'addon': stream.addonName,
+      'quality': stream.quality,
+    };
+    _streamPrefs[titleKey] = pref;
+    _streamPrefs['*'] = pref;
+    // Keep the most recent 300 titles.
+    while (_streamPrefs.length > 301) {
+      final first = _streamPrefs.keys.firstWhere((k) => k != '*');
+      _streamPrefs.remove(first);
+    }
+    KvHelper.set(_kStreamPrefs, jsonEncode(_streamPrefs));
+  }
+
+  /// Key for remembering stream choices: the show/movie, not the episode.
+  static String streamTitleKey(String? metaId, String videoId) {
+    if (metaId != null && metaId.isNotEmpty) return metaId;
+    final parts = videoId.split(':');
+    if (parts.first == 'kitsu' && parts.length > 1) return 'kitsu:${parts[1]}';
+    return parts.first;
   }
 
   void _applyUser(dynamic user) {
@@ -872,6 +1002,13 @@ class StremioService extends GetxController {
     item.touch();
     _libraryCache[item.id] = item;
     await _putOrQueue(key, item);
+    if (watched) {
+      unawaited(_syncToSimkl(StremioPlayback(
+          libraryId: meta.id,
+          type: meta.type,
+          name: meta.name,
+          videoId: video.id)));
+    }
   }
 
   // ---- playback sync --------------------------------------------------------
@@ -1474,6 +1611,7 @@ class StremioService extends GetxController {
         // AniList is already tracked by AnymeX itself.
         if (StremioIds.isStremioMediaId(media.id)) {
           unawaited(_syncToAnilist(pb));
+          unawaited(_syncToSimkl(pb));
         }
       }
 
@@ -1590,6 +1728,68 @@ class StremioService extends GetxController {
 
   /// When an anime episode/movie is watched from Movies & TV, update the
   /// AniList entry (progress only ever moves forward).
+  /// A movie or episode from Movies & TV crossed the "watched" point: add it
+  /// to your Simkl history. IMDb titles only (anime from Kitsu goes through
+  /// AniList instead).
+  Future<void> _syncToSimkl(StremioPlayback pb) async {
+    if (!syncToSimkl.value || !simklLoggedIn) return;
+    if (!pb.libraryId.startsWith('tt')) return;
+    final imdb = pb.libraryId.split(':').first;
+    final token = AuthKeys.simklAuthToken.get<String?>();
+    final apiKey = SimklAuthV2.clientId;
+    if (token == null || token.isEmpty || apiKey == null) return;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final parts = pb.videoId.split(':');
+    final Map<String, dynamic> body;
+    if (parts.length >= 3) {
+      final season = int.tryParse(parts[1]);
+      final episode = int.tryParse(parts[2]);
+      if (season == null || episode == null) return;
+      body = {
+        'shows': [
+          {
+            'ids': {'imdb': imdb},
+            'seasons': [
+              {
+                'number': season,
+                'episodes': [
+                  {'number': episode, 'watched_at': now}
+                ],
+              }
+            ],
+          }
+        ]
+      };
+    } else {
+      body = {
+        'movies': [
+          {
+            'ids': {'imdb': imdb},
+            'watched_at': now,
+          }
+        ]
+      };
+    }
+    final client = SimklHttpClient(http.Client());
+    try {
+      final r = await client
+          .post(Uri.parse('https://api.simkl.com/sync/history'),
+              headers: {
+                ...SimklAuthV2.baseHeaders,
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+                'simkl-api-key': apiKey,
+              },
+              body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      Logger.i('Movies & TV → Simkl: ${pb.videoId} (HTTP ${r.statusCode})');
+    } catch (e) {
+      Logger.i('Movies & TV → Simkl failed for ${pb.videoId}: $e');
+    } finally {
+      client.close();
+    }
+  }
+
   Future<void> _syncToAnilist(StremioPlayback pb) async {
     if (!syncToAnilist.value) return;
     try {

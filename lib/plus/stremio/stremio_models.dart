@@ -451,6 +451,16 @@ class StremioStream {
 
   bool get isTorrent => url == null && infoHash != null;
 
+  String get _searchText =>
+      [name, title, description, filename].whereType<String>().join(' ');
+
+  /// Resolution read from the stream's name and description: 4K, 1080p,
+  /// 720p, SD, or '' when the addon doesn't say.
+  String get quality => streamQualityOf(_searchText);
+
+  /// File size in GB from the description ("💾 2.3 GB"), or null.
+  double? get sizeGb => streamSizeGbOf(_searchText);
+
   /// Whether the AnymeX player can open this stream.
   bool get isPlayable => playableUrl != null;
 
@@ -590,4 +600,31 @@ String stremioDate(DateTime d) {
   final ms = DateTime.utc(u.year, u.month, u.day, u.hour, u.minute, u.second,
       u.millisecond);
   return ms.toIso8601String();
+}
+
+
+/// Quality buckets used by the stream filters.
+const streamQualities = ['4K', '1080p', '720p', 'SD'];
+
+/// Resolution named in a stream's text: 4K, 1080p, 720p, SD or ''.
+String streamQualityOf(String text) {
+  final t = text.toLowerCase();
+  if (RegExp(r'2160p|\b4k\b|\buhd\b').hasMatch(t)) return '4K';
+  if (RegExp(r'1080p|\bfhd\b').hasMatch(t)) return '1080p';
+  if (RegExp(r'720p|\bhd\b').hasMatch(t)) return '720p';
+  if (RegExp(r'480p|360p|240p|\bsd\b').hasMatch(t)) return 'SD';
+  return '';
+}
+
+/// File size named in a stream's text, in GB.
+double? streamSizeGbOf(String text) {
+  final m = RegExp(r'(\d+(?:[.,]\d+)?)\s*(TB|GB|MB|GiB|MiB)', caseSensitive: false)
+      .firstMatch(text);
+  if (m == null) return null;
+  final n = double.tryParse(m.group(1)!.replaceAll(',', '.'));
+  if (n == null) return null;
+  final unit = m.group(2)!.toUpperCase();
+  if (unit.startsWith('T')) return n * 1024;
+  if (unit.startsWith('M')) return n / 1024;
+  return n;
 }
