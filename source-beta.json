@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "30",
-      "versionDate": "2026-11-08T04:02:23Z",
-      "versionDescription": "Beta v1.1.1-beta+5\n\n- Beta 3: faster start, steadier Discord, fewer library lookups\n  - Home opens as soon as AniList has loaded (at least 0.8 s, at most the old 3 s) instead of always after 3 seconds, with a short fade\n  - Discord status stays connected through Control Center, notifications and the app switcher, and reconnects by itself when Discord closes the connection\n  - For 10 minutes after the Stremio library loads, titles that aren't in it are trusted to be new (up to 2 fewer requests when a new show starts syncing)\n  - Self Test: Discord check says why it isn't connected; sync settings show the Simkl switch",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B5/AnymeX-Stremio-v1.1.1-beta.5.ipa",
-      "size": 75272013,
+      "buildVersion": "31",
+      "versionDate": "2026-11-08T04:45:47Z",
+      "versionDescription": "Beta v1.1.1-beta+6\n\n- Beta 6: Movies & TV in Continue Watching, Missed sequels, Stremio entry picker, Discord and Windows sign-in fixes\n  - One Continue Watching row on Home: your AniList anime and Movies & TV together, newest first; anime that sync to Stremio show once\n  - Missed sequels row on Home: sequels of anime you completed that aren't on your AniList list (AnymeX Desk #151)\n  - Anime Watch tab shows which Stremio entry progress goes to (IMDb or Kitsu) with a Change button; your pick is kept\n  - Discord: the status is put back after a reconnect instead of \"Browsing\"; Movies & TV pages show \"Viewing <title>\" and link to IMDb/Kitsu (AnymeX Desk #137)\n  - Windows: sign-in browser data lives in your user folder, so sign-in windows open when the app is installed for all users (AnymeX Desk #84)",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B6/AnymeX-Stremio-v1.1.1-beta.6.ipa",
+      "size": 75298895,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "30",
-          "date": "2026-11-08T04:02:23Z",
-          "localizedDescription": "Beta v1.1.1-beta+5\n\n- Beta 3: faster start, steadier Discord, fewer library lookups\n  - Home opens as soon as AniList has loaded (at least 0.8 s, at most the old 3 s) instead of always after 3 seconds, with a short fade\n  - Discord status stays connected through Control Center, notifications and the app switcher, and reconnects by itself when Discord closes the connection\n  - For 10 minutes after the Stremio library loads, titles that aren't in it are trusted to be new (up to 2 fewer requests when a new show starts syncing)\n  - Self Test: Discord check says why it isn't connected; sync settings show the Simkl switch",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B5/AnymeX-Stremio-v1.1.1-beta.5.ipa",
-          "size": 75272013,
+          "buildVersion": "31",
+          "date": "2026-11-08T04:45:47Z",
+          "localizedDescription": "Beta v1.1.1-beta+6\n\n- Beta 6: Movies & TV in Continue Watching, Missed sequels, Stremio entry picker, Discord and Windows sign-in fixes\n  - One Continue Watching row on Home: your AniList anime and Movies & TV together, newest first; anime that sync to Stremio show once\n  - Missed sequels row on Home: sequels of anime you completed that aren't on your AniList list (AnymeX Desk #151)\n  - Anime Watch tab shows which Stremio entry progress goes to (IMDb or Kitsu) with a Change button; your pick is kept\n  - Discord: the status is put back after a reconnect instead of \"Browsing\"; Movies & TV pages show \"Viewing <title>\" and link to IMDb/Kitsu (AnymeX Desk #137)\n  - Windows: sign-in browser data lives in your user folder, so sign-in windows open when the app is installed for all users (AnymeX Desk #84)",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B6/AnymeX-Stremio-v1.1.1-beta.6.ipa",
+          "size": 75298895,
           "minOSVersion": "15.0"
         }
       ]
