@@ -237,18 +237,20 @@ class StremioGridCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = stremioMediaFromPreview(item).toCarouselData();
     final tag = '$tagPrefix-${item.type}-${item.id}';
-    return AnymexOnTap(
-      onTap: () => openStremioDetails(item.type, item.id,
-          tag: tag, title: item.name, poster: item.poster),
-      onLongPress: () => showStremioItemActions(
-          type: item.type, id: item.id, name: item.name, poster: item.poster),
-      onSecondaryTap: () => showStremioItemActions(
-          type: item.type, id: item.id, name: item.name, poster: item.poster),
-      child: MediaCardGate(
-        itemData: data,
-        tag: tag,
-        variant: DataVariant.regular,
-        type: ItemType.anime,
+    void menu() => showStremioItemActions(
+        type: item.type, id: item.id, name: item.name, poster: item.poster);
+    return GestureDetector(
+      onSecondaryTap: menu, // right-click (Windows)
+      child: AnymexOnTap(
+        onTap: () => openStremioDetails(item.type, item.id,
+            tag: tag, title: item.name, poster: item.poster),
+        onLongPress: menu,
+        child: MediaCardGate(
+          itemData: data,
+          tag: tag,
+          variant: DataVariant.regular,
+          type: ItemType.anime,
+        ),
       ),
     );
   }
