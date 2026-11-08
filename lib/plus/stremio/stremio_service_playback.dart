@@ -501,6 +501,7 @@ extension StremioServicePlayback on StremioService {
       ..sort((a, b) => watched(b).compareTo(watched(a))));
     library.assignAll(all.where((i) => i.isInLibrary).toList()
       ..sort((a, b) => modified(b).compareTo(modified(a))));
+    libraryRevision.value++;
   }
 
   Future<void> refreshLibrary() => refreshContinueWatching();

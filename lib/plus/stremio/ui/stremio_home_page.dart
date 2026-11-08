@@ -1,5 +1,6 @@
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/for_you/for_you_row.dart';
 import 'package:anymex/plus/stremio/ui/stremio_account_page.dart';
 import 'package:anymex/plus/stremio/ui/stremio_rows_editor.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
@@ -118,6 +119,8 @@ class _StremioHomePageState extends State<StremioHomePage> {
                         variant: DataVariant.offline,
                       ),
                     ),
+                  // AnymeX+: picks from your library, history, Like / Love.
+                  const SliverToBoxAdapter(child: PlusForYouMoviesRow()),
                   if (addons.isEmpty && loading)
                     const SliverToBoxAdapter(
                       child: Padding(

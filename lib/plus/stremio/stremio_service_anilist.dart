@@ -69,6 +69,51 @@ extension StremioServiceAnilist on StremioService {
     }
   }
 
+  /// Like / Love on a Movies & TV title → your Simkl rating (Like 8,
+  /// Love 10; clearing it removes the rating). IMDb titles only, and only
+  /// with "Sync to Simkl" on. True when Simkl took it.
+  Future<bool> sendSimklRating(String id, String type, int? rating) async {
+    if (!syncToSimkl.value || !simklLoggedIn) return false;
+    if (!id.startsWith('tt')) return false;
+    final token = AuthKeys.simklAuthToken.get<String?>();
+    final apiKey = SimklAuthV2.clientId;
+    if (token == null || token.isEmpty || apiKey == null) return false;
+    final group = type == 'series' ? 'shows' : 'movies';
+    final entry = <String, dynamic>{
+      'ids': {'imdb': id.split(':').first},
+      if (rating != null) ...{
+        'rating': rating,
+        'rated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    };
+    final client = SimklHttpClient(http.Client());
+    try {
+      final r = await client
+          .post(
+              Uri.parse(rating == null
+                  ? 'https://api.simkl.com/sync/ratings/remove'
+                  : 'https://api.simkl.com/sync/ratings'),
+              headers: {
+                ...SimklAuthV2.baseHeaders,
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $token',
+                'simkl-api-key': apiKey,
+              },
+              body: jsonEncode({
+                group: [entry]
+              }))
+          .timeout(const Duration(seconds: 15));
+      Logger.i('Movies & TV → Simkl rating $id: ${rating ?? 'removed'} '
+          '(HTTP ${r.statusCode})');
+      return r.statusCode >= 200 && r.statusCode < 300;
+    } catch (e) {
+      Logger.i('Movies & TV → Simkl rating failed for $id: $e');
+      return false;
+    } finally {
+      client.close();
+    }
+  }
+
   Future<void> _syncToAnilist(StremioPlayback pb) async {
     if (!syncToAnilist.value) return;
     try {

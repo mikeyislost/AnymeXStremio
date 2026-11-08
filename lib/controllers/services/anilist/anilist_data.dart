@@ -1,5 +1,6 @@
 import 'package:anymex/plus/continue_watching_row.dart';
 import 'package:anymex/plus/custom_lists.dart';
+import 'package:anymex/plus/for_you/for_you_row.dart';
 import 'package:anymex/plus/missed_sequels.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'dart:convert';
@@ -240,8 +241,9 @@ class AnilistData extends GetxController implements BaseService, OnlineService {
             }).toList(),
           );
         }),
-        // AnymeX+: your AniList custom lists, then sequels of finished
-        // anime that aren't on your list.
+        // AnymeX+: picks for you, your AniList custom lists, then sequels
+        // of finished anime that aren't on your list.
+        const PlusForYouAnimeRow(),
         const PlusCustomListRows(),
         const PlusMissedSequelsRow(),
       ],

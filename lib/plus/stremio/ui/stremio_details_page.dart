@@ -13,6 +13,7 @@ import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/widgets/comments/comments_section.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/for_you/taste_buttons.dart';
 import 'package:anymex/plus/stremio/ui/stremio_info_tab.dart';
 import 'package:anymex/plus/stremio/ui/stremio_player_bridge.dart';
 import 'package:anymex/plus/stremio/ui/stremio_streams_sheet.dart';
@@ -291,8 +292,18 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
 
   /// Library / Continue Watching actions, like Stremio's details page.
   Widget _quickActions(BuildContext context, StremioMeta meta) {
+    // AnymeX+: Like / Love (For you, Simkl rating) for IMDb titles.
+    final taste = meta.id.startsWith('tt')
+        ? PlusTasteButtons(id: meta.id, type: meta.type)
+        : null;
     return Obx(() {
-      if (!_service.isLoggedIn.value) return const SizedBox.shrink();
+      if (!_service.isLoggedIn.value) {
+        if (taste == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Row(children: [taste]),
+        );
+      }
       // Rebuild when the library or Continue Watching changes.
       _service.library.length;
       _service.continueWatching.length;
@@ -349,6 +360,10 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
                   },
                 ),
               ),
+            ],
+            if (taste != null) ...[
+              const SizedBox(width: 10),
+              taste,
             ],
           ],
         ),

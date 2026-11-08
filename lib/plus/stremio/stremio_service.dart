@@ -245,6 +245,13 @@ class StremioService extends GetxController {
   /// The user's Stremio library (added items, newest first).
   final RxList<StremioLibraryItem> library = <StremioLibraryItem>[].obs;
 
+  /// Goes up whenever the library or watch history changes.
+  final RxInt libraryRevision = 0.obs;
+
+  /// Everything Stremio keeps for this account: library items and titles
+  /// you only watched (used by "For you").
+  Iterable<StremioLibraryItem> get allLibraryItems => _libraryCache.values;
+
   String? _authKey;
   String? get authKey => _authKey;
 

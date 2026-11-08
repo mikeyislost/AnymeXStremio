@@ -9,6 +9,11 @@ import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/continue_watching_row.dart';
 import 'package:anymex/plus/custom_lists.dart';
+import 'package:anymex/plus/for_you/anime_for_you.dart';
+import 'package:anymex/plus/for_you/movies_for_you.dart';
+import 'package:anymex/plus/for_you/ranking.dart';
+import 'package:anymex/plus/for_you/taste.dart';
+import 'package:anymex/plus/for_you/taste_buttons.dart';
 import 'package:anymex/plus/list_card_badge.dart';
 import 'package:anymex/plus/rate_prompt.dart';
 import 'package:anymex/plus/missed_sequels.dart';
@@ -292,6 +297,139 @@ void main() {
       expect(RatePrompt.isUnscored(null), isTrue);
       expect(RatePrompt.isUnscored('0'), isTrue);
       expect(RatePrompt.isUnscored('85'), isFalse);
+    });
+  });
+
+  group('For you', () {
+    ForYouCandidate cand(String key, Map<String, double> votes,
+        {List<String> genres = const [], double quality = 0}) {
+      final c = ForYouCandidate(
+          key: key, id: key, kind: 'anime', title: key, poster: '',
+          genres: genres, quality: quality);
+      c.votes.addAll(votes);
+      return c;
+    }
+
+    test('genre taste is scaled to -1..1 and dropped shows count against', () {
+      final g = genreProfile([
+        (['Action', 'Drama'], 2.0),
+        (['Action'], 2.0),
+        (['Horror'], -1.0),
+      ]);
+      expect(g['Action'], 1.0);
+      expect(g['Drama'], 0.5);
+      expect(g['Horror'], -0.25);
+      expect(genreProfile(const []), isEmpty);
+    });
+
+    test('recommendation strength falls with rank and is capped', () {
+      expect(recommendationStrength(rank: 0), 1.0);
+      expect(recommendationStrength(rank: 5),
+          lessThan(recommendationStrength(rank: 1)));
+      expect(recommendationStrength(rank: 0, votes: 100000), 1.5);
+      expect(recommendationStrength(rank: 0, votes: 200),
+          greaterThan(recommendationStrength(rank: 0, votes: 2)));
+    });
+
+    test('picks skip excluded titles and keep the strongest reason', () {
+      const loved = ForYouSeed(key: 'a', title: 'Frieren', weight: 3, loved: true);
+      const watched = ForYouSeed(key: 'b', title: 'Naruto', weight: 1);
+      final picks = rankPicks(
+        seeds: [loved, watched],
+        candidates: [
+          cand('x', {'a': 1.0, 'b': 1.0}),
+          cand('y', {'b': 1.0}),
+          cand('z', {'a': 1.0}),
+        ],
+        exclude: {'z'},
+      );
+      expect(picks.map((p) => p.key), ['x', 'y']);
+      expect(picks.first.reason, 'Because you loved Frieren');
+      expect(picks.last.reason, 'Because you watched Naruto');
+    });
+
+    test('one seed brings in at most maxPerSeed picks', () {
+      const s = ForYouSeed(key: 'a', title: 'A', weight: 1);
+      final picks = rankPicks(
+        seeds: [s],
+        candidates: [for (var i = 0; i < 10; i++) cand('c$i', {'a': 1.0})],
+        maxPerSeed: 3,
+      );
+      expect(picks.length, 3);
+    });
+
+    test('"Not interested" genres push picks down', () {
+      const s = ForYouSeed(key: 'a', title: 'A', weight: 1);
+      final picks = rankPicks(
+        seeds: [s],
+        candidates: [
+          cand('mecha', {'a': 1.0}, genres: ['Mecha']),
+          cand('slice', {'a': 0.9}, genres: ['Slice of Life']),
+        ],
+        lessGenres: {'Mecha': 3},
+      );
+      expect(picks.first.key, 'slice');
+    });
+
+    test('anime seeds: favourites are loved, dropped shows are not seeds', () {
+      final list = [
+        TrackedMedia(id: '1', title: 'Great', score: '95', watchingStatus: 'COMPLETED', genres: ['Drama']),
+        TrackedMedia(id: '2', title: 'Fine', score: '70', watchingStatus: 'COMPLETED'),
+        TrackedMedia(id: '3', title: 'Meh', score: '50', watchingStatus: 'COMPLETED'),
+        TrackedMedia(id: '4', title: 'Nope', watchingStatus: 'DROPPED', genres: ['Horror']),
+      ];
+      final r = AnimeForYou.seedsFrom(list, [
+        (id: '2', title: 'Fine', genres: const <String>[]),
+        (id: '9', title: 'Fav only', genres: const <String>[]),
+      ]);
+      final byKey = {for (final s in r.seeds) s.key: s};
+      expect(byKey['1']!.liked, isTrue);
+      expect(byKey['2']!.loved, isTrue);
+      expect(byKey['9']!.loved, isTrue);
+      expect(byKey.containsKey('4'), isFalse);
+      expect(r.genres['Horror'], lessThan(0));
+      expect(r.genres['Drama'], greaterThan(0));
+    });
+
+    test('Movies & TV seed weights', () {
+      final now = DateTime(2026, 6, 1);
+      MovieSeedInput input({bool watched = true, int ms = 0,
+              TasteMark mark = TasteMark.none, DateTime? last}) =>
+          (id: 'tt1', type: 'movie', title: 'X', watched: watched,
+           watchedMs: ms, inLibrary: false, lastWatched: last ?? now, mark: mark);
+      expect(MoviesForYou.seedWeight(input(), now: now), closeTo(1.0, 0.001));
+      expect(MoviesForYou.seedWeight(input(mark: TasteMark.love), now: now),
+          closeTo(3.0, 0.001));
+      expect(
+          MoviesForYou.seedWeight(
+              input(last: now.subtract(const Duration(days: 365))), now: now),
+          lessThan(0.6));
+      expect(MoviesForYou.seedWeight(input(watched: false), now: now), 0);
+      // Liked but never opened in Stremio still counts.
+      expect(MoviesForYou.seedWeight(
+              input(watched: false, mark: TasteMark.like), now: now),
+          1.0);
+    });
+
+    test('TMDB genres and results', () {
+      expect(MoviesForYou.tmdbGenres([10759, 18]),
+          ['Action', 'Adventure', 'Drama']);
+      final show = MoviesForYou.candidateFromTmdb({
+        'id': 1399, 'name': 'Show', 'poster_path': '/p.jpg',
+        'media_type': 'tv', 'vote_average': 8.4, 'vote_count': 900,
+        'genre_ids': [18],
+      }, 'movie')!;
+      expect(show.kind, 'series');
+      expect(show.key, 'tmdb:tv:1399');
+      expect(show.rating, '8.4');
+      expect(MoviesForYou.candidateFromTmdb(
+          {'id': 2, 'title': 'No poster'}, 'movie'), isNull);
+    });
+
+    test('Like and Love become Simkl ratings', () {
+      expect(PlusTasteButtons.simklRatingFor(TasteMark.like), 8);
+      expect(PlusTasteButtons.simklRatingFor(TasteMark.love), 10);
+      expect(PlusTasteButtons.simklRatingFor(TasteMark.none), isNull);
     });
   });
 }

@@ -36,6 +36,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/list_card_badge.dart` | Your score next to your progress on Library cards |
 | `plus/rate_prompt.dart` | "Rate it?" sheet after the player marks a show Completed |
 | `plus/missed_sequels.dart` | "Missed sequels" Home row (sequels of completed AniList anime not on your list) |
+| `plus/for_you/` | "For you" rows: `ranking.dart` (shared scoring, unit-tested), `anime_for_you.dart` (Home: AniList list, scores, favourites, AniList recommendations + AI Picks), `movies_for_you.dart` (Movies & TV: Stremio library/history + Like/Love, TMDB recommendations), `taste.dart` (Like/Love and "Not interested", saved on the device), `for_you_row.dart` (the rows), `taste_buttons.dart` (Like/Love on the Movies & TV page; Simkl rating) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
 ## Hooks in AnymeX files
@@ -45,7 +46,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `main.dart` | Registers StremioService; Movies & TV tab; Firebase removed; startup steps run together; subtitle fonts, downloads, Gist sync and watch parties start after the first frame; launch timing; splash ends when Home is ready (`plus/splash_gate.dart`, short fade); print() kept out of the log file; beta window title |
 | `controllers/settings/settings.dart` | Stremio tab; Anime tab folded into Home (one-time tab migration) |
 | `controllers/discord/discord_rpc.dart` | iPhone: connection kept through Control Center / app switcher, reconnects when Discord closes it (op 7/9, close codes), stale sockets ignored, waits for sign-in before a status update, last sequence number kept; the last status is put back after a reconnect; Movies & TV titles link to IMDb/Kitsu and say Movie/Show |
-| `controllers/services/anilist/anilist_data.dart` | AniList progress → Stremio; Home's Continue Watching row is `PlusContinueWatchingRow`; custom-list rows and Missed sequels after the list rows |
+| `controllers/services/anilist/anilist_data.dart` | AniList progress → Stremio; Home's Continue Watching row is `PlusContinueWatchingRow`; For you, custom-list rows and Missed sequels after the list rows |
 | `controllers/services/anilist/anilist_auth.dart` | Anime list query also asks `isCustomList`; `_setAnimeListData` hands the lists to `PlusCustomLists` |
 | `widgets/media_items/media_item.dart` | Library card badge from `listCardBadge` (progress + your score) |
 | `controllers/services/mal/mal_service.dart` | MAL progress → Stremio |
