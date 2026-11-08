@@ -8,6 +8,9 @@ import 'package:anymex/controllers/service_handler/service_handler.dart'
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/continue_watching_row.dart';
+import 'package:anymex/plus/custom_lists.dart';
+import 'package:anymex/plus/list_card_badge.dart';
+import 'package:anymex/plus/rate_prompt.dart';
 import 'package:anymex/plus/missed_sequels.dart';
 import 'package:anymex/plus/stremio/stremio_disk_cache.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
@@ -258,6 +261,37 @@ void main() {
     test('labels', () {
       expect(StremioSyncEntry.label('tt0903747'), 'IMDb');
       expect(StremioSyncEntry.label('kitsu:7442'), 'Kitsu');
+    });
+  });
+
+  group('Library cards, custom lists, rating', () {
+    test('score shows next to progress only when scored', () {
+      final scored = TrackedMedia(
+          id: '1', episodeCount: '3', totalEpisodes: '12', score: '8',
+          servicesType: ServicesType.mal);
+      final unscored = TrackedMedia(
+          id: '2', episodeCount: '3', totalEpisodes: '12', score: '0',
+          servicesType: ServicesType.mal);
+      expect(listCardBadge(scored), endsWith(' · ★8'));
+      expect(listCardBadge(unscored), isNot(contains('★')));
+    });
+    test('custom lists are picked out, newest first', () {
+      final lists = PlusCustomLists.customListsIn([
+        {'name': 'Watching', 'isCustomList': false, 'entries': [{'media': {'id': 1}}]},
+        {'name': 'Comfy', 'isCustomList': true, 'entries': [
+          {'media': {'id': 10, 'title': {'english': 'Old'}, 'coverImage': {'large': 'p'}}},
+          {'media': {'id': 11, 'title': {'english': 'New'}, 'coverImage': {'large': 'p'}}},
+        ]},
+        {'name': 'Empty', 'isCustomList': true, 'entries': []},
+      ]);
+      expect(lists.length, 1);
+      expect(lists.first.$1, 'Comfy');
+      expect(lists.first.$2.map((m) => m.id), ['11', '10']);
+    });
+    test('unscored means no score yet', () {
+      expect(RatePrompt.isUnscored(null), isTrue);
+      expect(RatePrompt.isUnscored('0'), isTrue);
+      expect(RatePrompt.isUnscored('85'), isFalse);
     });
   });
 }

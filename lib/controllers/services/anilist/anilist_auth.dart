@@ -1,5 +1,6 @@
 // ignore_for_file: invalid_use_of_protected_member
 
+import 'package:anymex/plus/custom_lists.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:anymex/utils/oauth_helper.dart';
@@ -2007,6 +2008,7 @@ class AnilistAuth extends GetxController {
 
       final animeListt =
           lists.expand((list) => list['entries'] as List<dynamic>).toList();
+      PlusCustomLists.setFromLists(lists); // AnymeX+: custom lists on Home
 
       currentlyWatching.value = animeListt
           .where((animeEntry) => animeEntry['status'] == 'CURRENT')
@@ -2058,6 +2060,7 @@ class AnilistAuth extends GetxController {
     MediaListCollection(userId: \$userId, type: ANIME, sort: UPDATED_TIME) {
       lists {
         name
+        isCustomList
         entries {
           id
           media {

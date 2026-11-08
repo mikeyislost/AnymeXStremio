@@ -1,3 +1,4 @@
+import 'package:anymex/plus/list_card_badge.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
@@ -139,7 +140,7 @@ class GridAnimeCard extends StatelessWidget {
     final isOnlineList = variant == CardVariant.onlinelist;
     final extraData = isOnlineList
         ? (data is TrackedMedia
-            ? (data as TrackedMedia).formattedProgress
+            ? listCardBadge(data as TrackedMedia) // AnymeX+: + your score
             : "${media.episodeCount ?? '??'} | ${media.totalEpisodes ?? '??'}")
         : (media.score ?? media.rating ?? '');
 

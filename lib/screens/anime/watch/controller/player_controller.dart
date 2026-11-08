@@ -25,6 +25,7 @@ import 'package:anymex/models/Media/media.dart' as anymex;
 import 'package:anymex/models/player/player_adaptor.dart';
 import 'package:anymex/screens/anime/watch/controller/player_utils.dart';
 import 'package:anymex/utils/external_player.dart';
+import 'package:anymex/plus/rate_prompt.dart';
 import 'package:anymex/utils/pip_controller.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/bottom_sheet.dart';
 import 'package:anymex/screens/anime/watch/player/base_player.dart';
@@ -682,6 +683,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
       }
     }
     delete();
+    RatePrompt.showIfPending(); // AnymeX+
     super.onClose();
   }
 
@@ -3179,6 +3181,17 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
           season: detectedSeason,
           status: newStatus,
           syncIds: [anilistData.idMal]));
+
+      // AnymeX+: ask for a score once you're back from the player.
+      if (newStatus == 'COMPLETED') {
+        RatePrompt.finished(
+          service: anilistData.serviceType,
+          id: anilistData.id,
+          title: anilistData.title,
+          idMal: anilistData.idMal,
+          currentScore: service.currentMedia.value.score,
+        );
+      }
 
       service.setCurrentMedia(anilistData.id.toString());
       Logger.i(

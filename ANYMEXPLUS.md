@@ -32,6 +32,9 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/maybe_blur.dart` | Blur that is skipped when blur is 0 |
 | `plus/launch_timer.dart` | Launch time shown in the Self Test |
 | `plus/continue_watching_row.dart` | Home's Continue Watching row with Movies & TV in it, newest first, no doubles |
+| `plus/custom_lists.dart` | Your AniList custom anime lists as Home rows |
+| `plus/list_card_badge.dart` | Your score next to your progress on Library cards |
+| `plus/rate_prompt.dart` | "Rate it?" sheet after the player marks a show Completed |
 | `plus/missed_sequels.dart` | "Missed sequels" Home row (sequels of completed AniList anime not on your list) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
@@ -42,7 +45,9 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `main.dart` | Registers StremioService; Movies & TV tab; Firebase removed; startup steps run together; subtitle fonts, downloads, Gist sync and watch parties start after the first frame; launch timing; splash ends when Home is ready (`plus/splash_gate.dart`, short fade); print() kept out of the log file; beta window title |
 | `controllers/settings/settings.dart` | Stremio tab; Anime tab folded into Home (one-time tab migration) |
 | `controllers/discord/discord_rpc.dart` | iPhone: connection kept through Control Center / app switcher, reconnects when Discord closes it (op 7/9, close codes), stale sockets ignored, waits for sign-in before a status update, last sequence number kept; the last status is put back after a reconnect; Movies & TV titles link to IMDb/Kitsu and say Movie/Show |
-| `controllers/services/anilist/anilist_data.dart` | AniList progress → Stremio; Home's Continue Watching row is `PlusContinueWatchingRow`; Missed sequels row after the list rows |
+| `controllers/services/anilist/anilist_data.dart` | AniList progress → Stremio; Home's Continue Watching row is `PlusContinueWatchingRow`; custom-list rows and Missed sequels after the list rows |
+| `controllers/services/anilist/anilist_auth.dart` | Anime list query also asks `isCustomList`; `_setAnimeListData` hands the lists to `PlusCustomLists` |
+| `widgets/media_items/media_item.dart` | Library card badge from `listCardBadge` (progress + your score) |
 | `controllers/services/mal/mal_service.dart` | MAL progress → Stremio |
 | `controllers/services/simkl/simkl_service.dart`, `simkl_api.dart` | Simkl sign-in uses `plus/simkl_auth_v2.dart`; requests go through its client (refresh on 401) |
 | `database/database.dart` | Beta keeps its own database folder on Windows |
@@ -54,7 +59,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `screens/anime/widgets/comments/comments_section.dart` | `asSliver` mode: comments are built as you scroll |
 | `screens/anime/widgets/episode_section.dart` | Extensions / Stremio stream source switch |
 | `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet |
-| `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open |
+| `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open; after a show is marked Completed, `RatePrompt` asks for a score when the player closes |
 | `screens/library/controller/library_controller.dart`, `my_library.dart`, `widgets/library_deps.dart` | "Stremio" chip in the Library |
 | `screens/library/widgets/history_model.dart` | History items from Stremio open the Stremio page |
 | `screens/settings/sub_settings/settings_accounts.dart` | Stremio account in Accounts |
