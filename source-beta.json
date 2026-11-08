@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "32",
-      "versionDate": "2026-11-08T05:02:03Z",
-      "versionDescription": "Beta v1.1.1-beta+7\n\n- Beta 7: Movies & TV downloads, split the big AnymeX+ files\n  - Movies & TV: a download button on direct-link streams (not torrents); downloads go through AnymeX's downloader and play offline from Downloads\n  - The stream picker moved to its own file; StremioService is split into three parts and the Self Test into three, with no change in behaviour",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B7/AnymeX-Stremio-v1.1.1-beta.7.ipa",
-      "size": 75298932,
+      "buildVersion": "34",
+      "versionDate": "2026-11-08T06:06:31Z",
+      "versionDescription": "Beta v1.1.1-beta+8\n\n- Beta 8: faster builds, easier AnymeX updates\n  - AnymeX's own colour calls are back as they were: 117 AnymeX files no longer differ from AnymeX, so merges touch 36 files instead of 155\n  - The weekly AnymeX check now also tries the merge and runs the checks; a \"Ship AnymeX update to beta\" button puts a ready merge in a beta\n  - Builds: the iPhone and Windows builds start right away and run alongside the checks (the release still waits for them); the compiled Rust network library is kept between builds; rhttp's Rust packages are pinned\n- wip: colour calls back, build speed-ups (lock file pending)",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B8/AnymeX-Stremio-v1.1.1-beta.8.ipa",
+      "size": 75296603,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "32",
-          "date": "2026-11-08T05:02:03Z",
-          "localizedDescription": "Beta v1.1.1-beta+7\n\n- Beta 7: Movies & TV downloads, split the big AnymeX+ files\n  - Movies & TV: a download button on direct-link streams (not torrents); downloads go through AnymeX's downloader and play offline from Downloads\n  - The stream picker moved to its own file; StremioService is split into three parts and the Self Test into three, with no change in behaviour",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B7/AnymeX-Stremio-v1.1.1-beta.7.ipa",
-          "size": 75298932,
+          "buildVersion": "34",
+          "date": "2026-11-08T06:06:31Z",
+          "localizedDescription": "Beta v1.1.1-beta+8\n\n- Beta 8: faster builds, easier AnymeX updates\n  - AnymeX's own colour calls are back as they were: 117 AnymeX files no longer differ from AnymeX, so merges touch 36 files instead of 155\n  - The weekly AnymeX check now also tries the merge and runs the checks; a \"Ship AnymeX update to beta\" button puts a ready merge in a beta\n  - Builds: the iPhone and Windows builds start right away and run alongside the checks (the release still waits for them); the compiled Rust network library is kept between builds; rhttp's Rust packages are pinned\n- wip: colour calls back, build speed-ups (lock file pending)",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B8/AnymeX-Stremio-v1.1.1-beta.8.ipa",
+          "size": 75296603,
           "minOSVersion": "15.0"
         }
       ]
