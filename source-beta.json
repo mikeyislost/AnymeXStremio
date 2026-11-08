@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "27",
-      "versionDate": "2026-11-08T02:28:38Z",
-      "versionDescription": "Beta v1.1.1-beta+3\n\n- Beta 1: speed and reliability\n  - Progress is sent to Stremio as soon as the app goes to the background, so closing it mid-episode loses nothing\n  - Updates that fail while offline are kept on the phone and sent later (a newer copy on Stremio wins)\n  - Continue Watching refreshes when you come back to the app\n  - Library refresh downloads only the items that changed, not the whole library\n  - Home rows from addons that aren't responding are skipped\n  - Info tab answers (Simkl, TMDB, TVmaze) are saved on the phone for 7 days\n  - Over the image-cache limit, the oldest images are removed instead of all of them\n  - Missing settings and leftover print() calls no longer fill the log file\n  - Self Test shows launch time and any Stremio updates waiting to send\n  - iOS 15 minimum (drops the bundled Swift concurrency library)\n  - iPhone builds reuse CocoaPods and Rust package downloads; release notes list each change",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B3/AnymeX-Stremio-v1.1.1-beta.3.ipa",
-      "size": 75257165,
+      "buildVersion": "29",
+      "versionDate": "2026-11-08T02:44:41Z",
+      "versionDescription": "Beta v1.1.1-beta+4\n\n- Stremio's \"watched\" point follows your setting\n  - An episode or movie now counts as watched in Stremio at your \"mark as watched\" percentage from Player settings (the same point AniList uses), instead of Stremio's own 70%\n- Beta 2: home rows editor, stream filters, Simkl history, lighter comments, AnymeX updates\n  - Movies & TV: hide, show and reorder home rows (new button in the top bar)\n  - Stream list: filter by quality and addon, sort by file size; your last pick per show (addon + quality) is marked and listed first\n  - Movies and episodes finished in Movies & TV are added to your Simkl history (switch on the Stremio account page; needs Simkl login)\n  - Comments are built as you scroll instead of all at once\n  - Merged AnymeX's latest fixes (details page crash, window transparency, Windows download paths)\n  - Weekly \"AnymeX updates\" check opens an issue when AnymeX has new commits to merge",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B4/AnymeX-Stremio-v1.1.1-beta.4.ipa",
+      "size": 75279512,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "27",
-          "date": "2026-11-08T02:28:38Z",
-          "localizedDescription": "Beta v1.1.1-beta+3\n\n- Beta 1: speed and reliability\n  - Progress is sent to Stremio as soon as the app goes to the background, so closing it mid-episode loses nothing\n  - Updates that fail while offline are kept on the phone and sent later (a newer copy on Stremio wins)\n  - Continue Watching refreshes when you come back to the app\n  - Library refresh downloads only the items that changed, not the whole library\n  - Home rows from addons that aren't responding are skipped\n  - Info tab answers (Simkl, TMDB, TVmaze) are saved on the phone for 7 days\n  - Over the image-cache limit, the oldest images are removed instead of all of them\n  - Missing settings and leftover print() calls no longer fill the log file\n  - Self Test shows launch time and any Stremio updates waiting to send\n  - iOS 15 minimum (drops the bundled Swift concurrency library)\n  - iPhone builds reuse CocoaPods and Rust package downloads; release notes list each change",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B3/AnymeX-Stremio-v1.1.1-beta.3.ipa",
-          "size": 75257165,
+          "buildVersion": "29",
+          "date": "2026-11-08T02:44:41Z",
+          "localizedDescription": "Beta v1.1.1-beta+4\n\n- Stremio's \"watched\" point follows your setting\n  - An episode or movie now counts as watched in Stremio at your \"mark as watched\" percentage from Player settings (the same point AniList uses), instead of Stremio's own 70%\n- Beta 2: home rows editor, stream filters, Simkl history, lighter comments, AnymeX updates\n  - Movies & TV: hide, show and reorder home rows (new button in the top bar)\n  - Stream list: filter by quality and addon, sort by file size; your last pick per show (addon + quality) is marked and listed first\n  - Movies and episodes finished in Movies & TV are added to your Simkl history (switch on the Stremio account page; needs Simkl login)\n  - Comments are built as you scroll instead of all at once\n  - Merged AnymeX's latest fixes (details page crash, window transparency, Windows download paths)\n  - Weekly \"AnymeX updates\" check opens an issue when AnymeX has new commits to merge",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B4/AnymeX-Stremio-v1.1.1-beta.4.ipa",
+          "size": 75279512,
           "minOSVersion": "15.0"
         }
       ]
