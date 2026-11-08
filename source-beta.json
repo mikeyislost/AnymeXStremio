@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "38",
-      "versionDate": "2026-11-08T19:59:41Z",
-      "versionDescription": "Beta v1.1.1-beta+11\n\n- Fix blank For you rows; smoother scrolling\n  - For you (Home and Movies & TV): cards get the normal card height, so they draw instead of leaving a blank space\n  - Card animation plays once, when a row first shows, not every time a row or card comes back on screen\n  - Nearby rows stay built on Home and Movies & TV; Movies & TV rows are kept when scrolled away instead of reloading\n  - Movies & TV rows load small posters (details page keeps the large one)",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B11/AnymeX-Stremio-v1.1.1-beta.11.ipa",
-      "size": 75335566,
+      "buildVersion": "40",
+      "versionDate": "2026-11-08T21:00:26Z",
+      "versionDescription": "Beta v1.1.1-beta+12\n\n- Right-click on Stremio grid cards\n- Like/Love/Dislike everywhere, card menu, skip intros & credits, Up next, mini player, error log\n  - Dislike next to Like and Love; anime pages get Like / Love / Dislike too, and Home's For you learns from them\n  - One card menu for anime and Movies & TV: long-press on iPhone, right-click on Windows (Play next episode, Library, Like / Love / Dislike, Not interested)\n  - Skip intros, recaps and credits on TV shows and movies (TheIntroDB or the video's chapters)\n  - Up next: countdown when the credits start, or a Next episode button near the end\n  - Windows mini player that stays on top\n  - Self Test keeps the last 50 errors, ready to copy\n  - Restoring an AnymeX backup now brings back AnymeX+ settings right away",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B12/AnymeX-Stremio-v1.1.1-beta.12.ipa",
+      "size": 75355761,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "38",
-          "date": "2026-11-08T19:59:41Z",
-          "localizedDescription": "Beta v1.1.1-beta+11\n\n- Fix blank For you rows; smoother scrolling\n  - For you (Home and Movies & TV): cards get the normal card height, so they draw instead of leaving a blank space\n  - Card animation plays once, when a row first shows, not every time a row or card comes back on screen\n  - Nearby rows stay built on Home and Movies & TV; Movies & TV rows are kept when scrolled away instead of reloading\n  - Movies & TV rows load small posters (details page keeps the large one)",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B11/AnymeX-Stremio-v1.1.1-beta.11.ipa",
-          "size": 75335566,
+          "buildVersion": "40",
+          "date": "2026-11-08T21:00:26Z",
+          "localizedDescription": "Beta v1.1.1-beta+12\n\n- Right-click on Stremio grid cards\n- Like/Love/Dislike everywhere, card menu, skip intros & credits, Up next, mini player, error log\n  - Dislike next to Like and Love; anime pages get Like / Love / Dislike too, and Home's For you learns from them\n  - One card menu for anime and Movies & TV: long-press on iPhone, right-click on Windows (Play next episode, Library, Like / Love / Dislike, Not interested)\n  - Skip intros, recaps and credits on TV shows and movies (TheIntroDB or the video's chapters)\n  - Up next: countdown when the credits start, or a Next episode button near the end\n  - Windows mini player that stays on top\n  - Self Test keeps the last 50 errors, ready to copy\n  - Restoring an AnymeX backup now brings back AnymeX+ settings right away",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B12/AnymeX-Stremio-v1.1.1-beta.12.ipa",
+          "size": 75355761,
           "minOSVersion": "15.0"
         }
       ]
