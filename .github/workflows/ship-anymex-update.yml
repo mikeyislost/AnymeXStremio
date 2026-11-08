@@ -1,0 +1,53 @@
+name: Ship AnymeX update to beta
+
+# One button (Actions tab → "Ship AnymeX update to beta" → Run workflow) to
+# put the AnymeX update that the weekly "AnymeX updates" check merged and
+# checked (branch wip/anymex-update) into a new beta. Only use it when that
+# check's issue says the update is ready.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: beta
+          fetch-depth: 0
+
+      - name: Put the update on beta
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git fetch -q origin wip/anymex-update; then
+            echo "::error::No checked AnymeX update yet (wip/anymex-update is missing). Run 'AnymeX updates' first."
+            exit 1
+          fi
+          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
+            echo "::error::Nothing to ship: beta already has this AnymeX update."
+            exit 1
+          fi
+          git merge --no-edit -m "Ship AnymeX update to beta" FETCH_HEAD
+          git push origin HEAD:beta
+
+      # Pushes made by this workflow don't start other workflows, so start
+      # the beta build directly.
+      - name: Build the beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build.yml --ref beta -R "${{ github.repository }}"
+
+      - name: Close the update issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NUM=$(gh issue list --label upstream-update --state open --json number -q '.[0].number' -R "${{ github.repository }}")
+          if [ -n "$NUM" ]; then
+            gh issue close "$NUM" -R "${{ github.repository }}" --comment "Shipped to beta. The beta build has started."
+          fi

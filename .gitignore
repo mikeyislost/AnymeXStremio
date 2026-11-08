@@ -174,3 +174,4 @@ AGENTS.md
 
 # AnymeX+: keep the package lock so every build uses the same versions.
 !pubspec.lock
+!packages/rhttp/rust/Cargo.lock

@@ -4,14 +4,16 @@ AnymeX+ is [AnymeX](https://github.com/RyanYuuki/AnymeX) with Stremio built in. 
 
 **Based on:** RyanYuuki/AnymeX commit `dc8142e` (Nov 8 2026).
 
-A weekly check (**AnymeX updates** workflow) opens an issue here when AnymeX has new commits, listing the files and which ones AnymeX+ changes.
+A weekly check (**AnymeX updates** workflow) opens an issue here when AnymeX has new commits, listing the files and which ones AnymeX+ changes. It also tries the merge on the `wip/anymex-update` branch and runs the checks: when the issue says **Ready**, the **Ship AnymeX update to beta** workflow puts it in a beta; otherwise it lists the files that clash.
 
 ## Merging a new AnymeX version
 
-1. Merge or copy the new AnymeX code over this repo, keeping `lib/plus/`, `beta/`, `scripts/`, `.github/`, `test/` and this file.
-2. Re-apply the hooks in the table below to the AnymeX files they live in. Each hook is small and marked with an `AnymeX+` comment where possible.
-3. Run `python3 scripts/replace_with_opacity.py $(grep -rl '\.withOpacity(' lib)` to redo the colour-call update.
-4. Push to a `wip/...` branch first: the **Check (no release)** workflow analyzes the project and runs the tests without releasing anything. Then push to `beta`.
+Usually the weekly check does this (see above). By hand, for a merge that clashes:
+
+1. `git merge` AnymeX's `main` into `beta` (on a `wip/...` branch).
+2. In clashing files, keep AnymeX's code and re-apply the hooks in the table below. Each hook is small and marked with an `AnymeX+` comment where possible.
+3. Leave AnymeX's own code as it is (for example its `withOpacity` colour calls): every line we change in AnymeX's files is a line that can clash at the next merge.
+4. Push the `wip/...` branch first: the **Check (no release)** workflow analyzes the project and runs the tests without releasing anything. Then push to `beta`.
 5. Update the "Based on" commit above.
 
 ## AnymeX+ code (`lib/plus/`)
@@ -69,7 +71,6 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 
 **Removed from AnymeX:** `firebase_options.dart`, `services/fcm_service.dart` and the three Firebase packages (pushes can't reach a sideloaded build).
 
-**Mechanical:** about 120 more AnymeX files differ only by `withOpacity(x)` → `withValues(alpha: x)` (step 3 above redoes it).
 
 ## Outside `lib/`
 
@@ -78,8 +79,11 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `.github/workflows/build.yml` | Builds iOS + Windows; `main` → release, `beta` → pre-release |
 | `.github/workflows/check.yml` | `wip/*` branches: analyze + tests, no release |
 | `.github/workflows/promote-beta.yml` | "Ship beta as release" button |
-| `.github/workflows/upstream-check.yml` | Weekly check for new AnymeX commits (opens an issue) |
-| `scripts/` | Version numbers, beta app renaming, beta icons, colour-call update |
+| `.github/workflows/upstream-check.yml` | Weekly check for new AnymeX commits: tries the merge, runs the checks, keeps an issue up to date |
+| `.github/workflows/ship-anymex-update.yml` | "Ship AnymeX update to beta" button (after a Ready merge) |
+| `packages/rhttp/cargokit/build_pod.sh`, `cmake/cargokit.cmake` | `ANYMEXPLUS_CARGOKIT_DIR` lets CI keep the compiled Rust library between builds |
+| `packages/rhttp/rust/Cargo.lock` | Pins rhttp's Rust packages |
+| `scripts/` | Version numbers, beta app renaming, beta icons |
 | `beta/` | Beta icons |
 | `test/` | Unit tests for AnymeX+ logic |
 | `ios/`, `windows/` | App ID, name and icons for AnymeX+; iOS 15 minimum |

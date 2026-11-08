@@ -1,32 +1,127 @@
 name: AnymeX updates
 
-# Once a week, checks whether AnymeX has commits AnymeX+ hasn't merged yet
-# and keeps one open issue ("AnymeX updates to merge") listing them, with
-# the files AnymeX+ also changes flagged. Also runs on demand.
+# Once a week, checks whether AnymeX has commits AnymeX+ hasn't merged yet.
+# If it has, it also tries the merge on the wip/anymex-update branch (from
+# beta) and runs the checks, then keeps one open issue ("AnymeX updates to
+# merge") with the commits, the files AnymeX+ also changes, and the result:
+# ready to ship, checks failing, or which files clash. A ready merge goes
+# into a beta with the "Ship AnymeX update to beta" workflow. Also runs on
+# demand.
 on:
   schedule:
     - cron: "17 14 * * 1"   # Mondays, mid-morning Eastern
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   issues: write
+
+env:
+  FLUTTER_VERSION: "3.41.6"
+  UPDATE_BRANCH: wip/anymex-update
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: beta
+          fetch-depth: 0
 
       - name: Compare with AnymeX
+        id: compare
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 scripts/upstream_check.py > report.md
           if [ ! -s report.md ]; then
             echo "AnymeX+ is up to date with AnymeX."
-            exit 0
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            cat report.md
+            echo "new=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # Try the merge on its own branch; conflicts are listed, not fixed.
+      - name: Try the merge
+        id: merge
+        if: steps.compare.outputs.new == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags https://github.com/RyanYuuki/AnymeX.git main
+          UPSTREAM_SHA=$(git rev-parse --short=7 FETCH_HEAD)
+          UPSTREAM_DATE=$(git show -s --format=%cd --date=format:'%b %-d %Y' FETCH_HEAD)
+          echo "sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+          git checkout -B "$UPDATE_BRANCH"
+          if git merge --no-edit -m "Merge AnymeX $UPSTREAM_SHA" FETCH_HEAD; then
+            # Record the new base, as the merge steps in ANYMEXPLUS.md say.
+            sed -i -E "s/(\*\*Based on:\*\* RyanYuuki\/AnymeX commit \`)[0-9a-f]+\` \([^)]*\)/\1$UPSTREAM_SHA\` ($UPSTREAM_DATE)/" ANYMEXPLUS.md
+            git commit -q --amend --no-edit -a
+            echo "result=clean" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only --diff-filter=U > conflicts.txt
+            git merge --abort
+            echo "result=conflicts" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: subosito/flutter-action@v2
+        if: steps.merge.outputs.result == 'clean'
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Run the checks on the merge
+        id: checks
+        if: steps.merge.outputs.result == 'clean'
+        continue-on-error: true
+        run: |
+          touch .env
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analyze.txt 2>&1 || true
+          ERRORS=$(grep -c '^  error •' analyze.txt || true)
+          echo "errors=$ERRORS" >> "$GITHUB_OUTPUT"
+          grep '^  error •' analyze.txt | head -n 30 > errors.txt || true
+          if flutter test > test.txt 2>&1; then echo "tests=pass" >> "$GITHUB_OUTPUT"; else echo "tests=fail" >> "$GITHUB_OUTPUT"; fi
+          tail -n 30 test.txt
+
+      - name: Save the merge branch
+        if: steps.merge.outputs.result == 'clean'
+        run: git push -f origin "$UPDATE_BRANCH"
+
+      - name: Update the issue
+        if: steps.compare.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ steps.merge.outputs.result }}
+          ERRORS: ${{ steps.checks.outputs.errors }}
+          TESTS: ${{ steps.checks.outputs.tests }}
+          SHA: ${{ steps.merge.outputs.sha }}
+        run: |
+          {
+            echo ""
+            echo "### Merge attempt (AnymeX \`$SHA\` into beta)"
+            echo ""
+            if [ "$RESULT" = "conflicts" ]; then
+              echo "❌ **Doesn't merge on its own.** These files clash with AnymeX+ changes and need a hand merge:"
+              echo ""
+              sed 's/^/- `/; s/$/`/' conflicts.txt
+            elif [ "$ERRORS" = "0" ] && [ "$TESTS" = "pass" ]; then
+              echo "✅ **Ready.** Merges cleanly and the checks pass. Branch \`$UPDATE_BRANCH\` has it."
+              echo ""
+              echo "To put it in a beta: Actions → **Ship AnymeX update to beta** → Run workflow."
+            else
+              echo "⚠️ **Merges, but the checks fail** (errors: ${ERRORS:-?}, tests: ${TESTS:-?}). Branch \`$UPDATE_BRANCH\` has the merge to fix."
+              if [ -s errors.txt ]; then
+                echo ""
+                echo '```'
+                cat errors.txt
+                echo '```'
+              fi
+            fi
+          } >> report.md
           cat report.md
           gh label create upstream-update --color FF6B35 \
             --description "New AnymeX changes to merge" 2>/dev/null || true
