@@ -552,21 +552,3 @@ jobs:
           git commit -qm "Beta source: v$TAG [skip ci]" || { echo "Source unchanged"; exit 0; }
           git push -q origin HEAD:feather
 
-      # Keep the original Feather source URL (latest-ios/source.json)
-      # working, and retire the old rolling download releases.
-      - name: Update legacy source URL
-        if: env.RELEASE_CHANNEL == 'stable'
-        run: |
-          gh release view latest-ios -R "$REPO" >/dev/null 2>&1 || exit 0
-          for a in $(gh release view latest-ios -R "$REPO" --json assets -q '.assets[].name'); do
-            [ "$a" = "source.json" ] || gh release delete-asset latest-ios "$a" -R "$REPO" -y || true
-          done
-          gh release upload latest-ios dist/source.json -R "$REPO" --clobber
-          gh release edit latest-ios -R "$REPO" \
-            --title "Feather source (legacy link)" \
-            --notes "Only hosts source.json for the original Feather source URL. Get builds from the versioned releases." || true
-          gh release delete latest-windows -R "$REPO" --cleanup-tag -y || true
-          # Versions restarted at v1.0.x: remove the old v3.x releases.
-          for t in $(gh release list -R "$REPO" --limit 100 --json tagName -q '.[].tagName' | grep -E '^v3\.' || true); do
-            gh release delete "$t" -R "$REPO" --cleanup-tag -y || true
-          done

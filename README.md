@@ -48,6 +48,9 @@ I would just like to note that this app is built using claude code. I do not kno
   </p>
 </div>
 
+Source URL to paste into Feather, AltStore or SideStore:
+`https://github.com/mikeyislost/AnymeXStremio/releases/latest/download/source.json`
+
 AnymeX+ uses its own bundle ID, so it installs next to the official AnymeX. The app checks for updates on launch.
 
 <div align="center">
@@ -62,6 +65,8 @@ AnymeX+ uses its own bundle ID, so it installs next to the official AnymeX. The 
     <a href="https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/source-beta.json"><img alt="Beta Source URL" src="https://img.shields.io/badge/copy_%2F_paste-_?style=for-the-badge&label=Beta%20Source%20URL&labelColor=0D0D0D&color=FF6B35"></a>
   </p>
 </div>
+
+Beta source URL: `https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/source-beta.json`
 
 | | Stable | Beta |
 |---|---|---|
