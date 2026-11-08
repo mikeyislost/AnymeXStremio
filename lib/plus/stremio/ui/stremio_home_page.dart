@@ -102,7 +102,7 @@ class _StremioHomePageState extends State<StremioHomePage> {
               return CustomScrollView(
                 controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),
-                cacheExtent: 400,
+                cacheExtent: 1200, // nearby rows stay built
                 slivers: [
                   SliverToBoxAdapter(
                     child:
@@ -261,7 +261,12 @@ class StremioCatalogCarousel extends StatefulWidget {
   State<StremioCatalogCarousel> createState() => _StremioCatalogCarouselState();
 }
 
-class _StremioCatalogCarouselState extends State<StremioCatalogCarousel> {
+class _StremioCatalogCarouselState extends State<StremioCatalogCarousel>
+    with AutomaticKeepAliveClientMixin {
+  // Rows stay built when scrolled away, so coming back doesn't reload them.
+  @override
+  bool get wantKeepAlive => true;
+
   List<StremioMetaPreview>? _items;
 
   bool _fresh = false;
@@ -292,6 +297,7 @@ class _StremioCatalogCarouselState extends State<StremioCatalogCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final items = _items;
     if (items != null && items.isEmpty) return const SizedBox.shrink();
     return ReusableCarousel(

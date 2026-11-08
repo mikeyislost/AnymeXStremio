@@ -37,6 +37,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/rate_prompt.dart` | "Rate it?" sheet after the player marks a show Completed |
 | `plus/missed_sequels.dart` | "Missed sequels" Home row (sequels of completed AniList anime not on your list) |
 | `plus/for_you/` | "For you" rows: `ranking.dart` (shared scoring, unit-tested), `anime_for_you.dart` (Home: AniList list, scores, favourites, AniList recommendations + AI Picks), `movies_for_you.dart` (Movies & TV: Stremio library/history + Like/Love, TMDB recommendations), `taste.dart` (Like/Love and "Not interested", saved on the device), `for_you_row.dart` (the rows), `taste_buttons.dart` (Like/Love on the Movies & TV page; Simkl rating) |
+| `plus/row_perf.dart` | Smoother rows: AnymeX's card animation plays only when a row first shows; rows load small posters (TMDB w342, Metahub medium) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
 ## Hooks in AnymeX files
@@ -55,7 +56,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `windows/runner/main.cpp` (not under `lib/`) | Sign-in browser (WebView2) data in `%LOCALAPPDATA%\AnymeXStremio\WebView2` instead of next to the exe |
 | `database/kv_helper.dart` | A missing setting is no longer logged as an error |
 | `controllers/services/storage/storage_manager_service.dart` | Over the image-cache limit, the oldest images are removed instead of all of them |
-| `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home |
+| `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home; nearby rows stay built (`cacheExtent` 1200) |
 | `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode; comments built as you scroll |
 | `screens/anime/widgets/comments/comments_section.dart` | `asSliver` mode: comments are built as you scroll |
 | `screens/anime/widgets/episode_section.dart` | Extensions / Stremio stream source switch |
@@ -72,7 +73,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `utils/external_font_loader.dart` | Subtitle fonts load after launch (`ensureBundledFonts`) |
 | `utils/function.dart` | iOS swipe-back on pushed pages |
 | `widgets/anime/media_header.dart` | Poster tap can be turned off (Stremio pages) |
-| `widgets/common/reusable_carousel.dart` | Long-press actions for Stremio items |
+| `widgets/common/reusable_carousel.dart` | Long-press actions for Stremio items; card animation only when the row first shows (`PlusRowPerf.shouldAnimate`) |
 | `widgets/common/navbar.dart`, `navbar/styles/*`, `widgets/header/header.dart` | No blur layer when blur is off |
 
 **Removed from AnymeX:** `firebase_options.dart`, `services/fcm_service.dart` and the three Firebase packages (pushes can't reach a sideloaded build).

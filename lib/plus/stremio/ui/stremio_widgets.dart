@@ -4,6 +4,7 @@
 import 'dart:math' as math;
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/database/isar_models/episode.dart';
@@ -81,7 +82,7 @@ Media stremioMediaFromPreview(StremioMetaPreview m) {
     title: m.name,
     romajiTitle: m.name,
     englishTitle: m.name,
-    poster: poster,
+    poster: PlusRowPerf.smallPoster(poster),
     largePoster: poster,
     cover: m.background,
     description: m.description ?? '',

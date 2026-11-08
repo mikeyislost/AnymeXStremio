@@ -267,7 +267,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             CustomScrollView(
               controller: _scrollController,
-              cacheExtent: 200.0,
+              cacheExtent: 1200.0, // AnymeX+: nearby rows stay built
               slivers: [
                 SliverToBoxAdapter(
                   child: SizedBox(

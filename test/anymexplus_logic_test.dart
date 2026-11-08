@@ -16,6 +16,7 @@ import 'package:anymex/plus/for_you/taste.dart';
 import 'package:anymex/plus/for_you/taste_buttons.dart';
 import 'package:anymex/plus/list_card_badge.dart';
 import 'package:anymex/plus/rate_prompt.dart';
+import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/missed_sequels.dart';
 import 'package:anymex/plus/stremio/stremio_disk_cache.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
@@ -430,6 +431,37 @@ void main() {
       expect(PlusTasteButtons.simklRatingFor(TasteMark.like), 8);
       expect(PlusTasteButtons.simklRatingFor(TasteMark.love), 10);
       expect(PlusTasteButtons.simklRatingFor(TasteMark.none), isNull);
+    });
+  });
+  group('Row scrolling', () {
+    test('cards animate only when a row first shows', () {
+      var t = DateTime(2026, 11, 8, 12);
+      PlusRowPerf.now = () => t;
+      PlusRowPerf.reset();
+      expect(PlusRowPerf.shouldAnimate('carousel-Trending'), isTrue);
+      t = t.add(const Duration(milliseconds: 500));
+      expect(PlusRowPerf.shouldAnimate('carousel-Trending'), isTrue);
+      t = t.add(const Duration(seconds: 5));
+      expect(PlusRowPerf.shouldAnimate('carousel-Trending'), isFalse);
+      expect(PlusRowPerf.shouldAnimate('carousel-Popular'), isTrue);
+      PlusRowPerf.now = DateTime.now;
+      PlusRowPerf.reset();
+    });
+
+    test('rows use small posters', () {
+      expect(PlusRowPerf.smallPoster('https://image.tmdb.org/t/p/original/a.jpg'),
+          'https://image.tmdb.org/t/p/w342/a.jpg');
+      expect(PlusRowPerf.smallPoster('https://image.tmdb.org/t/p/w500/a.jpg'),
+          'https://image.tmdb.org/t/p/w342/a.jpg');
+      expect(PlusRowPerf.smallPoster('https://image.tmdb.org/t/p/w185/a.jpg'),
+          'https://image.tmdb.org/t/p/w185/a.jpg');
+      expect(
+          PlusRowPerf.smallPoster(
+              'https://images.metahub.space/poster/large/tt0111161/img'),
+          'https://images.metahub.space/poster/medium/tt0111161/img');
+      expect(PlusRowPerf.smallPoster('https://example.com/p.jpg'),
+          'https://example.com/p.jpg');
+      expect(PlusRowPerf.smallPoster(''), '');
     });
   });
 }

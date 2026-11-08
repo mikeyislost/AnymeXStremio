@@ -1,6 +1,7 @@
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
+import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/models/Media/media.dart';
@@ -119,7 +120,9 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
     return Obx(() {
       final List<CarouselData> processedData =
           convertData(widget.data, variant: widget.variant);
-      final enableAnimation = settingsController.enableAnimation;
+      // AnymeX+: animate only when the row first shows (PlusRowPerf).
+      final enableAnimation = settingsController.enableAnimation &&
+          PlusRowPerf.shouldAnimate('carousel-${widget.title}');
       final cardStyleIndex = settingsController.cardStyle;
       final _ = settingsController.customCardStyle;
 

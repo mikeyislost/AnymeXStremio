@@ -225,11 +225,16 @@ class PlusForYouRow extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            MediaCardGate(
-                              itemData: cardData(p),
-                              tag: tag,
-                              variant: DataVariant.regular,
-                              type: ItemType.anime,
+                            // Cards fill the height they're given; in a
+                            // Column that's none, so give the card height.
+                            SizedBox(
+                              height: cardHeight,
+                              child: MediaCardGate(
+                                itemData: cardData(p),
+                                tag: tag,
+                                variant: DataVariant.regular,
+                                type: ItemType.anime,
+                              ),
                             ),
                             SizedBox(
                               width: captionWidth,
