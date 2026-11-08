@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "31",
-      "versionDate": "2026-11-08T04:45:47Z",
-      "versionDescription": "Beta v1.1.1-beta+6\n\n- Beta 6: Movies & TV in Continue Watching, Missed sequels, Stremio entry picker, Discord and Windows sign-in fixes\n  - One Continue Watching row on Home: your AniList anime and Movies & TV together, newest first; anime that sync to Stremio show once\n  - Missed sequels row on Home: sequels of anime you completed that aren't on your AniList list (AnymeX Desk #151)\n  - Anime Watch tab shows which Stremio entry progress goes to (IMDb or Kitsu) with a Change button; your pick is kept\n  - Discord: the status is put back after a reconnect instead of \"Browsing\"; Movies & TV pages show \"Viewing <title>\" and link to IMDb/Kitsu (AnymeX Desk #137)\n  - Windows: sign-in browser data lives in your user folder, so sign-in windows open when the app is installed for all users (AnymeX Desk #84)",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B6/AnymeX-Stremio-v1.1.1-beta.6.ipa",
-      "size": 75298895,
+      "buildVersion": "32",
+      "versionDate": "2026-11-08T05:02:03Z",
+      "versionDescription": "Beta v1.1.1-beta+7\n\n- Beta 7: Movies & TV downloads, split the big AnymeX+ files\n  - Movies & TV: a download button on direct-link streams (not torrents); downloads go through AnymeX's downloader and play offline from Downloads\n  - The stream picker moved to its own file; StremioService is split into three parts and the Self Test into three, with no change in behaviour",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B7/AnymeX-Stremio-v1.1.1-beta.7.ipa",
+      "size": 75298932,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "31",
-          "date": "2026-11-08T04:45:47Z",
-          "localizedDescription": "Beta v1.1.1-beta+6\n\n- Beta 6: Movies & TV in Continue Watching, Missed sequels, Stremio entry picker, Discord and Windows sign-in fixes\n  - One Continue Watching row on Home: your AniList anime and Movies & TV together, newest first; anime that sync to Stremio show once\n  - Missed sequels row on Home: sequels of anime you completed that aren't on your AniList list (AnymeX Desk #151)\n  - Anime Watch tab shows which Stremio entry progress goes to (IMDb or Kitsu) with a Change button; your pick is kept\n  - Discord: the status is put back after a reconnect instead of \"Browsing\"; Movies & TV pages show \"Viewing <title>\" and link to IMDb/Kitsu (AnymeX Desk #137)\n  - Windows: sign-in browser data lives in your user folder, so sign-in windows open when the app is installed for all users (AnymeX Desk #84)",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B6/AnymeX-Stremio-v1.1.1-beta.6.ipa",
-          "size": 75298895,
+          "buildVersion": "32",
+          "date": "2026-11-08T05:02:03Z",
+          "localizedDescription": "Beta v1.1.1-beta+7\n\n- Beta 7: Movies & TV downloads, split the big AnymeX+ files\n  - Movies & TV: a download button on direct-link streams (not torrents); downloads go through AnymeX's downloader and play offline from Downloads\n  - The stream picker moved to its own file; StremioService is split into three parts and the Self Test into three, with no change in behaviour",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B7/AnymeX-Stremio-v1.1.1-beta.7.ipa",
+          "size": 75298932,
           "minOSVersion": "15.0"
         }
       ]
