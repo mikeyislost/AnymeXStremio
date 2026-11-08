@@ -1,9 +1,34 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
+#include <string>
 #include "flutter_window.h"
 #include "utils.h"
 #include "app_links/app_links_plugin_c_api.h"
+
+// AnymeX+: keep the sign-in browser's (WebView2) data in the user's own
+// folder, %LOCALAPPDATA%\<kWebViewDataFolder>\WebView2. By default WebView2
+// puts it next to anymex.exe, which isn't writable when the app is installed
+// for all users (Program Files), so sign-in windows open black ("Cannot
+// create the InAppWebView instance").
+static const wchar_t kWebViewDataFolder[] = L"AnymeXStremio";
+
+static void UseUserWebViewFolder() {
+  wchar_t existing[2];
+  if (::GetEnvironmentVariableW(L"WEBVIEW2_USER_DATA_FOLDER", existing, 2) > 0) {
+    return;
+  }
+  wchar_t local[MAX_PATH];
+  const DWORD len = ::GetEnvironmentVariableW(L"LOCALAPPDATA", local, MAX_PATH);
+  if (len == 0 || len >= MAX_PATH) {
+    return;
+  }
+  std::wstring dir = std::wstring(local) + L"\\" + kWebViewDataFolder;
+  ::CreateDirectoryW(dir.c_str(), nullptr);
+  dir += L"\\WebView2";
+  ::CreateDirectoryW(dir.c_str(), nullptr);
+  ::SetEnvironmentVariableW(L"WEBVIEW2_USER_DATA_FOLDER", dir.c_str());
+}
 
 bool SendAppLinkToInstance(const std::wstring& title) {
   // Find our exact window
@@ -45,6 +70,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (SendAppLinkToInstance(L"AnymeX")) {
     return EXIT_SUCCESS;
   }
+  UseUserWebViewFolder();
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
     CreateAndAttachConsole();
   }

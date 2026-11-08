@@ -5,7 +5,10 @@
 
 import 'package:anymex/controllers/service_handler/service_handler.dart'
     show ServicesType;
+import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/continue_watching_row.dart';
+import 'package:anymex/plus/missed_sequels.dart';
 import 'package:anymex/plus/stremio/stremio_disk_cache.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -176,6 +179,85 @@ void main() {
       expect(StremioService.streamTitleKey(null, 'tt0903747:1:2'), 'tt0903747');
       expect(StremioService.streamTitleKey(null, 'kitsu:7442:5'), 'kitsu:7442');
       expect(StremioService.streamTitleKey('tt0111161', 'tt0111161'), 'tt0111161');
+    });
+  });
+
+  group('Continue Watching row', () {
+    StremioLibraryItem item(String id, String name, DateTime when) =>
+        StremioLibraryItem({
+          '_id': id,
+          'name': name,
+          'type': 'series',
+          '_mtime': when.toUtc().toIso8601String(),
+          'state': {'lastWatched': when.toUtc().toIso8601String()},
+        });
+    TrackedMedia anime(String id, String title, DateTime when) => TrackedMedia(
+          id: id,
+          title: title,
+          watchingStatus: 'CURRENT',
+          updatedAt: when.millisecondsSinceEpoch ~/ 1000,
+        );
+
+    test('newest first, anime and Movies & TV together', () {
+      final rows = mergeContinueWatching([
+        anime('1', 'Old Anime', DateTime(2026, 1, 1)),
+        anime('2', 'New Anime', DateTime(2026, 3, 1)),
+      ], [
+        item('tt1', 'Some Movie', DateTime(2026, 2, 1)),
+      ], const {});
+      expect(rows.map((r) => r.name), ['New Anime', 'Some Movie', 'Old Anime']);
+    });
+    test('an anime synced to Stremio shows once', () {
+      final rows = mergeContinueWatching([
+        anime('154587', "Frieren: Beyond Journey\u2019s End", DateTime(2026, 1, 1)),
+        anime('2', 'Other', DateTime(2026, 1, 2)),
+      ], [
+        item('tt22248376', "Frieren: Beyond Journey's End", DateTime(2026, 3, 1)),
+        item('kitsu:1', 'Matched By Id', DateTime(2026, 3, 1)),
+      ], const {'kitsu:1'});
+      expect(rows.length, 2);
+      expect(rows.first.mediaId, '2');
+    });
+    test('titles match across sites', () {
+      expect(normalizeTitle('Frieren: Beyond Journey\u2019s End'),
+          normalizeTitle("Frieren: Beyond Journey's End"));
+    });
+  });
+
+  group('Missed sequels', () {
+    test('only anime sequels from AniList relations', () {
+      final found = MissedSequels.sequelsIn({
+        'edges': [
+          {'relationType': 'SEQUEL', 'node': {'id': 10, 'type': 'ANIME', 'status': 'FINISHED', 'format': 'TV', 'title': {'userPreferred': 'S2'}, 'coverImage': {'large': 'p'}}},
+          {'relationType': 'PREQUEL', 'node': {'id': 11, 'type': 'ANIME', 'status': 'FINISHED', 'format': 'TV', 'title': {'userPreferred': 'S0'}, 'coverImage': {'large': 'p'}}},
+          {'relationType': 'SEQUEL', 'node': {'id': 12, 'type': 'MANGA', 'status': 'FINISHED', 'format': 'MANGA', 'title': {'userPreferred': 'M'}, 'coverImage': {'large': 'p'}}},
+        ]
+      });
+      expect(found.map((c) => c.id), [10]);
+    });
+    test('hides what is on your list, unreleased and music', () {
+      const all = [
+        SequelCandidate(id: 1, title: 'a', poster: '', status: 'FINISHED', format: 'TV'),
+        SequelCandidate(id: 2, title: 'b', poster: '', status: 'NOT_YET_RELEASED', format: 'TV'),
+        SequelCandidate(id: 3, title: 'c', poster: '', status: 'RELEASING', format: 'MUSIC'),
+        SequelCandidate(id: 4, title: 'd', poster: '', status: 'RELEASING', format: 'TV'),
+      ];
+      expect(MissedSequels.visible(all, {'1'}).map((c) => c.id), [4]);
+    });
+    test('completed anime, most recently finished first', () {
+      final list = [
+        TrackedMedia(id: '1', watchingStatus: 'COMPLETED', completedAt: DateTime(2025)),
+        TrackedMedia(id: '2', watchingStatus: 'CURRENT'),
+        TrackedMedia(id: '3', watchingStatus: 'COMPLETED', completedAt: DateTime(2026)),
+      ];
+      expect(MissedSequels.completedOf(list).map((m) => m.id), ['3', '1']);
+    });
+  });
+
+  group('Stremio sync entry', () {
+    test('labels', () {
+      expect(StremioSyncEntry.label('tt0903747'), 'IMDb');
+      expect(StremioSyncEntry.label('kitsu:7442'), 'Kitsu');
     });
   });
 }

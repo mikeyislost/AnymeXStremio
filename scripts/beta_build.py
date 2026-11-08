@@ -64,6 +64,8 @@ def windows():
     # Window title: also what a second launch looks for to focus the
     # running app, so the beta must not share the stable title.
     edit("windows/runner/main.cpp", r'L"AnymeX"', f'L"{BETA_WINDOW_TITLE}"', 2)
+    # Sign-in browser data folder in %LOCALAPPDATA%.
+    edit("windows/runner/main.cpp", r'L"AnymeXStremio"', 'L"AnymeXStremio Beta"', 1)
     # ProductName decides the app's settings folder in %APPDATA%.
     edit("windows/runner/Runner.rc", r'VALUE "ProductName", "anymex"',
          'VALUE "ProductName", "anymex_beta"', 1)

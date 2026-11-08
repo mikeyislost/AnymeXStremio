@@ -29,6 +29,8 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/app_channel.dart` | Stable vs beta build (from `.env`) |
 | `plus/maybe_blur.dart` | Blur that is skipped when blur is 0 |
 | `plus/launch_timer.dart` | Launch time shown in the Self Test |
+| `plus/continue_watching_row.dart` | Home's Continue Watching row with Movies & TV in it, newest first, no doubles |
+| `plus/missed_sequels.dart` | "Missed sequels" Home row (sequels of completed AniList anime not on your list) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
 ## Hooks in AnymeX files
@@ -37,11 +39,12 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | --- | --- |
 | `main.dart` | Registers StremioService; Movies & TV tab; Firebase removed; startup steps run together; subtitle fonts, downloads, Gist sync and watch parties start after the first frame; launch timing; splash ends when Home is ready (`plus/splash_gate.dart`, short fade); print() kept out of the log file; beta window title |
 | `controllers/settings/settings.dart` | Stremio tab; Anime tab folded into Home (one-time tab migration) |
-| `controllers/discord/discord_rpc.dart` | iPhone: connection kept through Control Center / app switcher, reconnects when Discord closes it (op 7/9, close codes), stale sockets ignored, waits for sign-in before a status update, last sequence number kept |
-| `controllers/services/anilist/anilist_data.dart` | AniList progress → Stremio |
+| `controllers/discord/discord_rpc.dart` | iPhone: connection kept through Control Center / app switcher, reconnects when Discord closes it (op 7/9, close codes), stale sockets ignored, waits for sign-in before a status update, last sequence number kept; the last status is put back after a reconnect; Movies & TV titles link to IMDb/Kitsu and say Movie/Show |
+| `controllers/services/anilist/anilist_data.dart` | AniList progress → Stremio; Home's Continue Watching row is `PlusContinueWatchingRow`; Missed sequels row after the list rows |
 | `controllers/services/mal/mal_service.dart` | MAL progress → Stremio |
 | `controllers/services/simkl/simkl_service.dart`, `simkl_api.dart` | Simkl sign-in uses `plus/simkl_auth_v2.dart`; requests go through its client (refresh on 401) |
 | `database/database.dart` | Beta keeps its own database folder on Windows |
+| `windows/runner/main.cpp` (not under `lib/`) | Sign-in browser (WebView2) data in `%LOCALAPPDATA%\AnymeXStremio\WebView2` instead of next to the exe |
 | `database/kv_helper.dart` | A missing setting is no longer logged as an error |
 | `controllers/services/storage/storage_manager_service.dart` | Over the image-cache limit, the oldest images are removed instead of all of them |
 | `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home |

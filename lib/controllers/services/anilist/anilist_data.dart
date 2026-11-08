@@ -1,3 +1,5 @@
+import 'package:anymex/plus/continue_watching_row.dart';
+import 'package:anymex/plus/missed_sequels.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'dart:convert';
 import 'dart:math' show min;
@@ -216,6 +218,12 @@ class AnilistData extends GetxController implements BaseService, OnlineService {
           anilistAuth.mangaList.length;
           return Column(
             children: acceptedLists.map((e) {
+              // AnymeX+: one Continue Watching row, Movies & TV included.
+              if (e == 'Continue Watching') {
+                return PlusContinueWatchingRow(
+                    anime: filterListByLabel(
+                        anilistAuth.animeList.removeDupes(), e));
+              }
               return ReusableCarousel(
                 data: filterListByLabel(
                     e.contains("Manga") || e.contains("Reading")
@@ -231,6 +239,8 @@ class AnilistData extends GetxController implements BaseService, OnlineService {
             }).toList(),
           );
         }),
+        // AnymeX+: sequels of finished anime that aren't on your list.
+        const PlusMissedSequelsRow(),
       ],
       Obx(() {
         settings.uiSettings.value;

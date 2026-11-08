@@ -5,6 +5,7 @@
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/watched_bitfield.dart';
+import 'package:anymex/controllers/discord/discord_rpc.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/database/isar_models/episode.dart';
@@ -77,6 +78,25 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     _load();
   }
 
+  @override
+  void dispose() {
+    // Discord: back to "Browsing" when leaving the page.
+    if (_meta != null) _discord((d) => d.updateBrowsingPresence());
+    super.dispose();
+  }
+
+  /// Discord shows the title you're looking at ("Viewing <title>").
+  void _showViewingStatus(StremioMeta meta) => _discord((d) =>
+      d.updateMediaPresence(media: StremioPlayerBridge.mediaFor(meta)));
+
+  void _discord(void Function(DiscordRPCController d) update) {
+    try {
+      update(DiscordRPCController.instance);
+    } catch (_) {
+      // Discord not set up.
+    }
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -87,7 +107,9 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       if (meta == null) {
         _error = 'None of your addons have details for this title.';
       } else {
+        final firstLoad = _meta == null;
         _meta = meta;
+        if (firstLoad) _showViewingStatus(meta);
         if (!meta.isSingleVideo) {
           final seasons = meta.seasons;
           _season = seasons.isEmpty ? null : seasons.first;

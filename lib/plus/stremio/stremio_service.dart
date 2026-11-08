@@ -59,6 +59,30 @@ class StremioIds {
 }
 
 /// What is being played, in Stremio terms.
+/// The Stremio entry an anime's progress goes to (Watch tab).
+class StremioSyncEntry {
+  final String id; // tt… or kitsu:…
+  final String name;
+  final bool inLibrary;
+  final bool chosenByYou;
+  final String? otherId; // the entry it could switch to
+  final String? otherName;
+  final bool otherInLibrary;
+
+  const StremioSyncEntry({
+    required this.id,
+    required this.name,
+    required this.inLibrary,
+    required this.chosenByYou,
+    this.otherId,
+    this.otherName,
+    this.otherInLibrary = false,
+  });
+
+  bool get isImdb => !id.startsWith('kitsu:');
+  static String label(String id) => id.startsWith('kitsu:') ? 'Kitsu' : 'IMDb';
+}
+
 class StremioPlayback {
   final String libraryId; // meta id (tt…, kitsu:…)
   final String type; // movie / series / …
@@ -172,6 +196,7 @@ class StremioService extends GetxController {
   static const _kSyncToSimkl = 'anymexplus_stremio_sync_to_simkl';
   static const _kRowLayout = 'anymexplus_stremio_rows';
   static const _kStreamPrefs = 'anymexplus_stream_prefs';
+  static const _kSyncRoutes = 'anymexplus_stremio_sync_routes';
 
   // On-device copies (see StremioDiskCache).
   static const _kDiskAddons = 'stremio/addons';
@@ -224,6 +249,9 @@ class StremioService extends GetxController {
   final Map<String, _AnimeMapping?> _animeMappings = {};
   final Map<String, StremioPlayback?> _animePlaybackCache = {};
   final Map<String, bool> _animeRoutes = {}; // mapping → use IMDb id
+  // Entries you picked yourself on the Watch tab (mapping → use IMDb id);
+  // these win over the automatic choice and are kept between launches.
+  final Map<String, bool> _routeChoices = {};
   _Session? _session;
 
   // ---- lifecycle ----------------------------------------------------------
@@ -239,6 +267,7 @@ class StremioService extends GetxController {
       syncToSimkl.value = KvHelper.get<bool>(_kSyncToSimkl, defaultVal: true);
       _loadRowLayout();
       _loadStreamPrefs();
+      _loadRouteChoices();
       animeStreamSource.value = KvHelper.get<String>(_kAnimeStreamSource,
           defaultVal: 'extensions');
       final key = KvHelper.get<String?>(_kAuthKey);
@@ -373,6 +402,18 @@ class StremioService extends GetxController {
 
   static String rowKey(StremioAddon addon, StremioCatalog catalog) =>
       '${addon.transportUrl}|${catalog.type}|${catalog.id}';
+
+  void _loadRouteChoices() {
+    try {
+      final raw = KvHelper.get<String>(_kSyncRoutes, defaultVal: '');
+      if (raw.isEmpty) return;
+      final m = jsonDecode(raw);
+      if (m is! Map) return;
+      m.forEach((k, v) {
+        if (v is bool) _routeChoices['$k'] = v;
+      });
+    } catch (_) {}
+  }
 
   void _loadRowLayout() {
     try {
@@ -1130,7 +1171,10 @@ class StremioService extends GetxController {
     final existingImdb = imdbOk ? await getLibraryItem(imdbLib) : null;
     final existingKitsu =
         kitsuLib != null ? await getLibraryItem(kitsuLib) : null;
-    var useImdb = _animeRoutes[mapKey];
+    var useImdb = _routeChoices[mapKey] ?? _animeRoutes[mapKey];
+    // A choice that no longer works (ids changed) falls back to automatic.
+    if (useImdb == true && !imdbOk) useImdb = null;
+    if (useImdb == false && kitsuLib == null) useImdb = null;
     if (useImdb == null) {
       if (existingImdb != null && existingKitsu != null) {
         final a = existingImdb.lastWatched ?? existingImdb.mtime;
@@ -1190,6 +1234,107 @@ class StremioService extends GetxController {
     }
     _animePlaybackCache[cacheKey] = playback;
     return playback;
+  }
+
+  /// Which Stremio entry an anime's progress syncs to, and the other one
+  /// it could use instead (for the Watch tab). Null when it has no match.
+  Future<StremioSyncEntry?> syncEntryFor(anymex.Media media) async {
+    final key = _mappingKey(media);
+    if (key == null) return null;
+    final mapKey = '${key.$1}:${key.$2}';
+    final pb = await _animePlayback(media, Episode(number: '1'));
+    if (pb == null) return null;
+    final mapping = _animeMappings[mapKey];
+    final isMovie =
+        (mapping?.isMovie ?? false) || media.format.toUpperCase() == 'MOVIE';
+    final imdbOk = mapping?.imdbId != null &&
+        (isMovie || (mapping?.imdbEpisodes.isNotEmpty ?? false));
+    final kitsuId =
+        mapping?.kitsuId != null ? 'kitsu:${mapping!.kitsuId}' : null;
+    final isImdb = !pb.libraryId.startsWith('kitsu:');
+    final otherId = isImdb ? kitsuId : (imdbOk ? mapping?.imdbId : null);
+    String? otherName;
+    if (otherId != null) {
+      final cached = _libraryCache[otherId];
+      otherName = cached?.name;
+      if (otherName == null || otherName.isEmpty) {
+        final types = otherId.startsWith('kitsu:')
+            ? (isMovie ? ['movie', 'series', 'anime'] : ['series', 'anime', 'movie'])
+            : [isMovie ? 'movie' : 'series'];
+        for (final t in types) {
+          final m = await fetchMeta(t, otherId);
+          if (m != null) {
+            otherName = m.name;
+            break;
+          }
+        }
+      }
+    }
+    return StremioSyncEntry(
+      id: pb.libraryId,
+      name: pb.name,
+      inLibrary: _libraryCache.containsKey(pb.libraryId),
+      chosenByYou: _routeChoices.containsKey(mapKey),
+      otherId: otherId,
+      otherName: otherName,
+      otherInLibrary: otherId != null && _libraryCache.containsKey(otherId),
+    );
+  }
+
+  /// Bumped when more anime → Stremio matches are known (Home's Continue
+  /// Watching row rebuilds to drop doubles).
+  final RxInt animeMatchesVersion = 0.obs;
+  final Set<String> _warming = {};
+
+  /// The Stremio entries (IMDb and Kitsu ids) of these AniList anime, as far
+  /// as they're matched already. The rest are matched in the background
+  /// (from the phone's cache first) and [animeMatchesVersion] goes up.
+  Set<String> stremioIdsForAnilist(Iterable<String> anilistIds) {
+    final out = <String>{};
+    final missing = <String>[];
+    for (final id in anilistIds) {
+      final key = 'anilist_id:$id';
+      if (_animeMappings.containsKey(key)) {
+        final m = _animeMappings[key];
+        if (m?.imdbId != null) out.add(m!.imdbId!);
+        if (m?.kitsuId != null) out.add('kitsu:${m!.kitsuId}');
+      } else {
+        missing.add(id);
+      }
+    }
+    if (missing.isNotEmpty) unawaited(_warmMappings(missing));
+    return out;
+  }
+
+  Future<void> _warmMappings(List<String> ids) async {
+    final todo = ids.where(_warming.add).take(40).toList();
+    var found = false;
+    for (final id in todo) {
+      final key = 'anilist_id:$id';
+      if (_animeMappings.containsKey(key)) continue;
+      try {
+        final m = await _fetchAnimeMapping('anilist_id', id);
+        // Only real matches are kept, so a failed lookup (offline) is tried
+        // again by sync later.
+        if (m != null) {
+          _animeMappings[key] = m;
+          found = true;
+        }
+      } catch (_) {}
+    }
+    if (found) animeMatchesVersion.value++;
+  }
+
+  /// Sends this anime's progress to its IMDb ([useImdb]) or Kitsu entry
+  /// from now on.
+  void setSyncEntry(anymex.Media media, {required bool useImdb}) {
+    final key = _mappingKey(media);
+    if (key == null) return;
+    final mapKey = '${key.$1}:${key.$2}';
+    _routeChoices[mapKey] = useImdb;
+    _animeRoutes[mapKey] = useImdb;
+    _animePlaybackCache.removeWhere((k, _) => k.startsWith('$mapKey:'));
+    KvHelper.set(_kSyncRoutes, jsonEncode(_routeChoices));
   }
 
   // ---- anime Watch tab → Stremio streams -----------------------------------

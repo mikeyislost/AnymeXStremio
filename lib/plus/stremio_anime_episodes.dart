@@ -3,6 +3,8 @@
 // ids (ani.zip), episodes are listed with AnymeX's episode card style, and
 // playback keeps the AniList/MAL media so tracking works as usual.
 
+import 'dart:async';
+
 import 'dart:math';
 
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
@@ -151,6 +153,7 @@ class StremioAnimeEpisodes extends StatefulWidget {
 class _StremioAnimeEpisodesState extends State<StremioAnimeEpisodes> {
   final _service = StremioService.to;
   StremioAnimeTarget? _target;
+  StremioSyncEntry? _syncEntry;
   bool _loading = true;
   bool _noAddons = false;
   final RxInt _chunk = 0.obs;
@@ -182,6 +185,7 @@ class _StremioAnimeEpisodesState extends State<StremioAnimeEpisodes> {
     setState(() {
       _target = target;
       _loading = false;
+      _syncEntry = null;
       if (target != null && !target.isMovie) {
         _chunks = chunkEpisodes(
             target.episodes, calculateChunkSize(target.episodes));
@@ -190,6 +194,88 @@ class _StremioAnimeEpisodesState extends State<StremioAnimeEpisodes> {
         _chunks = const [];
       }
     });
+    unawaited(_loadSyncEntry());
+  }
+
+  // ---- which Stremio entry progress goes to ----------------------------------
+
+  Future<void> _loadSyncEntry() async {
+    if (!_service.isLoggedIn.value || !_service.syncAnime.value) return;
+    StremioSyncEntry? entry;
+    try {
+      entry = await _service.syncEntryFor(widget.media);
+    } catch (_) {}
+    if (mounted) setState(() => _syncEntry = entry);
+  }
+
+  Future<void> _changeSyncEntry(StremioSyncEntry e) async {
+    final otherId = e.otherId;
+    if (otherId == null) return;
+    final pickedImdb = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 4),
+              child: AnymeXText('Send progress to which Stremio entry?',
+                  size: 15, variant: TextVariant.semiBold),
+            ),
+            _entryTile(ctx, e.id, e.name, e.inLibrary, selected: true),
+            _entryTile(ctx, otherId, e.otherName ?? otherId, e.otherInLibrary,
+                selected: false),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (pickedImdb == null || pickedImdb == e.isImdb) return;
+    _service.setSyncEntry(widget.media, useImdb: pickedImdb);
+    await _loadSyncEntry();
+  }
+
+  Widget _entryTile(BuildContext ctx, String id, String name, bool inLibrary,
+      {required bool selected}) {
+    final where = inLibrary ? ' · in your Stremio library' : '';
+    return ListTile(
+      leading: Icon(selected
+          ? Icons.radio_button_checked_rounded
+          : Icons.radio_button_unchecked_rounded),
+      title: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Text('${StremioSyncEntry.label(id)} · $id$where'),
+      onTap: () => Navigator.pop(ctx, !id.startsWith('kitsu:')),
+    );
+  }
+
+  Widget _syncLine(BuildContext context, StremioSyncEntry e) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(Icons.sync_rounded, size: 16, color: colors.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: AnymeXText(
+              'Progress goes to Stremio as ${e.name} '
+              '(${StremioSyncEntry.label(e.id)})',
+              size: 11,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          if (e.otherId != null)
+            TextButton(
+              onPressed: () => _changeSyncEntry(e),
+              child: const Text('Change'),
+            ),
+        ],
+      ),
+    );
   }
 
   // ---- progress -------------------------------------------------------------
@@ -432,6 +518,7 @@ class _StremioAnimeEpisodesState extends State<StremioAnimeEpisodes> {
               ),
             ],
           ),
+          if (_syncEntry != null) _syncLine(context, _syncEntry!),
           if (_chunks.length > 2)
             Padding(
               padding: const EdgeInsets.only(top: 8),

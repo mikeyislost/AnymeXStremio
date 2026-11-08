@@ -129,6 +129,35 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
 
   /// Close code of the last connection Discord closed (for the Self Test).
   int? lastCloseCode;
+
+  /// AnymeX+: the last status sent, re-sent after a reconnect so the card
+  /// doesn't fall back to "Browsing" in the middle of an episode.
+  String? _lastPresence;
+
+  void _sendPresence(String payload) {
+    _lastPresence = payload;
+    _gatewaySocket?.add(payload);
+  }
+
+  /// AnymeX+: Movies & TV titles (Stremio) link to IMDb or Kitsu instead of
+  /// an AniList page that doesn't exist, and say Movie / Show.
+  String _viewUrl(Media m, String anilistUrl) {
+    if (m.sourceName != 'Stremio') return anilistUrl;
+    final tt = RegExp(r'tt\d+').firstMatch(m.id)?.group(0);
+    if (tt != null) return 'https://www.imdb.com/title/$tt/';
+    final kitsu = RegExp(r'kitsu:(\d+)').firstMatch(m.id)?.group(1);
+    if (kitsu != null) return 'https://kitsu.app/anime/$kitsu';
+    return anilistUrl;
+  }
+
+  String? _stremioKind(Media m) => m.sourceName != 'Stremio'
+      ? null
+      : (m.format.toUpperCase() == 'MOVIE' ? 'Movie' : 'Show');
+
+  String _viewLabel(Media m, String fallback) {
+    final kind = _stremioKind(m);
+    return kind == null ? fallback : 'View $kind';
+  }
   static const _retryDelays = [
     Duration(seconds: 2),
     Duration(seconds: 5),
@@ -471,10 +500,16 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
           _retryAttempts = 0;
           lastCloseCode = null;
           print('Discord Gateway Ready (Mobile)');
-          updateBrowsingPresence(
-            activity: kDebugMode ? 'Working on the App' : 'Browsing Stuff',
-            details: kDebugMode ? "Coding" : 'Idle',
-          );
+          final last = _lastPresence;
+          if (last != null) {
+            // AnymeX+: put back what was showing before the reconnect.
+            _gatewaySocket?.add(last);
+          } else {
+            updateBrowsingPresence(
+              activity: kDebugMode ? 'Working on the App' : 'Browsing Stuff',
+              details: kDebugMode ? "Coding" : 'Idle',
+            );
+          }
         }
         break;
       case 11: // Heartbeat ACK
@@ -664,7 +699,8 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
       final episodeNumber = episode.number.toString();
       final episodeName = episode.title ?? 'Episode $episodeNumber';
       final coverUrl = anime.cover ?? anime.poster;
-      final anilistUrl = 'https://anilist.co/anime/${anime.id}';
+      final anilistUrl =
+          _viewUrl(anime, 'https://anilist.co/anime/${anime.id}');
       final animeTitle = anime.title;
       final showTimestamps = DiscordRpcKeys.showTimestamps.get<bool>(true);
 
@@ -732,7 +768,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
                   'small_text': 'AnymeX',
                 },
                 'buttons': [
-                  'View Anime',
+                  _viewLabel(anime, 'View Anime'),
                   'Watch on AnymeX',
                 ],
                 'metadata': {
@@ -747,7 +783,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
             'afk': false,
           },
         });
-        _gatewaySocket?.add(presencePayload);
+        _sendPresence(presencePayload);
         print('Anime presence updated successfully (Mobile)');
       } else {
         try {
@@ -771,7 +807,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
                 text: 'AnymeX',
               ),
               buttons: [
-                DiscordButton(label: 'View Anime', url: anilistUrl),
+                DiscordButton(label: _viewLabel(anime, 'View Anime'), url: anilistUrl),
                 const DiscordButton(
                   label: 'Watch on AnymeX',
                   url: 'https://github.com/RyanYuuki/AnymeX/',
@@ -807,7 +843,8 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
 
       final episodeNumber = episode.number.toString();
       final coverUrl = anime.cover ?? anime.poster;
-      final anilistUrl = 'https://anilist.co/anime/${anime.id}';
+      final anilistUrl =
+          _viewUrl(anime, 'https://anilist.co/anime/${anime.id}');
       final animeTitle = anime.title;
 
       final currentSeconds =
@@ -843,7 +880,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
                   'small_text': 'AnymeX',
                 },
                 'buttons': [
-                  'View Anime',
+                  _viewLabel(anime, 'View Anime'),
                   'Watch on AnymeX',
                 ],
                 'metadata': {
@@ -858,7 +895,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
             'afk': false,
           },
         });
-        _gatewaySocket?.add(presencePayload);
+        _sendPresence(presencePayload);
         print('Paused anime presence updated successfully (Mobile)');
       } else {
         try {
@@ -876,7 +913,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
                 text: 'AnymeX',
               ),
               buttons: [
-                DiscordButton(label: 'View Anime', url: anilistUrl),
+                DiscordButton(label: _viewLabel(anime, 'View Anime'), url: anilistUrl),
                 const DiscordButton(
                   label: 'Watch on AnymeX',
                   url: 'https://github.com/RyanYuuki/AnymeX/',
@@ -987,7 +1024,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
             'afk': false,
           },
         });
-        _gatewaySocket?.add(presencePayload);
+        _sendPresence(presencePayload);
         print('Manga presence updated successfully (Mobile)');
       } else {
         try {
@@ -1034,10 +1071,11 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
         return;
       }
 
-      final anilistUrl =
-          'https://anilist.co/${media.mediaType.isAnime ? 'anime' : 'manga'}/${media.id}';
+      final anilistUrl = _viewUrl(media,
+          'https://anilist.co/${media.mediaType.isAnime ? 'anime' : 'manga'}/${media.id}');
       final mediaTitle = media.title;
-      final type = media.mediaType.name.capitalizeFirst ?? '';
+      final type =
+          _stremioKind(media) ?? (media.mediaType.name.capitalizeFirst ?? '');
 
       final isAnime = media.mediaType.isAnime;
       final isManga = media.mediaType.isManga;
@@ -1106,7 +1144,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
             'afk': false,
           },
         });
-        _gatewaySocket?.add(presencePayload);
+        _sendPresence(presencePayload);
         print('Media presence updated successfully (Mobile)');
       } else {
         try {
@@ -1213,7 +1251,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
             'afk': false,
           },
         });
-        _gatewaySocket?.add(presencePayload);
+        _sendPresence(presencePayload);
         print('Browsing presence updated successfully (Mobile)');
       } else {
         try {
