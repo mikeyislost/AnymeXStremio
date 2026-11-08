@@ -18,22 +18,22 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "26",
-      "versionDate": "2026-11-08T00:33:02Z",
-      "versionDescription": "Beta v1.1.1-beta+2\n\n- Beta tags: vX.Y.Z-beta, then vX.Y.Z-beta+1, +2, ...\n- Beta updates: pick the newest beta by date (GitHub lists v1.1.1-beta above v1.1.1+1-beta)",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B2/AnymeX-Stremio-v1.1.1-beta.2.ipa",
-      "size": 77774878,
+      "buildVersion": "27",
+      "versionDate": "2026-11-08T02:28:38Z",
+      "versionDescription": "Beta v1.1.1-beta+3\n\n- Beta 1: speed and reliability\n  - Progress is sent to Stremio as soon as the app goes to the background, so closing it mid-episode loses nothing\n  - Updates that fail while offline are kept on the phone and sent later (a newer copy on Stremio wins)\n  - Continue Watching refreshes when you come back to the app\n  - Library refresh downloads only the items that changed, not the whole library\n  - Home rows from addons that aren't responding are skipped\n  - Info tab answers (Simkl, TMDB, TVmaze) are saved on the phone for 7 days\n  - Over the image-cache limit, the oldest images are removed instead of all of them\n  - Missing settings and leftover print() calls no longer fill the log file\n  - Self Test shows launch time and any Stremio updates waiting to send\n  - iOS 15 minimum (drops the bundled Swift concurrency library)\n  - iPhone builds reuse CocoaPods and Rust package downloads; release notes list each change",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B3/AnymeX-Stremio-v1.1.1-beta.3.ipa",
+      "size": 75257165,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "26",
-          "date": "2026-11-08T00:33:02Z",
-          "localizedDescription": "Beta v1.1.1-beta+2\n\n- Beta tags: vX.Y.Z-beta, then vX.Y.Z-beta+1, +2, ...\n- Beta updates: pick the newest beta by date (GitHub lists v1.1.1-beta above v1.1.1+1-beta)",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B2/AnymeX-Stremio-v1.1.1-beta.2.ipa",
-          "size": 77774878,
-          "minOSVersion": "13.0"
+          "buildVersion": "27",
+          "date": "2026-11-08T02:28:38Z",
+          "localizedDescription": "Beta v1.1.1-beta+3\n\n- Beta 1: speed and reliability\n  - Progress is sent to Stremio as soon as the app goes to the background, so closing it mid-episode loses nothing\n  - Updates that fail while offline are kept on the phone and sent later (a newer copy on Stremio wins)\n  - Continue Watching refreshes when you come back to the app\n  - Library refresh downloads only the items that changed, not the whole library\n  - Home rows from addons that aren't responding are skipped\n  - Info tab answers (Simkl, TMDB, TVmaze) are saved on the phone for 7 days\n  - Over the image-cache limit, the oldest images are removed instead of all of them\n  - Missing settings and leftover print() calls no longer fill the log file\n  - Self Test shows launch time and any Stremio updates waiting to send\n  - iOS 15 minimum (drops the bundled Swift concurrency library)\n  - iPhone builds reuse CocoaPods and Rust package downloads; release notes list each change",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B3/AnymeX-Stremio-v1.1.1-beta.3.ipa",
+          "size": 75257165,
+          "minOSVersion": "15.0"
         }
       ]
     }
