@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.1",
-      "buildVersion": "29",
-      "versionDate": "2026-11-08T02:44:41Z",
-      "versionDescription": "Beta v1.1.1-beta+4\n\n- Stremio's \"watched\" point follows your setting\n  - An episode or movie now counts as watched in Stremio at your \"mark as watched\" percentage from Player settings (the same point AniList uses), instead of Stremio's own 70%\n- Beta 2: home rows editor, stream filters, Simkl history, lighter comments, AnymeX updates\n  - Movies & TV: hide, show and reorder home rows (new button in the top bar)\n  - Stream list: filter by quality and addon, sort by file size; your last pick per show (addon + quality) is marked and listed first\n  - Movies and episodes finished in Movies & TV are added to your Simkl history (switch on the Stremio account page; needs Simkl login)\n  - Comments are built as you scroll instead of all at once\n  - Merged AnymeX's latest fixes (details page crash, window transparency, Windows download paths)\n  - Weekly \"AnymeX updates\" check opens an issue when AnymeX has new commits to merge",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B4/AnymeX-Stremio-v1.1.1-beta.4.ipa",
-      "size": 75279512,
+      "buildVersion": "30",
+      "versionDate": "2026-11-08T04:02:23Z",
+      "versionDescription": "Beta v1.1.1-beta+5\n\n- Beta 3: faster start, steadier Discord, fewer library lookups\n  - Home opens as soon as AniList has loaded (at least 0.8 s, at most the old 3 s) instead of always after 3 seconds, with a short fade\n  - Discord status stays connected through Control Center, notifications and the app switcher, and reconnects by itself when Discord closes the connection\n  - For 10 minutes after the Stremio library loads, titles that aren't in it are trusted to be new (up to 2 fewer requests when a new show starts syncing)\n  - Self Test: Discord check says why it isn't connected; sync settings show the Simkl switch",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B5/AnymeX-Stremio-v1.1.1-beta.5.ipa",
+      "size": 75272013,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.1",
-          "buildVersion": "29",
-          "date": "2026-11-08T02:44:41Z",
-          "localizedDescription": "Beta v1.1.1-beta+4\n\n- Stremio's \"watched\" point follows your setting\n  - An episode or movie now counts as watched in Stremio at your \"mark as watched\" percentage from Player settings (the same point AniList uses), instead of Stremio's own 70%\n- Beta 2: home rows editor, stream filters, Simkl history, lighter comments, AnymeX updates\n  - Movies & TV: hide, show and reorder home rows (new button in the top bar)\n  - Stream list: filter by quality and addon, sort by file size; your last pick per show (addon + quality) is marked and listed first\n  - Movies and episodes finished in Movies & TV are added to your Simkl history (switch on the Stremio account page; needs Simkl login)\n  - Comments are built as you scroll instead of all at once\n  - Merged AnymeX's latest fixes (details page crash, window transparency, Windows download paths)\n  - Weekly \"AnymeX updates\" check opens an issue when AnymeX has new commits to merge",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B4/AnymeX-Stremio-v1.1.1-beta.4.ipa",
-          "size": 75279512,
+          "buildVersion": "30",
+          "date": "2026-11-08T04:02:23Z",
+          "localizedDescription": "Beta v1.1.1-beta+5\n\n- Beta 3: faster start, steadier Discord, fewer library lookups\n  - Home opens as soon as AniList has loaded (at least 0.8 s, at most the old 3 s) instead of always after 3 seconds, with a short fade\n  - Discord status stays connected through Control Center, notifications and the app switcher, and reconnects by itself when Discord closes the connection\n  - For 10 minutes after the Stremio library loads, titles that aren't in it are trusted to be new (up to 2 fewer requests when a new show starts syncing)\n  - Self Test: Discord check says why it isn't connected; sync settings show the Simkl switch",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.1-beta%2B5/AnymeX-Stremio-v1.1.1-beta.5.ipa",
+          "size": 75272013,
           "minOSVersion": "15.0"
         }
       ]
