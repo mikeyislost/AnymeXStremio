@@ -20,12 +20,12 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 
 | Path | What it is |
 | --- | --- |
-| `plus/stremio/` | Stremio account, addons, library sync, progress sync, anime matching, on-device cache |
-| `plus/stremio/ui/` | Movies & TV tab, details page, Info tab, streams sheet, player bridge, account page |
+| `plus/stremio/` | Stremio account, addons, library sync, progress sync, anime matching, on-device cache. `stremio_service.dart` is split into parts: `stremio_service_sync.dart` (tracker progress → Stremio, which entry an anime uses), `stremio_service_playback.dart` (anime streams, playback reports, Continue Watching), `stremio_service_anilist.dart` (Stremio watches → AniList/Simkl) |
+| `plus/stremio/ui/` | Movies & TV tab, details page, Info tab, streams sheet (`stremio_streams_sheet.dart`), downloads (`stremio_download.dart`), player bridge, account page |
 | `plus/stremio_anime_episodes.dart` | Stremio streams on the anime Watch tab (source switch, episode list) |
 | `plus/movie_watch_card.dart` | Movie card instead of "Episode 1" |
 | `plus/simkl_auth_v2.dart` | Simkl OAuth 2 (PKCE) sign-in and token refresh |
-| `plus/self_test.dart`, `plus/settings_self_test.dart` | Self Test page and its checks |
+| `plus/self_test.dart` (+ parts `self_test_basics.dart`, `self_test_stremio.dart`, `self_test_other.dart`), `plus/settings_self_test.dart` | Self Test page and its checks |
 | `plus/app_channel.dart` | Stable vs beta build (from `.env`) |
 | `plus/maybe_blur.dart` | Blur that is skipped when blur is 0 |
 | `plus/launch_timer.dart` | Launch time shown in the Self Test |
