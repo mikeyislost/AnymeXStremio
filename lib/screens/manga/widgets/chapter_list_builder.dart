@@ -770,7 +770,7 @@ class _ChapterListBuilderState extends State<ChapterListBuilder>
                   child: CircularProgressIndicator(
                     value: data.progressValue,
                     strokeWidth: 2.0,
-                    backgroundColor: colors.primary.withValues(alpha: 0.15),
+                    backgroundColor: colors.primary.withOpacity(0.15),
                     color: colors.primary,
                   ),
                 ),

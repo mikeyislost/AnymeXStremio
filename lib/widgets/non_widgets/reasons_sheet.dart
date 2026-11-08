@@ -226,7 +226,7 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: colors.onSurfaceVariant.withValues(alpha: 0.3),
+                      color: colors.onSurfaceVariant.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -439,7 +439,7 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: colors.onSurfaceVariant.withValues(alpha: 0.4),
+              color: colors.onSurfaceVariant.withOpacity(0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -501,7 +501,7 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.rate_review_outlined,
-                size: 48, color: colors.onSurfaceVariant.withValues(alpha: 0.4)),
+                size: 48, color: colors.onSurfaceVariant.withOpacity(0.4)),
             const SizedBox(height: 16),
             AnymeXText('No recommendations yet',
               size: 14,
@@ -510,7 +510,7 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
             const SizedBox(height: 6),
             AnymeXText('Be the first to recommend this title!',
               size: 12,
-              color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+              color: colors.onSurfaceVariant.withOpacity(0.7),
             ),
           ],
         ),
@@ -547,11 +547,11 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isMine
-            ? colors.primaryContainer.withValues(alpha: 0.25)
+            ? colors.primaryContainer.withOpacity(0.25)
             : colors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border:
-            isMine ? Border.all(color: colors.primary.withValues(alpha: 0.2)) : null,
+            isMine ? Border.all(color: colors.primary.withOpacity(0.2)) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,7 +627,7 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 5, vertical: 1),
                             decoration: BoxDecoration(
-                              color: colors.primaryContainer.withValues(alpha: 0.4),
+                              color: colors.primaryContainer.withOpacity(0.4),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: AnymeXText('You',
@@ -729,7 +729,7 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border(
-          top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.3)),
+          top: BorderSide(color: colors.outlineVariant.withOpacity(0.3)),
         ),
       ),
       child: Column(
@@ -777,7 +777,7 @@ class _ReasonsSheetState extends State<ReasonsSheet> {
       decoration: BoxDecoration(
         color: colors.surfaceContainerHighest.opaque(0.35),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outline.withValues(alpha: 0.12)),
+        border: Border.all(color: colors.outline.withOpacity(0.12)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: _voteLoading
@@ -919,7 +919,7 @@ class _ReasonsVoteButton extends StatelessWidget {
             color: active ? activeBgColor : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border:
-                active ? Border.all(color: activeColor.withValues(alpha: 0.2)) : null,
+                active ? Border.all(color: activeColor.withOpacity(0.2)) : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -705,7 +705,7 @@ class _UserSearchSheetState extends State<_UserSearchSheet> {
                                                       horizontal: 6,
                                                       vertical: 2),
                                               color: _getRoleColor(role)
-                                                  .withValues(alpha: 0.15),
+                                                  .withOpacity(0.15),
                                               radius: 6,
                                               child: AnymeXText(
                                                 role
@@ -931,7 +931,7 @@ class _ReportsQueuePageState extends State<ReportsQueuePage> {
                   AnymeXContainer(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    color: colorScheme.error.withValues(alpha: 0.1),
+                    color: colorScheme.error.withOpacity(0.1),
                     radius: 8,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1077,7 +1077,7 @@ class _ReportsQueuePageState extends State<ReportsQueuePage> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colorScheme.primary,
                               side: BorderSide(
-                                  color: colorScheme.primary.withValues(alpha: 0.5)),
+                                  color: colorScheme.primary.withOpacity(0.5)),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6),
                               shape: RoundedRectangleBorder(
@@ -1102,7 +1102,7 @@ class _ReportsQueuePageState extends State<ReportsQueuePage> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: colorScheme.error,
                             side: BorderSide(
-                                color: colorScheme.error.withValues(alpha: 0.5)),
+                                color: colorScheme.error.withOpacity(0.5)),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 6),
                             shape: RoundedRectangleBorder(
@@ -1176,7 +1176,7 @@ class _ReportsQueuePageState extends State<ReportsQueuePage> {
             padding: const EdgeInsets.all(20),
             radius: 20,
             color: colorScheme.surface,
-            border: Border.all(color: colorScheme.error.withValues(alpha: 0.3)),
+            border: Border.all(color: colorScheme.error.withOpacity(0.3)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1186,7 +1186,7 @@ class _ReportsQueuePageState extends State<ReportsQueuePage> {
                     AnymeXContainer(
                       padding: const EdgeInsets.all(8),
                       radius: 10,
-                      color: colorScheme.error.withValues(alpha: 0.12),
+                      color: colorScheme.error.withOpacity(0.12),
                       child: Icon(Icons.delete_forever_rounded,
                           color: colorScheme.error, size: 22),
                     ),
@@ -1680,10 +1680,10 @@ class _UserListPageState extends State<UserListPage> {
                         AnymeXContainer(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
-                          color: _getRoleColor(role).withValues(alpha: 0.15),
+                          color: _getRoleColor(role).withOpacity(0.15),
                           radius: 8,
                           border: Border.all(
-                            color: _getRoleColor(role).withValues(alpha: 0.3),
+                            color: _getRoleColor(role).withOpacity(0.3),
                           ),
                           child: AnymeXText(
                             role.toUpperCase().replaceAll('_', ' '),
@@ -2126,10 +2126,10 @@ class _UserManagementPageState extends State<UserManagementPage> {
         ],
         AnymeXContainer(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          color: color.withValues(alpha: 0.15),
+          color: color.withOpacity(0.15),
           radius: 12,
           border: Border.all(
-            color: color.withValues(alpha: 0.3),
+            color: color.withOpacity(0.3),
           ),
           child: AnymeXText(
             CommentumRoleConfig.getRoleLabel(role).toUpperCase(),
@@ -2237,7 +2237,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
             AnymeXContainer(
               width: 40,
               height: 40,
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               radius: 10,
               child: Icon(icon, color: color, size: 20),
             ),

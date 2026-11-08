@@ -362,7 +362,7 @@ class _SettingsUiState extends State<SettingsUi> {
                                     elevation: 6 * t,
                                     borderRadius: BorderRadius.circular(14),
                                     shadowColor: theme.colorScheme.primary
-                                        .withValues(alpha: 0.3),
+                                        .withOpacity(0.3),
                                     child: child,
                                   ),
                                 );
@@ -392,7 +392,7 @@ class _SettingsUiState extends State<SettingsUi> {
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: theme.colorScheme.primary
-                                        .withValues(alpha: 0.12),
+                                        .withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: AnymeXText(
@@ -449,7 +449,7 @@ class _SettingsUiState extends State<SettingsUi> {
                                         Icons.drag_indicator_rounded,
                                         color: theme
                                             .colorScheme.onSurfaceVariant
-                                            .withValues(alpha: 0.6),
+                                            .withOpacity(0.6),
                                       ),
                                     ),
                                   ],
@@ -476,7 +476,7 @@ class _SettingsUiState extends State<SettingsUi> {
                             'No hidden tabs',
                             style: TextStyle(
                               color: theme.colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.6),
+                                  .withOpacity(0.6),
                               fontSize: 13,
                             ),
                           ),
@@ -492,7 +492,7 @@ class _SettingsUiState extends State<SettingsUi> {
                               margin: const EdgeInsets.symmetric(vertical: 4),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surfaceContainerHigh
-                                    .withValues(alpha: 0.5),
+                                    .withOpacity(0.5),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: ListTile(
@@ -507,7 +507,7 @@ class _SettingsUiState extends State<SettingsUi> {
                                       tabIcons[tab] ?? Icons.circle_outlined,
                                       size: 18,
                                       color: theme.colorScheme.onSurfaceVariant
-                                          .withValues(alpha: 0.6),
+                                          .withOpacity(0.6),
                                     ),
                                     const SizedBox(width: 10),
                                     AnymeXText(
@@ -520,7 +520,7 @@ class _SettingsUiState extends State<SettingsUi> {
                                           : tab,
                                       variant: TextVariant.semiBold,
                                       color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
+                                          .withOpacity(0.6),
                                     ),
                                   ],
                                 ),

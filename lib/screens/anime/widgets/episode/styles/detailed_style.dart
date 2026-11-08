@@ -53,7 +53,7 @@ class DetailedEpisodeWidget extends StatelessWidget {
     if (isSelected) {
       return theme.colorScheme.primary.opaque(0.4, iReallyMeanIt: true);
     } else if (isFiller) {
-      return Colors.orange.withValues(alpha: 0.15);
+      return Colors.orange.withOpacity(0.15);
     } else {
       return theme.colorScheme.secondaryContainer.opaque(0.5);
     }
@@ -175,7 +175,7 @@ class DetailedEpisodeWidget extends StatelessWidget {
           decoration: BoxDecoration(
             color: _getBackgroundColor(context, isFiller),
             borderRadius: BorderRadius.circular(12),
-            border: isFiller ? Border.all(color: Colors.orange.withValues(alpha: 0.3)) : null,
+            border: isFiller ? Border.all(color: Colors.orange.withOpacity(0.3)) : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,9 +200,9 @@ class DetailedEpisodeWidget extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.2),
+                                color: Colors.orange.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                                border: Border.all(color: Colors.orange.withOpacity(0.5)),
                               ),
                               child: const AnymeXText(
                                 "FILLER",

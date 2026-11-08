@@ -958,7 +958,9 @@ class _ProfilePageState extends State<ProfilePage>
               color: context.theme.colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: context.theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                color: context.theme.colorScheme.outlineVariant.withOpacity(
+                  0.3,
+                ),
               ),
             ),
             padding: const EdgeInsets.all(14),

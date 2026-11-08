@@ -56,10 +56,10 @@ class _DynamicStyleSelectorState<T> extends State<DynamicStyleSelector<T>> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+              color: theme.colorScheme.surfaceContainerLow.withOpacity(0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.08),
+                color: theme.colorScheme.outline.withOpacity(0.08),
               ),
             ),
             child: Column(

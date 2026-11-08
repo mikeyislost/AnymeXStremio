@@ -39,9 +39,9 @@ class LinkedAccountsBadges extends StatelessWidget {
       badges.add(_buildBadge(
         label: 'AL',
         username: anilistUsername,
-        bgColor: const Color(0xFF02A9FF).withValues(alpha: 0.18),
+        bgColor: const Color(0xFF02A9FF).withOpacity(0.18),
         textColor: const Color(0xFF02A9FF),
-        borderColor: const Color(0xFF02A9FF).withValues(alpha: 0.4),
+        borderColor: const Color(0xFF02A9FF).withOpacity(0.4),
         url: 'https://anilist.co/user/$anilistUsername',
       ));
     }
@@ -50,9 +50,9 @@ class LinkedAccountsBadges extends StatelessWidget {
       badges.add(_buildBadge(
         label: 'MAL',
         username: malUsername,
-        bgColor: const Color(0xFF2E51A2).withValues(alpha: 0.18),
+        bgColor: const Color(0xFF2E51A2).withOpacity(0.18),
         textColor: const Color(0xFF4C75D6),
-        borderColor: const Color(0xFF2E51A2).withValues(alpha: 0.4),
+        borderColor: const Color(0xFF2E51A2).withOpacity(0.4),
         url: 'https://myanimelist.net/profile/$malUsername',
       ));
     }
@@ -61,9 +61,9 @@ class LinkedAccountsBadges extends StatelessWidget {
       badges.add(_buildBadge(
         label: 'SIMKL',
         username: simklUsername,
-        bgColor: const Color(0xFFE5A00D).withValues(alpha: 0.18),
+        bgColor: const Color(0xFFE5A00D).withOpacity(0.18),
         textColor: const Color(0xFFFFAE19),
-        borderColor: const Color(0xFFE5A00D).withValues(alpha: 0.4),
+        borderColor: const Color(0xFFE5A00D).withOpacity(0.4),
         url: 'https://simkl.com/$simklUsername',
       ));
     }

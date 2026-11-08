@@ -146,7 +146,7 @@ class FavoritesSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: context.theme.colorScheme.outlineVariant
-                                .withValues(alpha: 0.3),
+                                .withOpacity(0.3),
                           ),
                         ),
                         child: AnymeXText(

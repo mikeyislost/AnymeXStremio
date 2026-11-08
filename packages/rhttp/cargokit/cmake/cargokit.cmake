@@ -26,6 +26,11 @@ function(apply_cargokit target manifest_dir lib_name any_symbol_name)
         set(OUTPUT_LIB "${CMAKE_CURRENT_BINARY_DIR}/${CARGOKIT_LIB_FULL_NAME}")
     endif()
     set(CARGOKIT_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/cargokit_build")
+    # AnymeX+: CI sets ANYMEXPLUS_CARGOKIT_DIR to a folder it keeps between
+    # builds, so the Rust library isn't compiled from scratch every time.
+    if (DEFINED ENV{ANYMEXPLUS_CARGOKIT_DIR})
+        file(TO_CMAKE_PATH "$ENV{ANYMEXPLUS_CARGOKIT_DIR}" CARGOKIT_TEMP_DIR)
+    endif()
 
     if (FLUTTER_TARGET_PLATFORM)
         set(CARGOKIT_TARGET_PLATFORM "${FLUTTER_TARGET_PLATFORM}")

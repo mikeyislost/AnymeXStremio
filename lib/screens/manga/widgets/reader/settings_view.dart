@@ -213,7 +213,7 @@ class ReaderSettings {
                                     ? Theme.of(context)
                                         .colorScheme
                                         .primary
-                                        .withValues(alpha: 0.2)
+                                        .withOpacity(0.2)
                                     : Theme.of(context)
                                         .colorScheme
                                         .surfaceContainer,

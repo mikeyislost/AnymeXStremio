@@ -788,7 +788,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
               size: 18,
               color: _activeFilters.isNotEmpty
                   ? colors.primary
-                  : colors.onSurface.withValues(alpha: 0.5),
+                  : colors.onSurface.withOpacity(0.5),
             ),
           ),
       ],
@@ -1741,7 +1741,7 @@ class _MoreOptionsPillContent extends StatelessWidget {
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: colors.outline.withValues(alpha: 0.12)),
+            side: BorderSide(color: colors.outline.withOpacity(0.12)),
           ),
           color: colors.surface,
           elevation: 6,

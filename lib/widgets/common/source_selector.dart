@@ -108,9 +108,9 @@ class SourceSelectorWidget extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: colors.surfaceContainer.withValues(alpha: 0.35),
+            color: colors.surfaceContainer.withOpacity(0.35),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outline.withValues(alpha: 0.15)),
+            border: Border.all(color: colors.outline.withOpacity(0.15)),
           ),
           child: Row(
             children: [
@@ -157,7 +157,7 @@ class SourceSelectorWidget extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontFamily: 'Linotte',
-                          color: colors.onSurfaceVariant.withValues(alpha: 0.55),
+                          color: colors.onSurfaceVariant.withOpacity(0.55),
                         ),
                       ),
                   ],
@@ -178,7 +178,7 @@ class SourceSelectorWidget extends StatelessWidget {
               Icon(
                 Icons.keyboard_arrow_down_rounded,
                 size: 22,
-                color: colors.onSurfaceVariant.withValues(alpha: 0.55),
+                color: colors.onSurfaceVariant.withOpacity(0.55),
               ),
             ],
           ),
@@ -200,7 +200,7 @@ class _SourceIcon extends StatelessWidget {
         height: 36,
         width: 36,
         decoration: BoxDecoration(
-          color: colors.primaryContainer.withValues(alpha: 0.5),
+          color: colors.primaryContainer.withOpacity(0.5),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(Icons.extension_rounded, size: 20, color: colors.primary),
@@ -246,7 +246,7 @@ class _TypeBadge extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return _Badge(
       label: sourceTypeName(source),
-      bgColor: colors.primaryContainer.withValues(alpha: 0.55),
+      bgColor: colors.primaryContainer.withOpacity(0.55),
       textColor: colors.primary,
     );
   }
@@ -261,7 +261,7 @@ class _LangBadge extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return _Badge(
       label: lang.toUpperCase(),
-      bgColor: colors.secondaryContainer.withValues(alpha: 0.55),
+      bgColor: colors.secondaryContainer.withOpacity(0.55),
       textColor: colors.secondary,
     );
   }
@@ -274,7 +274,7 @@ class _NsfwBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Badge(
       label: 'NSFW',
-      bgColor: Colors.red.withValues(alpha: 0.14),
+      bgColor: Colors.red.withOpacity(0.14),
       textColor: Colors.red,
     );
   }
@@ -329,7 +329,7 @@ class _ActionIconButton extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(6),
-            child: Icon(icon, size: 18, color: colors.primary.withValues(alpha: 0.8)),
+            child: Icon(icon, size: 18, color: colors.primary.withOpacity(0.8)),
           ),
         ),
       ),
@@ -348,16 +348,16 @@ class _EmptySourceState extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: colors.surfaceContainer.withValues(alpha: 0.3),
+        color: colors.surfaceContainer.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outline.withValues(alpha: 0.15)),
+        border: Border.all(color: colors.outline.withOpacity(0.15)),
       ),
       child: Row(
         children: [
           Icon(
             Icons.extension_off_rounded,
             size: 22,
-            color: colors.onSurfaceVariant.withValues(alpha: 0.45),
+            color: colors.onSurfaceVariant.withOpacity(0.45),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -383,7 +383,7 @@ class _EmptySourceState extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontFamily: 'Linotte',
-                    color: colors.onSurfaceVariant.withValues(alpha: 0.55),
+                    color: colors.onSurfaceVariant.withOpacity(0.55),
                   ),
                 ),
               ],
@@ -482,7 +482,7 @@ class _SourceSheetContentState extends State<_SourceSheetContent> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: colors.primaryContainer.withValues(alpha: 0.4),
+                  color: colors.primaryContainer.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: AnymeXText(
@@ -511,12 +511,12 @@ class _SourceSheetContentState extends State<_SourceSheetContent> {
             hintStyle: TextStyle(
               fontSize: 14,
               fontFamily: 'Linotte',
-              color: colors.onSurfaceVariant.withValues(alpha: 0.5),
+              color: colors.onSurfaceVariant.withOpacity(0.5),
             ),
             prefixIcon: Icon(
               Icons.search_rounded,
               size: 20,
-              color: colors.onSurfaceVariant.withValues(alpha: 0.5),
+              color: colors.onSurfaceVariant.withOpacity(0.5),
             ),
             suffixIcon: _query.isNotEmpty
                 ? IconButton(
@@ -532,7 +532,7 @@ class _SourceSheetContentState extends State<_SourceSheetContent> {
                   )
                 : null,
             filled: true,
-            fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.4),
+            fillColor: colors.surfaceContainerHighest.withOpacity(0.4),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 10,
@@ -548,7 +548,7 @@ class _SourceSheetContentState extends State<_SourceSheetContent> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: colors.primary.withValues(alpha: 0.4),
+                color: colors.primary.withOpacity(0.4),
                 width: 1.5,
               ),
             ),
@@ -583,7 +583,7 @@ class _SourceSheetContentState extends State<_SourceSheetContent> {
                       Icon(
                         Icons.search_off_rounded,
                         size: 38,
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.35),
+                        color: colors.onSurfaceVariant.withOpacity(0.35),
                       ),
                       const SizedBox(height: 8),
                       AnymeXText(
@@ -591,7 +591,7 @@ class _SourceSheetContentState extends State<_SourceSheetContent> {
                         style: TextStyle(
                           fontSize: 14,
                           fontFamily: 'Linotte',
-                          color: colors.onSurfaceVariant.withValues(alpha: 0.55),
+                          color: colors.onSurfaceVariant.withOpacity(0.55),
                         ),
                       ),
                     ],
@@ -615,7 +615,7 @@ class _SourceSheetContentState extends State<_SourceSheetContent> {
         ),
         if (_hasLangs && widget.onSubSourceSelected != null) ...[
           Divider(
-            color: colors.outline.withValues(alpha: 0.1),
+            color: colors.outline.withOpacity(0.1),
             height: 1,
             indent: 16,
             endIndent: 16,
@@ -659,12 +659,12 @@ class _SourceTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: isSelected
-                ? colors.primary.withValues(alpha: 0.10)
-                : colors.surfaceContainerHighest.withValues(alpha: 0.3),
+                ? colors.primary.withOpacity(0.10)
+                : colors.surfaceContainerHighest.withOpacity(0.3),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected
-                  ? colors.primary.withValues(alpha: 0.35)
+                  ? colors.primary.withOpacity(0.35)
                   : Colors.transparent,
               width: 1.5,
             ),
@@ -747,7 +747,7 @@ class _SourceTile extends StatelessWidget {
                         Icons.radio_button_unchecked_rounded,
                         key: const ValueKey('emp'),
                         size: 22,
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.28),
+                        color: colors.onSurfaceVariant.withOpacity(0.28),
                       ),
               ),
             ],
@@ -783,7 +783,7 @@ class _LangSubPicker extends StatelessWidget {
               Icon(
                 Icons.language_rounded,
                 size: 15,
-                color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                color: colors.onSurfaceVariant.withOpacity(0.7),
               ),
               const SizedBox(width: 6),
               AnymeXText(
@@ -792,7 +792,7 @@ class _LangSubPicker extends StatelessWidget {
                   fontSize: 12,
                   fontFamily: 'Linotte',
                   fontWeight: FontWeight.w600,
-                  color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                  color: colors.onSurfaceVariant.withOpacity(0.7),
                 ),
               ),
             ],
@@ -818,12 +818,12 @@ class _LangSubPicker extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isActive
                           ? colors.primary
-                          : colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                          : colors.surfaceContainerHighest.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isActive
                             ? colors.primary
-                            : colors.outline.withValues(alpha: 0.2),
+                            : colors.outline.withOpacity(0.2),
                       ),
                     ),
                     child: AnymeXText(

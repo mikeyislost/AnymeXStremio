@@ -133,7 +133,7 @@ void showWelcomeDialogg(BuildContext context) {
                 color: Theme.of(context).colorScheme.surfaceContainer,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: context.colors.outline.withValues(alpha: 0.12),
+                  color: context.colors.outline.withOpacity(0.12),
                   width: 1,
                 ),
                 boxShadow: const [
@@ -162,7 +162,7 @@ void showWelcomeDialogg(BuildContext context) {
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: context.colors.primary.withValues(alpha: 0.12),
+                            color: context.colors.primary.withOpacity(0.12),
                             shape: BoxShape.circle,
                           ),
                           child: const AnymeXAnimatedLogo(
@@ -188,7 +188,7 @@ void showWelcomeDialogg(BuildContext context) {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: context.colors.onSurfaceVariant
-                                      .withValues(alpha: 0.8),
+                                      .withOpacity(0.8),
                                 ),
                               ),
                             ],

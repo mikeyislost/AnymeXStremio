@@ -385,7 +385,7 @@ class SettingsSheet extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.error.withValues(alpha: 0.4),
+                              color: theme.error.withOpacity(0.4),
                               blurRadius: 4,
                               spreadRadius: 1,
                             ),

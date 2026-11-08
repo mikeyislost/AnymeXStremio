@@ -69,7 +69,7 @@ class AboutSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color:
-                    context.theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                    context.theme.colorScheme.outlineVariant.withOpacity(0.3),
               ),
             ),
             child: AnimatedSize(

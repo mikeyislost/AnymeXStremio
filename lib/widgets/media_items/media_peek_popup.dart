@@ -465,7 +465,7 @@ class _MediaPeekPopupState extends State<MediaPeekPopup> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: colors.onSurfaceVariant.withValues(alpha: 0.4),
+              color: colors.onSurfaceVariant.withOpacity(0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -591,7 +591,7 @@ class _MediaPeekPopupState extends State<MediaPeekPopup> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -764,9 +764,9 @@ class _MediaPeekPopupState extends State<MediaPeekPopup> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: colors.secondaryContainer.withValues(alpha: 0.5),
+                  color: colors.secondaryContainer.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+                  border: Border.all(color: colors.outline.withOpacity(0.1)),
                 ),
                 child: Row(
                   children: [
@@ -928,7 +928,7 @@ class _MediaPeekPopupState extends State<MediaPeekPopup> {
       decoration: BoxDecoration(
         color: colors.surfaceContainerHighest.opaque(0.35),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.outline.withValues(alpha: 0.12)),
+        border: Border.all(color: colors.outline.withOpacity(0.12)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: _voteLoading
@@ -985,9 +985,9 @@ class _MediaPeekPopupState extends State<MediaPeekPopup> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colors.primaryContainer.withValues(alpha: 0.3),
+        color: colors.primaryContainer.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: colors.primary.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1191,7 +1191,7 @@ class _DetailsStyleButton extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
+              border: Border.all(color: scheme.outline.withOpacity(0.2)),
             ),
             alignment: Alignment.center,
             child: child,
@@ -1239,7 +1239,7 @@ class _PopupVoteButton extends StatelessWidget {
             color: active ? activeBgColor : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border:
-                active ? Border.all(color: activeColor.withValues(alpha: 0.2)) : null,
+                active ? Border.all(color: activeColor.withOpacity(0.2)) : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

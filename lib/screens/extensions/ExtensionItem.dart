@@ -139,7 +139,7 @@ class _ExtensionListTileWidgetState extends State<ExtensionListTileWidget> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
+              color: Colors.black.withOpacity(0.12),
               blurRadius: 4,
               offset: const Offset(0, 1),
             ),
@@ -168,7 +168,7 @@ class _ExtensionListTileWidgetState extends State<ExtensionListTileWidget> {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
         decoration: BoxDecoration(
-          color: theme.surfaceContainerHighest.withValues(alpha: 0.35),
+          color: theme.surfaceContainerHighest.withOpacity(0.35),
           borderRadius: BorderRadius.circular(18),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -186,7 +186,7 @@ class _ExtensionListTileWidgetState extends State<ExtensionListTileWidget> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.10),
+                          color: Colors.black.withOpacity(0.10),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -195,7 +195,7 @@ class _ExtensionListTileWidgetState extends State<ExtensionListTileWidget> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        color: theme.surfaceContainerHighest.withValues(alpha: 0.55),
+                        color: theme.surfaceContainerHighest.withOpacity(0.55),
                         child: buildMainIcon(),
                       ),
                     ),

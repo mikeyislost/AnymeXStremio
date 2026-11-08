@@ -263,8 +263,8 @@ class _SettingsDiscordState extends State<SettingsDiscord> {
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isLoggedIn
-                ? colors.primary.withValues(alpha: 0.3)
-                : colors.outline.withValues(alpha: 0.12),
+                ? colors.primary.withOpacity(0.3)
+                : colors.outline.withOpacity(0.12),
             width: 1.5,
           ),
         ),
@@ -375,7 +375,7 @@ class _SettingsDiscordState extends State<SettingsDiscord> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: colors.primary.withValues(alpha: 0.4),
+              color: colors.primary.withOpacity(0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             )
@@ -396,7 +396,7 @@ class _SettingsDiscordState extends State<SettingsDiscord> {
       width: 56,
       height: 56,
       decoration: BoxDecoration(
-        color: const Color(0xFF5865F2).withValues(alpha: 0.2),
+        color: const Color(0xFF5865F2).withOpacity(0.2),
         shape: BoxShape.circle,
       ),
       child: const Icon(Icons.discord, color: Color(0xFF5865F2), size: 28),

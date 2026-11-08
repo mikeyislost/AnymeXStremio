@@ -238,10 +238,10 @@ class _UserRecommendationsPageState extends State<UserRecommendationsPage>
           children: [
             Icon(Icons.playlist_remove_rounded,
                 size: 48,
-                color: context.colors.onSurfaceVariant.withValues(alpha: 0.5)),
+                color: context.colors.onSurfaceVariant.withOpacity(0.5)),
             const SizedBox(height: 12),
             AnymeXText('No recommendations found',
-              color: context.colors.onSurfaceVariant.withValues(alpha: 0.7),
+              color: context.colors.onSurfaceVariant.withOpacity(0.7),
               variant: TextVariant.semiBold,
             ),
           ],
@@ -311,7 +311,7 @@ class _RecCard extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.75),
+                            Colors.black.withOpacity(0.75),
                           ],
                         ),
                       ),

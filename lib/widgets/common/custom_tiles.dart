@@ -102,7 +102,7 @@ class _HighlightDecoratorState extends State<HighlightDecorator> {
 
     return TweenAnimationBuilder<Color?>(
       tween: ColorTween(
-        begin: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+        begin: Theme.of(context).colorScheme.primary.withOpacity(0.5),
         end: Colors.transparent,
       ),
       duration: const Duration(seconds: 3),

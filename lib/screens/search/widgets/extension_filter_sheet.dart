@@ -129,7 +129,7 @@ class ExtensionFilterSheetState extends State<ExtensionFilterSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+              color: theme.colorScheme.onSurface.withOpacity(0.2),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -180,10 +180,10 @@ class ExtensionFilterSheetState extends State<ExtensionFilterSheet> {
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              color: theme.colorScheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                color: theme.colorScheme.primary.withOpacity(0.2),
                 width: 0.8,
               ),
             ),
@@ -200,7 +200,7 @@ class ExtensionFilterSheetState extends State<ExtensionFilterSheet> {
                   child: AnymeXText.regular("Note: If the extension supports reset to load filters and it doesn't work, try searching something first or open WebView. If that doesn't work, then click the 'Reset' button to load filters.",
                     size: 11.5,
                     maxLines: 999,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                    color: theme.colorScheme.onSurface.withOpacity(0.8),
                   ),
                 ),
               ],
@@ -277,19 +277,19 @@ class ExtensionFilterSheetState extends State<ExtensionFilterSheet> {
 
     switch (f.state) {
       case 1:
-        bgColor = theme.colorScheme.primary.withValues(alpha: 0.15);
-        borderColor = theme.colorScheme.primary.withValues(alpha: 0.4);
+        bgColor = theme.colorScheme.primary.withOpacity(0.15);
+        borderColor = theme.colorScheme.primary.withOpacity(0.4);
         textColor = theme.colorScheme.primary;
         break;
       case 2:
-        bgColor = theme.colorScheme.error.withValues(alpha: 0.15);
-        borderColor = theme.colorScheme.error.withValues(alpha: 0.4);
+        bgColor = theme.colorScheme.error.withOpacity(0.15);
+        borderColor = theme.colorScheme.error.withOpacity(0.4);
         textColor = theme.colorScheme.error;
         break;
       case 0:
       default:
-        bgColor = theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
-        borderColor = theme.colorScheme.onSurface.withValues(alpha: 0.1);
+        bgColor = theme.colorScheme.surfaceContainerHighest.withOpacity(0.3);
+        borderColor = theme.colorScheme.onSurface.withOpacity(0.1);
         textColor = theme.colorScheme.onSurface;
         break;
     }
@@ -390,22 +390,22 @@ class ExtensionFilterSheetState extends State<ExtensionFilterSheet> {
                         ? Theme.of(context)
                             .colorScheme
                             .primary
-                            .withValues(alpha: 0.15)
+                            .withOpacity(0.15)
                         : Theme.of(context)
                             .colorScheme
                             .surfaceContainerHighest
-                            .withValues(alpha: 0.3),
+                            .withOpacity(0.3),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: state.index == j
                           ? Theme.of(context)
                               .colorScheme
                               .primary
-                              .withValues(alpha: 0.4)
+                              .withOpacity(0.4)
                           : Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withValues(alpha: 0.1),
+                              .withOpacity(0.1),
                     ),
                   ),
                   child: Row(
@@ -449,23 +449,23 @@ class ExtensionFilterSheetState extends State<ExtensionFilterSheet> {
         decoration: InputDecoration(
           labelText: f.name,
           labelStyle: TextStyle(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
             fontSize: 13,
           ),
           isDense: true,
           filled: true,
-          fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+              color: theme.colorScheme.onSurface.withOpacity(0.1),
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(
-              color: theme.colorScheme.primary.withValues(alpha: 0.4),
+              color: theme.colorScheme.primary.withOpacity(0.4),
             ),
           ),
         ),
@@ -489,13 +489,13 @@ class ExtensionFilterSheetState extends State<ExtensionFilterSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primary.withValues(alpha: 0.15)
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              ? theme.colorScheme.primary.withOpacity(0.15)
+              : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? theme.colorScheme.primary.withValues(alpha: 0.4)
-                : theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                ? theme.colorScheme.primary.withOpacity(0.4)
+                : theme.colorScheme.onSurface.withOpacity(0.1),
           ),
         ),
         child: AnymeXText(label,
@@ -586,7 +586,7 @@ class _GroupFilterWidgetState extends State<_GroupFilterWidget> {
                   hintText: 'Search ${group.name.toLowerCase()}...',
                   hintStyle: theme.textTheme.bodyMedium?.copyWith(
                     fontSize: 13,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                    color: theme.colorScheme.onSurface.withOpacity(0.45),
                   ),
                   prefixIcon: Icon(
                     IconlyLight.search,
@@ -598,7 +598,7 @@ class _GroupFilterWidgetState extends State<_GroupFilterWidget> {
                           icon: Icon(
                             Icons.cancel_rounded,
                             size: 16,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
                           onPressed: () {
                             _searchController.clear();
@@ -612,17 +612,17 @@ class _GroupFilterWidgetState extends State<_GroupFilterWidget> {
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.35),
+                      .withOpacity(0.35),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                      color: theme.colorScheme.onSurface.withOpacity(0.08),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                      color: theme.colorScheme.primary.withOpacity(0.4),
                     ),
                   ),
                 ),
@@ -640,7 +640,7 @@ class _GroupFilterWidgetState extends State<_GroupFilterWidget> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: AnymeXText.regular('No matches found',
                 size: 12,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
               ),
             ),
           if (flatItems.isNotEmpty) ...[
@@ -771,19 +771,19 @@ class _GroupFilterWidgetState extends State<_GroupFilterWidget> {
 
     switch (tri.state) {
       case 1:
-        bgColor = theme.colorScheme.primary.withValues(alpha: 0.15);
-        borderColor = theme.colorScheme.primary.withValues(alpha: 0.4);
+        bgColor = theme.colorScheme.primary.withOpacity(0.15);
+        borderColor = theme.colorScheme.primary.withOpacity(0.4);
         textColor = theme.colorScheme.primary;
         break;
       case 2:
-        bgColor = theme.colorScheme.error.withValues(alpha: 0.15);
-        borderColor = theme.colorScheme.error.withValues(alpha: 0.4);
+        bgColor = theme.colorScheme.error.withOpacity(0.15);
+        borderColor = theme.colorScheme.error.withOpacity(0.4);
         textColor = theme.colorScheme.error;
         break;
       case 0:
       default:
-        bgColor = theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
-        borderColor = theme.colorScheme.onSurface.withValues(alpha: 0.1);
+        bgColor = theme.colorScheme.surfaceContainerHighest.withOpacity(0.3);
+        borderColor = theme.colorScheme.onSurface.withOpacity(0.1);
         textColor = theme.colorScheme.onSurface;
         break;
     }
@@ -847,13 +847,13 @@ class _GroupFilterWidgetState extends State<_GroupFilterWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primary.withValues(alpha: 0.15)
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              ? theme.colorScheme.primary.withOpacity(0.15)
+              : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? theme.colorScheme.primary.withValues(alpha: 0.4)
-                : theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                ? theme.colorScheme.primary.withOpacity(0.4)
+                : theme.colorScheme.onSurface.withOpacity(0.1),
           ),
         ),
         child: AnymeXText(label,

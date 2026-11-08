@@ -26,13 +26,15 @@ export CARGOKIT_CONFIGURATION=$CONFIGURATION
 export CARGOKIT_MANIFEST_DIR=$PODS_TARGET_SRCROOT/$1
 
 # Temporary directory for build artifacts.
-export CARGOKIT_TARGET_TEMP_DIR=$TARGET_TEMP_DIR
+# AnymeX+: CI sets ANYMEXPLUS_CARGOKIT_DIR to a folder it keeps between
+# builds, so the Rust library isn't compiled from scratch every time.
+export CARGOKIT_TARGET_TEMP_DIR=${ANYMEXPLUS_CARGOKIT_DIR:-$TARGET_TEMP_DIR}
 
 # Output directory for final artifacts.
 export CARGOKIT_OUTPUT_DIR=$PODS_CONFIGURATION_BUILD_DIR/$PRODUCT_NAME
 
 # Directory to store built tool artifacts.
-export CARGOKIT_TOOL_TEMP_DIR=$TARGET_TEMP_DIR/build_tool
+export CARGOKIT_TOOL_TEMP_DIR=${ANYMEXPLUS_CARGOKIT_DIR:-$TARGET_TEMP_DIR}/build_tool
 
 # Directory inside root project. Not necessarily the top level directory of root project.
 export CARGOKIT_ROOT_PROJECT_DIR=$SRCROOT

@@ -241,7 +241,7 @@ class _ActivityDetailsSheetState extends State<ActivityDetailsSheet> {
                               width: 40,
                               height: 4,
                               decoration: BoxDecoration(
-                                color: Colors.grey.withValues(alpha: 0.3),
+                                color: Colors.grey.withOpacity(0.3),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
@@ -310,7 +310,7 @@ class _ActivityDetailsSheetState extends State<ActivityDetailsSheet> {
                       color: context.theme.colorScheme.surfaceContainer,
                       border: Border(
                         top: BorderSide(
-                          color: context.theme.dividerColor.withValues(alpha: 0.1),
+                          color: context.theme.dividerColor.withOpacity(0.1),
                         ),
                       ),
                     ),
@@ -339,7 +339,7 @@ class _ActivityDetailsSheetState extends State<ActivityDetailsSheet> {
   }
 
   Widget _buildReplyCard(ActivityReply reply) {
-    final subtleText = context.theme.colorScheme.onSurface.withValues(alpha: 0.7);
+    final subtleText = context.theme.colorScheme.onSurface.withOpacity(0.7);
     final currentUserId =
         Get.find<AnilistAuth>().profileData.value.id.toString();
 
@@ -548,7 +548,7 @@ class _ActivityDetailsSheetState extends State<ActivityDetailsSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
+                      color: Colors.grey.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -583,7 +583,7 @@ class _ActivityDetailsSheetState extends State<ActivityDetailsSheet> {
                   Divider(
                     height: 1,
                     color: dragContext.theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.3),
+                        .withOpacity(0.3),
                   ),
                   Expanded(
                     child: ListView.builder(
@@ -645,9 +645,9 @@ class _ActivityDetailsSheetState extends State<ActivityDetailsSheet> {
                       end: Alignment.centerRight,
                       colors: [
                         context.theme.colorScheme.surfaceContainer
-                            .withValues(alpha: 0.95),
+                            .withOpacity(0.95),
                         context.theme.colorScheme.surfaceContainer
-                            .withValues(alpha: 0.8),
+                            .withOpacity(0.8),
                         Colors.transparent,
                       ],
                       stops: const [0.0, 0.5, 1.0],

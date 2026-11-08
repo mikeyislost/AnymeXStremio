@@ -135,14 +135,14 @@ class DesktopStatsGrid extends StatelessWidget {
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: context.theme.colorScheme.surfaceContainerHigh
-                            .withValues(alpha: 0.3),
+                            .withOpacity(0.3),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isHovered
                               ? context.theme.colorScheme.primary
-                                  .withValues(alpha: 0.9)
+                                  .withOpacity(0.9)
                               : context.theme.colorScheme.outlineVariant
-                                  .withValues(alpha: 0.15),
+                                  .withOpacity(0.15),
                           width: isHovered ? 2.5 : 1.0,
                           strokeAlign: BorderSide.strokeAlignOutside,
                         ),
@@ -150,7 +150,7 @@ class DesktopStatsGrid extends StatelessWidget {
                             ? [
                                 BoxShadow(
                                   color: Colors.black
-                                      .withValues(alpha: isHovered ? 0.7 : 0.45),
+                                      .withOpacity(isHovered ? 0.7 : 0.45),
                                   blurRadius: isHovered ? 24 : 20,
                                   spreadRadius: isHovered ? 4 : 2,
                                   offset: const Offset(0, 8),
@@ -158,7 +158,7 @@ class DesktopStatsGrid extends StatelessWidget {
                                 if (isHovered)
                                   BoxShadow(
                                     color: context.theme.colorScheme.primary
-                                        .withValues(alpha: 0.4),
+                                        .withOpacity(0.4),
                                     blurRadius: 28,
                                     spreadRadius: 6,
                                   ),
@@ -166,14 +166,14 @@ class DesktopStatsGrid extends StatelessWidget {
                             : (isHovered
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.2),
+                                      color: Colors.black.withOpacity(0.2),
                                       blurRadius: 16,
                                       spreadRadius: 2,
                                       offset: const Offset(0, 4),
                                     ),
                                     BoxShadow(
                                       color: context.theme.colorScheme.primary
-                                          .withValues(alpha: 0.35),
+                                          .withOpacity(0.35),
                                       blurRadius: 24,
                                       spreadRadius: 4,
                                     ),
@@ -195,7 +195,7 @@ class DesktopStatsGrid extends StatelessWidget {
                             Positioned.fill(
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.55),
+                                  color: Colors.black.withOpacity(0.55),
                                 ),
                               ),
                             ),
@@ -213,10 +213,10 @@ class DesktopStatsGrid extends StatelessWidget {
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.2,
                                     color: hasThumbs
-                                        ? Colors.white.withValues(alpha: 0.7)
+                                        ? Colors.white.withOpacity(0.7)
                                         : context
                                             .theme.colorScheme.onSurfaceVariant
-                                            .withValues(alpha: 0.6),
+                                            .withOpacity(0.6),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -245,10 +245,10 @@ class DesktopStatsGrid extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: hasThumbs
-                                        ? Colors.white.withValues(alpha: 0.8)
+                                        ? Colors.white.withOpacity(0.8)
                                         : context
                                             .theme.colorScheme.onSurfaceVariant
-                                            .withValues(alpha: 0.8),
+                                            .withOpacity(0.8),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -265,17 +265,17 @@ class DesktopStatsGrid extends StatelessWidget {
                                 size: 14,
                                 color: isHovered
                                     ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.7),
+                                    : Colors.white.withOpacity(0.7),
                                 shadows: isHovered
                                     ? [
                                         Shadow(
-                                          color: Colors.white.withValues(alpha: 0.8),
+                                          color: Colors.white.withOpacity(0.8),
                                           blurRadius: 8,
                                         ),
                                         Shadow(
                                           color: context
                                               .theme.colorScheme.primary
-                                              .withValues(alpha: 0.6),
+                                              .withOpacity(0.6),
                                           blurRadius: 12,
                                         ),
                                       ]
@@ -347,7 +347,7 @@ class ScoreCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(compact ? 10 : 12),
       decoration: BoxDecoration(
-        color: context.theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
+        color: context.theme.colorScheme.secondaryContainer.withOpacity(0.3),
         borderRadius: BorderRadius.circular(compact ? 14 : 16),
       ),
       child: Row(
@@ -475,7 +475,7 @@ class _PressableHighlightCardState extends State<_PressableHighlightCard> {
           borderRadius: BorderRadius.circular(radius),
           elevation: _isPressed ? 0 : (widget.imageUrl != null ? 4 : 1),
           shadowColor:
-              colors.shadow.withValues(alpha: widget.imageUrl != null ? 0.3 : 0.15),
+              colors.shadow.withOpacity(widget.imageUrl != null ? 0.3 : 0.15),
           child: InkWell(
             onTap: widget.onTap,
             onHighlightChanged: (pressed) {
@@ -484,8 +484,8 @@ class _PressableHighlightCardState extends State<_PressableHighlightCard> {
               }
             },
             borderRadius: BorderRadius.circular(radius),
-            splashColor: widget.color.withValues(alpha: 0.08),
-            highlightColor: widget.color.withValues(alpha: 0.05),
+            splashColor: widget.color.withOpacity(0.08),
+            highlightColor: widget.color.withOpacity(0.05),
             child: Container(
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
@@ -493,15 +493,15 @@ class _PressableHighlightCardState extends State<_PressableHighlightCard> {
                 border: Border.all(
                   color: widget.imageUrl != null
                       ? (_isPressed
-                          ? colors.primary.withValues(alpha: 0.8)
-                          : colors.outlineVariant.withValues(alpha: 0.15))
-                      : colors.outlineVariant.withValues(alpha: 0.3),
+                          ? colors.primary.withOpacity(0.8)
+                          : colors.outlineVariant.withOpacity(0.15))
+                      : colors.outlineVariant.withOpacity(0.3),
                   width: widget.imageUrl != null && _isPressed ? 1.5 : 1,
                 ),
                 boxShadow: widget.imageUrl != null && _isPressed
                     ? [
                         BoxShadow(
-                          color: colors.primary.withValues(alpha: 0.3),
+                          color: colors.primary.withOpacity(0.3),
                           blurRadius: 16,
                           spreadRadius: 2,
                         )
@@ -523,7 +523,7 @@ class _PressableHighlightCardState extends State<_PressableHighlightCard> {
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
+                          color: Colors.black.withOpacity(0.55),
                         ),
                       ),
                     ),
@@ -539,7 +539,7 @@ class _PressableHighlightCardState extends State<_PressableHighlightCard> {
                           Icon(
                             widget.icon,
                             color: widget.imageUrl != null
-                                ? Colors.white.withValues(alpha: 0.9)
+                                ? Colors.white.withOpacity(0.9)
                                 : widget.color,
                             size: widget.compact ? 18 : 28,
                           ),
@@ -563,7 +563,7 @@ class _PressableHighlightCardState extends State<_PressableHighlightCard> {
                               fontSize: widget.compact ? 10 : 12,
                               fontWeight: FontWeight.w500,
                               color: widget.imageUrl != null
-                                  ? Colors.white.withValues(alpha: 0.8)
+                                  ? Colors.white.withOpacity(0.8)
                                   : colors.onSurfaceVariant,
                             ),
                             maxLines: 1,
@@ -582,11 +582,11 @@ class _PressableHighlightCardState extends State<_PressableHighlightCard> {
                         size: 14,
                         color: _isPressed
                             ? Colors.white
-                            : Colors.white.withValues(alpha: 0.7),
+                            : Colors.white.withOpacity(0.7),
                         shadows: _isPressed
                             ? [
                                 Shadow(
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  color: Colors.white.withOpacity(0.8),
                                   blurRadius: 8,
                                 )
                               ]

@@ -723,7 +723,7 @@ class _SettingsThemeState extends State<SettingsTheme> {
                         boxShadow: [
                           BoxShadow(
                             color: (isValid ? previewColor : Colors.grey)
-                                .withValues(alpha: 0.4),
+                                .withOpacity(0.4),
                             blurRadius: 12,
                             spreadRadius: 2,
                           ),

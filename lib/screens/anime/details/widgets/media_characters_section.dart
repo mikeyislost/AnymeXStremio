@@ -81,7 +81,7 @@ Widget buildCharacterCard(BuildContext context, Character character) {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
+                      color: Colors.black.withOpacity(0.65),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(

@@ -39,7 +39,7 @@ class UserCommentsSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: Colors.black.withOpacity(0.55),
       builder: (context) => _UserCommentsSheetContent(
         comment: comment,
         controller: controller,
@@ -91,7 +91,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
       color: colorScheme.surface,
       border: Border.all(
-        color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+        color: colorScheme.outlineVariant.withOpacity(0.2),
         width: 1,
       ),
       child: FutureBuilder<List<dynamic>>(
@@ -206,9 +206,9 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
                         const SizedBox(height: 8),
                         AnymeXContainer(
                           radius: 16,
-                          color: colorScheme.errorContainer.withValues(alpha: 0.08),
+                          color: colorScheme.errorContainer.withOpacity(0.08),
                           border: Border.all(
-                            color: colorScheme.error.withValues(alpha: 0.25),
+                            color: colorScheme.error.withOpacity(0.25),
                           ),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 10),
@@ -311,9 +311,9 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withValues(alpha: 0.35),
+                            Colors.black.withOpacity(0.35),
                             Colors.transparent,
-                            colorScheme.surface.withValues(alpha: 0.7),
+                            colorScheme.surface.withOpacity(0.7),
                             colorScheme.surface,
                           ],
                           stops: const [0.0, 0.3, 0.75, 1.0],
@@ -351,7 +351,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
                 width: 38,
                 height: 4.5,
                 radius: 3,
-                color: Colors.white.withValues(alpha: 0.65),
+                color: Colors.white.withOpacity(0.65),
               ),
             ),
           ),
@@ -367,7 +367,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
                 shape: BoxShape.circle,
                 color: colorScheme.surface,
                 shadow: BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
+                  color: Colors.black.withOpacity(0.25),
                   blurRadius: 10,
                   offset: const Offset(0, 3),
                 ),
@@ -392,8 +392,8 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            colorScheme.primary.withValues(alpha: 0.3),
-            colorScheme.secondary.withValues(alpha: 0.2),
+            colorScheme.primary.withOpacity(0.3),
+            colorScheme.secondary.withOpacity(0.2),
             colorScheme.surfaceContainerHigh,
           ],
         ),
@@ -456,7 +456,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: Colors.white.withOpacity(0.25),
               width: 1,
             ),
             image: DecorationImage(
@@ -465,7 +465,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withOpacity(0.2),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -473,7 +473,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
           ),
           child: AnymeXContainer(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-            color: Colors.black.withValues(alpha: 0.38),
+            color: Colors.black.withOpacity(0.38),
             child: nameRow,
           ),
         ),
@@ -618,8 +618,8 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
   }) {
     return AnymeXContainer(
       radius: 20,
-      color: color.withValues(alpha: 0.12),
-      border: Border.all(color: color.withValues(alpha: 0.35)),
+      color: color.withOpacity(0.12),
+      border: Border.all(color: color.withOpacity(0.35)),
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5.5),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -655,7 +655,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
       radius: 16,
       color: colorScheme.surfaceContainerLow,
       border: Border.all(
-        color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+        color: colorScheme.outlineVariant.withOpacity(0.2),
         width: 1,
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
@@ -666,7 +666,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
             width: 32,
             height: 32,
             radius: 16,
-            color: color.withValues(alpha: 0.12),
+            color: color.withOpacity(0.12),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(height: 6),
@@ -711,7 +711,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
       radius: 16,
       color: colorScheme.surfaceContainerLow,
       border: Border.all(
-        color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+        color: colorScheme.outlineVariant.withOpacity(0.2),
         width: 1,
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
@@ -722,7 +722,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
             width: 32,
             height: 32,
             radius: 16,
-            color: colorScheme.tertiary.withValues(alpha: 0.12),
+            color: colorScheme.tertiary.withOpacity(0.12),
             child: Icon(Icons.cake_outlined,
                 size: 18, color: colorScheme.tertiary),
           ),
@@ -769,9 +769,9 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
         if (p.value > 0)
           AnymeXContainer(
             radius: 10,
-            color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+            color: colorScheme.surfaceContainerHigh.withOpacity(0.5),
             border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.25),
+              color: colorScheme.outlineVariant.withOpacity(0.25),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             child: AnymeXText(

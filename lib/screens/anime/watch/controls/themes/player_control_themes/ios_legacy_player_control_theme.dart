@@ -575,12 +575,12 @@ class _IosLegacyGlassPanel extends StatelessWidget {
             color: const Color(0x66101216),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.16),
+              color: Colors.white.withOpacity(0.16),
               width: 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.24),
+                color: Colors.black.withOpacity(0.24),
                 blurRadius: 18,
                 spreadRadius: 2,
               ),
@@ -631,14 +631,14 @@ class _IosLegacyGlassIconButton extends StatelessWidget {
                       ? const Color(0x551C2026)
                       : const Color(0x221C2026),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: effectiveEnabled ? 0.18 : 0.08),
+                    color: Colors.white.withOpacity(effectiveEnabled ? 0.18 : 0.08),
                     width: 1.0,
                   ),
                 ),
                 child: Icon(
                   icon,
                   size: size * 0.48,
-                  color: Colors.white.withValues(alpha: effectiveEnabled ? 0.95 : 0.35),
+                  color: Colors.white.withOpacity(effectiveEnabled ? 0.95 : 0.35),
                 ),
               ),
             ),
@@ -679,12 +679,12 @@ class _IosLegacyGlassPlayButton extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: const Color(0x66181C22),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.24),
+                  color: Colors.white.withOpacity(0.24),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withOpacity(0.3),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
@@ -732,7 +732,7 @@ class _IosLegacyGlassTag extends StatelessWidget {
             color: const Color(0x441A1E24),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.14),
+              color: Colors.white.withOpacity(0.14),
               width: 0.9,
             ),
           ),
@@ -780,7 +780,7 @@ class _IosLegacyGlassActionChip extends StatelessWidget {
                 color: const Color(0x551A1E24),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: Colors.white.withOpacity(0.18),
                   width: 1,
                 ),
               ),
@@ -881,7 +881,7 @@ class _IosLegacyUnlockButtonState extends State<_IosLegacyUnlockButton>
                 color: const Color(0x66181C22),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                   width: 1,
                 ),
               ),

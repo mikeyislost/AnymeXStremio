@@ -60,9 +60,9 @@ Widget _buildDynamicTabBar({
           height: height,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: colors.surfaceContainerHighest.withValues(alpha: 0.4),
+            color: colors.surfaceContainerHighest.withOpacity(0.4),
             borderRadius: BorderRadius.circular(height == 54 ? 20 : 16),
-            border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+            border: Border.all(color: colors.outline.withOpacity(0.1)),
           ),
           child: Stack(children: [
             AnimatedAlign(
@@ -78,7 +78,7 @@ Widget _buildDynamicTabBar({
                     borderRadius: BorderRadius.circular(height == 54 ? 16 : 12),
                     boxShadow: [
                       BoxShadow(
-                          color: colors.primary.withValues(alpha: 0.3),
+                          color: colors.primary.withOpacity(0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2))
                     ],
@@ -579,9 +579,9 @@ class _DownloadScreenState extends State<DownloadScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.55),
+          color: Colors.black.withOpacity(0.55),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

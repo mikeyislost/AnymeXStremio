@@ -373,7 +373,7 @@ class _ForksPage extends StatelessWidget {
                     color: theme.colorScheme.surfaceContainer.opaque(0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: colors.outlineVariant.withValues(alpha: 0.35),
+                      color: colors.outlineVariant.withOpacity(0.35),
                       width: 1,
                     ),
                   ),
@@ -397,7 +397,7 @@ class _ForksPage extends StatelessWidget {
                           fork.description,
                           style: TextStyle(
                             fontSize: 12,
-                            color: colors.onSurface.withValues(alpha: 0.6),
+                            color: colors.onSurface.withOpacity(0.6),
                           ),
                         ),
                         AnymeXText(

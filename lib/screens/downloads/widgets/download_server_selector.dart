@@ -444,10 +444,10 @@ class _DownloadServerSelectorState extends State<DownloadServerSelector> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: theme.primary.withValues(alpha: 0.12),
+                                          color: theme.primary.withOpacity(0.12),
                                           borderRadius: BorderRadius.circular(6),
                                           border: Border.all(
-                                              color: theme.primary.withValues(alpha: 0.3)),
+                                              color: theme.primary.withOpacity(0.3)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -476,10 +476,10 @@ class _DownloadServerSelectorState extends State<DownloadServerSelector> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: Colors.purple.withValues(alpha: 0.12),
+                                          color: Colors.purple.withOpacity(0.12),
                                           borderRadius: BorderRadius.circular(6),
                                           border: Border.all(
-                                              color: Colors.purple.withValues(alpha: 0.3)),
+                                              color: Colors.purple.withOpacity(0.3)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -519,10 +519,10 @@ class _DownloadServerSelectorState extends State<DownloadServerSelector> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 7, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: Colors.orange.withValues(alpha: 0.12),
+                                        color: Colors.orange.withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                            color: Colors.orange.withValues(alpha: 0.3)),
+                                            color: Colors.orange.withOpacity(0.3)),
                                       ),
                                       child: const AnymeXText('HLS',
                                           style: TextStyle(
@@ -535,10 +535,10 @@ class _DownloadServerSelectorState extends State<DownloadServerSelector> {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 7, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.withValues(alpha: 0.12),
+                                        color: Colors.green.withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                            color: Colors.green.withValues(alpha: 0.3)),
+                                            color: Colors.green.withOpacity(0.3)),
                                       ),
                                       child: const AnymeXText('Direct',
                                           style: TextStyle(

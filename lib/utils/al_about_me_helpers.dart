@@ -27,7 +27,7 @@ class _AnilistSpoilerWidgetState extends State<AnilistSpoilerWidget> {
         color: context.theme.colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: context.theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: context.theme.colorScheme.outlineVariant.withOpacity(0.4),
         ),
       ),
       clipBehavior: Clip.hardEdge,
@@ -48,7 +48,7 @@ class _AnilistSpoilerWidgetState extends State<AnilistSpoilerWidget> {
             Icon(Icons.visibility_off_rounded,
                 size: 16,
                 color: context.theme.colorScheme.onSurfaceVariant
-                    .withValues(alpha: 0.7)),
+                    .withOpacity(0.7)),
             const SizedBox(width: 8),
             AnymeXText(
               'Spoiler \u2014 tap to reveal',
@@ -56,7 +56,7 @@ class _AnilistSpoilerWidgetState extends State<AnilistSpoilerWidget> {
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color:
-                    context.theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    context.theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -245,9 +245,9 @@ class AnilistExternalTile extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           children: [

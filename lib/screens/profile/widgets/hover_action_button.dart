@@ -34,18 +34,18 @@ class _HoverActionButtonState extends State<HoverActionButton> {
           padding: widget.padding,
           decoration: BoxDecoration(
             color: _isHovered
-                ? context.theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
-                : Colors.black.withValues(alpha: 0.4),
+                ? context.theme.colorScheme.primaryContainer.withOpacity(0.4)
+                : Colors.black.withOpacity(0.4),
             borderRadius: BorderRadius.circular(10),
             border: _isHovered
                 ? Border.all(
-                    color: context.theme.colorScheme.primary.withValues(alpha: 0.5),
+                    color: context.theme.colorScheme.primary.withOpacity(0.5),
                   )
                 : null,
             boxShadow: _isHovered
                 ? [
                     BoxShadow(
-                      color: context.theme.colorScheme.primary.withValues(alpha: 0.3),
+                      color: context.theme.colorScheme.primary.withOpacity(0.3),
                       blurRadius: 10,
                       spreadRadius: 1,
                     )

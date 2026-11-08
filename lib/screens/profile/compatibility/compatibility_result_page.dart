@@ -353,7 +353,7 @@ class _CompatibilityResultPageState extends State<CompatibilityResultPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 4),
                             decoration: BoxDecoration(
-                              color: rankColor.withValues(alpha: 0.18),
+                              color: rankColor.withOpacity(0.18),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: rankColor,
@@ -430,7 +430,7 @@ class _CompatibilityResultPageState extends State<CompatibilityResultPage> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: borderColor.withValues(alpha: 0.2),
+                    color: borderColor.withOpacity(0.2),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -1259,10 +1259,10 @@ class _CompatibilityResultPageState extends State<CompatibilityResultPage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
                 border:
-                    Border.all(color: Colors.black.withValues(alpha: 0.5), width: 1),
+                    Border.all(color: Colors.black.withOpacity(0.5), width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.35),
+                    color: Colors.black.withOpacity(0.35),
                     blurRadius: 4,
                     offset: const Offset(1, 1),
                   ),
@@ -1804,7 +1804,7 @@ class _CompatibilityResultPageState extends State<CompatibilityResultPage> {
                               border: Border.all(color: c.primary, width: 1.5),
                               boxShadow: [
                                 BoxShadow(
-                                  color: c.primary.withValues(alpha: 0.2),
+                                  color: c.primary.withOpacity(0.2),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -2125,7 +2125,7 @@ class _CompatibilityResultPageState extends State<CompatibilityResultPage> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: c.primary.withValues(alpha: 0.12),
+                        color: c.primary.withOpacity(0.12),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -2671,10 +2671,10 @@ class _CompatibilityResultPageState extends State<CompatibilityResultPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: rankColor.withValues(alpha: 0.16),
+                                  color: rankColor.withOpacity(0.16),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                    color: rankColor.withValues(alpha: 0.4),
+                                    color: rankColor.withOpacity(0.4),
                                     width: 1,
                                   ),
                                 ),

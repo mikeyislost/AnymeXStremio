@@ -49,16 +49,16 @@ class ReaderChapterTransition extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.78),
-                  scheme.surface.withValues(alpha: 0.86),
-                  Colors.black.withValues(alpha: 0.82),
+                  Colors.black.withOpacity(0.78),
+                  scheme.surface.withOpacity(0.86),
+                  Colors.black.withOpacity(0.82),
                 ],
               ),
             ),
           ),
           DecoratedBox(
             decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.08),
+              color: scheme.primary.withOpacity(0.08),
             ),
           ),
           Center(
@@ -70,13 +70,13 @@ class ReaderChapterTransition extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
-                    color: scheme.surface.withValues(alpha: 0.72),
+                    color: scheme.surface.withOpacity(0.72),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.14),
+                      color: Colors.white.withOpacity(0.14),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.35),
+                        color: Colors.black.withOpacity(0.35),
                         blurRadius: 26,
                         offset: const Offset(0, 14),
                       ),
@@ -149,12 +149,12 @@ class ReaderChapterTransition extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: isTarget
-            ? scheme.primary.withValues(alpha: 0.16)
-            : scheme.onSurface.withValues(alpha: 0.06),
+            ? scheme.primary.withOpacity(0.16)
+            : scheme.onSurface.withOpacity(0.06),
         border: Border.all(
           color: isTarget
-              ? scheme.primary.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.12),
+              ? scheme.primary.withOpacity(0.5)
+              : Colors.white.withOpacity(0.12),
           width: isTarget ? 1.3 : 1,
         ),
       ),
@@ -166,8 +166,8 @@ class ReaderChapterTransition extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isTarget
-                  ? scheme.primary.withValues(alpha: 0.14)
-                  : scheme.onSurface.withValues(alpha: 0.06),
+                  ? scheme.primary.withOpacity(0.14)
+                  : scheme.onSurface.withOpacity(0.06),
             ),
             child: Icon(
               icon,
@@ -195,7 +195,7 @@ class ReaderChapterTransition extends StatelessWidget {
                   const SizedBox(height: 4),
                   AnymeXText(chapter.scanlator!,
                     size: 12,
-                    color: scheme.onSurface.withValues(alpha: 0.58),
+                    color: scheme.onSurface.withOpacity(0.58),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -227,8 +227,8 @@ class ReaderChapterTransition extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: context.colors.outline.withValues(alpha: 0.08),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        color: context.colors.outline.withOpacity(0.08),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Row(
         children: [
@@ -240,7 +240,7 @@ class ReaderChapterTransition extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: AnymeXText(text,
-              color: context.colors.onSurface.withValues(alpha: 0.82),
+              color: context.colors.onSurface.withOpacity(0.82),
               maxLines: 2,
             ),
           ),
@@ -254,8 +254,8 @@ class ReaderChapterTransition extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        color: context.colors.error.withValues(alpha: 0.08),
-        border: Border.all(color: context.colors.error.withValues(alpha: 0.3)),
+        color: context.colors.error.withOpacity(0.08),
+        border: Border.all(color: context.colors.error.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -284,7 +284,7 @@ class ReaderChapterTransition extends StatelessWidget {
             ? Icons.keyboard_double_arrow_down_rounded
             : Icons.keyboard_double_arrow_up_rounded,
         size: 22,
-        color: scheme.onSurface.withValues(alpha: 0.25),
+        color: scheme.onSurface.withOpacity(0.25),
       ),
     );
   }

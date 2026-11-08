@@ -60,7 +60,7 @@ class AnymeXSheet extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+            border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
           ),
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
           child: Column(
@@ -72,7 +72,7 @@ class AnymeXSheet extends StatelessWidget {
                   height: 3.5,
                   margin: const EdgeInsets.only(bottom: 14),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                    color: theme.colorScheme.onSurface.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
@@ -154,10 +154,10 @@ Widget loginSheetHelper({
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: colors.surfaceContainer.withValues(alpha: 0.3),
+            color: colors.surfaceContainer.withOpacity(0.3),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: colors.outline.withValues(alpha: 0.12),
+              color: colors.outline.withOpacity(0.12),
             ),
           ),
           child: Row(
@@ -184,7 +184,7 @@ Widget loginSheetHelper({
                       'Login inside the app (Recommended)',
                       style: TextStyle(
                         fontSize: 11,
-                        color: colors.onSurface.withValues(alpha: 0.55),
+                        color: colors.onSurface.withOpacity(0.55),
                       ),
                     ),
                   ],
@@ -192,7 +192,7 @@ Widget loginSheetHelper({
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: colors.onSurface.withValues(alpha: 0.4),
+                color: colors.onSurface.withOpacity(0.4),
               ),
             ],
           ),
@@ -204,10 +204,10 @@ Widget loginSheetHelper({
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: colors.surfaceContainer.withValues(alpha: 0.3),
+            color: colors.surfaceContainer.withOpacity(0.3),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: colors.outline.withValues(alpha: 0.12),
+              color: colors.outline.withOpacity(0.12),
             ),
           ),
           child: Row(
@@ -234,7 +234,7 @@ Widget loginSheetHelper({
                       'Login using your default browser',
                       style: TextStyle(
                         fontSize: 11,
-                        color: colors.onSurface.withValues(alpha: 0.55),
+                        color: colors.onSurface.withOpacity(0.55),
                       ),
                     ),
                   ],
@@ -242,7 +242,7 @@ Widget loginSheetHelper({
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: colors.onSurface.withValues(alpha: 0.4),
+                color: colors.onSurface.withOpacity(0.4),
               ),
             ],
           ),
@@ -255,10 +255,10 @@ Widget loginSheetHelper({
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colors.surfaceContainer.withValues(alpha: 0.3),
+              color: colors.surfaceContainer.withOpacity(0.3),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: colors.outline.withValues(alpha: 0.12),
+                color: colors.outline.withOpacity(0.12),
               ),
             ),
             child: Row(
@@ -285,7 +285,7 @@ Widget loginSheetHelper({
                         'Manually paste OAuth access token',
                         style: TextStyle(
                           fontSize: 11,
-                          color: colors.onSurface.withValues(alpha: 0.55),
+                          color: colors.onSurface.withOpacity(0.55),
                         ),
                       ),
                     ],
@@ -293,7 +293,7 @@ Widget loginSheetHelper({
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: colors.onSurface.withValues(alpha: 0.4),
+                  color: colors.onSurface.withOpacity(0.4),
                 ),
               ],
             ),

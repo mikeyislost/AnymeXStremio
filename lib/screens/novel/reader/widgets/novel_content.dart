@@ -348,7 +348,7 @@ class _DictionarySheetState extends State<_DictionarySheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                      color: colors.onSurface.withValues(alpha: 0.2),
+                      color: colors.onSurface.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 16),
           AnymeXText(widget.word,
@@ -378,7 +378,7 @@ class _DictionarySheetState extends State<_DictionarySheet> {
                           style: TextStyle(
                               fontSize: 12,
                               fontStyle: FontStyle.italic,
-                              color: colors.onSurface.withValues(alpha: 0.6))),
+                              color: colors.onSurface.withOpacity(0.6))),
                       const SizedBox(height: 4),
                       AnymeXText(e.definition, style: const TextStyle(fontSize: 15)),
                       if (e.example != null) ...[
@@ -387,7 +387,7 @@ class _DictionarySheetState extends State<_DictionarySheet> {
                             style: TextStyle(
                                 fontSize: 13,
                                 fontStyle: FontStyle.italic,
-                                color: colors.onSurface.withValues(alpha: 0.55)))
+                                color: colors.onSurface.withOpacity(0.55)))
                       ],
                     ],
                   );

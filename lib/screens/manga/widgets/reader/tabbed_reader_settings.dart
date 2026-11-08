@@ -183,7 +183,7 @@ class _ReadingModePage extends StatelessWidget {
                   color: context.colors.surfaceContainer,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: context.colors.outline.withValues(alpha: 0.1),
+                    color: context.colors.outline.withOpacity(0.1),
                   ),
                 ),
                 child: Row(
@@ -199,7 +199,7 @@ class _ReadingModePage extends StatelessWidget {
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? context.colors.primary.withValues(alpha: 0.2)
+                              ? context.colors.primary.withOpacity(0.2)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(9),
                         ),
@@ -212,7 +212,7 @@ class _ReadingModePage extends StatelessWidget {
                           size: 18,
                           color: isSelected
                               ? context.colors.primary
-                              : context.colors.onSurface.withValues(alpha: 0.6),
+                              : context.colors.onSurface.withOpacity(0.6),
                         ),
                       ),
                     );
@@ -235,7 +235,7 @@ class _ReadingModePage extends StatelessWidget {
                   color: context.colors.surfaceContainer,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: context.colors.outline.withValues(alpha: 0.1),
+                    color: context.colors.outline.withOpacity(0.1),
                   ),
                 ),
                 child: Row(
@@ -251,7 +251,7 @@ class _ReadingModePage extends StatelessWidget {
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? context.colors.primary.withValues(alpha: 0.2)
+                              ? context.colors.primary.withOpacity(0.2)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(9),
                         ),
@@ -266,7 +266,7 @@ class _ReadingModePage extends StatelessWidget {
                           size: 18,
                           color: isSelected
                               ? context.colors.primary
-                              : context.colors.onSurface.withValues(alpha: 0.6),
+                              : context.colors.onSurface.withOpacity(0.6),
                         ),
                       ),
                     );
@@ -288,7 +288,7 @@ class _ReadingModePage extends StatelessWidget {
                   color: context.colors.surfaceContainer,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: context.colors.outline.withValues(alpha: 0.1),
+                    color: context.colors.outline.withOpacity(0.1),
                   ),
                 ),
                 child: Row(
@@ -304,7 +304,7 @@ class _ReadingModePage extends StatelessWidget {
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? context.colors.primary.withValues(alpha: 0.2)
+                              ? context.colors.primary.withOpacity(0.2)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(9),
                         ),
@@ -317,7 +317,7 @@ class _ReadingModePage extends StatelessWidget {
                           size: 18,
                           color: isSelected
                               ? context.colors.primary
-                              : context.colors.onSurface.withValues(alpha: 0.6),
+                              : context.colors.onSurface.withOpacity(0.6),
                         ),
                       ),
                     );

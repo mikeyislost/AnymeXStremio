@@ -57,7 +57,7 @@ class _ReaderPageActionsSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: context.colors.onSurface.withValues(alpha: 0.2),
+              color: context.colors.onSurface.withOpacity(0.2),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -233,9 +233,9 @@ class _ActionButton extends StatelessWidget {
         width: 90,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: context.colors.surfaceContainerHighest.withOpacity(0.5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.colors.outline.withValues(alpha: 0.2)),
+          border: Border.all(color: context.colors.outline.withOpacity(0.2)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -53,7 +53,7 @@ class CompactEpisodeWidget extends StatelessWidget {
     if (isSelected) {
       return theme.colorScheme.primary.opaque(0.4, iReallyMeanIt: true);
     } else if (isFiller) {
-      return Colors.orange.withValues(alpha: 0.15);
+      return Colors.orange.withOpacity(0.15);
     } else {
       return theme.colorScheme.secondaryContainer.opaque(0.4);
     }
@@ -159,7 +159,7 @@ class CompactEpisodeWidget extends StatelessWidget {
           decoration: BoxDecoration(
             color: _getBackgroundColor(context, isFiller),
             borderRadius: BorderRadius.circular(12),
-            border: isFiller ? Border.all(color: Colors.orange.withValues(alpha: 0.3)) : null,
+            border: isFiller ? Border.all(color: Colors.orange.withOpacity(0.3)) : null,
           ),
           child: Row(
             children: [

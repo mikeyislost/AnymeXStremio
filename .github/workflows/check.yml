@@ -54,6 +54,18 @@ jobs:
           cat pubspec.lock
           echo "----- end pubspec.lock -----"
 
+      # rhttp's Rust packages: make a lock file when there is none (or on an
+      # upgrade run) and print it, so it can be committed.
+      - name: Show rhttp Cargo.lock
+        run: |
+          cd packages/rhttp/rust
+          if [ ! -f Cargo.lock ] || [ "${{ inputs.upgrade }}" = "true" ]; then
+            cargo generate-lockfile
+          fi
+          echo "----- Cargo.lock -----"
+          cat Cargo.lock
+          echo "----- end Cargo.lock -----"
+
       - name: Save pubspec.lock
         uses: actions/upload-artifact@v4
         with:

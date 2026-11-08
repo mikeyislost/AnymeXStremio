@@ -351,7 +351,7 @@ class Header extends StatelessWidget {
                         "Find your favourite Anime, Manga, Manhwa or whatever you like!",
                         style: TextStyle(
                           fontSize: 12,
-                          color: context.colors.onSurface.withValues(alpha: 0.7),
+                          color: context.colors.onSurface.withOpacity(0.7),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

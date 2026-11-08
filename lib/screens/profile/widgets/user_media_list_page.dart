@@ -309,7 +309,7 @@ class _UserMediaListPageState extends State<UserMediaListPage>
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: colors.onSurfaceVariant.withValues(alpha: 0.3),
+                  color: colors.onSurfaceVariant.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -413,7 +413,7 @@ class _UserMediaListPageState extends State<UserMediaListPage>
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: colors.onSurfaceVariant.withValues(alpha: 0.3),
+                    color: colors.onSurfaceVariant.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -476,8 +476,8 @@ class _UserMediaListPageState extends State<UserMediaListPage>
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
                               color: isSelected
-                                  ? colors.primary.withValues(alpha: 0.5)
-                                  : colors.outlineVariant.withValues(alpha: 0.3),
+                                  ? colors.primary.withOpacity(0.5)
+                                  : colors.outlineVariant.withOpacity(0.3),
                             ),
                           ),
                           padding: const EdgeInsets.symmetric(
@@ -660,7 +660,7 @@ class _UserMediaListPageState extends State<UserMediaListPage>
                     margin:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                      color: colors.surfaceContainerHighest.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -668,7 +668,7 @@ class _UserMediaListPageState extends State<UserMediaListPage>
                         const SizedBox(width: 14),
                         Icon(Iconsax.search_normal,
                             size: 18,
-                            color: colors.onSurfaceVariant.withValues(alpha: 0.5)),
+                            color: colors.onSurfaceVariant.withOpacity(0.5)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
@@ -680,7 +680,7 @@ class _UserMediaListPageState extends State<UserMediaListPage>
                               hintText: 'Search ${typeLabel.toLowerCase()}...',
                               hintStyle: TextStyle(
                                   color:
-                                      colors.onSurfaceVariant.withValues(alpha: 0.4),
+                                      colors.onSurfaceVariant.withOpacity(0.4),
                                   fontSize: 14),
                               border: InputBorder.none,
                               isDense: true,
@@ -751,14 +751,14 @@ class _UserMediaListPageState extends State<UserMediaListPage>
                   children: [
                     Icon(Iconsax.document,
                         size: 40,
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.3)),
+                        color: colors.onSurfaceVariant.withOpacity(0.3)),
                     const SizedBox(height: 12),
                     AnymeXText(
                       _searchQuery.isNotEmpty || _selectedGenres.isNotEmpty
                           ? 'No matches found'
                           : 'No entries in $name',
                       style: TextStyle(
-                          color: colors.onSurfaceVariant.withValues(alpha: 0.6)),
+                          color: colors.onSurfaceVariant.withOpacity(0.6)),
                     ),
                   ],
                 ),

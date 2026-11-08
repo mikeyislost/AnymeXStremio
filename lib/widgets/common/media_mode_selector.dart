@@ -509,7 +509,7 @@ class MediaModeSelector extends StatelessWidget {
 
     final iconColor = isSelected
         ? theme.colorScheme.onPrimary
-        : theme.colorScheme.onSurface.withValues(alpha: 0.6);
+        : theme.colorScheme.onSurface.withOpacity(0.6);
 
     return Center(
       child: Row(
@@ -635,7 +635,7 @@ class MediaModeSelector extends StatelessWidget {
 
     final iconColor = isSelected
         ? theme.colorScheme.onPrimary
-        : theme.colorScheme.onSurface.withValues(alpha: 0.6);
+        : theme.colorScheme.onSurface.withOpacity(0.6);
 
     return Center(
       child: Row(

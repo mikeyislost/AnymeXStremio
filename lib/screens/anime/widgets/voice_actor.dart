@@ -397,7 +397,7 @@ class StaffCarousel extends StatelessWidget {
                           AnymeXText(itemData.primaryOccupations!.join(", "),
                             maxLines: 1,
                             size: 10,
-                            color: context.colors.onSurface.withValues(alpha: 0.7),
+                            color: context.colors.onSurface.withOpacity(0.7),
                             overflow: TextOverflow.ellipsis,
                             isMarquee: true,
                           )

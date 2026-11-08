@@ -150,9 +150,9 @@ class _ProgressSliderState extends State<ProgressSlider> {
           trackShape: const IOSSliderTrackShape(),
           activeTrackColor: widget.activeTrackColor ?? Colors.white,
           inactiveTrackColor:
-              widget.inactiveTrackColor ?? Colors.white.withValues(alpha: 0.2),
+              widget.inactiveTrackColor ?? Colors.white.withOpacity(0.2),
           secondaryActiveTrackColor:
-              widget.secondaryActiveTrackColor ?? Colors.white.withValues(alpha: 0.4),
+              widget.secondaryActiveTrackColor ?? Colors.white.withOpacity(0.4),
           thumbColor: widget.thumbColor,
           overlayColor: widget.overlayColor ?? Colors.transparent,
         );

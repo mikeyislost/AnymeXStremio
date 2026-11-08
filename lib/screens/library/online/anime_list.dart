@@ -498,8 +498,8 @@ class _AnimeListState extends State<AnimeList> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
                           color: isSelected
-                              ? colors.primary.withValues(alpha: 0.5)
-                              : colors.outlineVariant.withValues(alpha: 0.3),
+                              ? colors.primary.withOpacity(0.5)
+                              : colors.outlineVariant.withOpacity(0.3),
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(
@@ -822,14 +822,14 @@ class _AnimeListState extends State<AnimeList> with TickerProviderStateMixin {
                       children: [
                         Icon(Iconsax.document,
                             size: 40,
-                            color: colors.onSurfaceVariant.withValues(alpha: 0.3)),
+                            color: colors.onSurfaceVariant.withOpacity(0.3)),
                         const SizedBox(height: 12),
                         AnymeXText(
                           _searchQuery.isNotEmpty || _selectedGenres.isNotEmpty
                               ? 'No matches found'
                               : 'No entries in $tab',
                           style: TextStyle(
-                              color: colors.onSurfaceVariant.withValues(alpha: 0.6)),
+                              color: colors.onSurfaceVariant.withOpacity(0.6)),
                         ),
                       ],
                     ),

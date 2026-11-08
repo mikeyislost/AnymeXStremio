@@ -303,7 +303,7 @@ class Ios26PlayerControlTheme extends PlayerControlTheme {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             color:
-                                                Colors.white.withValues(alpha: 0.7),
+                                                Colors.white.withOpacity(0.7),
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
                                             letterSpacing: 0.2,
@@ -341,10 +341,10 @@ class Ios26PlayerControlTheme extends PlayerControlTheme {
                                                 padding: const EdgeInsets.symmetric(
                                                     horizontal: 8, vertical: 3),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.black.withValues(alpha: 0.35),
+                                                  color: Colors.black.withOpacity(0.35),
                                                   borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(
-                                                      color: Colors.white.withValues(alpha: 0.15)),
+                                                      color: Colors.white.withOpacity(0.15)),
                                                 ),
                                                 child: AnymeXText(
                                                   '$pos / $dur',
@@ -617,12 +617,12 @@ class _Ios26GlassCapsule extends StatelessWidget {
             color: const Color(0x66181818),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.18),
+              color: Colors.white.withOpacity(0.18),
               width: 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
+                color: Colors.black.withOpacity(0.35),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -665,7 +665,7 @@ class _Ios26CapsuleIconButton extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 20,
-                color: Colors.white.withValues(alpha: 0.95),
+                color: Colors.white.withOpacity(0.95),
               ),
             ),
           ),
@@ -712,12 +712,12 @@ class _Ios26GlassCircleButton extends StatelessWidget {
                       ? const Color(0x66181818)
                       : const Color(0x22181818),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: enabled ? 0.2 : 0.08),
+                    color: Colors.white.withOpacity(enabled ? 0.2 : 0.08),
                     width: 1.0,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: Colors.black.withOpacity(0.3),
                       blurRadius: 16,
                       spreadRadius: 1,
                     ),
@@ -726,7 +726,7 @@ class _Ios26GlassCircleButton extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: size * 0.5,
-                  color: Colors.white.withValues(alpha: enabled ? 0.95 : 0.35),
+                  color: Colors.white.withOpacity(enabled ? 0.95 : 0.35),
                 ),
               ),
             ),
@@ -767,12 +767,12 @@ class _Ios26GlassMainPlayButton extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: const Color(0x77181818),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.25),
+                  color: Colors.white.withOpacity(0.25),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
+                    color: Colors.black.withOpacity(0.4),
                     blurRadius: 22,
                     spreadRadius: 2,
                   ),
@@ -829,12 +829,12 @@ class _Ios26GlassPillButton extends StatelessWidget {
                 color: const Color(0x66181818),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: Colors.white.withOpacity(0.18),
                   width: 1.0,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
+                    color: Colors.black.withOpacity(0.25),
                     blurRadius: 14,
                     spreadRadius: 1,
                   ),
@@ -887,7 +887,7 @@ class _Ios26GlassSkipChip extends StatelessWidget {
                 color: const Color(0x66181818),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                   width: 1,
                 ),
               ),
@@ -988,7 +988,7 @@ class _Ios26UnlockButtonState extends State<_Ios26UnlockButton>
                 color: const Color(0x66181818),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                   width: 1,
                 ),
               ),

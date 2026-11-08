@@ -576,7 +576,7 @@ class HeaderSearchBar extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: TextStyle(
-                color: context.colors.onSurface.withValues(alpha: 0.4),
+                color: context.colors.onSurface.withOpacity(0.4),
                 fontSize: 14,
                 fontFamily: 'Linotte',
               ),
@@ -595,7 +595,7 @@ class HeaderSearchBar extends StatelessWidget {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
                 borderSide: BorderSide(
-                  color: context.colors.primary.withValues(alpha: 0.3),
+                  color: context.colors.primary.withOpacity(0.3),
                   width: 1.0,
                 ),
               ),
@@ -639,7 +639,7 @@ class HeaderSubtitle extends StatelessWidget {
       autoResize: true,
       maxLines: 1,
       size: 11,
-      color: color ?? context.colors.onSurface.withValues(alpha: 0.55),
+      color: color ?? context.colors.onSurface.withOpacity(0.55),
     );
   }
 }
@@ -656,7 +656,7 @@ class HeaderGreetingSubtitle extends StatelessWidget {
         autoResize: true,
         maxLines: 1,
         size: 11,
-        color: context.colors.onSurface.withValues(alpha: 0.55),
+        color: context.colors.onSurface.withOpacity(0.55),
       ),
     );
   }
@@ -967,13 +967,13 @@ class SortTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isSelected
-            ? theme.colorScheme.secondary.withValues(alpha: 0.08)
-            : theme.colorScheme.surfaceVariant.withValues(alpha: 0.2),
+            ? theme.colorScheme.secondary.withOpacity(0.08)
+            : theme.colorScheme.surfaceVariant.withOpacity(0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isSelected
-              ? theme.colorScheme.secondary.withValues(alpha: 0.3)
-              : theme.colorScheme.outline.withValues(alpha: 0.08),
+              ? theme.colorScheme.secondary.withOpacity(0.3)
+              : theme.colorScheme.outline.withOpacity(0.08),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),

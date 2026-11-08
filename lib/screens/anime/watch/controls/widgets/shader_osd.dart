@@ -22,17 +22,17 @@ class ShaderOsd extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.75),
+              color: Colors.black.withOpacity(0.75),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isCleared
                     ? Colors.white24
-                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                    : Theme.of(context).colorScheme.primary.withOpacity(0.5),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: Colors.black.withOpacity(0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

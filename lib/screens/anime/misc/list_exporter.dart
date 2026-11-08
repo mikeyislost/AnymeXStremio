@@ -386,10 +386,10 @@ class _ListExporterPageState extends State<ListExporterPage> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                    color: colorScheme.surfaceContainer.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+                      color: colorScheme.outlineVariant.withOpacity(0.2),
                     ),
                   ),
                   child: Column(
@@ -450,10 +450,10 @@ class _ListExporterPageState extends State<ListExporterPage> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainer.withValues(alpha: 0.3),
+                    color: colorScheme.surfaceContainer.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+                      color: colorScheme.outlineVariant.withOpacity(0.2),
                     ),
                   ),
                   child: Column(
@@ -476,7 +476,7 @@ class _ListExporterPageState extends State<ListExporterPage> {
                       if (isAnilist) ...[
                         const SizedBox(height: 12),
                         Divider(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.2),
+                          color: colorScheme.outlineVariant.withOpacity(0.2),
                         ),
                         const SizedBox(height: 12),
                         _buildSettingsTile(

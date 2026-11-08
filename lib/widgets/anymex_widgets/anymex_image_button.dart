@@ -42,7 +42,7 @@ class ImageButton extends StatelessWidget {
     final colors = theme.colorScheme;
 
     final bgColor = theme.brightness == Brightness.dark
-        ? colors.primaryContainer.withValues(alpha: 0.2)
+        ? colors.primaryContainer.withOpacity(0.2)
         : colors.surfaceContainerLowest;
 
     final buttonColor = backgroundColor ?? bgColor;
@@ -123,8 +123,8 @@ class ImageButton extends StatelessWidget {
                                       end: Alignment.centerRight,
                                       colors: [
                                         bgColor,
-                                        bgColor.withValues(alpha: 0.6),
-                                        bgColor.withValues(alpha: 0),
+                                        bgColor.withOpacity(0.6),
+                                        bgColor.withOpacity(0),
                                       ],
                                     ),
                                   ),
@@ -151,7 +151,7 @@ class ImageButton extends StatelessWidget {
                                 Icon(
                                   icon,
                                   size: 10,
-                                  color: colors.onSurface.withValues(alpha: 0.55),
+                                  color: colors.onSurface.withOpacity(0.55),
                                 ),
                                 const SizedBox(width: 4),
                                 Flexible(
@@ -159,7 +159,7 @@ class ImageButton extends StatelessWidget {
                                     subText!,
                                     size: 9.5,
                                     variant: TextVariant.semiBold,
-                                    color: colors.onSurface.withValues(alpha: 0.55),
+                                    color: colors.onSurface.withOpacity(0.55),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     autoResize: true,
@@ -170,7 +170,7 @@ class ImageButton extends StatelessWidget {
                                 Icon(
                                   Icons.chevron_right_rounded,
                                   size: 10,
-                                  color: colors.onSurface.withValues(alpha: 0.35),
+                                  color: colors.onSurface.withOpacity(0.35),
                                 ),
                               ],
                             ),

@@ -503,10 +503,10 @@ class _PluginReleaseSheetState extends State<_PluginReleaseSheet>
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colors.surfaceContainerHigh.withValues(alpha: 0.5),
+                  color: colors.surfaceContainerHigh.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: colors.outlineVariant.withValues(alpha: 0.3),
+                    color: colors.outlineVariant.withOpacity(0.3),
                   ),
                 ),
                 child: SingleChildScrollView(
@@ -546,7 +546,7 @@ class _PluginReleaseSheetState extends State<_PluginReleaseSheet>
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: colors.primaryContainer.withValues(alpha: 0.6),
+              color: colors.primaryContainer.withOpacity(0.6),
               borderRadius: BorderRadius.circular(14),
             ),
             child: widget.installedVersion.isNotEmpty
@@ -600,10 +600,10 @@ class _PluginReleaseSheetState extends State<_PluginReleaseSheet>
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colors.surfaceContainer.withValues(alpha: 0.3),
+        color: colors.surfaceContainer.withOpacity(0.3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.3),
+          color: colors.outlineVariant.withOpacity(0.3),
         ),
       ),
       child: Column(
@@ -736,7 +736,7 @@ class _PluginReleaseSheetState extends State<_PluginReleaseSheet>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.7),
+        color: colors.surfaceContainerHighest.withOpacity(0.7),
         borderRadius: BorderRadius.circular(999),
       ),
       child: AnymeXText(

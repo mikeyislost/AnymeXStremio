@@ -237,7 +237,7 @@ class _FullscreenImageViewerState extends State<AnymeXFullscreenImageViewer> {
                   10, MediaQuery.paddingOf(context).top + 10, 10, 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                  colors: [Colors.black.withOpacity(0.8), Colors.transparent],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -274,7 +274,7 @@ class _FullscreenImageViewerState extends State<AnymeXFullscreenImageViewer> {
   Widget _buildCircleButton(
       {required IconData icon, required VoidCallback onTap}) {
     return Material(
-      color: Colors.black.withValues(alpha: 0.3),
+      color: Colors.black.withOpacity(0.3),
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: IconButton(

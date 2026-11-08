@@ -282,7 +282,7 @@ class _SettingsExtensionManagerState extends State<SettingsExtensionManager> {
                                 fontFamily: 'Linotte',
                                 fontSize: 12,
                                 color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.6),
+                                    .withOpacity(0.6),
                               ),
                             ),
                           ],

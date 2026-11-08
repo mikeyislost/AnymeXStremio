@@ -130,7 +130,7 @@ class _AnymeXHistoryPageState extends State<AnymeXHistoryPage> {
                           Icon(
                             IconlyLight.activity,
                             size: 64,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                            color: theme.colorScheme.onSurface.withOpacity(0.2),
                           ),
                           const SizedBox(height: 16),
                           AnymeXText(
@@ -139,7 +139,7 @@ class _AnymeXHistoryPageState extends State<AnymeXHistoryPage> {
                                 : 'No history found',
                             size: 16,
                             variant: TextVariant.semiBold,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                            color: theme.colorScheme.onSurface.withOpacity(0.4),
                           ),
                         ],
                       ),

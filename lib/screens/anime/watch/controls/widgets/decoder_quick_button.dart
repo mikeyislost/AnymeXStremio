@@ -74,12 +74,12 @@ class DecoderQuickButton extends StatelessWidget {
                     color: const Color(0x66181818),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: Colors.white.withOpacity(0.18),
                       width: 1.0,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.25),
+                        color: Colors.black.withOpacity(0.25),
                         blurRadius: 14,
                         spreadRadius: 1,
                       ),

@@ -210,7 +210,7 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                          color: theme.colorScheme.primary.withOpacity(0.12),
                           borderRadius:
                               BorderRadius.circular(12.multiplyRadius()),
                         ),
@@ -253,11 +253,11 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
                                     horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
                                   color:
-                                      theme.colorScheme.error.withValues(alpha: 0.12),
+                                      theme.colorScheme.error.withOpacity(0.12),
                                   borderRadius: leftRadius,
                                   border: Border.all(
                                     color: theme.colorScheme.error
-                                        .withValues(alpha: 0.2),
+                                        .withOpacity(0.2),
                                     width: 0.8,
                                   ),
                                 ),
@@ -343,10 +343,10 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.12),
+              color: theme.colorScheme.primary.withOpacity(0.12),
               borderRadius: leftRadius,
               border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                color: theme.colorScheme.primary.withOpacity(0.2),
                 width: 0.8,
               ),
             ),
@@ -364,10 +364,10 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: theme.colorScheme.error.withValues(alpha: 0.12),
+              color: theme.colorScheme.error.withOpacity(0.12),
               borderRadius: rightRadius,
               border: Border.all(
-                color: theme.colorScheme.error.withValues(alpha: 0.2),
+                color: theme.colorScheme.error.withOpacity(0.2),
                 width: 0.8,
               ),
             ),
@@ -509,7 +509,7 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+          color: theme.colorScheme.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10.multiplyRadius()),
         ),
         child: Icon(
@@ -538,7 +538,7 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.5),
+              color: theme.colorScheme.surfaceContainer.withOpacity(0.5),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -642,7 +642,7 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
             borderSide: BorderSide(color: theme.colorScheme.primary),
           ),
           filled: true,
-          fillColor: theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+          fillColor: theme.colorScheme.surfaceContainer.withOpacity(0.3),
         ),
       ),
       confirmText: 'Rename',
@@ -705,7 +705,7 @@ class _CustomListsEditorState extends State<CustomListsEditor> {
             borderSide: BorderSide(color: theme.colorScheme.primary),
           ),
           filled: true,
-          fillColor: theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+          fillColor: theme.colorScheme.surfaceContainer.withOpacity(0.3),
         ),
       ),
       confirmText: 'Create',
@@ -813,7 +813,7 @@ class __ListMediaEditorBottomSheetState
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color:
-              isSelected ? colors.primary : colors.onSurface.withValues(alpha: 0.24),
+              isSelected ? colors.primary : colors.onSurface.withOpacity(0.24),
           width: 2,
         ),
         color: isSelected ? colors.primary : Colors.transparent,
@@ -868,7 +868,7 @@ class __ListMediaEditorBottomSheetState
                         AnymeXText(
                           '${allItems.length} items total',
                           style: TextStyle(
-                            color: colors.onSurface.withValues(alpha: 0.5),
+                            color: colors.onSurface.withOpacity(0.5),
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
@@ -895,18 +895,18 @@ class __ListMediaEditorBottomSheetState
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        color: colors.surfaceContainer.withValues(alpha: 0.4),
+                        color: colors.surfaceContainer.withOpacity(0.4),
                             borderRadius: const BorderRadius.horizontal(
                                 left: Radius.circular(12),
                                 right: Radius.circular(5)),
                         border:
-                            Border.all(color: colors.outline.withValues(alpha: 0.1)),
+                            Border.all(color: colors.outline.withOpacity(0.1)),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Row(
                         children: [
                           Icon(Iconsax.search_normal_1,
-                              color: colors.onSurface.withValues(alpha: 0.5),
+                              color: colors.onSurface.withOpacity(0.5),
                               size: 18),
                           const SizedBox(width: 10),
                           Expanded(
@@ -919,7 +919,7 @@ class __ListMediaEditorBottomSheetState
                               decoration: InputDecoration(
                                 hintText: 'Search items in list...',
                                 hintStyle: TextStyle(
-                                  color: colors.onSurface.withValues(alpha: 0.4),
+                                  color: colors.onSurface.withOpacity(0.4),
                                   fontSize: 14,
                                 ),
                                 filled: false,
@@ -932,7 +932,7 @@ class __ListMediaEditorBottomSheetState
                             GestureDetector(
                               onTap: () => _searchController.clear(),
                               child: Icon(Icons.close_rounded,
-                                  color: colors.onSurface.withValues(alpha: 0.6),
+                                  color: colors.onSurface.withOpacity(0.6),
                                   size: 18),
                             ),
                         ],
@@ -953,8 +953,8 @@ class __ListMediaEditorBottomSheetState
                           height: 46,
                           decoration: BoxDecoration(
                                                     border:
-                            Border.all(color: colors.outline.withValues(alpha: 0.1)),
-                            color: colors.surfaceContainer.withValues(alpha: 0.4),
+                            Border.all(color: colors.outline.withOpacity(0.1)),
+                            color: colors.surfaceContainer.withOpacity(0.4),
                             borderRadius: const BorderRadius.horizontal(
                                 right: Radius.circular(12),
                                 left: Radius.circular(5)),
@@ -983,13 +983,13 @@ class __ListMediaEditorBottomSheetState
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? colors.primary.withValues(alpha: 0.08)
-                                  : colors.surfaceContainer.withValues(alpha: 0.4),
+                                  ? colors.primary.withOpacity(0.08)
+                                  : colors.surfaceContainer.withOpacity(0.4),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: isSelected
-                                    ? colors.primary.withValues(alpha: 0.4)
-                                    : colors.outline.withValues(alpha: 0.1),
+                                    ? colors.primary.withOpacity(0.4)
+                                    : colors.outline.withOpacity(0.1),
                                 width: isSelected ? 1.5 : 1.0,
                               ),
                             ),
@@ -1074,7 +1074,7 @@ class __ListMediaEditorBottomSheetState
                                                       vertical: 3),
                                               decoration: BoxDecoration(
                                                 color: colors.primary
-                                                    .withValues(alpha: 0.12),
+                                                    .withOpacity(0.12),
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                               ),
@@ -1099,7 +1099,7 @@ class __ListMediaEditorBottomSheetState
                                             color: colors.error, size: 18),
                                         style: IconButton.styleFrom(
                                           backgroundColor:
-                                              colors.error.withValues(alpha: 0.1),
+                                              colors.error.withOpacity(0.1),
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(12),
@@ -1129,9 +1129,9 @@ class __ListMediaEditorBottomSheetState
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: colors.surfaceContainer.withValues(alpha: 0.85),
+                      color: colors.surfaceContainer.withOpacity(0.85),
                       border:
-                          Border.all(color: colors.outline.withValues(alpha: 0.15)),
+                          Border.all(color: colors.outline.withOpacity(0.15)),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
@@ -1187,7 +1187,7 @@ class __ListMediaEditorBottomSheetState
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _selectedItemIndices.isNotEmpty
                                 ? colors.error
-                                : colors.error.withValues(alpha: 0.3),
+                                : colors.error.withOpacity(0.3),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -1216,7 +1216,7 @@ class __ListMediaEditorBottomSheetState
           Icon(
             Iconsax.folder_open5,
             size: 64,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            color: theme.colorScheme.onSurface.withOpacity(0.3),
           ),
           const SizedBox(height: 16),
           AnymeXText(
@@ -1233,7 +1233,7 @@ class __ListMediaEditorBottomSheetState
                 ? 'Try checking spelling or using different keywords'
                 : 'Browse media in the library and add them to this list',
             style: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              color: theme.colorScheme.onSurface.withOpacity(0.5),
               fontSize: 13,
             ),
             textAlign: TextAlign.center,

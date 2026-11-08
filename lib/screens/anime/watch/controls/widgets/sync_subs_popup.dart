@@ -93,7 +93,7 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: cs.outline.withValues(alpha: 0.1)),
+          bottom: BorderSide(color: cs.outline.withOpacity(0.1)),
         ),
       ),
       child: Column(
@@ -117,8 +117,8 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: seconds == 0
-                        ? cs.primary.withValues(alpha: 0.1)
-                        : cs.tertiary.withValues(alpha: 0.1),
+                        ? cs.primary.withOpacity(0.1)
+                        : cs.tertiary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: AnymeXText(
@@ -161,9 +161,9 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+          color: cs.surfaceContainerHighest.withOpacity(0.4),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.15)),
+          border: Border.all(color: cs.outline.withOpacity(0.15)),
         ),
         child: AnymeXText(
           label,
@@ -182,9 +182,9 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: cs.primary.withValues(alpha: 0.1),
+          color: cs.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+          border: Border.all(color: cs.primary.withOpacity(0.2)),
         ),
         child: Icon(Icons.sync_rounded, size: 18, color: cs.primary),
       ),
@@ -277,12 +277,12 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: isActive
-                      ? cs.primary.withValues(alpha: 0.12)
+                      ? cs.primary.withOpacity(0.12)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isActive
-                        ? cs.primary.withValues(alpha: 0.3)
+                        ? cs.primary.withOpacity(0.3)
                         : Colors.transparent,
                     width: 1.5,
                   ),
@@ -298,8 +298,8 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: isActive
-                                ? cs.primary.withValues(alpha: 0.15)
-                                : cs.surfaceContainerHighest.withValues(alpha: 0.3),
+                                ? cs.primary.withOpacity(0.15)
+                                : cs.surfaceContainerHighest.withOpacity(0.3),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: AnymeXText(
@@ -311,7 +311,7 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
                               color: isActive
                                   ? cs.primary
                                   : cs.onSurface
-                                      .withValues(alpha: isPast ? 0.35 : 0.5),
+                                      .withOpacity(isPast ? 0.35 : 0.5),
                             ),
                           ),
                         ),
@@ -323,7 +323,7 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
                               color: isActive
                                   ? cs.primary
                                   : cs.onSurface
-                                      .withValues(alpha: isPast ? 0.4 : 0.85),
+                                      .withOpacity(isPast ? 0.4 : 0.85),
                               fontWeight:
                                   isActive ? FontWeight.w600 : FontWeight.w400,
                               height: 1.4,
@@ -342,7 +342,7 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
                             thumbShape: SliderComponentShape.noThumb,
                             overlayShape: SliderComponentShape.noOverlay,
                             activeTrackColor: cs.primary,
-                            inactiveTrackColor: cs.primary.withValues(alpha: 0.2),
+                            inactiveTrackColor: cs.primary.withOpacity(0.2),
                             trackShape: const RoundedRectSliderTrackShape(),
                           ),
                           child: Slider(
@@ -384,12 +384,12 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.subtitles_off_rounded,
-              size: 48, color: cs.onSurface.withValues(alpha: 0.3)),
+              size: 48, color: cs.onSurface.withOpacity(0.3)),
           const SizedBox(height: 16),
           AnymeXText(
             'No subtitle cues loaded',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: cs.onSurface.withValues(alpha: 0.5),
+              color: cs.onSurface.withOpacity(0.5),
             ),
           ),
           const SizedBox(height: 8),
@@ -399,7 +399,7 @@ class _SyncSubsContentState extends State<_SyncSubsContent> {
               'Cues are only available for external subtitles. Use the delay controls above to sync embedded tracks.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: cs.onSurface.withValues(alpha: 0.35),
+                color: cs.onSurface.withOpacity(0.35),
                 height: 1.5,
               ),
             ),

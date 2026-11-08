@@ -242,10 +242,10 @@ class _ServerTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.12),
+                      color: Colors.orange.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
                       border:
-                          Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                          Border.all(color: Colors.orange.withOpacity(0.3)),
                     ),
                     child: const AnymeXText('HLS',
                         style: TextStyle(
@@ -258,10 +258,10 @@ class _ServerTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.12),
+                      color: Colors.green.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
                       border:
-                          Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                          Border.all(color: Colors.green.withOpacity(0.3)),
                     ),
                     child: const AnymeXText('Direct',
                         style: TextStyle(

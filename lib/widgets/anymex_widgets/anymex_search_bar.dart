@@ -98,7 +98,7 @@ class _AnymeXSearchBarState extends State<AnymeXSearchBar> {
                 icon: Icon(
                   Icons.cancel_rounded,
                   size: 18,
-                  color: colors.onSurface.withValues(alpha: 0.5),
+                  color: colors.onSurface.withOpacity(0.5),
                 ),
               );
             }
@@ -135,18 +135,18 @@ class _AnymeXSearchBarState extends State<AnymeXSearchBar> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: widget.backgroundColor ??
-                    colors.surfaceContainerHighest.withValues(alpha: 0.35),
+                    colors.surfaceContainerHighest.withOpacity(0.35),
                 hintText: widget.hintText,
                 hintStyle: TextStyle(
                   fontSize: 13,
                   fontFamily: 'Linotte',
-                  color: colors.onSurface.withValues(alpha: 0.45),
+                  color: colors.onSurface.withOpacity(0.45),
                 ),
                 prefixIcon: widget.prefixIcon ??
                     Icon(
                       IconlyLight.search,
                       size: 18,
-                      color: colors.onSurface.withValues(alpha: 0.5),
+                      color: colors.onSurface.withOpacity(0.5),
                     ),
                 suffixIcon: effectiveSuffix,
                 contentPadding: widget.contentPadding ??
@@ -155,14 +155,14 @@ class _AnymeXSearchBarState extends State<AnymeXSearchBar> {
                   borderRadius: BorderRadius.circular(widget.borderRadius),
                   borderSide: BorderSide(
                     color: widget.borderColor ??
-                        colors.onSurface.withValues(alpha: 0.08),
+                        colors.onSurface.withOpacity(0.08),
                     width: 0.5,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(widget.borderRadius),
                   borderSide: BorderSide(
-                    color: colors.primary.withValues(alpha: 0.4),
+                    color: colors.primary.withOpacity(0.4),
                     width: 1.2,
                   ),
                 ),

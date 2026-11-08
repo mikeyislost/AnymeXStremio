@@ -225,7 +225,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.15),
+                        color: colorScheme.primary.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: AnymeXText(
@@ -281,7 +281,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: colorScheme.error.withValues(alpha: 0.12),
+                color: colorScheme.error.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -362,7 +362,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
               width: 38,
               height: 4.5,
               decoration: BoxDecoration(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+                color: colorScheme.outlineVariant.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
@@ -427,7 +427,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: colorScheme.surfaceContainerHigh,
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.12)),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.12)),
         image: _previewBannerUrl != null && _previewBannerUrl!.isNotEmpty
             ? DecorationImage(
                 image: CachedNetworkImageProvider(_previewBannerUrl!),
@@ -445,8 +445,8 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  colorScheme.scrim.withValues(alpha: 0.25),
-                  colorScheme.scrim.withValues(alpha: 0.72),
+                  colorScheme.scrim.withOpacity(0.25),
+                  colorScheme.scrim.withOpacity(0.72),
                 ],
               ),
             ),
@@ -518,10 +518,10 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: colorScheme.surface.withValues(alpha: 0.65),
+                  color: colorScheme.surface.withOpacity(0.65),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.2), width: 0.8),
+                      color: colorScheme.outline.withOpacity(0.2), width: 0.8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -548,10 +548,10 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: colorScheme.surface.withValues(alpha: 0.65),
+                color: colorScheme.surface.withOpacity(0.65),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: colorScheme.outline.withValues(alpha: 0.2), width: 0.8),
+                    color: colorScheme.outline.withOpacity(0.2), width: 0.8),
               ),
               child: AnymeXText(
                 'Live Preview',
@@ -590,7 +590,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
         ),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          color: Colors.black.withValues(alpha: 0.35),
+          color: Colors.black.withOpacity(0.35),
           child: AnymeXText(
             userName,
             variant: TextVariant.bold,
@@ -671,7 +671,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                     border: Border.all(
                       color: isSelected
                           ? colorScheme.primary
-                          : colorScheme.outline.withValues(alpha: 0.08),
+                          : colorScheme.outline.withOpacity(0.08),
                       width: isSelected ? 2.2 : 1.0,
                     ),
                   ),
@@ -717,7 +717,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                               horizontal: 6, vertical: 1.5),
                           margin: const EdgeInsets.only(bottom: 4),
                           decoration: BoxDecoration(
-                            color: colorScheme.primary.withValues(alpha: 0.15),
+                            color: colorScheme.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: AnymeXText(
@@ -797,7 +797,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                     border: Border.all(
                       color: isSelected
                           ? colorScheme.primary
-                          : colorScheme.outline.withValues(alpha: 0.1),
+                          : colorScheme.outline.withOpacity(0.1),
                       width: isSelected ? 2.0 : 1.0,
                     ),
                   ),
@@ -848,7 +848,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: colorScheme.primary.withValues(alpha: 0.15),
+                            color: colorScheme.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: AnymeXText(
@@ -889,7 +889,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                   decoration: InputDecoration(
                     hintText: 'Paste custom image URL...',
                     hintStyle: TextStyle(
-                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.6),
                       fontSize: 12,
                     ),
                     isDense: true,
@@ -1041,7 +1041,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 3),
-                            color: colorScheme.scrim.withValues(alpha: 0.65),
+                            color: colorScheme.scrim.withOpacity(0.65),
                             child: AnymeXText(
                               item.title,
                               maxLines: 1,
@@ -1135,7 +1135,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                     border: Border.all(
                       color: isSelected
                           ? colorScheme.primary
-                          : colorScheme.outline.withValues(alpha: 0.08),
+                          : colorScheme.outline.withOpacity(0.08),
                       width: isSelected ? 2.0 : 1.0,
                     ),
                   ),
@@ -1181,7 +1181,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
                               horizontal: 6, vertical: 1.5),
                           margin: const EdgeInsets.only(bottom: 4),
                           decoration: BoxDecoration(
-                            color: colorScheme.primary.withValues(alpha: 0.15),
+                            color: colorScheme.primary.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: AnymeXText(
@@ -1211,7 +1211,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
         decoration: BoxDecoration(
           color: colorScheme.surface,
           border: Border(
-            top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.08)),
+            top: BorderSide(color: colorScheme.outline.withOpacity(0.08)),
           ),
         ),
         child: Row(

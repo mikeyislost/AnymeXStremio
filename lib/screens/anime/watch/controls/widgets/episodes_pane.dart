@@ -129,14 +129,14 @@ class _EpisodeSidePaneState extends State<EpisodeSidePane>
                       height: double.infinity,
                       decoration: BoxDecoration(
                         color: widget.backgroundColor ??
-                            context.theme.colorScheme.surfaceContainer.withValues(alpha: 0.75),
+                            context.theme.colorScheme.surfaceContainer.withOpacity(0.75),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(24),
                           bottomLeft: Radius.circular(24),
                         ),
                         border: Border(
                           left: BorderSide(
-                            color: context.theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                            color: context.theme.colorScheme.onSurface.withOpacity(0.08),
                             width: 1.0,
                           ),
                         ),

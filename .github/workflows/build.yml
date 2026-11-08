@@ -21,14 +21,16 @@ env:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Fast (Linux) check so mistakes fail in ~5 minutes, plus the version.
-  analyze:
+  # The version and tag for this build (a few seconds), so the iPhone and
+  # Windows builds can start right away.
+  version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -89,6 +91,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Channel: $CHANNEL · tag v$TAG · version $VERSION (build $COUNT) · files $FILE_VER"
 
+  # Checks (Linux), alongside the builds. The release waits for them, so a
+  # build with an error or a failing test is never published.
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -113,23 +122,42 @@ jobs:
           python3 scripts/test_versions.py
           flutter test
 
+      # The builds run alongside the checks; stop them early if a check
+      # failed (nothing would be released anyway).
+      - name: Stop the builds (checks failed)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}
+
   ios:
-    needs: analyze
+    needs: version
     runs-on: macos-latest
     env:
-      VERSION: ${{ needs.analyze.outputs.version }}
-      BUILD: ${{ needs.analyze.outputs.build }}
-      RELEASE_CHANNEL: ${{ needs.analyze.outputs.channel }}
-      TAG: ${{ needs.analyze.outputs.tag }}
-      FILE_VER: ${{ needs.analyze.outputs.file_ver }}
+      VERSION: ${{ needs.version.outputs.version }}
+      BUILD: ${{ needs.version.outputs.build }}
+      RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
+      TAG: ${{ needs.version.outputs.tag }}
+      FILE_VER: ${{ needs.version.outputs.file_ver }}
+      # Where the Rust network library (rhttp) is built; kept between builds.
+      ANYMEXPLUS_CARGOKIT_DIR: ${{ github.workspace }}/.cargokit
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust
+        id: rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           targets: aarch64-apple-ios
+
+      # Reuse the compiled Rust library while rhttp and Rust stay the same.
+      - name: Cache the compiled Rust library
+        uses: actions/cache@v4
+        with:
+          path: .cargokit
+          key: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('packages/rhttp/rust/**', 'packages/rhttp/cargokit/**') }}
+          restore-keys: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
 
       - uses: subosito/flutter-action@v2
         with:
@@ -198,14 +226,16 @@ jobs:
           path: dist/*.ipa
 
   windows:
-    needs: analyze
+    needs: version
     runs-on: windows-latest
     env:
-      VERSION: ${{ needs.analyze.outputs.version }}
-      BUILD: ${{ needs.analyze.outputs.build }}
-      RELEASE_CHANNEL: ${{ needs.analyze.outputs.channel }}
-      TAG: ${{ needs.analyze.outputs.tag }}
-      FILE_VER: ${{ needs.analyze.outputs.file_ver }}
+      VERSION: ${{ needs.version.outputs.version }}
+      BUILD: ${{ needs.version.outputs.build }}
+      RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
+      TAG: ${{ needs.version.outputs.tag }}
+      FILE_VER: ${{ needs.version.outputs.file_ver }}
+      # Where the Rust network library (rhttp) is built; kept between builds.
+      ANYMEXPLUS_CARGOKIT_DIR: ${{ github.workspace }}\.cargokit
     steps:
       - name: Enable Git long paths
         run: |
@@ -215,9 +245,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Rust
+        id: rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+
+      # Reuse the compiled Rust library (and Rust packages) while rhttp and
+      # Rust stay the same.
+      - name: Cache the compiled Rust library
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargokit
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('packages/rhttp/rust/**', 'packages/rhttp/cargokit/**') }}
+          restore-keys: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
 
       - uses: actions/setup-java@v4
         with:
@@ -303,15 +346,15 @@ jobs:
   # One release per update, with everything in it. Publishes even if only
   # the iOS build succeeded (the Windows files are then missing).
   release:
-    needs: [analyze, ios, windows]
-    if: ${{ !cancelled() && needs.ios.result == 'success' }}
+    needs: [version, analyze, ios, windows]
+    if: ${{ !cancelled() && needs.analyze.result == 'success' && needs.ios.result == 'success' }}
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.analyze.outputs.version }}
-      BUILD: ${{ needs.analyze.outputs.build }}
-      RELEASE_CHANNEL: ${{ needs.analyze.outputs.channel }}
-      TAG: ${{ needs.analyze.outputs.tag }}
-      FILE_VER: ${{ needs.analyze.outputs.file_ver }}
+      VERSION: ${{ needs.version.outputs.version }}
+      BUILD: ${{ needs.version.outputs.build }}
+      RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
+      TAG: ${{ needs.version.outputs.tag }}
+      FILE_VER: ${{ needs.version.outputs.file_ver }}
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
     steps:

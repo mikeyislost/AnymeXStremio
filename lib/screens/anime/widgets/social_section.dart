@@ -72,7 +72,7 @@ class SocialSection extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withOpacity(0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -98,7 +98,7 @@ class SocialSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
+                              color: Colors.black.withOpacity(0.3),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             )
@@ -132,7 +132,7 @@ class SocialSection extends StatelessWidget {
               AnymeXText(
                 status,
                 size: 12,
-                color: theme.onSurface.withValues(alpha: 0.7),
+                color: theme.onSurface.withOpacity(0.7),
                 fontStyle: FontStyle.italic,
                 textAlign: TextAlign.center,
               ),
@@ -163,7 +163,7 @@ class SocialSection extends StatelessWidget {
                     ),
                     TextSpan(
                       text: " | ${totalEpisodes ?? '?'}",
-                      style: TextStyle(color: theme.onSurface.withValues(alpha: 0.9)),
+                      style: TextStyle(color: theme.onSurface.withOpacity(0.9)),
                     ),
                   ],
                 ),

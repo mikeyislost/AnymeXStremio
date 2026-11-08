@@ -292,10 +292,10 @@ class _HistoryEditorState extends State<HistoryEditor> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.12),
+                color: context.colors.primary.withOpacity(0.12),
                 borderRadius: leftRadius,
                 border: Border.all(
-                  color: context.colors.primary.withValues(alpha: 0.25),
+                  color: context.colors.primary.withOpacity(0.25),
                   width: 0.6,
                 ),
               ),
@@ -321,10 +321,10 @@ class _HistoryEditorState extends State<HistoryEditor> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: context.colors.surfaceContainerHighest.withValues(alpha: 0.45),
+                color: context.colors.surfaceContainerHighest.withOpacity(0.45),
                 borderRadius: rightRadius,
                 border: Border.all(
-                  color: context.colors.onSurface.withValues(alpha: 0.06),
+                  color: context.colors.onSurface.withOpacity(0.06),
                   width: 0.6,
                 ),
               ),
@@ -334,7 +334,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
                     : '${(progress * 100).toInt()}%',
                 size: 11,
                 variant: TextVariant.semiBold,
-                color: context.colors.onSurface.withValues(alpha: 0.65),
+                color: context.colors.onSurface.withOpacity(0.65),
               ),
             ),
           ],
@@ -346,7 +346,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor:
-                  context.colors.surfaceContainerHighest.withValues(alpha: 0.4),
+                  context.colors.surfaceContainerHighest.withOpacity(0.4),
               valueColor: AlwaysStoppedAnimation<Color>(
                 context.colors.primary,
               ),
@@ -392,10 +392,10 @@ class _HistoryEditorState extends State<HistoryEditor> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.12),
+                color: context.colors.primary.withOpacity(0.12),
                 borderRadius: leftRadius,
                 border: Border.all(
-                  color: context.colors.primary.withValues(alpha: 0.25),
+                  color: context.colors.primary.withOpacity(0.25),
                   width: 0.6,
                 ),
               ),
@@ -421,10 +421,10 @@ class _HistoryEditorState extends State<HistoryEditor> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: context.colors.surfaceContainerHighest.withValues(alpha: 0.45),
+                color: context.colors.surfaceContainerHighest.withOpacity(0.45),
                 borderRadius: rightRadius,
                 border: Border.all(
-                  color: context.colors.onSurface.withValues(alpha: 0.06),
+                  color: context.colors.onSurface.withOpacity(0.06),
                   width: 0.6,
                 ),
               ),
@@ -434,7 +434,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
                     : '${(progress * 100).toInt()}%',
                 size: 11,
                 variant: TextVariant.semiBold,
-                color: context.colors.onSurface.withValues(alpha: 0.65),
+                color: context.colors.onSurface.withOpacity(0.65),
               ),
             ),
           ],
@@ -446,7 +446,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
             child: LinearProgressIndicator(
               value: progress,
               backgroundColor:
-                  context.colors.surfaceContainerHighest.withValues(alpha: 0.4),
+                  context.colors.surfaceContainerHighest.withOpacity(0.4),
               valueColor: AlwaysStoppedAnimation<Color>(
                 context.colors.primary,
               ),
@@ -502,13 +502,13 @@ class _HistoryEditorState extends State<HistoryEditor> {
       margin: const EdgeInsets.only(bottom: 3.5),
       decoration: BoxDecoration(
         color: isSelected
-            ? context.colors.primary.withValues(alpha: 0.12)
+            ? context.colors.primary.withOpacity(0.12)
             : context.colors.surfaceContainer
                 .opaque(0.45, iReallyMeanIt: true),
         borderRadius: radius,
         border: Border.all(
           color: isSelected
-              ? context.colors.primary.withValues(alpha: 0.5)
+              ? context.colors.primary.withOpacity(0.5)
               : context.colors.onSurface
                   .opaque(0.08, iReallyMeanIt: true),
           width: 0.8,
@@ -516,7 +516,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
         boxShadow: isSelected
             ? [
                 BoxShadow(
-                  color: context.colors.primary.withValues(alpha: 0.12),
+                  color: context.colors.primary.withOpacity(0.12),
                   blurRadius: 10,
                   offset: const Offset(0, 3),
                 ),
@@ -555,7 +555,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
                       border: Border.all(
                         color: isSelected
                             ? context.colors.primary
-                            : context.colors.onSurface.withValues(alpha: 0.3),
+                            : context.colors.onSurface.withOpacity(0.3),
                         width: 2,
                       ),
                     ),
@@ -573,7 +573,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
                   child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: context.colors.outline.withValues(alpha: 0.08),
+                        color: context.colors.outline.withOpacity(0.08),
                       ),
                       borderRadius: BorderRadius.circular(12.multiplyRadius()),
                     ),
@@ -621,11 +621,11 @@ class _HistoryEditorState extends State<HistoryEditor> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: context.colors.error.withValues(alpha: 0.1),
+                        color: context.colors.error.withOpacity(0.1),
                         borderRadius:
                             BorderRadius.circular(14.multiplyRadius()),
                         border: Border.all(
-                          color: context.colors.error.withValues(alpha: 0.2),
+                          color: context.colors.error.withOpacity(0.2),
                           width: 0.8,
                         ),
                       ),
@@ -655,16 +655,16 @@ class _HistoryEditorState extends State<HistoryEditor> {
             Container(
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: context.colors.surfaceContainerHighest.withOpacity(0.5),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: context.colors.outline.withValues(alpha: 0.1),
+                  color: context.colors.outline.withOpacity(0.1),
                 ),
               ),
               child: Icon(
                 Icons.history_rounded,
                 size: 56,
-                color: context.colors.onSurface.withValues(alpha: 0.35),
+                color: context.colors.onSurface.withOpacity(0.35),
               ),
             ),
             const SizedBox(height: 20),
@@ -721,7 +721,7 @@ class _HistoryEditorState extends State<HistoryEditor> {
                   borderRadius: BorderRadius.circular(30.multiplyRadius()),
                   boxShadow: [
                     BoxShadow(
-                      color: context.colors.error.withValues(alpha: 0.4),
+                      color: context.colors.error.withOpacity(0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -756,15 +756,15 @@ class _HistoryEditorState extends State<HistoryEditor> {
                     const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 decoration: BoxDecoration(
                   color:
-                      context.colors.surfaceContainerHighest.withValues(alpha: 0.9),
+                      context.colors.surfaceContainerHighest.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(30.multiplyRadius()),
                   border: Border.all(
-                    color: context.colors.error.withValues(alpha: 0.3),
+                    color: context.colors.error.withOpacity(0.3),
                     width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.25),
+                      color: Colors.black.withOpacity(0.25),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -819,10 +819,10 @@ class _HistoryEditorState extends State<HistoryEditor> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color:
-                    context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                    context.colors.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: leftRadius,
                 border: Border.all(
-                  color: context.colors.onSurface.withValues(alpha: 0.08),
+                  color: context.colors.onSurface.withOpacity(0.08),
                   width: 0.8,
                 ),
               ),
@@ -842,10 +842,10 @@ class _HistoryEditorState extends State<HistoryEditor> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.15),
+                color: context.colors.primary.withOpacity(0.15),
                 borderRadius: rightRadius,
                 border: Border.all(
-                  color: context.colors.primary.withValues(alpha: 0.3),
+                  color: context.colors.primary.withOpacity(0.3),
                   width: 0.8,
                 ),
               ),
@@ -864,10 +864,10 @@ class _HistoryEditorState extends State<HistoryEditor> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color:
-                    context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                    context.colors.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(18.multiplyRadius()),
                 border: Border.all(
-                  color: context.colors.onSurface.withValues(alpha: 0.08),
+                  color: context.colors.onSurface.withOpacity(0.08),
                   width: 0.8,
                 ),
               ),

@@ -188,13 +188,13 @@ class _UnderratedCarousel extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: 'Linotte',
                             fontSize: 13,
-                            color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                            color: theme.colorScheme.primary.withOpacity(0.7),
                           ),
                         ),
                         Icon(
                           Icons.arrow_forward_ios_rounded,
                           size: 13,
-                          color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                          color: theme.colorScheme.primary.withOpacity(0.7),
                         ),
                       ],
                     ),
@@ -297,15 +297,15 @@ class _UnderratedCard extends StatelessWidget {
       ),
       margin: const EdgeInsets.only(left: 5),
       decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.85),
+        color: theme.colorScheme.secondaryContainer.withOpacity(0.85),
         borderRadius: BorderRadius.circular(50),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.15),
+          color: theme.colorScheme.outline.withOpacity(0.15),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
