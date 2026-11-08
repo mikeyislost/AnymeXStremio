@@ -17,6 +17,7 @@ import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/kv_helper.dart';
+import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/database/data_keys/keys.dart' show AuthKeys;
 import 'package:anymex/controllers/services/simkl/simkl_service.dart';
 import 'package:anymex/plus/simkl_auth_v2.dart';
@@ -149,6 +150,16 @@ class StremioService extends GetxController {
       'https://v3-cinemeta.strem.io/manifest.json';
   static const double watchedThreshold = 0.7; // WATCHED_THRESHOLD_COEF
   static const double creditsThreshold = 0.9; // CREDITS_THRESHOLD_COEF
+
+  /// Where an episode counts as watched, from your "mark as watched"
+  /// setting (Player settings), so Stremio and AniList agree.
+  static double get watchedPoint {
+    try {
+      final pct = Get.find<Settings>().markAsCompleted;
+      if (pct >= 50 && pct <= 99) return pct / 100;
+    } catch (_) {}
+    return creditsThreshold;
+  }
   static const Duration reportInterval = Duration(seconds: 45);
 
   static const _kAuthKey = 'stremio_auth_key';
@@ -1596,10 +1607,13 @@ class StremioService extends GetxController {
             item.watchedField, WatchedBitField.orderedVideoIds(pb.videos));
       }
 
+      // AnymeX+: "watched" at the same point as AniList (your "mark as
+      // watched" setting in Player settings) instead of Stremio's own 70%.
+      final point = watchedPoint;
       final watchedEnough = item.flaggedWatched == 0 &&
           item.duration > 0 &&
-          (item.timeWatched > item.duration * watchedThreshold ||
-              posMs > item.duration * creditsThreshold);
+          (item.timeWatched > item.duration * point ||
+              posMs > item.duration * point);
       if (watchedEnough) {
         item.flaggedWatched = 1;
         item.timesWatched = item.timesWatched + 1;
@@ -1615,7 +1629,7 @@ class StremioService extends GetxController {
         }
       }
 
-      if (isFinal && posMs > durMs * creditsThreshold) {
+      if (isFinal && posMs > durMs * point) {
         // Finished: move Continue Watching to the next episode, or clear it.
         item.timeOffset = 0;
         final next = pb.nextVideo;
