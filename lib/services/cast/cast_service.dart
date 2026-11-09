@@ -69,9 +69,18 @@ class CastService extends GetxController {
       _startDlnaDiscovery(),
       _startChromecastDiscovery(),
       _startRokuAndSsdpDiscovery(),
+      _plusDirectDlna(), // AnymeX+
     ]);
 
     isSearching.value = false;
+  }
+
+  // AnymeX+: DLNA TVs asked directly (AirPlay TVs on iPhone, TVs added by IP),
+  // since iOS blocks the network-wide search for sideloaded apps.
+  Future<void> _plusDirectDlna() async {
+    for (final (host, location) in await PlusCastSearch.dlnaLocations()) {
+      await _resolveUpnpDevice(location, host);
+    }
   }
 
   Future<void> _startDlnaDiscovery() async {
@@ -322,6 +331,7 @@ class CastService extends GetxController {
         );
       } else if (device.protocol == CastProtocol.dlna) {
         await _castDlna(
+          mime: isHls ? null : await plusDetectMime(videoUrl, headers), // AnymeX+: MKV etc.
           device: device,
           mediaUrl: mediaUrl,
           subtitleUrl: subUrl,
@@ -440,6 +450,7 @@ class CastService extends GetxController {
   }
 
   Future<void> _castDlna({
+    String? mime,
     required CastDevice device,
     required String mediaUrl,
     String? subtitleUrl,
@@ -454,6 +465,7 @@ class CastService extends GetxController {
         subtitleUrl: subtitleUrl,
         title: title,
         isHls: isHls,
+        mime: mime,
       );
 
       final envelope =
@@ -496,8 +508,9 @@ class CastService extends GetxController {
     String? subtitleUrl,
     required String title,
     required bool isHls,
+    String? mime,
   }) {
-    final protocolInfo = isHls ? 'http-get:*:application/vnd.apple.mpegurl:*' : 'http-get:*:video/mp4:*';
+    final protocolInfo = isHls ? 'http-get:*:application/vnd.apple.mpegurl:*' : 'http-get:*:${mime ?? 'video/mp4'}:*';
 
     final subTag = (subtitleUrl != null && subtitleUrl.isNotEmpty)
         ? '<res protocolInfo="http-get:*:text/vtt:*">${_xmlEscape(subtitleUrl)}</res>\n'

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:anymex/plus/airplay.dart'; // AnymeX+
 
 class CastProxyServer {
   static HttpServer? _server;
@@ -167,7 +168,7 @@ class CastProxyServer {
     final rangeHeader = request.headers.value('range');
 
     request.response.headers.set('Accept-Ranges', 'bytes');
-    request.response.headers.contentType = ContentType('video', 'mp4');
+    request.response.headers.contentType = ContentType.parse(plusMimeFromPath(resolvedPath) ?? 'video/mp4'); // AnymeX+
 
     if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
       final range = rangeHeader.substring(6).split('-');

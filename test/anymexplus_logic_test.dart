@@ -6,6 +6,7 @@
 import 'package:anymex/controllers/service_handler/service_handler.dart'
     show ServicesType;
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
+import 'package:anymex/plus/airplay.dart' show plusMimeFromPath, PlusCastSearch;
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/backup.dart';
 import 'package:anymex/plus/card_menu.dart';
@@ -895,6 +896,19 @@ void main() {
       expect(s, contains(r"'C:\Temp\it''s.exe'"));
       expect(s, contains(r'''-ArgumentList '/SILENT "/DIR=C:\Program Files\A"' -Wait'''));
       expect(s, contains(r'Remove-Item -LiteralPath $PSCommandPath'));
+    });
+  });
+
+  group('Casting', () {
+    test('file type from the address', () {
+      expect(plusMimeFromPath('https://x.y/Show.S01E01.1080p.MKV?token=1'), 'video/x-matroska');
+      expect(plusMimeFromPath('/var/mobile/Downloads/ep1.mp4'), 'video/mp4');
+      expect(plusMimeFromPath('https://x.y/stream/abc'), isNull);
+    });
+    test('IP address check', () {
+      expect(PlusCastSearch.isIp('192.168.1.20'), isTrue);
+      expect(PlusCastSearch.isIp(' 10.0.0.5 '), isTrue);
+      expect(PlusCastSearch.isIp('lg-tv.local'), isFalse);
     });
   });
 }

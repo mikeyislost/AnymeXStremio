@@ -93,164 +93,22 @@ import AVKit
 }
 
 // MARK: - AnymeX+: AirPlay and cast device search
-// Apple's player handles AirPlay (mpv can't); Bonjour finds Chromecasts
+// AirPlay: a hidden AVPlayer sends the video to the TV (mpv can't) and the
+// app's own controls drive it. Bonjour finds Chromecasts and AirPlay TVs
 // without the multicast entitlement sideloaded apps don't get.
 
-final class PlusAirPlayViewController: AVPlayerViewController {
-  var onClose: (() -> Void)?
-  override func viewDidDisappear(_ animated: Bool) {
-    super.viewDidDisappear(animated)
-    if isBeingDismissed { onClose?(); onClose = nil }
-  }
-}
-
-final class PlusAirPlay: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
-  static let shared = PlusAirPlay()
-  private var player: AVPlayer?
-  private var statusObserver: NSKeyValueObservation?
-  private var pending: FlutterResult?
-  private var timeout: DispatchWorkItem?
-  private var browser: NetServiceBrowser?
+final class PlusBonjourSearch: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
+  private let browser = NetServiceBrowser()
   private var services: [NetService] = []
-  private var found: [[String: Any]] = []
+  private(set) var found: [[String: Any]] = []
 
-  func register(messenger: FlutterBinaryMessenger) {
-    let channel = FlutterMethodChannel(name: "anymexplus/airplay", binaryMessenger: messenger)
-    channel.setMethodCallHandler { [weak self] call, result in
-      guard let self = self else { return }
-      switch call.method {
-      case "play": self.play(call.arguments as? [String: Any] ?? [:], result: result)
-      case "findChromecasts": self.findChromecasts(result: result)
-      default: result(FlutterMethodNotImplemented)
-      }
-    }
-  }
-
-  // MARK: AirPlay
-
-  private func play(_ args: [String: Any], result: @escaping FlutterResult) {
-    guard pending == nil, player == nil else {
-      result(FlutterError(code: "busy", message: "AirPlay is already open", details: nil)); return
-    }
-    guard let raw = args["url"] as? String, !raw.isEmpty else {
-      result(FlutterError(code: "no_url", message: "No video", details: nil)); return
-    }
-    let url: URL? = raw.hasPrefix("/") ? URL(fileURLWithPath: raw) : URL(string: raw)
-    guard let videoUrl = url else {
-      result(FlutterError(code: "no_url", message: "Bad video address", details: nil)); return
-    }
-    var options: [String: Any] = [:]
-    if let headers = args["headers"] as? [String: String], !headers.isEmpty {
-      options["AVURLAssetHTTPHeaderFieldsKey"] = headers
-    }
-    let startMs = (args["positionMs"] as? NSNumber)?.doubleValue ?? 0
-    let title = args["title"] as? String
-
-    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-    try? AVAudioSession.sharedInstance().setActive(true)
-
-    let item = AVPlayerItem(asset: AVURLAsset(url: videoUrl, options: options))
-    if let title = title, !title.isEmpty {
-      let meta = AVMutableMetadataItem()
-      meta.identifier = .commonIdentifierTitle
-      meta.value = title as NSString
-      meta.extendedLanguageTag = "und"
-      item.externalMetadata = [meta]
-    }
-    let player = AVPlayer(playerItem: item)
-    player.allowsExternalPlayback = true
-    player.usesExternalPlaybackWhileExternalScreenIsActive = true
-    self.player = player
-    pending = result
-
-    let work = DispatchWorkItem { [weak self] in
-      self?.fail(code: "timeout", message: "The video took too long to load")
-    }
-    timeout = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + 25, execute: work)
-
-    statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-      DispatchQueue.main.async {
-        guard let self = self else { return }
-        switch item.status {
-        case .readyToPlay: self.present(startMs: startMs)
-        case .failed:
-          self.fail(code: "unsupported",
-                    message: item.error?.localizedDescription ?? "This video can't be played with AirPlay")
-        default: break
-        }
-      }
-    }
-  }
-
-  private func fail(code: String, message: String) {
-    timeout?.cancel(); timeout = nil
-    statusObserver = nil
-    player?.pause(); player = nil
-    if let r = pending { pending = nil; r(FlutterError(code: code, message: message, details: nil)) }
-  }
-
-  private func topController() -> UIViewController? {
-    var top = UIApplication.shared.connectedScenes
-      .compactMap { ($0 as? UIWindowScene)?.windows.first(where: { $0.isKeyWindow }) }
-      .first?.rootViewController
-    while let next = top?.presentedViewController { top = next }
-    return top
-  }
-
-  private func present(startMs: Double) {
-    guard let player = player, pending != nil else { return }
-    timeout?.cancel(); timeout = nil
-    statusObserver = nil
-    if startMs > 1000 {
-      player.seek(to: CMTime(seconds: startMs / 1000, preferredTimescale: 600))
-    }
-    let vc = PlusAirPlayViewController()
-    vc.player = player
-    vc.modalPresentationStyle = .fullScreen
-    vc.allowsPictureInPicturePlayback = false
-    vc.onClose = { [weak self] in self?.closed() }
-    guard let host = topController() else {
-      fail(code: "no_view", message: "Couldn't open the player"); return
-    }
-    host.present(vc, animated: true) {
-      player.play()
-      // Open the AirPlay device list straight away.
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-        let picker = AVRoutePickerView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
-        picker.alpha = 0.01
-        vc.view.addSubview(picker)
-        if let button = picker.subviews.compactMap({ $0 as? UIButton }).first {
-          button.sendActions(for: .touchUpInside)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { picker.removeFromSuperview() }
-      }
-    }
-  }
-
-  private func closed() {
-    guard let player = player else { return }
-    let seconds = player.currentTime().seconds
-    player.pause()
-    self.player = nil
-    let ms = seconds.isFinite ? Int(seconds * 1000) : 0
-    if let r = pending { pending = nil; r(["positionMs": ms]) }
-  }
-
-  // MARK: Chromecast search (Bonjour)
-
-  private func findChromecasts(result: @escaping FlutterResult) {
-    browser?.stop()
-    services = []
-    found = []
-    let b = NetServiceBrowser()
-    b.delegate = self
-    browser = b
-    b.searchForServices(ofType: "_googlecast._tcp.", inDomain: "local.")
-    DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
-      guard let self = self else { return }
-      self.browser?.stop(); self.browser = nil
-      result(self.found)
+  func run(type: String, seconds: Double, done: @escaping ([[String: Any]]) -> Void) {
+    browser.delegate = self
+    browser.searchForServices(ofType: type, inDomain: "local.")
+    DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [self] in
+      browser.stop()
+      services.forEach { $0.stop() }
+      done(found)
     }
   }
 
@@ -277,8 +135,187 @@ final class PlusAirPlay: NSObject, NetServiceBrowserDelegate, NetServiceDelegate
         return String(cString: buf)
       }
       if let host = host, !found.contains(where: { ($0["host"] as? String) == host }) {
-        found.append(["name": name, "host": host, "port": sender.port > 0 ? sender.port : 8009])
+        found.append(["name": name, "host": host, "port": sender.port])
       }
+    }
+  }
+}
+
+final class PlusAirPlay: NSObject {
+  static let shared = PlusAirPlay()
+  private var player: AVPlayer?
+  private var statusObserver: NSKeyValueObservation?
+  private var externalObserver: NSKeyValueObservation?
+  private var pending: FlutterResult?
+  private var timeout: DispatchWorkItem?
+  private var wasExternal = false
+  private var searches: [PlusBonjourSearch] = []
+
+  func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "anymexplus/airplay", binaryMessenger: messenger)
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self = self else { return }
+      let args = call.arguments as? [String: Any] ?? [:]
+      switch call.method {
+      case "start": self.start(args, result: result)
+      case "status": result(self.status())
+      case "play": self.player?.play(); result(nil)
+      case "pause": self.player?.pause(); result(nil)
+      case "seek":
+        let ms = (args["positionMs"] as? NSNumber)?.doubleValue ?? 0
+        self.player?.seek(to: CMTime(seconds: ms / 1000, preferredTimescale: 600))
+        result(nil)
+      case "pickRoute": self.showRoutePicker(); result(nil)
+      case "stop": result(self.stop())
+      case "findChromecasts": self.search(type: "_googlecast._tcp.", result: result)
+      case "findAirPlay": self.search(type: "_airplay._tcp.", result: result)
+      default: result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func search(type: String, result: @escaping FlutterResult) {
+    let s = PlusBonjourSearch()
+    searches.append(s)
+    s.run(type: type, seconds: 3.5) { [weak self] found in
+      self?.searches.removeAll { $0 === s }
+      result(found)
+    }
+  }
+
+  // MARK: AirPlay
+
+  private func start(_ args: [String: Any], result: @escaping FlutterResult) {
+    _ = stop()
+    guard let raw = args["url"] as? String, !raw.isEmpty,
+          let url = raw.hasPrefix("/") ? URL(fileURLWithPath: raw) : URL(string: raw) else {
+      result(FlutterError(code: "no_url", message: "No video", details: nil)); return
+    }
+    var options: [String: Any] = [:]
+    if let headers = args["headers"] as? [String: String], !headers.isEmpty {
+      options["AVURLAssetHTTPHeaderFieldsKey"] = headers
+    }
+    let startMs = (args["positionMs"] as? NSNumber)?.doubleValue ?? 0
+
+    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+    try? AVAudioSession.sharedInstance().setActive(true)
+
+    let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
+    if let title = args["title"] as? String, !title.isEmpty {
+      let meta = AVMutableMetadataItem()
+      meta.identifier = .commonIdentifierTitle
+      meta.value = title as NSString
+      meta.extendedLanguageTag = "und"
+      item.externalMetadata = [meta]
+    }
+    let player = AVPlayer(playerItem: item)
+    player.allowsExternalPlayback = true
+    player.usesExternalPlaybackWhileExternalScreenIsActive = true
+    self.player = player
+    wasExternal = false
+    pending = result
+
+    let work = DispatchWorkItem { [weak self] in
+      self?.fail(code: "timeout", message: "The video took too long to load")
+    }
+    timeout = work
+    DispatchQueue.main.asyncAfter(deadline: .now() + 25, execute: work)
+
+    statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+      DispatchQueue.main.async {
+        guard let self = self, self.player?.currentItem === item else { return }
+        switch item.status {
+        case .readyToPlay: self.ready(startMs: startMs)
+        case .failed:
+          self.fail(code: "unsupported",
+                    message: item.error?.localizedDescription ?? "This video can't be played with AirPlay")
+        default: break
+        }
+      }
+    }
+    // Play once the TV is picked; pause if the TV disconnects.
+    externalObserver = player.observe(\.isExternalPlaybackActive, options: [.new]) { [weak self] p, _ in
+      DispatchQueue.main.async {
+        guard let self = self, self.player === p else { return }
+        if p.isExternalPlaybackActive {
+          self.wasExternal = true
+          p.play()
+        } else if self.wasExternal {
+          p.pause()
+        }
+      }
+    }
+  }
+
+  private func ready(startMs: Double) {
+    guard let player = player, let r = pending else { return }
+    pending = nil
+    timeout?.cancel(); timeout = nil
+    statusObserver = nil
+    if startMs > 1000 {
+      player.seek(to: CMTime(seconds: startMs / 1000, preferredTimescale: 600))
+    }
+    r(true)
+    if player.isExternalPlaybackActive {
+      wasExternal = true
+      player.play()
+    } else {
+      showRoutePicker()
+    }
+  }
+
+  private func fail(code: String, message: String) {
+    timeout?.cancel(); timeout = nil
+    statusObserver = nil
+    externalObserver = nil
+    player?.pause(); player = nil
+    if let r = pending { pending = nil; r(FlutterError(code: code, message: message, details: nil)) }
+  }
+
+  private func status() -> [String: Any] {
+    guard let p = player else { return ["active": false] }
+    let pos = p.currentTime().seconds
+    let dur = p.currentItem?.duration.seconds ?? 0
+    let route = AVAudioSession.sharedInstance().currentRoute.outputs
+      .first(where: { $0.portType == .airPlay })?.portName
+    return [
+      "active": true,
+      "external": p.isExternalPlaybackActive,
+      "playing": p.rate > 0,
+      "positionMs": pos.isFinite ? Int(pos * 1000) : 0,
+      "durationMs": dur.isFinite ? Int(dur * 1000) : 0,
+      "route": route ?? "",
+    ]
+  }
+
+  private func stop() -> Int {
+    timeout?.cancel(); timeout = nil
+    statusObserver = nil
+    externalObserver = nil
+    guard let p = player else { return 0 }
+    let s = p.currentTime().seconds
+    p.pause()
+    p.replaceCurrentItem(with: nil)
+    player = nil
+    // Back to iOS's default so the app's own player doesn't keep playing in the background.
+    try? AVAudioSession.sharedInstance().setCategory(.soloAmbient)
+    if let r = pending { pending = nil; r(FlutterError(code: "stopped", message: "Stopped", details: nil)) }
+    return s.isFinite ? Int(s * 1000) : 0
+  }
+
+  private func showRoutePicker() {
+    var top = UIApplication.shared.connectedScenes
+      .compactMap { ($0 as? UIWindowScene)?.windows.first(where: { $0.isKeyWindow }) }
+      .first?.rootViewController
+    while let next = top?.presentedViewController { top = next }
+    guard let view = top?.view else { return }
+    let picker = AVRoutePickerView(frame: CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1))
+    picker.prioritizesVideoDevices = true
+    picker.alpha = 0.01
+    view.addSubview(picker)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+      picker.subviews.compactMap { $0 as? UIButton }.first?.sendActions(for: .touchUpInside)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1) { picker.removeFromSuperview() }
     }
   }
 }

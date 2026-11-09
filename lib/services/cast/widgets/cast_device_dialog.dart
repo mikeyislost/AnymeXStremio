@@ -46,7 +46,7 @@ class _CastDeviceDialogState extends State<CastDeviceDialog> {
       children: [
         _buildHeader(theme),
         const SizedBox(height: 16),
-        PlusAirPlayTile(controller: widget.controller), // AnymeX+: iPhone only
+        PlusCastExtras(controller: widget.controller), // AnymeX+: AirPlay, add TV by IP
         _buildActiveCastingCard(theme),
         _buildDeviceList(theme),
       ],
