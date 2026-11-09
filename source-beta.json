@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.2",
-      "buildVersion": "44",
-      "versionDate": "2026-11-09T04:00:17Z",
-      "versionDescription": "Beta v1.1.2-beta+3\n\n- Windows: in-app update without the installer wizard",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B3/AnymeX-Stremio-v1.1.2-beta.3.ipa",
-      "size": 75445488,
+      "buildVersion": "45",
+      "versionDate": "2026-11-09T05:12:51Z",
+      "versionDescription": "Beta v1.1.2-beta+4\n\n- iPhone: AirPlay to Apple TV and AirPlay TVs; cast devices found on Wi-Fi\n  - Cast to Device has an AirPlay row on iPhone: the video moves to Apple's player and the AirPlay list opens; closing it brings you back to the same spot. MKV streams can't be AirPlayed (a message says so).\n  - iPhone asks for local network access, so cast devices can be found; Chromecasts are found with Bonjour.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B4/AnymeX-Stremio-v1.1.2-beta.4.ipa",
+      "size": 75468921,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.2",
-          "buildVersion": "44",
-          "date": "2026-11-09T04:00:17Z",
-          "localizedDescription": "Beta v1.1.2-beta+3\n\n- Windows: in-app update without the installer wizard",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B3/AnymeX-Stremio-v1.1.2-beta.3.ipa",
-          "size": 75445488,
+          "buildVersion": "45",
+          "date": "2026-11-09T05:12:51Z",
+          "localizedDescription": "Beta v1.1.2-beta+4\n\n- iPhone: AirPlay to Apple TV and AirPlay TVs; cast devices found on Wi-Fi\n  - Cast to Device has an AirPlay row on iPhone: the video moves to Apple's player and the AirPlay list opens; closing it brings you back to the same spot. MKV streams can't be AirPlayed (a message says so).\n  - iPhone asks for local network access, so cast devices can be found; Chromecasts are found with Bonjour.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B4/AnymeX-Stremio-v1.1.2-beta.4.ipa",
+          "size": 75468921,
           "minOSVersion": "15.0"
         }
       ]
