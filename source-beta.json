@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.2",
-      "buildVersion": "45",
-      "versionDate": "2026-11-09T05:12:51Z",
-      "versionDescription": "Beta v1.1.2-beta+4\n\n- iPhone: AirPlay to Apple TV and AirPlay TVs; cast devices found on Wi-Fi\n  - Cast to Device has an AirPlay row on iPhone: the video moves to Apple's player and the AirPlay list opens; closing it brings you back to the same spot. MKV streams can't be AirPlayed (a message says so).\n  - iPhone asks for local network access, so cast devices can be found; Chromecasts are found with Bonjour.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B4/AnymeX-Stremio-v1.1.2-beta.4.ipa",
-      "size": 75468921,
+      "buildVersion": "46",
+      "versionDate": "2026-11-09T05:51:15Z",
+      "versionDescription": "Beta v1.1.2-beta+5\n\n- iPhone: AirPlay with AnymeX+'s own remote; LG and other TVs play MKVs over DLNA\n  - AirPlay no longer opens Apple's player: the TV plays the video and the Cast to Device sheet shows a remote (play/pause, seek, back/forward 10 s, change TV, stop). Stopping brings the player back to the same spot. Keeps playing with the phone locked.\n  - iPhone now finds AirPlay TVs (like LG) and asks them directly for DLNA, so they show up in the cast list and play MKV files themselves.\n  - \"Can't see your TV? Add it by IP address\" in Cast to Device (remembered).\n  - DLNA TVs are told the real file type (MKV, WebM\u2026) instead of always MP4.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B5/AnymeX-Stremio-v1.1.2-beta.5.ipa",
+      "size": 75482231,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.2",
-          "buildVersion": "45",
-          "date": "2026-11-09T05:12:51Z",
-          "localizedDescription": "Beta v1.1.2-beta+4\n\n- iPhone: AirPlay to Apple TV and AirPlay TVs; cast devices found on Wi-Fi\n  - Cast to Device has an AirPlay row on iPhone: the video moves to Apple's player and the AirPlay list opens; closing it brings you back to the same spot. MKV streams can't be AirPlayed (a message says so).\n  - iPhone asks for local network access, so cast devices can be found; Chromecasts are found with Bonjour.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B4/AnymeX-Stremio-v1.1.2-beta.4.ipa",
-          "size": 75468921,
+          "buildVersion": "46",
+          "date": "2026-11-09T05:51:15Z",
+          "localizedDescription": "Beta v1.1.2-beta+5\n\n- iPhone: AirPlay with AnymeX+'s own remote; LG and other TVs play MKVs over DLNA\n  - AirPlay no longer opens Apple's player: the TV plays the video and the Cast to Device sheet shows a remote (play/pause, seek, back/forward 10 s, change TV, stop). Stopping brings the player back to the same spot. Keeps playing with the phone locked.\n  - iPhone now finds AirPlay TVs (like LG) and asks them directly for DLNA, so they show up in the cast list and play MKV files themselves.\n  - \"Can't see your TV? Add it by IP address\" in Cast to Device (remembered).\n  - DLNA TVs are told the real file type (MKV, WebM\u2026) instead of always MP4.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B5/AnymeX-Stremio-v1.1.2-beta.5.ipa",
+          "size": 75482231,
           "minOSVersion": "15.0"
         }
       ]
