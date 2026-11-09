@@ -1,3 +1,4 @@
+import 'package:anymex/plus/search_tabs.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -748,7 +749,16 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
               _buildControlsSection(),
               _buildActiveFilters(),
               const SizedBox(height: 6),
-              Expanded(child: _buildMainContent()),
+              // AnymeX+: a Movies & TV tab next to the anime results.
+              Expanded(
+                child: PlusSearchTabs(
+                  controller: _searchController,
+                  enabled: !isExtensionMode &&
+                      effectiveType == ItemType.anime &&
+                      serviceHandler.serviceType.value != ServicesType.simkl,
+                  anime: _buildMainContent(),
+                ),
+              ),
             ],
           ),
         ));

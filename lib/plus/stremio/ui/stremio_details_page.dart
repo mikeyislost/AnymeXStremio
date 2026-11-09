@@ -37,6 +37,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart' show Obx;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 export 'package:anymex/plus/stremio/ui/stremio_streams_sheet.dart' show StremioStreamsSheet;
 
@@ -146,7 +147,8 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
 
   // ---- actions --------------------------------------------------------------
 
-  void _openStreams(StremioVideo? video) {
+  /// [quick]: Quick play (your usual stream starts without the list).
+  void _openStreams(StremioVideo? video, {bool quick = false}) {
     final meta = _meta;
     if (meta == null) return;
     HapticFeedback.lightImpact();
@@ -155,6 +157,7 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         meta: meta,
         video: video,
         videoId: video?.id ?? meta.singleVideoId,
+        quickPlay: quick,
       ),
       context,
       showDragHandle: true,
@@ -296,12 +299,26 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     final taste = meta.id.startsWith('tt')
         ? PlusTasteButtons(id: meta.id, type: meta.type)
         : null;
+    // AnymeX+: the trailer (Cinemeta lists them) plays in YouTube.
+    final trailers = stremioTrailerIds(meta.raw);
+    final trailer = trailers.isEmpty
+        ? null
+        : _actionButton(
+            context,
+            icon: Icons.smart_display_rounded,
+            label: 'Trailer',
+            onTap: () => _playTrailer(trailers),
+          );
     return Obx(() {
       if (!_service.isLoggedIn.value) {
-        if (taste == null) return const SizedBox.shrink();
+        if (taste == null && trailer == null) return const SizedBox.shrink();
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-          child: Row(children: [taste]),
+          child: Row(children: [
+            if (trailer != null) Expanded(child: trailer),
+            if (trailer != null && taste != null) const SizedBox(width: 10),
+            if (taste != null) taste,
+          ]),
         );
       }
       // Rebuild when the library or Continue Watching changes.
@@ -361,6 +378,10 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
                 ),
               ),
             ],
+            if (trailer != null && !inCw) ...[
+              const SizedBox(width: 10),
+              Expanded(child: trailer),
+            ],
             if (taste != null) ...[
               const SizedBox(width: 10),
               taste,
@@ -369,6 +390,38 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         ),
       );
     });
+  }
+
+  /// Plays the first trailer; with several, asks which.
+  Future<void> _playTrailer(List<(String, String)> trailers) async {
+    Future<void> open(String ytId) => launchUrl(
+        Uri.parse('https://www.youtube.com/watch?v=$ytId'),
+        mode: LaunchMode.externalApplication);
+    if (trailers.length == 1) {
+      await open(trailers.first.$2);
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final t in trailers)
+              ListTile(
+                leading: const Icon(Icons.smart_display_rounded),
+                title: Text(t.$1),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  open(t.$2);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _actionButton(
@@ -522,7 +575,8 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
               ],
               progress: progress,
               watched: (item?.timesWatched ?? 0) > 0,
-              onPlay: () => _openStreams(null),
+              onPlay: () => _openStreams(null, quick: true),
+              onLongPress: () => _openStreams(null),
             ),
           ),
         ),
@@ -682,13 +736,15 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     String image;
     double progress = 0;
     VoidCallback onTap;
+    VoidCallback onLongPress;
 
     if (meta.isSingleVideo) {
       final resume = item != null && item.timeOffset > 1;
       title = resume ? 'Resume ${meta.name}' : 'Play ${meta.name}';
       image = meta.background ?? meta.poster ?? '';
       progress = resume ? item!.progress : 0;
-      onTap = () => _openStreams(null);
+      onTap = () => _openStreams(null, quick: true);
+      onLongPress = () => _openStreams(null);
     } else {
       final v = _continueVideo;
       if (v == null) return const SizedBox.shrink();
@@ -696,7 +752,8 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       title = v.title.isNotEmpty ? '$label - ${v.title}' : label;
       image = v.thumbnail ?? meta.background ?? meta.poster ?? '';
       if (item?.videoId == v.id) progress = item!.progress;
-      onTap = () => _openStreams(v);
+      onTap = () => _openStreams(v, quick: true);
+      onLongPress = () => _openStreams(v);
     }
 
     final theme = Theme.of(context);
@@ -705,6 +762,7 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: GestureDetector(
         onTap: onTap,
+        onLongPress: onLongPress,
         behavior: HitTestBehavior.opaque,
         child: Container(
           height: 52,
@@ -782,4 +840,26 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       ),
     );
   }
+}
+
+/// (label, YouTube id) for each trailer in a meta (Cinemeta's `trailers`,
+/// else `trailerStreams`), at most 4, no repeats.
+List<(String, String)> stremioTrailerIds(Map<String, dynamic> raw) {
+  final out = <(String, String)>[];
+  final seen = <String>{};
+  void add(String label, String id) {
+    if (id.isNotEmpty && seen.add(id) && out.length < 4) out.add((label, id));
+  }
+
+  if (raw['trailers'] is List) {
+    for (final t in (raw['trailers'] as List).whereType<Map>()) {
+      add('${t['type'] ?? 'Trailer'}', '${t['source'] ?? ''}');
+    }
+  }
+  if (out.isEmpty && raw['trailerStreams'] is List) {
+    for (final t in (raw['trailerStreams'] as List).whereType<Map>()) {
+      add('${t['title'] ?? 'Trailer'}', '${t['ytId'] ?? ''}');
+    }
+  }
+  return out;
 }

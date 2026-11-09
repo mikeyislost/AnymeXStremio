@@ -1,3 +1,4 @@
+import 'package:anymex/plus/simkl_send_all.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/storage/anymex_cache_manager.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -296,6 +297,8 @@ class _SettingsAccountsState extends State<SettingsAccounts> {
                     onTap: () => navigate(() => const StremioAccountPage()),
                   );
                 }),
+                // AnymeX+: one-time (repeatable) copy of everything to Simkl.
+                const PlusSimklSendAllTile(),
               ],
             ),
           ],

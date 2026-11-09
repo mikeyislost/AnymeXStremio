@@ -2,7 +2,10 @@ import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/for_you/for_you_row.dart';
 import 'package:anymex/plus/stremio/ui/stremio_account_page.dart';
-import 'package:anymex/plus/stremio/ui/stremio_rows_editor.dart';
+import 'package:anymex/plus/layout/layout_editor.dart';
+import 'package:anymex/plus/layout/layout_model.dart';
+import 'package:anymex/plus/layout/layout_store.dart';
+import 'package:anymex/plus/layout/page_rows.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
@@ -43,6 +46,27 @@ List<(StremioAddon, StremioCatalog, String)> _boardCatalogs(
   return out;
 }
 
+/// Movies & TV rows for Edit layout: Continue Watching, For you, then every
+/// home catalog from your addons (in the order and on/off you had in the
+/// old row editor, until you change it).
+List<PlusRowSpec> stremioHomeSpecs() {
+  final service = StremioService.to;
+  final cats = service.arrangeRows(_boardCatalogs(service.addons.toList()),
+      (r) => StremioService.rowKey(r.$1, r.$2),
+      includeHidden: true);
+  return [
+    const PlusRowSpec('cw', 'Continue Watching'),
+    const PlusRowSpec('forYou', 'For you', styled: false),
+    for (final (a, c, title) in cats)
+      PlusRowSpec('cat:${StremioService.rowKey(a, c)}', title,
+          shownByDefault:
+              !service.hiddenRows.contains(StremioService.rowKey(a, c))),
+  ];
+}
+
+List<PlusPlacedRow> stremioHomeRows() => PlusLayout.arrange(
+    stremioHomeSpecs(), PlusLayoutStore.saved(PlusLayoutPage.movies));
+
 /// "Movies & TV" tab, laid out like AnymeX's Discover tab.
 class StremioHomePage extends StatefulWidget {
   const StremioHomePage({super.key});
@@ -63,6 +87,9 @@ class _StremioHomePageState extends State<StremioHomePage> {
     _appBarVisible.dispose();
     super.dispose();
   }
+
+  void _openEditor() => navigate(
+      () => const PlusLayoutEditorPage(page: PlusLayoutPage.movies));
 
   Future<void> _refresh() async {
     await _service.refreshAddons();
@@ -93,12 +120,44 @@ class _StremioHomePageState extends State<StremioHomePage> {
               final cw = _service.continueWatching.toList();
               final loggedIn = _service.isLoggedIn.value;
               final loading = _service.addonsLoading.value;
-              // Rows from addons already marked as not responding are
-              // skipped instead of asked (and failing) every time.
-              // Your order, minus hidden rows (Edit rows button).
-              final rows = _service.arrangeRows(
-                  _boardCatalogs(addons.where(_service.isAddonUsable).toList()),
-                  (r) => StremioService.rowKey(r.$1, r.$2));
+              PlusLayoutStore.version.value;
+              // AnymeX+: your layout (Edit layout). Rows from addons already
+              // marked as not responding are skipped instead of asked (and
+              // failing) every time.
+              final catalogs = {
+                for (final r in _boardCatalogs(addons))
+                  'cat:${StremioService.rowKey(r.$1, r.$2)}': r,
+              };
+              final rows = stremioHomeRows()
+                  .where((r) => !r.config.hidden)
+                  .toList();
+              Widget? rowWidget(PlusPlacedRow r) {
+                if (r.config.added) return PlusPageRows.addedRow(r);
+                switch (r.key) {
+                  case 'cw':
+                    if (cw.isEmpty) return null;
+                    return ReusableCarousel(
+                      key: ValueKey('stremio-cw-$_reloadToken'),
+                      data: cw.take(30).map(stremioContinueItem).toList(),
+                      title: 'Continue Watching',
+                      variant: DataVariant.offline,
+                    );
+                  case 'forYou':
+                    // Picks from your library, history, Like / Love.
+                    return const PlusForYouMoviesRow();
+                }
+                final cat = catalogs[r.key];
+                if (cat == null || !_service.isAddonUsable(cat.$1)) return null;
+                final (addon, catalog, title) = cat;
+                return StremioCatalogCarousel(
+                  key: ValueKey(
+                      '${addon.transportUrl}|${catalog.type}|${catalog.id}|$_reloadToken'),
+                  addon: addon,
+                  catalog: catalog,
+                  title: title,
+                );
+              }
+
               return CustomScrollView(
                 controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -110,17 +169,6 @@ class _StremioHomePageState extends State<StremioHomePage> {
                   ),
                   if (!loggedIn)
                     SliverToBoxAdapter(child: _connectCard(context)),
-                  if (cw.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: ReusableCarousel(
-                        key: ValueKey('stremio-cw-$_reloadToken'),
-                        data: cw.take(30).map(stremioContinueItem).toList(),
-                        title: 'Continue Watching',
-                        variant: DataVariant.offline,
-                      ),
-                    ),
-                  // AnymeX+: picks from your library, history, Like / Love.
-                  const SliverToBoxAdapter(child: PlusForYouMoviesRow()),
                   if (addons.isEmpty && loading)
                     const SliverToBoxAdapter(
                       child: Padding(
@@ -133,17 +181,14 @@ class _StremioHomePageState extends State<StremioHomePage> {
                   SliverList.builder(
                     itemCount: rows.length,
                     itemBuilder: (context, i) {
-                      final (addon, catalog, title) = rows[i];
-                      return RepaintBoundary(
-                        child: StremioCatalogCarousel(
-                          key: ValueKey(
-                              '${addon.transportUrl}|${catalog.type}|${catalog.id}|$_reloadToken'),
-                          addon: addon,
-                          catalog: catalog,
-                          title: title,
-                        ),
-                      );
+                      final w = rowWidget(rows[i]);
+                      return w == null
+                          ? const SizedBox.shrink()
+                          : PlusPageRows.scoped(rows[i], w);
                     },
+                  ),
+                  SliverToBoxAdapter(
+                    child: PlusPageRows.editButton(context, _openEditor),
                   ),
                   SliverToBoxAdapter(
                     child: SizedBox(height: bottomNavBarHeight + 150),
@@ -174,8 +219,7 @@ class _StremioHomePageState extends State<StremioHomePage> {
                   ),
                   HeaderActionButton(
                     icon: Icons.tune_rounded,
-                    onTap: () => showStremioRowsEditor(context,
-                        stremioRowEntries(_boardCatalogs(_service.addons.toList()))),
+                    onTap: _openEditor,
                   ),
                   HeaderActionButton(
                     icon: IconlyLight.profile,
@@ -513,8 +557,6 @@ class _StremioSearchPageState extends State<StremioSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final targets =
-        _boardCatalogs(StremioService.to.addons.toList(), searchable: true);
     return AnymeXScaffold(
       showHeader: true,
       headerTitle: 'Search',
@@ -528,40 +570,62 @@ class _StremioSearchPageState extends State<StremioSearchPage> {
       },
       onHeaderSearchClear: () => setState(() => _query = ''),
       body: Builder(builder: (ctx) {
-        return ListView(
-          padding: EdgeInsets.only(top: AnymeXHeaderScope.of(ctx), bottom: 120),
-          children: [
-            if (targets.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: AnymeXText(
-                  'None of your addons support search. Install Cinemeta or '
-                  'another catalog addon.',
-                  textAlign: TextAlign.center,
-                  color: context.colors.onSurfaceVariant,
-                ),
-              )
-            else if (_query.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: AnymeXText(
-                  'Type a title and press enter.',
-                  textAlign: TextAlign.center,
-                  color: context.colors.onSurfaceVariant,
-                ),
-              )
-            else
-              ...targets.map((t) => StremioCatalogCarousel(
-                    key: ValueKey(
-                        '$_query|${t.$1.transportUrl}|${t.$2.type}|${t.$2.id}'),
-                    addon: t.$1,
-                    catalog: t.$2,
-                    title: '${stremioTypeLabel(t.$2.type)} · ${t.$1.name}',
-                    extra: {'search': _query},
-                  )),
-          ],
+        return StremioSearchResults(
+          query: _query,
+          padding:
+              EdgeInsets.only(top: AnymeXHeaderScope.of(ctx), bottom: 120),
         );
       }),
     );
+  }
+}
+
+/// Movies & TV results for [query] from every addon that can search, one
+/// row per catalog (the search page and the Movies & TV tab in search).
+class StremioSearchResults extends StatelessWidget {
+  final String query;
+  final EdgeInsets padding;
+  const StremioSearchResults(
+      {super.key, required this.query, this.padding = EdgeInsets.zero});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final targets =
+          _boardCatalogs(StremioService.to.addons.toList(), searchable: true);
+      return ListView(
+        padding: padding,
+        children: [
+          if (targets.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: AnymeXText(
+                'None of your addons support search. Install Cinemeta or '
+                'another catalog addon.',
+                textAlign: TextAlign.center,
+                color: context.colors.onSurfaceVariant,
+              ),
+            )
+          else if (query.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: AnymeXText(
+                'Type a title and press enter.',
+                textAlign: TextAlign.center,
+                color: context.colors.onSurfaceVariant,
+              ),
+            )
+          else
+            ...targets.map((t) => StremioCatalogCarousel(
+                  key: ValueKey(
+                      '$query|${t.$1.transportUrl}|${t.$2.type}|${t.$2.id}'),
+                  addon: t.$1,
+                  catalog: t.$2,
+                  title: '${stremioTypeLabel(t.$2.type)} · ${t.$1.name}',
+                  extra: {'search': query},
+                )),
+        ],
+      );
+    });
   }
 }

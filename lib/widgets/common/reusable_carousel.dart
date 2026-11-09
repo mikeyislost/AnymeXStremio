@@ -2,6 +2,7 @@ import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
 import 'package:anymex/plus/card_menu.dart';
+import 'package:anymex/plus/layout/row_scope.dart';
 import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
@@ -79,7 +80,8 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
   Widget _buildHeaderTitle() {
     return Padding(
       padding: const EdgeInsets.only(left: 20.0, bottom: 2.0),
-      child: AnymeXText(widget.title,
+      // AnymeX+: your name for the row (Edit layout).
+      child: AnymeXText(PlusRowScope.titleOf(context, widget.title),
         variant: TextVariant.semiBold,
         size: 17,
         color: context.colors.primary,
@@ -117,31 +119,48 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
     );
   }
 
+  // AnymeX+: the row's order, count, card style, size and grid view from
+  // Edit layout (PlusRowScope); none = as before.
+  PlusRowScope? _scope;
+
   Widget _buildCarouselList() {
+    final scope = _scope = PlusRowScope.of(context);
     return Obx(() {
-      final List<CarouselData> processedData =
+      List<CarouselData> processedData =
           convertData(widget.data, variant: widget.variant);
+      if (scope != null) processedData = scope.apply(widget.data, processedData);
       // AnymeX+: animate only when the row first shows (PlusRowPerf).
       final enableAnimation = settingsController.enableAnimation &&
           PlusRowPerf.shouldAnimate('carousel-${widget.title}');
-      final cardStyleIndex = settingsController.cardStyle;
+      final cardStyleIndex =
+          scope?.cardStyleOr(settingsController.cardStyle) ??
+              settingsController.cardStyle;
       final _ = settingsController.customCardStyle;
 
+      if (scope != null && scope.style.view.name == 'grid') {
+        return scope.grid(context, processedData.length,
+            (context, index) => _buildCarouselItem(
+                processedData[index], false, index, cardStyleIndex));
+      }
+
       return SizedBox(
-        height: getCardHeight(cardStyleIndex, getPlatform(context)) + 15,
+        height: getCardHeight(cardStyleIndex, getPlatform(context)) *
+                (scope?.style.size ?? 1.0) +
+            15,
         child: ListView.builder(
           key: PageStorageKey<String>('carousel-${widget.title}'),
           itemCount: processedData.length,
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.only(left: 15, top: 5, bottom: 10),
-          itemBuilder: (context, index) =>
-              _buildCarouselItem(processedData[index], enableAnimation, index),
+          itemBuilder: (context, index) => _buildCarouselItem(
+              processedData[index], enableAnimation, index, cardStyleIndex),
         ),
       );
     });
   }
 
-  Widget _buildCarouselItem(CarouselData itemData, bool enableAnimation, int index) {
+  Widget _buildCarouselItem(CarouselData itemData, bool enableAnimation, int index,
+      [int? cardStyleIndex]) {
     final tag = '${widget.title}-${itemData.id}-$index';
 
     final card = enableAnimation
@@ -150,9 +169,9 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
             finalScale: 1.0,
             initialOffset: const Offset(1.0, 0.0),
             duration: Duration(milliseconds: getAnimationDuration()),
-            child: _buildCard(itemData, tag),
+            child: _buildCard(itemData, tag, cardStyleIndex),
           )
-        : _buildCard(itemData, tag);
+        : _buildCard(itemData, tag, cardStyleIndex);
 
     final child = AnymexOnTap(
       onTap: () => _navigateToDetailsPage(itemData, tag),
@@ -197,12 +216,18 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
     PlusCardMenu.anime(context, media, tag);
   }
 
-  MediaCardGate _buildCard(CarouselData itemData, String tag) {
-    return MediaCardGate(
+  Widget _buildCard(CarouselData itemData, String tag, [int? cardStyleIndex]) {
+    final card = MediaCardGate(
         itemData: itemData,
         tag: tag,
         variant: widget.variant,
-        type: widget.type);
+        type: widget.type,
+        cardStyleIndex: cardStyleIndex);
+    // AnymeX+: the row's card size (Edit layout).
+    final scope = _scope;
+    if (scope == null) return card;
+    return scope.sizeCard(
+        context, card, cardStyleIndex ?? settingsController.cardStyle);
   }
 
   void _navigateToDetailsPage(CarouselData itemData, String tag) {

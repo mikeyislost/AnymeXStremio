@@ -4,6 +4,7 @@
 // under General; the Stremio and Simkl sign-ins under Auth tokens). After
 // a restore this puts them into effect without restarting the app.
 
+import 'package:anymex/plus/layout/layout_store.dart';
 import 'package:anymex/plus/for_you/taste.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/utils/logger.dart';
@@ -19,6 +20,7 @@ class PlusBackup {
   static void afterRestore() {
     try {
       PlusTaste.reload();
+      PlusLayoutStore.reload();
       if (Get.isRegistered<StremioService>()) {
         StremioService.to.reloadSettings();
       }

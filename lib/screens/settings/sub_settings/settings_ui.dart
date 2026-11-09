@@ -1,3 +1,4 @@
+import 'package:anymex/plus/layout/layout_editor.dart';
 import 'dart:io';
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
@@ -76,6 +77,15 @@ class _SettingsUiState extends State<SettingsUi> {
                                 'Customize history card, carousel & nav bar styles',
                             onTap: () =>
                                 navigate(() => const SettingsUiComponents()),
+                          ),
+                          // AnymeX+: one screen for every page and list.
+                          AnymeXTile(
+                            icon: Icons.dashboard_customize_outlined,
+                            title: 'Edit layout',
+                            subtitle:
+                                'Rows on Home, Movies & TV and Manga, and Library lists',
+                            onTap: () =>
+                                navigate(() => const PlusLayoutEditorPage()),
                           ),
                           AnymeXTile(
                             icon: Icons.tune_rounded,

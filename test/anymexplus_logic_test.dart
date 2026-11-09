@@ -21,7 +21,10 @@ import 'package:anymex/plus/for_you/movies_for_you.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
 import 'package:anymex/plus/for_you/taste.dart';
 import 'package:anymex/plus/for_you/taste_buttons.dart';
+import 'package:anymex/plus/layout/layout_model.dart';
+import 'package:anymex/plus/layout/page_rows.dart' show PlusFilterRow;
 import 'package:anymex/plus/list_card_badge.dart';
+import 'package:anymex/plus/simkl_send_all.dart';
 import 'package:anymex/plus/rate_prompt.dart';
 import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/missed_sequels.dart';
@@ -33,6 +36,8 @@ import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart'
     show landscapeForTilt;
 import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/stremio/ui/stremio_details_page.dart'
+    show stremioTrailerIds;
 import 'package:anymex/plus/stremio/ui/stremio_player_bridge.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart'
     show stremioEpisodeLabel;
@@ -615,6 +620,145 @@ void main() {
       expect(PlusRowPerf.smallPoster('https://example.com/p.jpg'),
           'https://example.com/p.jpg');
       expect(PlusRowPerf.smallPoster(''), '');
+    });
+  });
+  group('Edit layout', () {
+    const specs = [
+      PlusRowSpec('a', 'A'),
+      PlusRowSpec('b', 'B', shownByDefault: false),
+      PlusRowSpec('c', 'C'),
+    ];
+
+    test('no saved layout = default order and on/off', () {
+      final rows = PlusLayout.arrange(specs, const []);
+      expect(rows.map((r) => r.key), ['a', 'b', 'c']);
+      expect(rows.map((r) => r.config.hidden), [false, true, false]);
+    });
+
+    test('your order wins; new rows go after their neighbour', () {
+      final rows = PlusLayout.arrange(specs, const [
+        PlusRowConfig(key: 'c'),
+        PlusRowConfig(key: 'a', name: 'Mine', hidden: true),
+      ]);
+      expect(rows.map((r) => r.key), ['c', 'a', 'b']);
+      expect(rows[1].title, 'Mine');
+      expect(rows[1].config.hidden, isTrue);
+    });
+
+    test('rows that are gone are skipped but kept when saving', () {
+      const saved = [
+        PlusRowConfig(key: 'gone'),
+        PlusRowConfig(key: 'a'),
+        PlusRowConfig(key: 'x', added: true, params: {'title': 'Romance'}),
+      ];
+      final rows = PlusLayout.arrange(specs, saved);
+      expect(rows.map((r) => r.key), ['a', 'b', 'c', 'x']);
+      expect(rows.firstWhere((r) => r.key == 'x').title, 'Romance');
+      final out = PlusLayout.toSave(rows, saved);
+      expect(out.map((c) => c.key), containsAll(['a', 'x', 'gone']));
+    });
+
+    test('row style saves and loads', () {
+      const st = PlusRowStyle(
+          cardStyle: 2,
+          size: 1.2,
+          view: PlusRowView.grid,
+          count: 20,
+          sort: PlusRowSort.score);
+      final back = PlusRowStyle.fromJson(st.toJson());
+      expect(back.cardStyle, 2);
+      expect(back.size, 1.2);
+      expect(back.view, PlusRowView.grid);
+      expect(back.count, 20);
+      expect(back.sort, PlusRowSort.score);
+      expect(PlusRowStyle.plain.toJson(), isEmpty);
+      expect(PlusRowStyle.fromJson(null).isPlain, isTrue);
+      final c = PlusRowConfig.fromJson(
+          const PlusRowConfig(key: 'k', name: 'N', style: st).toJson())!;
+      expect(c.name, 'N');
+      expect(c.style.count, 20);
+    });
+
+    test('sorting', () {
+      final titles = ['b', 'A', 'c'];
+      final scores = [7.0, null, 9.0];
+      expect(
+          PlusLayout.sortedIndices(3, PlusRowSort.title,
+              title: (i) => titles[i]),
+          [1, 0, 2]);
+      expect(
+          PlusLayout.sortedIndices(3, PlusRowSort.score,
+              score: (i) => scores[i]),
+          [2, 0, 1]);
+      expect(PlusLayout.sortedIndices(3, PlusRowSort.normal), [0, 1, 2]);
+      expect(PlusLayout.scoreOf('84'), 8.4);
+      expect(PlusLayout.scoreOf('8.4'), 8.4);
+      expect(PlusLayout.scoreOf('?'), isNull);
+    });
+
+    test('filtered row query', () {
+      final v = PlusFilterRow.variablesFor(const {
+        'type': 'MANGA',
+        'genres': ['Romance'],
+        'year': 2024,
+        'minScore': 70,
+        'sort': 'SCORE_DESC',
+      });
+      expect(v['type'], 'MANGA');
+      expect(v['genres'], ['Romance']);
+      expect(v['from'], 20240000);
+      expect(v['to'], 20250000);
+      expect(v['minScore'], 69);
+      expect(v['sort'], ['SCORE_DESC']);
+      final d = PlusFilterRow.variablesFor(const {});
+      expect(d['type'], 'ANIME');
+      expect(d.containsKey('genres'), isFalse);
+      expect(d['sort'], ['POPULARITY_DESC']);
+    });
+  });
+
+  group('Send everything to Simkl', () {
+    test('statuses and scores', () {
+      expect(PlusSimklSendAll.simklStatus('CURRENT'), 'watching');
+      expect(PlusSimklSendAll.simklStatus('REPEATING'), 'watching');
+      expect(PlusSimklSendAll.simklStatus('PAUSED'), 'hold');
+      expect(PlusSimklSendAll.simklStatus('PLANNING'), 'plantowatch');
+      expect(PlusSimklSendAll.simklStatus('COMPLETED'), 'completed');
+      expect(PlusSimklSendAll.simklStatus(null), isNull);
+      expect(PlusSimklSendAll.simklRating('85'), 9);
+      expect(PlusSimklSendAll.simklRating('7.5'), 8);
+      expect(PlusSimklSendAll.simklRating('0'), isNull);
+      expect(PlusSimklSendAll.simklRating(null), isNull);
+    });
+
+    test('episodes and seasons', () {
+      expect(PlusSimklSendAll.seasonEpisode('tt1:2:5'), (2, 5));
+      expect(PlusSimklSendAll.seasonEpisode('tt1'), isNull);
+      expect(PlusSimklSendAll.episodesUpTo(3).length, 3);
+      final s = PlusSimklSendAll.seasonsFor([(2, 1), (1, 3), (1, 1)]);
+      expect(s.map((e) => e['number']), [1, 2]);
+      expect((s.first['episodes'] as List).map((e) => e['number']), [1, 3]);
+    });
+  });
+
+  group('Trailers', () {
+    test('from Cinemeta trailers, else trailerStreams', () {
+      expect(
+          stremioTrailerIds({
+            'trailers': [
+              {'source': 'abc', 'type': 'Trailer'},
+              {'source': 'abc', 'type': 'Trailer'},
+            ]
+          }),
+          [('Trailer', 'abc')]);
+      expect(
+          stremioTrailerIds({
+            'trailerStreams': [
+              {'ytId': 'xyz', 'title': 'Teaser'}
+            ]
+          }),
+          [('Teaser', 'xyz')]);
+      expect(stremioTrailerIds({}), isEmpty);
     });
   });
 }

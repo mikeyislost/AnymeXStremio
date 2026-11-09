@@ -1,6 +1,8 @@
 // ignore_for_file: invalid_use_of_protected_member
 
 import 'package:anymex/controllers/source/source_controller.dart';
+import 'package:anymex/plus/layout/home_layout.dart';
+import 'package:anymex/plus/layout/page_rows.dart';
 import 'package:anymex/widgets/header/header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -74,6 +76,10 @@ class _MangaHomePageState extends State<MangaHomePage> {
                       sources: sourceController.installedMangaExtensions.value,
                       itemType: ItemType.manga,
                     );
+                  }
+                  // AnymeX+: with AniList, your layout (Edit layout).
+                  if (PlusPageRows.appliesTo(serviceHandler)) {
+                    return const PlusMangaLayout();
                   }
                   return Column(
                     children: serviceHandler.mangaWidgets(context),
