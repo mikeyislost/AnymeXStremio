@@ -18,20 +18,20 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.2",
-      "buildVersion": "46",
-      "versionDate": "2026-11-09T05:55:10Z",
-      "versionDescription": "Beta v1.1.2-beta+5\n\n- iPhone: AirPlay with AnymeX+'s own remote; LG and other TVs play MKVs over DLNA\n  - AirPlay no longer opens Apple's player: the TV plays the video and the Cast to Device sheet shows a remote (play/pause, seek, back/forward 10 s, change TV, stop). Stopping brings the player back to the same spot. Keeps playing with the phone locked.\n  - iPhone now finds AirPlay TVs (like LG) and asks them directly for DLNA, so they show up in the cast list and play MKV files themselves.\n  - \"Can't see your TV? Add it by IP address\" in Cast to Device (remembered).\n  - DLNA TVs are told the real file type (MKV, WebM\u2026) instead of always MP4.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B5/AnymeX-Stremio-v1.1.2-beta.5.ipa",
+      "buildVersion": "47",
+      "versionDate": "2026-11-09T06:10:12Z",
+      "versionDescription": "Beta v1.1.2-beta+6\n\n- Windows build: download libmpv with retries before building",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B6/AnymeX-Stremio-v1.1.2-beta.6.ipa",
       "size": 75482231,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.2",
-          "buildVersion": "46",
-          "date": "2026-11-09T05:55:10Z",
-          "localizedDescription": "Beta v1.1.2-beta+5\n\n- iPhone: AirPlay with AnymeX+'s own remote; LG and other TVs play MKVs over DLNA\n  - AirPlay no longer opens Apple's player: the TV plays the video and the Cast to Device sheet shows a remote (play/pause, seek, back/forward 10 s, change TV, stop). Stopping brings the player back to the same spot. Keeps playing with the phone locked.\n  - iPhone now finds AirPlay TVs (like LG) and asks them directly for DLNA, so they show up in the cast list and play MKV files themselves.\n  - \"Can't see your TV? Add it by IP address\" in Cast to Device (remembered).\n  - DLNA TVs are told the real file type (MKV, WebM\u2026) instead of always MP4.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B5/AnymeX-Stremio-v1.1.2-beta.5.ipa",
+          "buildVersion": "47",
+          "date": "2026-11-09T06:10:12Z",
+          "localizedDescription": "Beta v1.1.2-beta+6\n\n- Windows build: download libmpv with retries before building",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B6/AnymeX-Stremio-v1.1.2-beta.6.ipa",
           "size": 75482231,
           "minOSVersion": "15.0"
         }
