@@ -10,6 +10,7 @@ import 'package:xml/xml.dart';
 import 'cast_proxy_server.dart';
 import 'cast_v2_client.dart';
 import 'package:anymex/plus/airplay.dart'; // AnymeX+
+import 'package:anymex/plus/lg_tv.dart'; // AnymeX+
 
 enum CastProtocol { chromecast, dlna, roku }
 
@@ -75,12 +76,17 @@ class CastService extends GetxController {
     isSearching.value = false;
   }
 
-  // AnymeX+: DLNA TVs asked directly (AirPlay TVs on iPhone, TVs added by IP),
-  // since iOS blocks the network-wide search for sideloaded apps.
+  // AnymeX+: TVs asked directly (AirPlay TVs on iPhone, TVs added by IP), since
+  // iOS blocks the network-wide search for sideloaded apps: DLNA, and LG webOS.
   Future<void> _plusDirectDlna() async {
-    for (final (host, location) in await PlusCastSearch.dlnaLocations()) {
-      await _resolveUpnpDevice(location, host);
-    }
+    await Future.wait([
+      PlusLgRemote.instance.search(), // LG TVs through their remote-app connection
+      () async {
+        for (final (host, location) in await PlusCastSearch.dlnaLocations()) {
+          await _resolveUpnpDevice(location, host);
+        }
+      }(),
+    ]);
   }
 
   Future<void> _startDlnaDiscovery() async {

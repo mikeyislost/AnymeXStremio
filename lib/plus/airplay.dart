@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:anymex/database/kv_helper.dart';
+import 'package:anymex/plus/lg_tv.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/services/cast/cast_proxy_server.dart';
 import 'package:anymex/services/cast/cast_service.dart';
@@ -47,8 +48,14 @@ class PlusAirPlay {
           ),
       ];
 
+  /// AirPlay TVs as (host, name).
+  static Future<List<(String, String)>> findAirPlayDevices() async => [
+        for (final d in await _bonjour('findAirPlay'))
+          (d['host'] as String, (d['name'] as String?) ?? 'TV (${d['host']})'),
+      ];
+
   static Future<List<String>> findAirPlayHosts() async =>
-      [for (final d in await _bonjour('findAirPlay')) d['host'] as String];
+      [for (final d in await findAirPlayDevices()) d.$1];
 
   /// Loads the video in Apple's (hidden) player and opens the AirPlay list.
   /// Throws a [PlatformException] when it can't play (e.g. MKV).
@@ -322,9 +329,16 @@ class PlusAirPlayRemote {
 
 /// AirPlay row / remote and "Add a TV by IP address", at the top of
 /// the Cast to Device sheet.
-class PlusCastExtras extends StatelessWidget {
+class PlusCastExtras extends StatefulWidget {
   final PlayerController controller;
   const PlusCastExtras({super.key, required this.controller});
+
+  @override
+  State<PlusCastExtras> createState() => _PlusCastExtrasState();
+}
+
+class _PlusCastExtrasState extends State<PlusCastExtras> {
+  PlayerController get controller => widget.controller;
 
   static String _fmt(Duration d) {
     final h = d.inHours, m = d.inMinutes.remainder(60), s = d.inSeconds.remainder(60);
@@ -371,7 +385,7 @@ class PlusCastExtras extends StatelessWidget {
       return;
     }
     final found = await PlusCastSearch.askDirectly([ip]);
-    if (found.isEmpty) {
+    if (found.isEmpty && !await PlusLgTv.isLgTv(ip)) {
       snackBar(
         "The TV at $ip didn't answer. Check the TV is on and on the same Wi-Fi.",
         duration: 4000,
@@ -387,6 +401,7 @@ class PlusCastExtras extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final remote = PlusAirPlayRemote.instance;
+    final lg = PlusLgRemote.instance;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -394,6 +409,17 @@ class PlusCastExtras extends StatelessWidget {
           Obx(() => remote.active.value
               ? _remoteCard(theme, remote)
               : _airPlayRow(theme, remote)),
+        Obx(() {
+          final now = lg.active.value;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (now != null) _lgCard(theme, lg, now),
+              for (final tv in lg.tvs)
+                if (tv.host != now?.host) _lgRow(theme, lg, tv),
+            ],
+          );
+        }),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -429,6 +455,87 @@ class PlusCastExtras extends StatelessWidget {
           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
           : const Icon(Icons.chevron_right_rounded),
       onTap: () => remote.start(controller),
+    );
+  }
+
+  Widget _lgRow(ThemeData theme, PlusLgRemote lg, PlusLgDevice tv) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.opaque(0.15),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(Icons.tv_rounded, color: theme.colorScheme.primary, size: 22),
+      ),
+      title: AnymeXText(
+        tv.name,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      subtitle: AnymeXText(
+        "LG TV · plays MKVs in the TV's player",
+        size: 12,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+      trailing: lg.connecting.value == tv.host
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.chevron_right_rounded),
+      onTap: () => lg.play(tv, controller),
+    );
+  }
+
+  Widget _lgCard(ThemeData theme, PlusLgRemote lg, PlusLgDevice tv) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.opaque(0.25),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.primary.opaque(0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tv_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AnymeXText('Playing on ${tv.name}', variant: TextVariant.bold, size: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: 'Rewind',
+                onPressed: lg.rewind,
+                icon: const Icon(Icons.fast_rewind_rounded),
+              ),
+              IconButton.filled(
+                onPressed: lg.togglePlay,
+                icon: Icon(lg.playing.value ? Icons.pause_rounded : Icons.play_arrow_rounded),
+              ),
+              IconButton(
+                tooltip: 'Fast forward',
+                onPressed: lg.fastForward,
+                icon: const Icon(Icons.fast_forward_rounded),
+              ),
+              IconButton(
+                tooltip: 'Stop',
+                onPressed: () => lg.stop(),
+                icon: const Icon(Icons.stop_rounded),
+              ),
+            ],
+          ),
+          AnymeXText(
+            'Seek with the TV remote',
+            size: 11,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ],
+      ),
     );
   }
 
