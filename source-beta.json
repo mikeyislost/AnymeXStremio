@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.2",
-      "buildVersion": "43",
-      "versionDate": "2026-11-09T03:00:07Z",
-      "versionDescription": "Beta v1.1.2-beta+2\n\n- All-in-one Home and one Library\n  - Home can show Movies & TV rows: For you \u00b7 Movies & TV and the built-in TMDB rows (Trending, Popular, In Theaters, streaming services\u2026). For you and the two Trending rows are on by default; the rest are in Edit layout \u2192 Home. Continue Watching already mixes anime and Movies & TV.\n  - Library: the Stremio chip is now \"Everything\": your anime and your Stremio Movies & TV in one grid, newest first, with status filters (Watching, Completed, Paused, Dropped, Planning) and Anime / Movies / Series. Anime synced to Stremio show once. The chip and filters are remembered.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B2/AnymeX-Stremio-v1.1.2-beta.2.ipa",
-      "size": 75445518,
+      "buildVersion": "44",
+      "versionDate": "2026-11-09T04:00:17Z",
+      "versionDescription": "Beta v1.1.2-beta+3\n\n- Windows: in-app update without the installer wizard",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B3/AnymeX-Stremio-v1.1.2-beta.3.ipa",
+      "size": 75445488,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.2",
-          "buildVersion": "43",
-          "date": "2026-11-09T03:00:07Z",
-          "localizedDescription": "Beta v1.1.2-beta+2\n\n- All-in-one Home and one Library\n  - Home can show Movies & TV rows: For you \u00b7 Movies & TV and the built-in TMDB rows (Trending, Popular, In Theaters, streaming services\u2026). For you and the two Trending rows are on by default; the rest are in Edit layout \u2192 Home. Continue Watching already mixes anime and Movies & TV.\n  - Library: the Stremio chip is now \"Everything\": your anime and your Stremio Movies & TV in one grid, newest first, with status filters (Watching, Completed, Paused, Dropped, Planning) and Anime / Movies / Series. Anime synced to Stremio show once. The chip and filters are remembered.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B2/AnymeX-Stremio-v1.1.2-beta.2.ipa",
-          "size": 75445518,
+          "buildVersion": "44",
+          "date": "2026-11-09T04:00:17Z",
+          "localizedDescription": "Beta v1.1.2-beta+3\n\n- Windows: in-app update without the installer wizard",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B3/AnymeX-Stremio-v1.1.2-beta.3.ipa",
+          "size": 75445488,
           "minOSVersion": "15.0"
         }
       ]
