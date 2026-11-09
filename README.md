@@ -19,6 +19,7 @@ I would just like to note that this app is built using claude code. I do not kno
 - **Stremio library** in the Library tab, plus comments on movies and shows
 - **AniList, MyAnimeList, Simkl and Discord** work as in AnymeX
 - **Self Test** in Settings checks everything and saves a report
+- **Air Play:** Includes full airplay functionality 
 
 > [!IMPORTANT]
 > AnymeX+ is a personal, unofficial build. It is not affiliated with AnymeX or Stremio, and it does not host or provide any content. Streams come from addons and extensions you add yourself.
