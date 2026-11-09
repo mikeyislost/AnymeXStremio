@@ -44,6 +44,13 @@
     <string>LaunchScreen</string>
     <key>UIMainStoryboardFile</key>
     <string>Main</string>
+    <!-- AnymeX+: cast devices on the home network -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>AnymeX+ looks for TVs and cast devices on your Wi-Fi so you can play videos on them.</string>
+    <key>NSBonjourServices</key>
+    <array>
+      <string>_googlecast._tcp</string>
+    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>

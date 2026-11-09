@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import 'cast_proxy_server.dart';
 import 'cast_v2_client.dart';
+import 'package:anymex/plus/airplay.dart'; // AnymeX+
 
 enum CastProtocol { chromecast, dlna, roku }
 
@@ -108,6 +109,13 @@ class CastService extends GetxController {
   }
 
   Future<void> _startChromecastDiscovery() async {
+    // AnymeX+: iOS blocks raw multicast for sideloaded apps; use Bonjour.
+    if (Platform.isIOS) {
+      for (final d in await PlusAirPlay.findChromecasts()) {
+        _addDiscoveredDevice(d);
+      }
+      return;
+    }
     try {
       _mdnsSocket?.close();
       _mdnsSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);

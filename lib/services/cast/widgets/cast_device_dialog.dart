@@ -7,6 +7,7 @@ import 'package:anymex/widgets/common/anymex_slider_m3.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../cast_service.dart';
+import 'package:anymex/plus/airplay.dart'; // AnymeX+
 
 class CastDeviceDialog extends StatefulWidget {
   final PlayerController controller;
@@ -45,6 +46,7 @@ class _CastDeviceDialogState extends State<CastDeviceDialog> {
       children: [
         _buildHeader(theme),
         const SizedBox(height: 16),
+        PlusAirPlayTile(controller: widget.controller), // AnymeX+: iPhone only
         _buildActiveCastingCard(theme),
         _buildDeviceList(theme),
       ],
