@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.2",
-      "buildVersion": "47",
-      "versionDate": "2026-11-09T06:10:12Z",
-      "versionDescription": "Beta v1.1.2-beta+6\n\n- Windows build: download libmpv with retries before building",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B6/AnymeX-Stremio-v1.1.2-beta.6.ipa",
-      "size": 75482231,
+      "buildVersion": "48",
+      "versionDate": "2026-11-09T06:40:28Z",
+      "versionDescription": "Beta v1.1.2-beta+7\n\n- LG TVs: play on the TV's own player (MKV included) without DLNA\n  - LG TVs ignore the DLNA search from iPhone, so AnymeX+ now talks to them the way LG's phone app does: the TV shows up in Cast to Device as an LG TV, asks once to \"Allow\" the phone, then plays the video in its own player (MKV included).\n  - Remote in the Cast sheet: play/pause, rewind, fast forward, stop. The TV starts from the beginning (seek with the TV remote).\n  - \"Add it by IP address\" now also accepts LG TVs.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B7/AnymeX-Stremio-v1.1.2-beta.7.ipa",
+      "size": 75493152,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.2",
-          "buildVersion": "47",
-          "date": "2026-11-09T06:10:12Z",
-          "localizedDescription": "Beta v1.1.2-beta+6\n\n- Windows build: download libmpv with retries before building",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B6/AnymeX-Stremio-v1.1.2-beta.6.ipa",
-          "size": 75482231,
+          "buildVersion": "48",
+          "date": "2026-11-09T06:40:28Z",
+          "localizedDescription": "Beta v1.1.2-beta+7\n\n- LG TVs: play on the TV's own player (MKV included) without DLNA\n  - LG TVs ignore the DLNA search from iPhone, so AnymeX+ now talks to them the way LG's phone app does: the TV shows up in Cast to Device as an LG TV, asks once to \"Allow\" the phone, then plays the video in its own player (MKV included).\n  - Remote in the Cast sheet: play/pause, rewind, fast forward, stop. The TV starts from the beginning (seek with the TV remote).\n  - \"Add it by IP address\" now also accepts LG TVs.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B7/AnymeX-Stremio-v1.1.2-beta.7.ipa",
+          "size": 75493152,
           "minOSVersion": "15.0"
         }
       ]
