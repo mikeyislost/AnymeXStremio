@@ -10,6 +10,7 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/backup.dart';
 import 'package:anymex/plus/card_menu.dart';
 import 'package:anymex/plus/error_log.dart';
+import 'package:anymex/plus/everything_library.dart';
 import 'package:anymex/controllers/services/backup_restore/backup_restore_service.dart'
     show categorizeSettingKey, SettingCategory;
 import 'package:anymex/plus/continue_watching_row.dart';
@@ -805,6 +806,65 @@ void main() {
           PlusBuiltinRows.previewFrom(
               {'title': 'X', 'poster_path': '/a'}, 'movie', '123'),
           isNull); // not an IMDb id
+    });
+  });
+
+  group('One library', () {
+    StremioLibraryItem item(String id, String type, String name,
+            {int offset = 0, int flagged = 0, int times = 0, DateTime? when}) =>
+        StremioLibraryItem({
+          '_id': id,
+          'type': type,
+          'name': name,
+          'removed': false,
+          'temp': false,
+          '_mtime': (when ?? DateTime(2026)).toUtc().toIso8601String(),
+          'state': {
+            'timeOffset': offset,
+            'flaggedWatched': flagged,
+            'timesWatched': times,
+            'lastWatched': (when ?? DateTime(2026)).toUtc().toIso8601String(),
+          },
+        });
+    TrackedMedia anime(String id, String title, String status, DateTime when) =>
+        TrackedMedia(
+          id: id,
+          title: title,
+          watchingStatus: status,
+          updatedAt: when.millisecondsSinceEpoch ~/ 1000,
+        );
+
+    test('Movies & TV status from Stremio', () {
+      expect(plusStremioStatus(item('a', 'movie', 'A')), PlusLibStatus.planning);
+      expect(plusStremioStatus(item('b', 'movie', 'B', offset: 60)),
+          PlusLibStatus.watching);
+      expect(plusStremioStatus(item('c', 'movie', 'C', times: 1)),
+          PlusLibStatus.completed);
+      expect(plusStremioStatus(item('d', 'series', 'D', flagged: 1)),
+          PlusLibStatus.completed);
+    });
+    test('anime statuses map to the same filters', () {
+      expect(plusAnimeStatus('CURRENT'), PlusLibStatus.watching);
+      expect(plusAnimeStatus('REPEATING'), PlusLibStatus.watching);
+      expect(plusAnimeStatus('PAUSED'), PlusLibStatus.paused);
+      expect(plusAnimeStatus('PLANNING'), PlusLibStatus.planning);
+    });
+    test('together, newest first, no doubles, filters', () {
+      final all = plusMergeLibrary([
+        anime('1', 'Frieren', 'CURRENT', DateTime(2026, 1, 1)),
+        anime('2', 'Dandadan', 'COMPLETED', DateTime(2026, 3, 1)),
+      ], [
+        item('tt1', 'movie', 'Dune', offset: 10, when: DateTime(2026, 2, 1)),
+        item('tt2', 'series', 'Frieren', when: DateTime(2026, 4, 1)),
+        item('kitsu:9', 'series', 'Synced', when: DateTime(2026, 4, 1)),
+      ], const {'kitsu:9'});
+      expect(all.map((e) => e.title), ['Dandadan', 'Dune', 'Frieren']);
+      expect(
+          plusFilterLibrary(all, status: PlusLibStatus.watching)
+              .map((e) => e.title),
+          ['Dune', 'Frieren']);
+      expect(plusFilterLibrary(all, kind: PlusLibKind.movie).length, 1);
+      expect(plusFilterLibrary(all, query: 'dan').single.title, 'Dandadan');
     });
   });
 }

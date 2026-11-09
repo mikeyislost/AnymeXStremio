@@ -82,6 +82,8 @@ class PlusHomeLayoutSliver extends StatelessWidget {
           w = PlusPageRows.recommendedRow(manga: true);
         } else if (k.startsWith('disc:')) {
           w = disc(k);
+        } else if (k.startsWith(plusHomeMoviesPrefix)) {
+          w = PlusPageRows.homeMoviesRow(k);
         }
         if (w == null) return const SizedBox.shrink();
         return PlusPageRows.scoped(r, w);

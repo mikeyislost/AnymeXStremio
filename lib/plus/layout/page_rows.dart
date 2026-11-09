@@ -11,6 +11,8 @@ import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/plus/continue_watching_row.dart';
 import 'package:anymex/plus/custom_lists.dart';
+import 'package:anymex/plus/for_you/for_you_row.dart';
+import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/layout/layout_model.dart';
 import 'package:anymex/plus/layout/layout_store.dart';
 import 'package:anymex/plus/layout/row_scope.dart';
@@ -46,6 +48,16 @@ const plusMangaRows = <(String, String)>[
   ('m:novels', 'Novels (your extensions)'),
   ('m:community', 'Community Recommendations'),
 ];
+
+/// Movies & TV rows Home can show (all-in-one Home). Their keys are the
+/// Movies & TV page's keys with 'mv:' in front. On before you change
+/// anything: For you and the two Trending rows.
+const plusHomeMoviesPrefix = 'mv:';
+const plusHomeMoviesShown = {
+  'mv:forYou',
+  'mv:tmdb:trending-movies',
+  'mv:tmdb:trending-series',
+};
 
 /// AniList list rows on Home ("Continue Watching", "Planning Animes"…)
 /// follow AnymeX's own Home switches, so both stay in step.
@@ -107,7 +119,39 @@ class PlusPageRows {
         PlusRowSpec(key, title,
             shownByDefault: discoverByDefault,
             styled: key != 'disc:carousel' && key != 'disc:community'),
+      // AnymeX+: Movies & TV on Home too (all-in-one Home).
+      ...homeMoviesSpecs(),
     ];
+  }
+
+  /// The Movies & TV rows offered on Home: For you and the built-in rows.
+  /// (Addon catalogs can be added with "Add row".)
+  static List<PlusRowSpec> homeMoviesSpecs() {
+    final hasStremio = Get.isRegistered<StremioService>();
+    return [
+      if (hasStremio && PlusBuiltinRows.enabled)
+        PlusRowSpec('${plusHomeMoviesPrefix}forYou', 'For you · Movies & TV',
+            shownByDefault:
+                plusHomeMoviesShown.contains('${plusHomeMoviesPrefix}forYou'),
+            styled: false),
+      for (final b in PlusBuiltinRows.available)
+        PlusRowSpec('$plusHomeMoviesPrefix${b.layoutKey}', b.title,
+            shownByDefault: plusHomeMoviesShown
+                .contains('$plusHomeMoviesPrefix${b.layoutKey}')),
+    ];
+  }
+
+  /// A Movies & TV row on Home ('mv:' key), or null.
+  static Widget? homeMoviesRow(String key) {
+    if (!key.startsWith(plusHomeMoviesPrefix)) return null;
+    final k = key.substring(plusHomeMoviesPrefix.length);
+    if (k == 'forYou') {
+      if (!Get.isRegistered<StremioService>()) return null;
+      return const PlusForYouMoviesRow(title: 'For you · Movies & TV');
+    }
+    final b = PlusBuiltinRows.byLayoutKey(k);
+    if (b == null || !PlusBuiltinRows.enabled) return null;
+    return PlusBuiltinCarousel(key: ValueKey('home-$k'), row: b, title: b.title);
   }
 
   static List<PlusRowSpec> mangaSpecs() {

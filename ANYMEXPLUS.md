@@ -45,7 +45,8 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/error_log.dart` | Last 50 errors kept on the device (from `Logger.e`, secrets blanked), shown in the Self Test |
 | `plus/backup.dart` | After AnymeX restores a backup, AnymeX+ settings (already in it) take effect without a restart |
 | `plus/row_perf.dart` | Smoother rows: AnymeX's card animation plays only when a row first shows; rows load small posters (TMDB w342, Metahub medium) |
-| `plus/layout/` | Edit layout: `layout_model.dart` (rows, row looks, ordering; unit-tested), `layout_store.dart` (saved per page), `row_scope.dart` (a row's look, read by `ReusableCarousel`), `page_rows.dart` (Home and Manga rows, filtered AniList rows, Stremio catalog rows), `home_layout.dart` (Home and Manga drawn from your layout), `layout_editor.dart` (the Edit layout screen, Library defaults too) |
+| `plus/layout/` | Edit layout: `layout_model.dart` (rows, row looks, ordering; unit-tested), `layout_store.dart` (saved per page), `row_scope.dart` (a row's look, read by `ReusableCarousel`), `page_rows.dart` (Home and Manga rows, Movies & TV rows on Home (`mv:` keys), filtered AniList rows, Stremio catalog rows), `home_layout.dart` (Home and Manga drawn from your layout), `layout_editor.dart` (the Edit layout screen, Library defaults too) |
+| `plus/everything_library.dart` | Library's "Everything" chip: anime and Movies & TV together with the same status filters (Watching, Completed, Paused, Dropped, Planning) and Anime / Movies / Series; merge and status logic unit-tested |
 | `plus/search_tabs.dart` | Movies & TV tab on the anime search page |
 | `plus/simkl_send_all.dart` | "Send everything to Simkl" (Movies & TV history and AniList anime list) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
@@ -77,7 +78,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `screens/anime/watch/watch_view.dart` | `PlusUpNext` card; mini player (`PlusMiniPlayerOverlay`, controls hidden while it's on) |
 | `utils/logger.dart` | `Logger.e` also feeds `PlusErrorLog` |
 | `controllers/services/backup_restore/backup_restore_service.dart` | `PlusBackup.afterRestore()` after a restore |
-| `screens/library/controller/library_controller.dart`, `my_library.dart`, `widgets/library_deps.dart` | "Stremio" chip in the Library |
+| `screens/library/controller/library_controller.dart`, `my_library.dart`, `widgets/library_deps.dart` | "Everything" chip in the Library (`plus/everything_library.dart`, remembered) |
 | `screens/library/widgets/history_model.dart` | History items from Stremio open the Stremio page |
 | `screens/settings/sub_settings/settings_accounts.dart` | Stremio account in Accounts; "Send everything to Simkl" |
 | `screens/settings/sub_settings/settings_ui.dart` | Stremio tab in the tab editor; "Edit layout" entry |

@@ -61,7 +61,8 @@ class PlusForYouAnimeRow extends StatelessWidget {
 /// "For you" on Movies & TV, from your Stremio library and history plus
 /// what you Liked / Loved.
 class PlusForYouMoviesRow extends StatelessWidget {
-  const PlusForYouMoviesRow({super.key});
+  final String title;
+  const PlusForYouMoviesRow({super.key, this.title = 'For you'});
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +81,7 @@ class PlusForYouMoviesRow extends StatelessWidget {
       if (picks.isEmpty) return const SizedBox.shrink();
       return PlusForYouRow(
         picks: picks,
+        title: title,
         onHidden: (p) => MoviesForYou.picks.removeWhere((x) => x.key == p.key),
       );
     });
