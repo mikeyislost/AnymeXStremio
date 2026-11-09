@@ -18,6 +18,7 @@ import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/plus/custom_lists.dart';
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
+import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
 import 'package:anymex/plus/for_you/taste.dart';
 import 'package:anymex/plus/for_you/taste_buttons.dart';
@@ -759,6 +760,51 @@ void main() {
           }),
           [('Teaser', 'xyz')]);
       expect(stremioTrailerIds({}), isEmpty);
+    });
+  });
+
+  group('Built-in Movies & TV rows', () {
+    test('row keys are unique and mostly genre rows start hidden', () {
+      final keys = PlusBuiltinRows.all.map((r) => r.layoutKey).toList();
+      expect(keys.toSet().length, keys.length);
+      expect(PlusBuiltinRows.byLayoutKey('tmdb:popular-movies')?.type, 'movie');
+      expect(PlusBuiltinRows.byLayoutKey('cat:x'), isNull);
+    });
+    test('queries', () {
+      final netflix = PlusBuiltinRows.byLayoutKey('tmdb:netflix')!;
+      final q = PlusBuiltinRows.queryFor(netflix, 'GB');
+      expect(q, contains('with_watch_providers=8'));
+      expect(q, contains('watch_region=GB'));
+      expect(q, contains('sort_by=popularity.desc'));
+      final horror = PlusBuiltinRows.byLayoutKey('tmdb:g-horror')!;
+      expect(PlusBuiltinRows.queryFor(horror, 'US'),
+          allOf(contains('with_genres=27'), contains('vote_count.gte')));
+      final pop = PlusBuiltinRows.byLayoutKey('tmdb:popular-movies')!;
+      expect(PlusBuiltinRows.queryFor(pop, 'US'), isEmpty);
+    });
+    test('TMDB result to row item', () {
+      final p = PlusBuiltinRows.previewFrom({
+        'id': 1,
+        'name': 'Show',
+        'poster_path': '/p.jpg',
+        'backdrop_path': '/b.jpg',
+        'first_air_date': '2024-05-01',
+        'vote_average': 8.25,
+        'vote_count': 300,
+        'genre_ids': [18],
+      }, 'series', 'tt123')!;
+      expect(p.id, 'tt123');
+      expect(p.type, 'series');
+      expect(p.releaseInfo, '2024');
+      expect(p.imdbRating, '8.3');
+      expect(p.genres, ['Drama']);
+      expect(p.poster, 'https://image.tmdb.org/t/p/w500/p.jpg');
+      expect(PlusBuiltinRows.previewFrom({'title': 'X'}, 'movie', 'tt1'),
+          isNull); // no poster
+      expect(
+          PlusBuiltinRows.previewFrom(
+              {'title': 'X', 'poster_path': '/a'}, 'movie', '123'),
+          isNull); // not an IMDb id
     });
   });
 }

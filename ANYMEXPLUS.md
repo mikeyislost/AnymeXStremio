@@ -23,6 +23,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | Path | What it is |
 | --- | --- |
 | `plus/stremio/` | Stremio account, addons, library sync, progress sync, anime matching, on-device cache. `stremio_service.dart` is split into parts: `stremio_service_sync.dart` (tracker progress → Stremio, which entry an anime uses), `stremio_service_playback.dart` (anime streams, playback reports, Continue Watching), `stremio_service_anilist.dart` (Stremio watches → AniList/Simkl) |
+| `plus/stremio/builtin_rows.dart` | Movies & TV rows the app provides itself from TMDB (trending, popular, in theaters, top rated, streaming services, genres), so the tab works without catalog addons; listed in Edit layout |
 | `plus/stremio/ui/` | Movies & TV tab, details page, Info tab, streams sheet (`stremio_streams_sheet.dart`), downloads (`stremio_download.dart`), player bridge, account page |
 | `plus/stremio_anime_episodes.dart` | Stremio streams on the anime Watch tab (source switch, episode list) |
 | `plus/movie_watch_card.dart` | Movie card instead of "Episode 1" |

@@ -1,3 +1,4 @@
+import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/for_you/for_you_row.dart';
@@ -57,6 +58,9 @@ List<PlusRowSpec> stremioHomeSpecs() {
   return [
     const PlusRowSpec('cw', 'Continue Watching'),
     const PlusRowSpec('forYou', 'For you', styled: false),
+    // AnymeX+: rows the app provides itself (no addon needed).
+    for (final b in PlusBuiltinRows.available)
+      PlusRowSpec(b.layoutKey, b.title, shownByDefault: b.shown),
     for (final (a, c, title) in cats)
       PlusRowSpec('cat:${StremioService.rowKey(a, c)}', title,
           shownByDefault:
@@ -146,6 +150,16 @@ class _StremioHomePageState extends State<StremioHomePage> {
                     // Picks from your library, history, Like / Love.
                     return const PlusForYouMoviesRow();
                 }
+                final builtin = PlusBuiltinRows.byLayoutKey(r.key);
+                if (builtin != null) {
+                  if (!PlusBuiltinRows.enabled) return null;
+                  return PlusBuiltinCarousel(
+                    key: ValueKey('${r.key}|$_reloadToken'),
+                    row: builtin,
+                    title: builtin.title,
+                    force: _reloadToken > 0,
+                  );
+                }
                 final cat = catalogs[r.key];
                 if (cat == null || !_service.isAddonUsable(cat.$1)) return null;
                 final (addon, catalog, title) = cat;
@@ -169,14 +183,14 @@ class _StremioHomePageState extends State<StremioHomePage> {
                   ),
                   if (!loggedIn)
                     SliverToBoxAdapter(child: _connectCard(context)),
-                  if (addons.isEmpty && loading)
+                  if (addons.isEmpty && loading && !PlusBuiltinRows.enabled)
                     const SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.all(48),
                         child: Center(child: AnymeXProgressIndicator()),
                       ),
                     ),
-                  if (addons.isEmpty && !loading)
+                  if (addons.isEmpty && !loading && !PlusBuiltinRows.enabled)
                     SliverToBoxAdapter(child: _emptyState(context)),
                   SliverList.builder(
                     itemCount: rows.length,
