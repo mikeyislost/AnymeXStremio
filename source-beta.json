@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.2",
-      "buildVersion": "41",
-      "versionDate": "2026-11-09T00:35:50Z",
-      "versionDescription": "Beta v1.1.2-beta\n\n- Edit layout, Quick play, trailers, Movies & TV in search, send everything to Simkl\n  - Edit layout: one screen (Settings \u2192 UI, or \"Edit layout\" at the end of Home, Movies & TV and Manga) for every page. Reorder, hide, rename and add rows; each row gets its own card style, size, row or grid, item count and order. Add filtered AniList rows (genres, year, minimum score, sort) or any Movies & TV catalog (optionally one genre). Library: default sort, order and columns per list type. Replaces the Movies & TV row editor; Home's list switches stay in step with it.\n  - Home and Anime in one tab: the Anime tab's rows (Recently Updated, Trending, Popular, Recently Completed, Upcoming, \u2026) are now Home rows you can mix with your own lists.\n  - Quick play: Play starts your usual stream (same addon and quality) without the list when it's there; long-press Play to choose. Switch in Stremio account \u2192 Playback.\n  - Trailer button on Movies & TV pages (opens in YouTube).\n  - Search: a Movies & TV tab next to the anime results (anime results unchanged).\n  - Settings \u2192 Accounts \u2192 \"Send everything to Simkl\": your Movies & TV watch history (episodes in progress included) and your AniList anime list (status, progress, scores). Safe to run again.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta/AnymeX-Stremio-v1.1.2-beta.ipa",
-      "size": 75435799,
+      "buildVersion": "42",
+      "versionDate": "2026-11-09T01:06:53Z",
+      "versionDescription": "Beta v1.1.2-beta+1\n\n- Movies & TV rows without addons",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B1/AnymeX-Stremio-v1.1.2-beta.1.ipa",
+      "size": 75442034,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.2",
-          "buildVersion": "41",
-          "date": "2026-11-09T00:35:50Z",
-          "localizedDescription": "Beta v1.1.2-beta\n\n- Edit layout, Quick play, trailers, Movies & TV in search, send everything to Simkl\n  - Edit layout: one screen (Settings \u2192 UI, or \"Edit layout\" at the end of Home, Movies & TV and Manga) for every page. Reorder, hide, rename and add rows; each row gets its own card style, size, row or grid, item count and order. Add filtered AniList rows (genres, year, minimum score, sort) or any Movies & TV catalog (optionally one genre). Library: default sort, order and columns per list type. Replaces the Movies & TV row editor; Home's list switches stay in step with it.\n  - Home and Anime in one tab: the Anime tab's rows (Recently Updated, Trending, Popular, Recently Completed, Upcoming, \u2026) are now Home rows you can mix with your own lists.\n  - Quick play: Play starts your usual stream (same addon and quality) without the list when it's there; long-press Play to choose. Switch in Stremio account \u2192 Playback.\n  - Trailer button on Movies & TV pages (opens in YouTube).\n  - Search: a Movies & TV tab next to the anime results (anime results unchanged).\n  - Settings \u2192 Accounts \u2192 \"Send everything to Simkl\": your Movies & TV watch history (episodes in progress included) and your AniList anime list (status, progress, scores). Safe to run again.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta/AnymeX-Stremio-v1.1.2-beta.ipa",
-          "size": 75435799,
+          "buildVersion": "42",
+          "date": "2026-11-09T01:06:53Z",
+          "localizedDescription": "Beta v1.1.2-beta+1\n\n- Movies & TV rows without addons",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B1/AnymeX-Stremio-v1.1.2-beta.1.ipa",
+          "size": 75442034,
           "minOSVersion": "15.0"
         }
       ]
