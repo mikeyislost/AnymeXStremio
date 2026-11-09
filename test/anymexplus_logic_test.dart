@@ -11,6 +11,7 @@ import 'package:anymex/plus/backup.dart';
 import 'package:anymex/plus/card_menu.dart';
 import 'package:anymex/plus/error_log.dart';
 import 'package:anymex/plus/everything_library.dart';
+import 'package:anymex/plus/windows_update.dart';
 import 'package:anymex/controllers/services/backup_restore/backup_restore_service.dart'
     show categorizeSettingKey, SettingCategory;
 import 'package:anymex/plus/continue_watching_row.dart';
@@ -865,6 +866,35 @@ void main() {
           ['Dune', 'Frieren']);
       expect(plusFilterLibrary(all, kind: PlusLibKind.movie).length, 1);
       expect(plusFilterLibrary(all, query: 'dan').single.title, 'Dandadan');
+    });
+  });
+
+  group('Windows update', () {
+    test('silent switches keep the folder and install mode', () {
+      final a = PlusWindowsUpdate.installerArgs(r'C:\Program Files\AnymeXStremio',
+          allUsers: true);
+      expect(a, containsAll(['/SILENT', '/ALLUSERS', '/NORESTART']));
+      expect(a.last, r'/DIR=C:\Program Files\AnymeXStremio');
+      expect(
+          PlusWindowsUpdate.installerArgs('x', allUsers: false),
+          contains('/CURRENTUSER'));
+    });
+    test('Program Files means all users', () {
+      final env = {'ProgramFiles': r'C:\Program Files'};
+      expect(PlusWindowsUpdate.isAllUsersPath(
+          r'C:\Program Files\AnymeXStremio', env), isTrue);
+      expect(PlusWindowsUpdate.isAllUsersPath(
+          r'C:\Users\me\AppData\Local\Programs\AnymeXStremio', env), isFalse);
+    });
+    test('script quotes paths and keeps /DIR as one switch', () {
+      final s = PlusWindowsUpdate.script(
+        installer: r"C:\Temp\it's.exe",
+        args: const ['/SILENT', r'/DIR=C:\Program Files\A'],
+        app: r'C:\Program Files\A\anymex.exe',
+      );
+      expect(s, contains(r"'C:\Temp\it''s.exe'"));
+      expect(s, contains(r'''-ArgumentList '/SILENT "/DIR=C:\Program Files\A"' -Wait'''));
+      expect(s, contains(r'Remove-Item -LiteralPath $PSCommandPath'));
     });
   });
 }

@@ -47,6 +47,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/row_perf.dart` | Smoother rows: AnymeX's card animation plays only when a row first shows; rows load small posters (TMDB w342, Metahub medium) |
 | `plus/layout/` | Edit layout: `layout_model.dart` (rows, row looks, ordering; unit-tested), `layout_store.dart` (saved per page), `row_scope.dart` (a row's look, read by `ReusableCarousel`), `page_rows.dart` (Home and Manga rows, Movies & TV rows on Home (`mv:` keys), filtered AniList rows, Stremio catalog rows), `home_layout.dart` (Home and Manga drawn from your layout), `layout_editor.dart` (the Edit layout screen, Library defaults too) |
 | `plus/everything_library.dart` | Library's "Everything" chip: anime and Movies & TV together with the same status filters (Watching, Completed, Paused, Dropped, Planning) and Anime / Movies / Series; merge and status logic unit-tested |
+| `plus/windows_update.dart` | Windows in-app update: installer saved to the temp folder, run silently over the installed copy (same folder and install mode, no license page), deleted afterwards, app reopened; old installers in Downloads removed |
 | `plus/search_tabs.dart` | Movies & TV tab on the anime search page |
 | `plus/simkl_send_all.dart` | "Send everything to Simkl" (Movies & TV history and AniList anime list) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
@@ -84,7 +85,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `screens/settings/sub_settings/settings_ui.dart` | Stremio tab in the tab editor; "Edit layout" entry |
 | `screens/settings/sub_settings/settings_about.dart` | Shows the beta tag as the version |
 | `screens/settings/registry/settings_registry.dart` | Self Test page in settings |
-| `utils/updater.dart` | Updates from this repo; beta app follows beta pre-releases |
+| `utils/updater.dart` | Updates from this repo; beta app follows beta pre-releases; Windows updates install silently from the temp folder (`plus/windows_update.dart`) |
 | `utils/notification.dart` | Firebase push removed; local notifications set up on their own |
 | `utils/external_font_loader.dart` | Subtitle fonts load after launch (`ensureBundledFonts`) |
 | `utils/function.dart` | iOS swipe-back on pushed pages |
