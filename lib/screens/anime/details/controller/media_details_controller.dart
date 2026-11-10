@@ -23,6 +23,7 @@ import 'package:anymex/models/animethemes/anime_theme.dart';
 import 'package:anymex/screens/anime/widgets/comments/controller/comment_preloader.dart';
 import 'package:anymex/utils/anime_themes_api.dart';
 import 'package:anymex/utils/function.dart';
+import 'package:anymex/plus/episode_order.dart';
 import 'package:anymex/utils/logger.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart'
@@ -804,7 +805,7 @@ class MediaDetailsController extends GetxController {
   List<Episode> _convertEpisodes(List<dynamic> episodes, String title) {
     final data = episodes.map((ep) => DEpisodeToEpisode(ep)).toList();
     if (data.isEmpty) return data;
-    return data;
+    return plusOldestFirst(data); // AnymeX+: some extensions list oldest first
   }
 
   List<Episode> _renewEpisodeData(List<Episode> episodes) {

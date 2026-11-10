@@ -668,6 +668,7 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
                       context,
                       media: widget.anilistData,
                       episode: episode,
+                      watched: isWatched,
                       chooseSource: () {
                         selectedEpisode.value = episode;
                         fetchServers(episode, bypassDialog: true);
@@ -810,6 +811,7 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
                       context,
                       media: widget.anilistData,
                       episode: episode,
+                      watched: isWatched,
                       chooseSource: () {
                         selectedEpisode.value = episode;
                         fetchServers(episode, bypassDialog: true);

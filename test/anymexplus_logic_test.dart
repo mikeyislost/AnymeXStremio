@@ -12,6 +12,7 @@ import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
 import 'package:anymex/plus/episode_hold.dart';
+import 'package:anymex/plus/episode_order.dart';
 import 'package:anymex/plus/mkv_audio.dart' show MkvTrackPatch;
 import 'dart:typed_data' as td;
 import 'package:anymex/plus/backup.dart';
@@ -1049,6 +1050,24 @@ void main() {
       expect(PlusEpisodeHold.statusFor(progress: 12, totalEpisodes: 12, mediaStatus: 'RELEASING', listStatus: 'CURRENT'), 'CURRENT');
       expect(PlusEpisodeHold.statusFor(progress: 3, totalEpisodes: 12, mediaStatus: 'FINISHED', listStatus: 'REPEATING'), 'REPEATING');
       expect(PlusEpisodeHold.statusFor(progress: 3, totalEpisodes: null, mediaStatus: 'FINISHED', listStatus: null), 'CURRENT');
+    });
+  });
+
+  group('Episode order from an extension', () {
+    test('a backwards list is spotted', () {
+      expect(plusIsBackwards([6, 5, 4, 3, 2, 1]), isTrue);
+      expect(plusIsBackwards([12.5, 12, 11]), isTrue);
+      expect(plusIsBackwards([1, 2, 3]), isFalse);
+      expect(plusIsBackwards([3, 2, 1, 3, 2, 1]), isFalse); // seasons
+      expect(plusIsBackwards([3, null, 1]), isFalse);
+      expect(plusIsBackwards([1, 1]), isFalse);
+      expect(plusIsBackwards([5]), isFalse);
+    });
+
+    test('a backwards list is turned oldest first, others are left alone', () {
+      List<String> nums(List<Episode> l) => l.map((e) => e.number).toList();
+      expect(nums(plusOldestFirst([Episode(number: '3'), Episode(number: '2'), Episode(number: '1')])), ['1', '2', '3']);
+      expect(nums(plusOldestFirst([Episode(number: '1'), Episode(number: '2')])), ['1', '2']);
     });
   });
 }

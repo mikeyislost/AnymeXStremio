@@ -426,6 +426,7 @@ class _StremioAnimeEpisodesState extends State<StremioAnimeEpisodes> {
             context,
             media: widget.media,
             episode: ep,
+            watched: _watched(ep, progress),
             chooseSource: () => _openStreams(ep, bypassDialog: true),
             onChanged: () {
               if (mounted) setState(() {});
