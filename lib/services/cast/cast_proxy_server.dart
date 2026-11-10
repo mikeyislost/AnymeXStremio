@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:anymex/plus/airplay.dart'; // AnymeX+
+import 'package:anymex/plus/mkv_audio.dart'; // AnymeX+
 
 class CastProxyServer {
   static HttpServer? _server;
@@ -225,7 +226,15 @@ class CastProxyServer {
 
     request.response.headers.contentType ??= ContentType('video', 'mp4');
 
-    await clientResp.stream.pipe(request.response);
+    // AnymeX+: MKV files go to the TV with the audio picked in the app first.
+    final body = await PlusMkvAudio.wrap(
+      clientResp.stream,
+      url: remoteUrl,
+      headers: Map.of(reqHeaders)..remove('range'),
+      statusCode: clientResp.statusCode,
+      contentRange: clientResp.headers['content-range'],
+    );
+    await body.pipe(request.response);
   }
 
   static Future<void> _serveHlsMaster(HttpRequest request) async {

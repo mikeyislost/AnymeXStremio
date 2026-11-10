@@ -10,6 +10,7 @@ import 'package:xml/xml.dart';
 import 'cast_proxy_server.dart';
 import 'cast_v2_client.dart';
 import 'package:anymex/plus/airplay.dart'; // AnymeX+
+import 'package:anymex/plus/mkv_audio.dart'; // AnymeX+
 
 enum CastProtocol { chromecast, dlna, roku }
 
@@ -301,6 +302,18 @@ class CastService extends GetxController {
     Duration? startPosition,
     required CastDevice device,
   }) async {
+    // AnymeX+: send the audio picked in the app (MKV), and re-cast when it changes.
+    PlusMkvAudio.castStarted((at) async {
+      await castMedia(
+        videoUrl: videoUrl,
+        headers: headers,
+        subtitleUrl: subtitleUrl,
+        subtitleLabel: subtitleLabel,
+        title: title,
+        startPosition: at,
+        device: device,
+      );
+    });
     try {
       final proxyUrl = await CastProxyServer.startProxy(
         originalUrl: videoUrl,

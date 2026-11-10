@@ -8,6 +8,8 @@ import 'package:anymex/controllers/service_handler/service_handler.dart'
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/plus/airplay.dart' show plusMimeFromPath, PlusCastSearch;
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/mkv_audio.dart' show MkvTrackPatch;
+import 'dart:typed_data' as td;
 import 'package:anymex/plus/backup.dart';
 import 'package:anymex/plus/card_menu.dart';
 import 'package:anymex/plus/error_log.dart';
@@ -909,6 +911,51 @@ void main() {
       expect(PlusCastSearch.isIp('192.168.1.20'), isTrue);
       expect(PlusCastSearch.isIp(' 10.0.0.5 '), isTrue);
       expect(PlusCastSearch.isIp('lg-tv.local'), isFalse);
+    });
+  });
+
+  group('MKV audio for casting', () {
+    // EBML element: 1-byte or 4-byte ID + 1-byte size (data < 127 bytes).
+    List<int> el(List<int> id, List<int> data) => [...id, 0x80 | data.length, ...data];
+    List<int> entry(int number, int type, {int? flagDefault}) => el([0xAE], [
+          ...el([0xD7], [number]),
+          ...el([0x83], [type]),
+          if (flagDefault != null) ...el([0x88], [flagDefault]),
+        ]);
+    final video = entry(1, 1);
+    final jpn = entry(2, 2, flagDefault: 1);
+    final eng = entry(3, 2, flagDefault: 0);
+    final tracksData = [...video, ...jpn, ...eng];
+    final head = td.Uint8List.fromList([
+      ...el([0x1A, 0x45, 0xDF, 0xA3], [0x42, 0x82, 0x84, 0x77, 0x65, 0x62, 0x6D]),
+      0x18, 0x53, 0x80, 0x67, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Segment, unknown size
+      ...el([0x15, 0x49, 0xA9, 0x66], [0x2A, 0xD7, 0xB1, 0x83, 0x0F, 0x42, 0x40]), // Info
+      ...el([0x16, 0x54, 0xAE, 0x6B], tracksData),
+      0x1F, 0x43, 0xB6, 0x75, 0x80, // Cluster
+    ]);
+
+    test('second audio track goes first and becomes the default', () {
+      final patch = MkvTrackPatch.build(head, 1)!;
+      final engDefault = entry(3, 2, flagDefault: 1);
+      final jpnNot = entry(2, 2, flagDefault: 0);
+      expect(patch.bytes, [...video, ...engDefault, ...jpnNot]);
+      expect(patch.bytes.length, tracksData.length);
+      // Applying it to the file in two chunks gives the same result.
+      final split = patch.start + 5;
+      final a = patch.apply(head.sublist(0, split), 0);
+      final b = patch.apply(head.sublist(split), split);
+      final whole = [...a, ...b];
+      expect(whole.sublist(patch.start, patch.end), patch.bytes);
+      expect(whole.length, head.length);
+    });
+
+    test('first audio track already default: nothing to change', () {
+      expect(MkvTrackPatch.build(head, 0), isNull);
+    });
+
+    test('not an MKV, or no such track', () {
+      expect(MkvTrackPatch.build(td.Uint8List.fromList([0, 1, 2, 3]), 1), isNull);
+      expect(MkvTrackPatch.build(head, 5), isNull);
     });
   });
 }
