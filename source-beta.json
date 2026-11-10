@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "58",
-      "versionDate": "2026-11-10T05:47:48Z",
-      "versionDescription": "Beta v1.1.3-beta+3\n\n- Fix the wrong episode playing, and add \"Mark as not watched\"\n  - Some extensions list episodes oldest first; the list then came out backwards (6, 5, 4\u2026) and the numbers and titles landed on the wrong episodes, so the card for episode 2 played episode 5. Such lists are now put the right way round, so cards, titles and what plays match.\n  - Long-press on a watched episode has \"Mark as not watched\": the eye mark and resume point go, and your list progress steps back to before it. It also works without a tracker signed in.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B3/AnymeX-Stremio-v1.1.3-beta.3.ipa",
-      "size": 75547747,
+      "buildVersion": "59",
+      "versionDate": "2026-11-10T14:38:31Z",
+      "versionDescription": "Beta v1.1.3-beta+4\n\n- TV app: browse Movies & TV on the TV, synced from the phone\n  - The phone sends the TV your Stremio sign-in, addons, Movies & TV rows (your Edit layout order), the TMDB key and the watched point, locked with AES-256-GCM. The key only reaches the TV through LG's own phone link when the phone opens the TV app.\n  - New TV screens: Home rows with a backdrop and details of the highlighted title, details with seasons and episodes, a streams panel, search, settings. All with the LG remote; works when the phone is away.\n  - Plays debrid and direct streams on the TV by itself (torrent-only and header streams are left out). Up in the player opens audio and subtitles (addon subtitles included).\n  - Progress goes to the Stremio library like the phone does it; resume points; the next episode starts by itself with the same kind of stream. Watched marks go to the phone, which sets the Stremio mark and updates AniList and Simkl.\n  - TV Remote page: sync status, Sync now, and a search box that types on the TV.\n  - scripts/tv_smoke.js walks the TV app through all of it without a TV; runs in checks.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B4/AnymeX-Stremio-v1.1.3-beta.4.ipa",
+      "size": 75547768,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "58",
-          "date": "2026-11-10T05:47:48Z",
-          "localizedDescription": "Beta v1.1.3-beta+3\n\n- Fix the wrong episode playing, and add \"Mark as not watched\"\n  - Some extensions list episodes oldest first; the list then came out backwards (6, 5, 4\u2026) and the numbers and titles landed on the wrong episodes, so the card for episode 2 played episode 5. Such lists are now put the right way round, so cards, titles and what plays match.\n  - Long-press on a watched episode has \"Mark as not watched\": the eye mark and resume point go, and your list progress steps back to before it. It also works without a tracker signed in.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B3/AnymeX-Stremio-v1.1.3-beta.3.ipa",
-          "size": 75547747,
+          "buildVersion": "59",
+          "date": "2026-11-10T14:38:31Z",
+          "localizedDescription": "Beta v1.1.3-beta+4\n\n- TV app: browse Movies & TV on the TV, synced from the phone\n  - The phone sends the TV your Stremio sign-in, addons, Movies & TV rows (your Edit layout order), the TMDB key and the watched point, locked with AES-256-GCM. The key only reaches the TV through LG's own phone link when the phone opens the TV app.\n  - New TV screens: Home rows with a backdrop and details of the highlighted title, details with seasons and episodes, a streams panel, search, settings. All with the LG remote; works when the phone is away.\n  - Plays debrid and direct streams on the TV by itself (torrent-only and header streams are left out). Up in the player opens audio and subtitles (addon subtitles included).\n  - Progress goes to the Stremio library like the phone does it; resume points; the next episode starts by itself with the same kind of stream. Watched marks go to the phone, which sets the Stremio mark and updates AniList and Simkl.\n  - TV Remote page: sync status, Sync now, and a search box that types on the TV.\n  - scripts/tv_smoke.js walks the TV app through all of it without a TV; runs in checks.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B4/AnymeX-Stremio-v1.1.3-beta.4.ipa",
+          "size": 75547768,
           "minOSVersion": "15.0"
         }
       ]
