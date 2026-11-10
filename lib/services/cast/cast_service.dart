@@ -10,7 +10,6 @@ import 'package:xml/xml.dart';
 import 'cast_proxy_server.dart';
 import 'cast_v2_client.dart';
 import 'package:anymex/plus/airplay.dart'; // AnymeX+
-import 'package:anymex/plus/lg_tv.dart'; // AnymeX+
 
 enum CastProtocol { chromecast, dlna, roku }
 
@@ -77,16 +76,11 @@ class CastService extends GetxController {
   }
 
   // AnymeX+: TVs asked directly (AirPlay TVs on iPhone, TVs added by IP), since
-  // iOS blocks the network-wide search for sideloaded apps: DLNA, and LG webOS.
+  // iOS blocks the network-wide search for sideloaded apps.
   Future<void> _plusDirectDlna() async {
-    await Future.wait([
-      PlusLgRemote.instance.search(), // LG TVs through their remote-app connection
-      () async {
-        for (final (host, location) in await PlusCastSearch.dlnaLocations()) {
-          await _resolveUpnpDevice(location, host);
-        }
-      }(),
-    ]);
+    for (final (host, location) in await PlusCastSearch.dlnaLocations()) {
+      await _resolveUpnpDevice(location, host);
+    }
   }
 
   Future<void> _startDlnaDiscovery() async {
@@ -327,6 +321,7 @@ class CastService extends GetxController {
 
       if (device.protocol == CastProtocol.chromecast) {
         await _castChromecast(
+          mime: isHls ? null : await plusDetectMime(videoUrl, headers), // AnymeX+: MKV etc.
           device: device,
           mediaUrl: mediaUrl,
           subtitleUrl: subUrl,
@@ -362,6 +357,7 @@ class CastService extends GetxController {
   }
 
   Future<void> _castChromecast({
+    String? mime,
     required CastDevice device,
     required String mediaUrl,
     String? subtitleUrl,
@@ -382,6 +378,9 @@ class CastService extends GetxController {
     });
 
     _castMessageSubscription = client.messageStream.listen((msg) {
+      if (msg['type'] == 'LOAD_FAILED' || msg['type'] == 'LOAD_CANCELLED') {
+        plusCastLoadFailed(device.name); // AnymeX+
+      }
       if (msg['type'] == 'MEDIA_STATUS') {
         final statuses = msg['status'] as List<dynamic>?;
         if (statuses != null && statuses.isNotEmpty) {
@@ -404,6 +403,10 @@ class CastService extends GetxController {
       }
     });
 
+    // AnymeX+: wait until the receiver app is really up (TVs with Google Cast
+    // take several seconds; a fixed 1.2 s wait sent LOAD into the void).
+    final launched = plusWaitForCastReceiver(client.messageStream);
+
     client.sendMessage(
       namespace: CastV2Client.kNamespaceReceiver,
       payload: {
@@ -413,7 +416,7 @@ class CastService extends GetxController {
       },
     );
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await launched;
 
     final tracks = <Map<String, dynamic>>[];
     final activeTrackIds = <int>[];
@@ -440,7 +443,7 @@ class CastService extends GetxController {
         'currentTime': startSeconds,
         'media': {
           'contentId': mediaUrl,
-          'contentType': isHls ? 'application/x-mpegURL' : 'video/mp4',
+          'contentType': isHls ? 'application/x-mpegURL' : (mime ?? 'video/mp4'),
           'streamType': 'BUFFERED',
           'metadata': {
             'type': 0,

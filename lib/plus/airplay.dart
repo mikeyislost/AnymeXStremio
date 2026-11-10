@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:anymex/database/kv_helper.dart';
-import 'package:anymex/plus/lg_tv.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/services/cast/cast_proxy_server.dart';
 import 'package:anymex/services/cast/cast_service.dart';
@@ -37,8 +36,12 @@ class PlusAirPlay {
     }
   }
 
-  static Future<List<CastDevice>> findChromecasts() async => [
+  static Future<List<CastDevice>> findChromecasts() async {
+    // A TV can answer on two addresses (e.g. wired and Wi-Fi): keep one per name.
+    final seen = <String>{};
+    return [
         for (final d in await _bonjour('findChromecasts'))
+          if (seen.add((d['name'] as String?) ?? d['host'] as String))
           CastDevice(
             id: 'chromecast-${d['host']}-8009',
             name: (d['name'] as String?) ?? 'Chromecast (${d['host']})',
@@ -47,6 +50,7 @@ class PlusAirPlay {
             protocol: CastProtocol.chromecast,
           ),
       ];
+  }
 
   /// AirPlay TVs as (host, name).
   static Future<List<(String, String)>> findAirPlayDevices() async => [
@@ -151,6 +155,29 @@ class PlusCastSearch {
     return [for (final e in found.entries) (e.key, e.value)];
   }
 }
+
+/// Waits until a Google Cast device reports the default media receiver
+/// running (TVs take a few seconds to open it), up to 20 s.
+Future<void> plusWaitForCastReceiver(Stream<Map<String, dynamic>> messages) async {
+  try {
+    await messages.firstWhere((m) {
+      if (m['type'] != 'RECEIVER_STATUS') return false;
+      final status = m['status'];
+      final apps = status is Map ? status['applications'] : null;
+      return apps is List &&
+          apps.any((a) => a is Map && a['appId'] == 'CC1AD845' && a['transportId'] != null);
+    }).timeout(const Duration(seconds: 20));
+    // Give the receiver a moment after the connection is set up.
+    await Future.delayed(const Duration(milliseconds: 400));
+  } catch (_) {}
+}
+
+/// The TV refused the video (Google Cast LOAD_FAILED).
+void plusCastLoadFailed(String device) => snackBar(
+      "$device couldn't play this video. Try another stream, or AirPlay if it isn't an MKV.",
+      duration: 5000,
+      maxLines: 3,
+    );
 
 /// File type from the address (".mkv" → Matroska), for DLNA TVs.
 String? plusMimeFromPath(String url) {
@@ -261,7 +288,7 @@ class PlusAirPlayRemote {
       if (wasPlaying) c.play();
       snackBar(
         e.code == 'unsupported'
-            ? "AirPlay can't play this file type (often MKV). Pick your TV under DLNA instead, it plays MKVs."
+            ? "AirPlay can't play this file type (often MKV). Pick your TV's Google Cast or DLNA entry instead."
             : (e.message ?? "AirPlay didn't start"),
         duration: 4000,
         maxLines: 3,
@@ -385,7 +412,7 @@ class _PlusCastExtrasState extends State<PlusCastExtras> {
       return;
     }
     final found = await PlusCastSearch.askDirectly([ip]);
-    if (found.isEmpty && !await PlusLgTv.isLgTv(ip)) {
+    if (found.isEmpty) {
       snackBar(
         "The TV at $ip didn't answer. Check the TV is on and on the same Wi-Fi.",
         duration: 4000,
@@ -401,7 +428,6 @@ class _PlusCastExtrasState extends State<PlusCastExtras> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final remote = PlusAirPlayRemote.instance;
-    final lg = PlusLgRemote.instance;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -409,17 +435,6 @@ class _PlusCastExtrasState extends State<PlusCastExtras> {
           Obx(() => remote.active.value
               ? _remoteCard(theme, remote)
               : _airPlayRow(theme, remote)),
-        Obx(() {
-          final now = lg.active.value;
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (now != null) _lgCard(theme, lg, now),
-              for (final tv in lg.tvs)
-                if (tv.host != now?.host) _lgRow(theme, lg, tv),
-            ],
-          );
-        }),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -447,7 +462,7 @@ class _PlusCastExtrasState extends State<PlusCastExtras> {
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
       ),
       subtitle: AnymeXText(
-        'Apple TV and AirPlay TVs. Not for MKV files: use DLNA below.',
+        'Apple TV and AirPlay TVs. For MKV files, pick your TV under Google Cast or DLNA below.',
         size: 12,
         color: theme.colorScheme.onSurfaceVariant,
       ),
@@ -455,87 +470,6 @@ class _PlusCastExtrasState extends State<PlusCastExtras> {
           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
           : const Icon(Icons.chevron_right_rounded),
       onTap: () => remote.start(controller),
-    );
-  }
-
-  Widget _lgRow(ThemeData theme, PlusLgRemote lg, PlusLgDevice tv) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primary.opaque(0.15),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(Icons.tv_rounded, color: theme.colorScheme.primary, size: 22),
-      ),
-      title: AnymeXText(
-        tv.name,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-      ),
-      subtitle: AnymeXText(
-        "LG TV · plays MKVs in the TV's player",
-        size: 12,
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
-      trailing: lg.connecting.value == tv.host
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-          : const Icon(Icons.chevron_right_rounded),
-      onTap: () => lg.play(tv, controller),
-    );
-  }
-
-  Widget _lgCard(ThemeData theme, PlusLgRemote lg, PlusLgDevice tv) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.opaque(0.25),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.primary.opaque(0.3)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.tv_rounded, color: theme.colorScheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AnymeXText('Playing on ${tv.name}', variant: TextVariant.bold, size: 14),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                tooltip: 'Rewind',
-                onPressed: lg.rewind,
-                icon: const Icon(Icons.fast_rewind_rounded),
-              ),
-              IconButton.filled(
-                onPressed: lg.togglePlay,
-                icon: Icon(lg.playing.value ? Icons.pause_rounded : Icons.play_arrow_rounded),
-              ),
-              IconButton(
-                tooltip: 'Fast forward',
-                onPressed: lg.fastForward,
-                icon: const Icon(Icons.fast_forward_rounded),
-              ),
-              IconButton(
-                tooltip: 'Stop',
-                onPressed: () => lg.stop(),
-                icon: const Icon(Icons.stop_rounded),
-              ),
-            ],
-          ),
-          AnymeXText(
-            'Seek with the TV remote',
-            size: 11,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ],
-      ),
     );
   }
 

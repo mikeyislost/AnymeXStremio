@@ -51,7 +51,6 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/search_tabs.dart` | Movies & TV tab on the anime search page |
 | `plus/simkl_send_all.dart` | "Send everything to Simkl" (Movies & TV history and AniList anime list) |
 | `plus/airplay.dart` | Casting extras. iPhone AirPlay: a hidden Apple player (native side in `ios/Runner/AppDelegate.swift`, `PlusAirPlay`) sends the video to the TV and the cast sheet shows our remote (play/pause, seek, ±10 s, change TV, stop → the player resumes there); streams that need headers go through the cast proxy. Finding TVs on iPhone: Bonjour for Chromecasts and AirPlay TVs, then each AirPlay TV is asked directly for DLNA (unicast SSDP); "Add a TV by IP address" (saved). DLNA gets the real file type (MKV → `video/x-matroska`) |
-| `plus/lg_tv.dart` | LG webOS TVs through the TV's remote-app connection (websocket 3001/3000, one-time "Allow" prompt, key kept; pairing manifest from aiowebostv): the TV's player opens the stream (`media.viewer/open`, MKV included) and the Cast sheet shows play/pause, rewind, fast-forward, stop. Found among AirPlay TVs (iPhone) and TVs added by IP. Used because LG TVs ignore the direct DLNA search |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
 ## Hooks in AnymeX files
@@ -79,8 +78,9 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet |
 | `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open; after a show is marked Completed, `RatePrompt` asks for a score when the player closes; Movies & TV skip times (`plusAttachSkipTimes`) at the top of `_initializeAniSkip`; leaving the player ends the mini player |
 | `screens/anime/watch/watch_view.dart` | `PlusUpNext` card; mini player (`PlusMiniPlayerOverlay`, controls hidden while it's on) |
-| `services/cast/widgets/cast_device_dialog.dart` | `PlusCastExtras` (AirPlay, add TV by IP) above the device list |
-| `services/cast/cast_service.dart` | iPhone Chromecast search uses `PlusAirPlay.findChromecasts` (Bonjour); `_plusDirectDlna` in the search (DLNA asked directly + LG TVs); DLNA `mime` from `plusDetectMime` |
+| `services/cast/widgets/cast_device_dialog.dart` | `PlusCastExtras` (AirPlay, add TV by IP) above the device list; the body scrolls (list spilled out of the landscape sheet) |
+| `services/cast/cast_service.dart` | iPhone Chromecast search uses `PlusAirPlay.findChromecasts` (Bonjour); `_plusDirectDlna` in the search (DLNA asked directly); Google Cast waits for the receiver (`plusWaitForCastReceiver`) instead of 1.2 s, sends the real file type, reports LOAD_FAILED; DLNA `mime` from `plusDetectMime` |
+| `services/cast/cast_v2_client.dart` | Follows the default media receiver's transportId, not whichever app is listed first |
 | `services/cast/cast_proxy_server.dart` | Downloaded files are served with their real file type (`plusMimeFromPath`) |
 | `ios/Runner/AppDelegate.swift`, `ios/Runner/Info.plist` (not under `lib/`) | `PlusAirPlay` (hidden AirPlay player + Bonjour) appended and registered; local network permission text, `_googlecast._tcp` / `_airplay._tcp`, background audio (AirPlay keeps going with the phone locked) |
 | `utils/logger.dart` | `Logger.e` also feeds `PlusErrorLog` |

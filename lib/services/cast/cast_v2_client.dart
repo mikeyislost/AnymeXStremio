@@ -97,7 +97,11 @@ class CastV2Client {
       final status = msg.payload['status'] as Map<String, dynamic>?;
       final applications = status?['applications'] as List<dynamic>?;
       if (applications != null && applications.isNotEmpty) {
-        final app = applications.first as Map<String, dynamic>;
+        // AnymeX+: on TVs another app can be listed first; use the media receiver.
+        final app = (applications.firstWhere(
+          (a) => a is Map && a['appId'] == 'CC1AD845',
+          orElse: () => applications.first,
+        )) as Map<String, dynamic>;
         final newTransportId = app['transportId'] as String?;
         if (newTransportId != null && newTransportId != _transportId) {
           _transportId = newTransportId;
