@@ -2,7 +2,6 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
-import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/screens/library/controller/library_controller.dart';
 import 'package:anymex/screens/library/editor/list_editor.dart';
 import 'package:anymex/widgets/common/anymex_pills.dart';
@@ -287,14 +286,12 @@ class ChipTabs extends StatelessWidget {
           );
         }
 
-        // AnymeX+: the synced Stremio library (anime mode only).
-        final stremio = StremioService.to;
-        if (controller.type.value == ItemType.anime &&
-            stremio.isLoggedIn.value) {
+        // AnymeX+: anime and Movies & TV together (anime mode only).
+        if (controller.type.value == ItemType.anime) {
           pillItems.add(
             PillItem(
-              icon: Icons.live_tv_rounded,
-              label: 'Stremio (${stremio.library.length})',
+              icon: Icons.all_inclusive_rounded,
+              label: 'Everything',
               isSelected: stremioSelected,
               onTap: () => controller.showStremio.value = true,
             ),

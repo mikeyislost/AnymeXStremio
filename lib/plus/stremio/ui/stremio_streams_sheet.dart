@@ -39,7 +39,12 @@ class StremioStreamsSheet extends StatefulWidget {
     this.type,
     this.title,
     this.onPlay,
+    this.quickPlay = false,
   });
+
+  /// Quick play: start your usual pick (same addon and quality) as soon as
+  /// it's found, and show the list only when it isn't there.
+  final bool quickPlay;
 
   @override
   State<StremioStreamsSheet> createState() => _StremioStreamsSheetState();
@@ -66,6 +71,29 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
       _pref.addon != null &&
       s.addonName == _pref.addon &&
       ((_pref.quality ?? '').isEmpty || s.quality == _pref.quality);
+
+  // Quick play: on until your usual pick plays or turns out to be missing.
+  late bool _quick = widget.quickPlay &&
+      StremioService.to.quickPlay.value &&
+      _pref.addon != null;
+  bool _quickDone = false;
+
+  void _maybeQuickPlay() {
+    if (!_quick || _quickDone) return;
+    for (final s in _all) {
+      if (s.isPlayable && _isPreferred(s)) {
+        _quickDone = true;
+        _select(s);
+        return;
+      }
+    }
+    // Your usual addon answered without it (or isn't installed, or every
+    // addon is done): show the list instead.
+    final prefGone = _started && !_addonOrder.contains(_pref.addon);
+    if (prefGone || _byAddon.containsKey(_pref.addon) || (_started && _pending == 0)) {
+      setState(() => _quick = false);
+    }
+  }
 
   bool _matches(StremioStream s) =>
       (_quality == null || s.quality == _quality) &&
@@ -110,8 +138,10 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
           _pending = _pending > 0 ? _pending - 1 : 0;
           _byAddon[addon.name] = streams;
         });
+        _maybeQuickPlay();
       },
     );
+    if (mounted) _maybeQuickPlay();
   }
 
   List<StremioStream> get _all => _addonOrder
@@ -157,6 +187,58 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
     }
     // Back from the player: close the picker so the details page refreshes.
     if (mounted) Navigator.of(context).pop();
+  }
+
+  /// While quick play looks for your usual pick.
+  Widget _quickView(BuildContext context, String title) {
+    final colors = context.colors;
+    final q = (_pref.quality ?? '').isEmpty ? '' : ' · ${_pref.quality}';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 0, 6, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Iconsax.play_circle, color: colors.primary, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnymeXText(_quickDone ? 'Starting…' : 'Finding your usual stream…',
+                        size: 16, variant: TextVariant.bold),
+                    AnymeXText('$title · ${_pref.addon}$q',
+                        size: 12,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        color: colors.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(50),
+            child: AnymeXLinearIndicator(
+              minHeight: 3,
+              color: colors.primary,
+              backgroundColor: colors.onSurface.opaque(0.08, iReallyMeanIt: true),
+            ),
+          ),
+          if (!_quickDone)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => setState(() => _quick = false),
+                child: const Text('Show all streams'),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _chip(String label, bool selected, VoidCallback onTap) {
@@ -224,6 +306,8 @@ class _StremioStreamsSheetState extends State<StremioStreamsSheet> {
             ? (widget.meta?.name ?? '')
             : 'S${v.season ?? 1} E${v.episode ?? 1}'
                 '${v.title.isNotEmpty ? ' · ${v.title}' : ''}');
+
+    if (_quick) return _quickView(context, title);
 
     final children = <Widget>[];
     if (_started && _addonOrder.isEmpty) {

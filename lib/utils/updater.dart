@@ -1,3 +1,4 @@
+import 'package:anymex/plus/windows_update.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -482,9 +483,9 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
     });
 
     final dio = Dio();
-    final downloadsDir = await getDownloadsDirectory();
-    final savePath =
-        '${downloadsDir?.path ?? ''}/app_update_${widget.newVersion}.exe';
+    // AnymeX+: temp folder, cleaned up after; silent update (PlusWindowsUpdate).
+    final savePath = await PlusWindowsUpdate.installerPath(widget.newVersion);
+    await PlusWindowsUpdate.cleanUp();
 
     await dio.download(
       downloadUrl,
@@ -502,8 +503,11 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
 
     // Run the installer, then close so it can replace the app's files.
     try {
-      setState(() => _downloadStatus = 'Starting installer...');
-      await Process.start(savePath, const [], mode: ProcessStartMode.detached);
+      setState(() => _downloadStatus = 'Installing update...');
+      if (!await PlusWindowsUpdate.start(savePath)) {
+        await Process.start(savePath, const [],
+            mode: ProcessStartMode.detached);
+      }
       await Future.delayed(const Duration(milliseconds: 800));
       exit(0);
     } catch (e) {

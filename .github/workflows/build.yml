@@ -322,6 +322,35 @@ jobs:
         shell: bash
         run: python scripts/beta_build.py windows
 
+      # media_kit downloads libmpv during the CMake step without checking that
+      # the download worked, so a bad download fails the build. Fetch it here
+      # with retries; CMake then finds it with the right checksum and skips it.
+      - name: Pre-download libmpv
+        shell: bash
+        run: |
+          flutter pub get
+          python - <<'PY'
+          import hashlib, json, os, re, subprocess, sys, urllib.parse
+          cfg = json.load(open('.dart_tool/package_config.json'))
+          pkg = next(p for p in cfg['packages'] if p['name'] == 'media_kit_libs_windows_video')
+          root = pkg['rootUri']
+          if root.startswith('file:'):
+              root = urllib.parse.unquote(urllib.parse.urlparse(root).path).lstrip('/')
+          else:
+              root = os.path.normpath(os.path.join('.dart_tool', root))
+          cm = open(os.path.join(root, 'windows', 'CMakeLists.txt')).read()
+          name, sha = re.search(r'set\(LIBMPV "(mpv-dev-x86_64-[^"]+)"\)\s*set\(LIBMPV_SHA256 "([0-9a-f]{64})"\)', cm).groups()
+          url = re.search(r'set\(LIBMPV_URL "([^"]+)"\)', cm).group(1).replace('${LIBMPV}', name)
+          os.makedirs('build/windows/x64', exist_ok=True)
+          dest = f'build/windows/x64/{name}'
+          for attempt in range(5):
+              subprocess.run(['curl', '-fsSL', '--retry', '3', '-o', dest, url])
+              if os.path.exists(dest) and hashlib.sha256(open(dest, 'rb').read()).hexdigest() == sha:
+                  print(f'libmpv ready: {name}'); sys.exit(0)
+              print(f'attempt {attempt + 1}: bad download, retrying')
+          sys.exit('libmpv download kept failing')
+          PY
+
       - name: Build Windows app + installer
         shell: pwsh
         run: |

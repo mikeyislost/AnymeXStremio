@@ -1,3 +1,4 @@
+import 'package:anymex/plus/everything_library.dart';
 import 'dart:async';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
@@ -28,9 +29,9 @@ class LibraryController extends GetxController {
   final searchQuery = ''.obs;
   final selectedListIndex = 0.obs;
 
-  /// AnymeX+: the "Stremio" chip shows the synced Stremio library instead
-  /// of a local list.
-  final showStremio = false.obs;
+  /// AnymeX+: the "Everything" chip shows anime and Movies & TV together
+  /// instead of a local list (remembered).
+  final showStremio = plusEverythingChipFlag();
   final type = ItemType.anime.obs;
   final isSearchActive = false.obs;
 

@@ -6,10 +6,15 @@
 import 'package:anymex/controllers/service_handler/service_handler.dart'
     show ServicesType;
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
+import 'package:anymex/plus/airplay.dart' show plusMimeFromPath, PlusCastSearch;
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/mkv_audio.dart' show MkvTrackPatch;
+import 'dart:typed_data' as td;
 import 'package:anymex/plus/backup.dart';
 import 'package:anymex/plus/card_menu.dart';
 import 'package:anymex/plus/error_log.dart';
+import 'package:anymex/plus/everything_library.dart';
+import 'package:anymex/plus/windows_update.dart';
 import 'package:anymex/controllers/services/backup_restore/backup_restore_service.dart'
     show categorizeSettingKey, SettingCategory;
 import 'package:anymex/plus/continue_watching_row.dart';
@@ -18,10 +23,14 @@ import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/plus/custom_lists.dart';
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
+import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
 import 'package:anymex/plus/for_you/taste.dart';
 import 'package:anymex/plus/for_you/taste_buttons.dart';
+import 'package:anymex/plus/layout/layout_model.dart';
+import 'package:anymex/plus/layout/page_rows.dart' show PlusFilterRow;
 import 'package:anymex/plus/list_card_badge.dart';
+import 'package:anymex/plus/simkl_send_all.dart';
 import 'package:anymex/plus/rate_prompt.dart';
 import 'package:anymex/plus/row_perf.dart';
 import 'package:anymex/plus/missed_sequels.dart';
@@ -33,6 +42,8 @@ import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart'
     show landscapeForTilt;
 import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/stremio/ui/stremio_details_page.dart'
+    show stremioTrailerIds;
 import 'package:anymex/plus/stremio/ui/stremio_player_bridge.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart'
     show stremioEpisodeLabel;
@@ -615,6 +626,336 @@ void main() {
       expect(PlusRowPerf.smallPoster('https://example.com/p.jpg'),
           'https://example.com/p.jpg');
       expect(PlusRowPerf.smallPoster(''), '');
+    });
+  });
+  group('Edit layout', () {
+    const specs = [
+      PlusRowSpec('a', 'A'),
+      PlusRowSpec('b', 'B', shownByDefault: false),
+      PlusRowSpec('c', 'C'),
+    ];
+
+    test('no saved layout = default order and on/off', () {
+      final rows = PlusLayout.arrange(specs, const []);
+      expect(rows.map((r) => r.key), ['a', 'b', 'c']);
+      expect(rows.map((r) => r.config.hidden), [false, true, false]);
+    });
+
+    test('your order wins; new rows go after their neighbour', () {
+      final rows = PlusLayout.arrange(specs, const [
+        PlusRowConfig(key: 'c'),
+        PlusRowConfig(key: 'a', name: 'Mine', hidden: true),
+      ]);
+      expect(rows.map((r) => r.key), ['c', 'a', 'b']);
+      expect(rows[1].title, 'Mine');
+      expect(rows[1].config.hidden, isTrue);
+    });
+
+    test('rows that are gone are skipped but kept when saving', () {
+      const saved = [
+        PlusRowConfig(key: 'gone'),
+        PlusRowConfig(key: 'a'),
+        PlusRowConfig(key: 'x', added: true, params: {'title': 'Romance'}),
+      ];
+      final rows = PlusLayout.arrange(specs, saved);
+      expect(rows.map((r) => r.key), ['a', 'b', 'c', 'x']);
+      expect(rows.firstWhere((r) => r.key == 'x').title, 'Romance');
+      final out = PlusLayout.toSave(rows, saved);
+      expect(out.map((c) => c.key), containsAll(['a', 'x', 'gone']));
+    });
+
+    test('row style saves and loads', () {
+      const st = PlusRowStyle(
+          cardStyle: 2,
+          size: 1.2,
+          view: PlusRowView.grid,
+          count: 20,
+          sort: PlusRowSort.score);
+      final back = PlusRowStyle.fromJson(st.toJson());
+      expect(back.cardStyle, 2);
+      expect(back.size, 1.2);
+      expect(back.view, PlusRowView.grid);
+      expect(back.count, 20);
+      expect(back.sort, PlusRowSort.score);
+      expect(PlusRowStyle.plain.toJson(), isEmpty);
+      expect(PlusRowStyle.fromJson(null).isPlain, isTrue);
+      final c = PlusRowConfig.fromJson(
+          const PlusRowConfig(key: 'k', name: 'N', style: st).toJson())!;
+      expect(c.name, 'N');
+      expect(c.style.count, 20);
+    });
+
+    test('sorting', () {
+      final titles = ['b', 'A', 'c'];
+      final scores = [7.0, null, 9.0];
+      expect(
+          PlusLayout.sortedIndices(3, PlusRowSort.title,
+              title: (i) => titles[i]),
+          [1, 0, 2]);
+      expect(
+          PlusLayout.sortedIndices(3, PlusRowSort.score,
+              score: (i) => scores[i]),
+          [2, 0, 1]);
+      expect(PlusLayout.sortedIndices(3, PlusRowSort.normal), [0, 1, 2]);
+      expect(PlusLayout.scoreOf('84'), 8.4);
+      expect(PlusLayout.scoreOf('8.4'), 8.4);
+      expect(PlusLayout.scoreOf('?'), isNull);
+    });
+
+    test('filtered row query', () {
+      final v = PlusFilterRow.variablesFor(const {
+        'type': 'MANGA',
+        'genres': ['Romance'],
+        'year': 2024,
+        'minScore': 70,
+        'sort': 'SCORE_DESC',
+      });
+      expect(v['type'], 'MANGA');
+      expect(v['genres'], ['Romance']);
+      expect(v['from'], 20240000);
+      expect(v['to'], 20250000);
+      expect(v['minScore'], 69);
+      expect(v['sort'], ['SCORE_DESC']);
+      final d = PlusFilterRow.variablesFor(const {});
+      expect(d['type'], 'ANIME');
+      expect(d.containsKey('genres'), isFalse);
+      expect(d['sort'], ['POPULARITY_DESC']);
+    });
+  });
+
+  group('Send everything to Simkl', () {
+    test('statuses and scores', () {
+      expect(PlusSimklSendAll.simklStatus('CURRENT'), 'watching');
+      expect(PlusSimklSendAll.simklStatus('REPEATING'), 'watching');
+      expect(PlusSimklSendAll.simklStatus('PAUSED'), 'hold');
+      expect(PlusSimklSendAll.simklStatus('PLANNING'), 'plantowatch');
+      expect(PlusSimklSendAll.simklStatus('COMPLETED'), 'completed');
+      expect(PlusSimklSendAll.simklStatus(null), isNull);
+      expect(PlusSimklSendAll.simklRating('85'), 9);
+      expect(PlusSimklSendAll.simklRating('7.5'), 8);
+      expect(PlusSimklSendAll.simklRating('0'), isNull);
+      expect(PlusSimklSendAll.simklRating(null), isNull);
+    });
+
+    test('episodes and seasons', () {
+      expect(PlusSimklSendAll.seasonEpisode('tt1:2:5'), (2, 5));
+      expect(PlusSimklSendAll.seasonEpisode('tt1'), isNull);
+      expect(PlusSimklSendAll.episodesUpTo(3).length, 3);
+      final s = PlusSimklSendAll.seasonsFor([(2, 1), (1, 3), (1, 1)]);
+      expect(s.map((e) => e['number']), [1, 2]);
+      expect((s.first['episodes'] as List).map((e) => e['number']), [1, 3]);
+    });
+  });
+
+  group('Trailers', () {
+    test('from Cinemeta trailers, else trailerStreams', () {
+      expect(
+          stremioTrailerIds({
+            'trailers': [
+              {'source': 'abc', 'type': 'Trailer'},
+              {'source': 'abc', 'type': 'Trailer'},
+            ]
+          }),
+          [('Trailer', 'abc')]);
+      expect(
+          stremioTrailerIds({
+            'trailerStreams': [
+              {'ytId': 'xyz', 'title': 'Teaser'}
+            ]
+          }),
+          [('Teaser', 'xyz')]);
+      expect(stremioTrailerIds({}), isEmpty);
+    });
+  });
+
+  group('Built-in Movies & TV rows', () {
+    test('row keys are unique and mostly genre rows start hidden', () {
+      final keys = PlusBuiltinRows.all.map((r) => r.layoutKey).toList();
+      expect(keys.toSet().length, keys.length);
+      expect(PlusBuiltinRows.byLayoutKey('tmdb:popular-movies')?.type, 'movie');
+      expect(PlusBuiltinRows.byLayoutKey('cat:x'), isNull);
+    });
+    test('queries', () {
+      final netflix = PlusBuiltinRows.byLayoutKey('tmdb:netflix')!;
+      final q = PlusBuiltinRows.queryFor(netflix, 'GB');
+      expect(q, contains('with_watch_providers=8'));
+      expect(q, contains('watch_region=GB'));
+      expect(q, contains('sort_by=popularity.desc'));
+      final horror = PlusBuiltinRows.byLayoutKey('tmdb:g-horror')!;
+      expect(PlusBuiltinRows.queryFor(horror, 'US'),
+          allOf(contains('with_genres=27'), contains('vote_count.gte')));
+      final pop = PlusBuiltinRows.byLayoutKey('tmdb:popular-movies')!;
+      expect(PlusBuiltinRows.queryFor(pop, 'US'), isEmpty);
+    });
+    test('TMDB result to row item', () {
+      final p = PlusBuiltinRows.previewFrom({
+        'id': 1,
+        'name': 'Show',
+        'poster_path': '/p.jpg',
+        'backdrop_path': '/b.jpg',
+        'first_air_date': '2024-05-01',
+        'vote_average': 8.25,
+        'vote_count': 300,
+        'genre_ids': [18],
+      }, 'series', 'tt123')!;
+      expect(p.id, 'tt123');
+      expect(p.type, 'series');
+      expect(p.releaseInfo, '2024');
+      expect(p.imdbRating, '8.3');
+      expect(p.genres, ['Drama']);
+      expect(p.poster, 'https://image.tmdb.org/t/p/w500/p.jpg');
+      expect(PlusBuiltinRows.previewFrom({'title': 'X'}, 'movie', 'tt1'),
+          isNull); // no poster
+      expect(
+          PlusBuiltinRows.previewFrom(
+              {'title': 'X', 'poster_path': '/a'}, 'movie', '123'),
+          isNull); // not an IMDb id
+    });
+  });
+
+  group('One library', () {
+    StremioLibraryItem item(String id, String type, String name,
+            {int offset = 0, int flagged = 0, int times = 0, DateTime? when}) =>
+        StremioLibraryItem({
+          '_id': id,
+          'type': type,
+          'name': name,
+          'removed': false,
+          'temp': false,
+          '_mtime': (when ?? DateTime(2026)).toUtc().toIso8601String(),
+          'state': {
+            'timeOffset': offset,
+            'flaggedWatched': flagged,
+            'timesWatched': times,
+            'lastWatched': (when ?? DateTime(2026)).toUtc().toIso8601String(),
+          },
+        });
+    TrackedMedia anime(String id, String title, String status, DateTime when) =>
+        TrackedMedia(
+          id: id,
+          title: title,
+          watchingStatus: status,
+          updatedAt: when.millisecondsSinceEpoch ~/ 1000,
+        );
+
+    test('Movies & TV status from Stremio', () {
+      expect(plusStremioStatus(item('a', 'movie', 'A')), PlusLibStatus.planning);
+      expect(plusStremioStatus(item('b', 'movie', 'B', offset: 60)),
+          PlusLibStatus.watching);
+      expect(plusStremioStatus(item('c', 'movie', 'C', times: 1)),
+          PlusLibStatus.completed);
+      expect(plusStremioStatus(item('d', 'series', 'D', flagged: 1)),
+          PlusLibStatus.completed);
+    });
+    test('anime statuses map to the same filters', () {
+      expect(plusAnimeStatus('CURRENT'), PlusLibStatus.watching);
+      expect(plusAnimeStatus('REPEATING'), PlusLibStatus.watching);
+      expect(plusAnimeStatus('PAUSED'), PlusLibStatus.paused);
+      expect(plusAnimeStatus('PLANNING'), PlusLibStatus.planning);
+    });
+    test('together, newest first, no doubles, filters', () {
+      final all = plusMergeLibrary([
+        anime('1', 'Frieren', 'CURRENT', DateTime(2026, 1, 1)),
+        anime('2', 'Dandadan', 'COMPLETED', DateTime(2026, 3, 1)),
+      ], [
+        item('tt1', 'movie', 'Dune', offset: 10, when: DateTime(2026, 2, 1)),
+        item('tt2', 'series', 'Frieren', when: DateTime(2026, 4, 1)),
+        item('kitsu:9', 'series', 'Synced', when: DateTime(2026, 4, 1)),
+      ], const {'kitsu:9'});
+      expect(all.map((e) => e.title), ['Dandadan', 'Dune', 'Frieren']);
+      expect(
+          plusFilterLibrary(all, status: PlusLibStatus.watching)
+              .map((e) => e.title),
+          ['Dune', 'Frieren']);
+      expect(plusFilterLibrary(all, kind: PlusLibKind.movie).length, 1);
+      expect(plusFilterLibrary(all, query: 'dan').single.title, 'Dandadan');
+    });
+  });
+
+  group('Windows update', () {
+    test('silent switches keep the folder and install mode', () {
+      final a = PlusWindowsUpdate.installerArgs(r'C:\Program Files\AnymeXStremio',
+          allUsers: true);
+      expect(a, containsAll(['/SILENT', '/ALLUSERS', '/NORESTART']));
+      expect(a.last, r'/DIR=C:\Program Files\AnymeXStremio');
+      expect(
+          PlusWindowsUpdate.installerArgs('x', allUsers: false),
+          contains('/CURRENTUSER'));
+    });
+    test('Program Files means all users', () {
+      final env = {'ProgramFiles': r'C:\Program Files'};
+      expect(PlusWindowsUpdate.isAllUsersPath(
+          r'C:\Program Files\AnymeXStremio', env), isTrue);
+      expect(PlusWindowsUpdate.isAllUsersPath(
+          r'C:\Users\me\AppData\Local\Programs\AnymeXStremio', env), isFalse);
+    });
+    test('script quotes paths and keeps /DIR as one switch', () {
+      final s = PlusWindowsUpdate.script(
+        installer: r"C:\Temp\it's.exe",
+        args: const ['/SILENT', r'/DIR=C:\Program Files\A'],
+        app: r'C:\Program Files\A\anymex.exe',
+      );
+      expect(s, contains(r"'C:\Temp\it''s.exe'"));
+      expect(s, contains(r'''-ArgumentList '/SILENT "/DIR=C:\Program Files\A"' -Wait'''));
+      expect(s, contains(r'Remove-Item -LiteralPath $PSCommandPath'));
+    });
+  });
+
+  group('Casting', () {
+    test('file type from the address', () {
+      expect(plusMimeFromPath('https://x.y/Show.S01E01.1080p.MKV?token=1'), 'video/x-matroska');
+      expect(plusMimeFromPath('/var/mobile/Downloads/ep1.mp4'), 'video/mp4');
+      expect(plusMimeFromPath('https://x.y/stream/abc'), isNull);
+    });
+    test('IP address check', () {
+      expect(PlusCastSearch.isIp('192.168.1.20'), isTrue);
+      expect(PlusCastSearch.isIp(' 10.0.0.5 '), isTrue);
+      expect(PlusCastSearch.isIp('lg-tv.local'), isFalse);
+    });
+  });
+
+  group('MKV audio for casting', () {
+    // EBML element: 1-byte or 4-byte ID + 1-byte size (data < 127 bytes).
+    List<int> el(List<int> id, List<int> data) => [...id, 0x80 | data.length, ...data];
+    List<int> entry(int number, int type, {int? flagDefault}) => el([0xAE], [
+          ...el([0xD7], [number]),
+          ...el([0x83], [type]),
+          if (flagDefault != null) ...el([0x88], [flagDefault]),
+        ]);
+    final video = entry(1, 1);
+    final jpn = entry(2, 2, flagDefault: 1);
+    final eng = entry(3, 2, flagDefault: 0);
+    final tracksData = [...video, ...jpn, ...eng];
+    final head = td.Uint8List.fromList([
+      ...el([0x1A, 0x45, 0xDF, 0xA3], [0x42, 0x82, 0x84, 0x77, 0x65, 0x62, 0x6D]),
+      0x18, 0x53, 0x80, 0x67, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Segment, unknown size
+      ...el([0x15, 0x49, 0xA9, 0x66], [0x2A, 0xD7, 0xB1, 0x83, 0x0F, 0x42, 0x40]), // Info
+      ...el([0x16, 0x54, 0xAE, 0x6B], tracksData),
+      0x1F, 0x43, 0xB6, 0x75, 0x80, // Cluster
+    ]);
+
+    test('second audio track goes first and becomes the default', () {
+      final patch = MkvTrackPatch.build(head, 1)!;
+      final engDefault = entry(3, 2, flagDefault: 1);
+      final jpnNot = entry(2, 2, flagDefault: 0);
+      expect(patch.bytes, [...video, ...engDefault, ...jpnNot]);
+      expect(patch.bytes.length, tracksData.length);
+      // Applying it to the file in two chunks gives the same result.
+      final split = patch.start + 5;
+      final a = patch.apply(head.sublist(0, split), 0);
+      final b = patch.apply(head.sublist(split), split);
+      final whole = [...a, ...b];
+      expect(whole.sublist(patch.start, patch.end), patch.bytes);
+      expect(whole.length, head.length);
+    });
+
+    test('first audio track already default: nothing to change', () {
+      expect(MkvTrackPatch.build(head, 0), isNull);
+    });
+
+    test('not an MKV, or no such track', () {
+      expect(MkvTrackPatch.build(td.Uint8List.fromList([0, 1, 2, 3]), 1), isNull);
+      expect(MkvTrackPatch.build(head, 5), isNull);
     });
   });
 }

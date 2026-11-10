@@ -198,6 +198,7 @@ class StremioService extends GetxController {
   static const _kSyncToAnilist = 'stremio_sync_to_anilist';
   static const _kAnimeStreamSource = 'anymexplus_anime_stream_source';
   static const _kSyncToSimkl = 'anymexplus_stremio_sync_to_simkl';
+  static const _kQuickPlay = 'anymexplus_stremio_quick_play';
   static const _kRowLayout = 'anymexplus_stremio_rows';
   static const _kStreamPrefs = 'anymexplus_stream_prefs';
   static const _kSyncRoutes = 'anymexplus_stremio_sync_routes';
@@ -234,6 +235,9 @@ class StremioService extends GetxController {
   /// Movies and episodes watched from Movies & TV are added to your Simkl
   /// history (when you're logged in to Simkl).
   final RxBool syncToSimkl = true.obs;
+
+  /// Play starts your usual stream without the list (long-press shows it).
+  final RxBool quickPlay = true.obs;
 
   /// Home rows in your order (row keys, see [rowKey]) and the hidden ones.
   final RxList<String> rowOrder = <String>[].obs;
@@ -288,6 +292,7 @@ class StremioService extends GetxController {
       syncToAnilist.value =
           KvHelper.get<bool>(_kSyncToAnilist, defaultVal: true);
       syncToSimkl.value = KvHelper.get<bool>(_kSyncToSimkl, defaultVal: true);
+      quickPlay.value = KvHelper.get<bool>(_kQuickPlay, defaultVal: true);
       _loadRowLayout();
       _loadStreamPrefs();
       _loadRouteChoices();
@@ -409,6 +414,11 @@ class StremioService extends GetxController {
   void setSyncToSimkl(bool v) {
     syncToSimkl.value = v;
     KvHelper.set(_kSyncToSimkl, v);
+  }
+
+  void setQuickPlay(bool v) {
+    quickPlay.value = v;
+    KvHelper.set(_kQuickPlay, v);
   }
 
   bool get simklLoggedIn {

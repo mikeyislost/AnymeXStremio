@@ -230,6 +230,22 @@ class _StremioAccountPageState extends State<StremioAccountPage> {
               ),
               const SizedBox(height: 16),
               AnymeXSectionBuilder(
+                title: 'Playback',
+                children: [
+                  CustomSwitchTile(
+                    icon: Icons.bolt_rounded,
+                    title: 'Quick play',
+                    description:
+                        'Play starts your usual pick (same addon and quality) '
+                        'without the stream list when it\'s there. '
+                        'Long-press Play to choose',
+                    switchValue: _service.quickPlay.value,
+                    onChanged: _service.setQuickPlay,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              AnymeXSectionBuilder(
                 title: 'Addons',
                 children: [
                   ...addons.map((a) => _addonTile(context, a)),

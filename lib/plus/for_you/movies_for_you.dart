@@ -390,6 +390,15 @@ class MoviesForYou {
         : const [];
   }
 
+  /// TMDB GET kept on the device for [keep] (also used by the built-in
+  /// Movies & TV rows).
+  static Future<dynamic> tmdbGet(String path, String cacheKey, Duration keep,
+          {String query = ''}) =>
+      _get(path, cacheKey, keep, query: query);
+
+  /// TMDB id → IMDb id (Stremio opens titles by IMDb id).
+  static Future<String?> imdbFor(String kind, String id) => _imdbFor(kind, id);
+
   static Future<String?> _imdbFor(String kind, String id) async {
     final tmdbKind = kind == 'series' || kind == 'tv' ? 'tv' : 'movie';
     final data = await _get('$tmdbKind/$id/external_ids',

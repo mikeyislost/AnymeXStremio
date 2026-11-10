@@ -7,6 +7,7 @@ import 'package:anymex/widgets/common/anymex_slider_m3.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../cast_service.dart';
+import 'package:anymex/plus/airplay.dart'; // AnymeX+
 
 class CastDeviceDialog extends StatefulWidget {
   final PlayerController controller;
@@ -45,8 +46,20 @@ class _CastDeviceDialogState extends State<CastDeviceDialog> {
       children: [
         _buildHeader(theme),
         const SizedBox(height: 16),
-        _buildActiveCastingCard(theme),
-        _buildDeviceList(theme),
+        // AnymeX+: scrolls, so the list can't spill out of a short (landscape) sheet.
+        Flexible(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PlusCastExtras(controller: widget.controller), // AnymeX+: AirPlay, add TV by IP
+                _buildActiveCastingCard(theme),
+                _buildDeviceList(theme),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

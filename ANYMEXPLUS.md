@@ -23,6 +23,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | Path | What it is |
 | --- | --- |
 | `plus/stremio/` | Stremio account, addons, library sync, progress sync, anime matching, on-device cache. `stremio_service.dart` is split into parts: `stremio_service_sync.dart` (tracker progress → Stremio, which entry an anime uses), `stremio_service_playback.dart` (anime streams, playback reports, Continue Watching), `stremio_service_anilist.dart` (Stremio watches → AniList/Simkl) |
+| `plus/stremio/builtin_rows.dart` | Movies & TV rows the app provides itself from TMDB (trending, popular, in theaters, top rated, streaming services, genres), so the tab works without catalog addons; listed in Edit layout |
 | `plus/stremio/ui/` | Movies & TV tab, details page, Info tab, streams sheet (`stremio_streams_sheet.dart`), downloads (`stremio_download.dart`), player bridge, account page |
 | `plus/stremio_anime_episodes.dart` | Stremio streams on the anime Watch tab (source switch, episode list) |
 | `plus/movie_watch_card.dart` | Movie card instead of "Episode 1" |
@@ -44,6 +45,13 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/error_log.dart` | Last 50 errors kept on the device (from `Logger.e`, secrets blanked), shown in the Self Test |
 | `plus/backup.dart` | After AnymeX restores a backup, AnymeX+ settings (already in it) take effect without a restart |
 | `plus/row_perf.dart` | Smoother rows: AnymeX's card animation plays only when a row first shows; rows load small posters (TMDB w342, Metahub medium) |
+| `plus/layout/` | Edit layout: `layout_model.dart` (rows, row looks, ordering; unit-tested), `layout_store.dart` (saved per page), `row_scope.dart` (a row's look, read by `ReusableCarousel`), `page_rows.dart` (Home and Manga rows, Movies & TV rows on Home (`mv:` keys), filtered AniList rows, Stremio catalog rows), `home_layout.dart` (Home and Manga drawn from your layout), `layout_editor.dart` (the Edit layout screen, Library defaults too) |
+| `plus/everything_library.dart` | Library's "Everything" chip: anime and Movies & TV together with the same status filters (Watching, Completed, Paused, Dropped, Planning) and Anime / Movies / Series; merge and status logic unit-tested |
+| `plus/windows_update.dart` | Windows in-app update: installer saved to the temp folder, run silently over the installed copy (same folder and install mode, no license page), deleted afterwards, app reopened; old installers in Downloads removed |
+| `plus/search_tabs.dart` | Movies & TV tab on the anime search page |
+| `plus/simkl_send_all.dart` | "Send everything to Simkl" (Movies & TV history and AniList anime list) |
+| `plus/airplay.dart` | Casting extras. iPhone AirPlay: a hidden Apple player (native side in `ios/Runner/AppDelegate.swift`, `PlusAirPlay`) sends the video to the TV and the cast sheet shows our remote (play/pause, seek, ±10 s, change TV, stop → the player resumes there); streams that need headers go through the cast proxy. Finding TVs on iPhone: Bonjour for Chromecasts and AirPlay TVs, then each AirPlay TV is asked directly for DLNA (unicast SSDP); "Add a TV by IP address" (saved). DLNA gets the real file type (MKV → `video/x-matroska`) |
+| `plus/mkv_audio.dart` | Casting MKVs with the audio picked in the app: the cast proxy rewrites the file's track list (picked audio first and the only default, same size, so seeking works); changing audio while casting re-casts at the TV's spot |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
 ## Hooks in AnymeX files
@@ -62,27 +70,34 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `windows/runner/main.cpp` (not under `lib/`) | Sign-in browser (WebView2) data in `%LOCALAPPDATA%\AnymeXStremio\WebView2` instead of next to the exe |
 | `database/kv_helper.dart` | A missing setting is no longer logged as an error |
 | `controllers/services/storage/storage_manager_service.dart` | Over the image-cache limit, the oldest images are removed instead of all of them |
-| `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home; nearby rows stay built (`cacheExtent` 1200) |
+| `screens/home_page.dart` | Search bar (opens the anime search) and anime discover rows on Home; with AniList, Home is `PlusHomeLayoutSliver` (your layout); nearby rows stay built (`cacheExtent` 1200) |
+| `screens/manga/home_page.dart` | With AniList, the Manga tab is `PlusMangaLayout` (your layout) |
+| `screens/search/search_view.dart` | Results wrapped in `PlusSearchTabs` (Anime / Movies & TV) |
 | `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode; comments built as you scroll; Like / Love / Dislike on the Overview tab (`PlusAnimeTasteRow`) |
 | `screens/anime/widgets/comments/comments_section.dart` | `asSliver` mode: comments are built as you scroll |
 | `screens/anime/widgets/episode_section.dart` | Extensions / Stremio stream source switch |
 | `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet |
 | `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open; after a show is marked Completed, `RatePrompt` asks for a score when the player closes; Movies & TV skip times (`plusAttachSkipTimes`) at the top of `_initializeAniSkip`; leaving the player ends the mini player |
 | `screens/anime/watch/watch_view.dart` | `PlusUpNext` card; mini player (`PlusMiniPlayerOverlay`, controls hidden while it's on) |
+| `services/cast/widgets/cast_device_dialog.dart` | `PlusCastExtras` (AirPlay, add TV by IP) above the device list; the body scrolls (list spilled out of the landscape sheet) |
+| `services/cast/cast_service.dart` | iPhone Chromecast search uses `PlusAirPlay.findChromecasts` (Bonjour); `_plusDirectDlna` in the search (DLNA asked directly); `castMedia` calls `PlusMkvAudio.castStarted`; Google Cast waits for the receiver (`plusWaitForCastReceiver`) instead of 1.2 s, sends the real file type, reports LOAD_FAILED; DLNA `mime` from `plusDetectMime` |
+| `services/cast/cast_v2_client.dart` | Follows the default media receiver's transportId, not whichever app is listed first |
+| `services/cast/cast_proxy_server.dart` | Downloaded files are served with their real file type (`plusMimeFromPath`); remote streams pass through `PlusMkvAudio.wrap` |
+| `ios/Runner/AppDelegate.swift`, `ios/Runner/Info.plist` (not under `lib/`) | `PlusAirPlay` (hidden AirPlay player + Bonjour) appended and registered; local network permission text, `_googlecast._tcp` / `_airplay._tcp`, background audio (AirPlay keeps going with the phone locked) |
 | `utils/logger.dart` | `Logger.e` also feeds `PlusErrorLog` |
 | `controllers/services/backup_restore/backup_restore_service.dart` | `PlusBackup.afterRestore()` after a restore |
-| `screens/library/controller/library_controller.dart`, `my_library.dart`, `widgets/library_deps.dart` | "Stremio" chip in the Library |
+| `screens/library/controller/library_controller.dart`, `my_library.dart`, `widgets/library_deps.dart` | "Everything" chip in the Library (`plus/everything_library.dart`, remembered) |
 | `screens/library/widgets/history_model.dart` | History items from Stremio open the Stremio page |
-| `screens/settings/sub_settings/settings_accounts.dart` | Stremio account in Accounts |
-| `screens/settings/sub_settings/settings_ui.dart` | Stremio tab in the tab editor |
+| `screens/settings/sub_settings/settings_accounts.dart` | Stremio account in Accounts; "Send everything to Simkl" |
+| `screens/settings/sub_settings/settings_ui.dart` | Stremio tab in the tab editor; "Edit layout" entry |
 | `screens/settings/sub_settings/settings_about.dart` | Shows the beta tag as the version |
 | `screens/settings/registry/settings_registry.dart` | Self Test page in settings |
-| `utils/updater.dart` | Updates from this repo; beta app follows beta pre-releases |
+| `utils/updater.dart` | Updates from this repo; beta app follows beta pre-releases; Windows updates install silently from the temp folder (`plus/windows_update.dart`) |
 | `utils/notification.dart` | Firebase push removed; local notifications set up on their own |
 | `utils/external_font_loader.dart` | Subtitle fonts load after launch (`ensureBundledFonts`) |
 | `utils/function.dart` | iOS swipe-back on pushed pages |
 | `widgets/anime/media_header.dart` | Poster tap can be turned off (Stremio pages) |
-| `widgets/common/reusable_carousel.dart` | Long-press actions for Stremio items; right-click opens `PlusCardMenu`; card animation only when the row first shows (`PlusRowPerf.shouldAnimate`) |
+| `widgets/common/reusable_carousel.dart` | Long-press actions for Stremio items; right-click opens `PlusCardMenu`; card animation only when the row first shows (`PlusRowPerf.shouldAnimate`); a row's name, order, item count, card style, size and grid view from Edit layout (`PlusRowScope`) |
 | `widgets/common/navbar.dart`, `navbar/styles/*`, `widgets/header/header.dart` | No blur layer when blur is off |
 
 **Removed from AnymeX:** `firebase_options.dart`, `services/fcm_service.dart` and the three Firebase packages (pushes can't reach a sideloaded build).

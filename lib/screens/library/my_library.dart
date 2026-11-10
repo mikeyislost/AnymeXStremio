@@ -1,3 +1,4 @@
+import 'package:anymex/plus/everything_library.dart';
 import 'dart:math' as math;
 
 import 'package:anymex/controllers/settings/settings.dart';
@@ -13,7 +14,6 @@ import 'package:anymex/screens/manga/details_page.dart';
 import 'package:anymex/screens/novel/details/details_view.dart';
 import 'package:anymex/screens/settings/widgets/history_card_gate.dart';
 import 'package:anymex/screens/settings/widgets/history_card_selector.dart';
-import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/utils/extension_utils.dart';
 import 'package:anymex/utils/function.dart';
 
@@ -182,7 +182,8 @@ class _LibraryContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       if (controller.showStremio.value) {
-        return StremioLibrarySliver(searchQuery: controller.searchQuery.value);
+        return PlusEverythingLibrarySliver(
+            searchQuery: controller.searchQuery.value);
       }
       if (controller.isLoading.value && controller.rawItems.isEmpty) {
         return const SliverToBoxAdapter(

@@ -5,6 +5,8 @@ import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
 import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/plus/layout/home_layout.dart';
+import 'package:anymex/plus/layout/page_rows.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/screens/search/search_view.dart';
 import 'package:anymex/screens/search/source_search_page.dart';
@@ -335,6 +337,15 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
+                // AnymeX+: with AniList, Home is your layout (Edit layout):
+                // your rows and the Anime tab's, in your order.
+                if (PlusPageRows.appliesTo(serviceHandler))
+                  PlusHomeLayoutSliver(
+                    newEpisodes: _buildNewEpisodesSection,
+                    discoverByDefault:
+                        _showDiscoverOnHome(settings, serviceHandler),
+                  )
+                else
                 () {
                   final homeWidgets = _buildHomeWidgets(
                     context: context,
@@ -351,7 +362,8 @@ class _HomePageState extends State<HomePage> {
                 }(),
                 // AnymeX+: the Anime tab's discover rows live on Home now
                 // (unless an Anime/Discover tab is still in the bar).
-                if (_showDiscoverOnHome(settings, serviceHandler))
+                if (!PlusPageRows.appliesTo(serviceHandler) &&
+                    _showDiscoverOnHome(settings, serviceHandler))
                   SliverToBoxAdapter(
                     child: Obx(() {
                       final isSimkl = serviceHandler.serviceType.value ==

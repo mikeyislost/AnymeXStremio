@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import 'cast_proxy_server.dart';
 import 'cast_v2_client.dart';
+import 'package:anymex/plus/airplay.dart'; // AnymeX+
+import 'package:anymex/plus/mkv_audio.dart'; // AnymeX+
 
 enum CastProtocol { chromecast, dlna, roku }
 
@@ -68,9 +70,18 @@ class CastService extends GetxController {
       _startDlnaDiscovery(),
       _startChromecastDiscovery(),
       _startRokuAndSsdpDiscovery(),
+      _plusDirectDlna(), // AnymeX+
     ]);
 
     isSearching.value = false;
+  }
+
+  // AnymeX+: TVs asked directly (AirPlay TVs on iPhone, TVs added by IP), since
+  // iOS blocks the network-wide search for sideloaded apps.
+  Future<void> _plusDirectDlna() async {
+    for (final (host, location) in await PlusCastSearch.dlnaLocations()) {
+      await _resolveUpnpDevice(location, host);
+    }
   }
 
   Future<void> _startDlnaDiscovery() async {
@@ -108,6 +119,13 @@ class CastService extends GetxController {
   }
 
   Future<void> _startChromecastDiscovery() async {
+    // AnymeX+: iOS blocks raw multicast for sideloaded apps; use Bonjour.
+    if (Platform.isIOS) {
+      for (final d in await PlusAirPlay.findChromecasts()) {
+        _addDiscoveredDevice(d);
+      }
+      return;
+    }
     try {
       _mdnsSocket?.close();
       _mdnsSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
@@ -284,6 +302,18 @@ class CastService extends GetxController {
     Duration? startPosition,
     required CastDevice device,
   }) async {
+    // AnymeX+: send the audio picked in the app (MKV), and re-cast when it changes.
+    PlusMkvAudio.castStarted((at) async {
+      await castMedia(
+        videoUrl: videoUrl,
+        headers: headers,
+        subtitleUrl: subtitleUrl,
+        subtitleLabel: subtitleLabel,
+        title: title,
+        startPosition: at,
+        device: device,
+      );
+    });
     try {
       final proxyUrl = await CastProxyServer.startProxy(
         originalUrl: videoUrl,
@@ -304,6 +334,7 @@ class CastService extends GetxController {
 
       if (device.protocol == CastProtocol.chromecast) {
         await _castChromecast(
+          mime: isHls ? null : await plusDetectMime(videoUrl, headers), // AnymeX+: MKV etc.
           device: device,
           mediaUrl: mediaUrl,
           subtitleUrl: subUrl,
@@ -314,6 +345,7 @@ class CastService extends GetxController {
         );
       } else if (device.protocol == CastProtocol.dlna) {
         await _castDlna(
+          mime: isHls ? null : await plusDetectMime(videoUrl, headers), // AnymeX+: MKV etc.
           device: device,
           mediaUrl: mediaUrl,
           subtitleUrl: subUrl,
@@ -338,6 +370,7 @@ class CastService extends GetxController {
   }
 
   Future<void> _castChromecast({
+    String? mime,
     required CastDevice device,
     required String mediaUrl,
     String? subtitleUrl,
@@ -358,6 +391,9 @@ class CastService extends GetxController {
     });
 
     _castMessageSubscription = client.messageStream.listen((msg) {
+      if (msg['type'] == 'LOAD_FAILED' || msg['type'] == 'LOAD_CANCELLED') {
+        plusCastLoadFailed(device.name); // AnymeX+
+      }
       if (msg['type'] == 'MEDIA_STATUS') {
         final statuses = msg['status'] as List<dynamic>?;
         if (statuses != null && statuses.isNotEmpty) {
@@ -380,6 +416,10 @@ class CastService extends GetxController {
       }
     });
 
+    // AnymeX+: wait until the receiver app is really up (TVs with Google Cast
+    // take several seconds; a fixed 1.2 s wait sent LOAD into the void).
+    final launched = plusWaitForCastReceiver(client.messageStream);
+
     client.sendMessage(
       namespace: CastV2Client.kNamespaceReceiver,
       payload: {
@@ -389,7 +429,7 @@ class CastService extends GetxController {
       },
     );
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await launched;
 
     final tracks = <Map<String, dynamic>>[];
     final activeTrackIds = <int>[];
@@ -416,7 +456,7 @@ class CastService extends GetxController {
         'currentTime': startSeconds,
         'media': {
           'contentId': mediaUrl,
-          'contentType': isHls ? 'application/x-mpegURL' : 'video/mp4',
+          'contentType': isHls ? 'application/x-mpegURL' : (mime ?? 'video/mp4'),
           'streamType': 'BUFFERED',
           'metadata': {
             'type': 0,
@@ -432,6 +472,7 @@ class CastService extends GetxController {
   }
 
   Future<void> _castDlna({
+    String? mime,
     required CastDevice device,
     required String mediaUrl,
     String? subtitleUrl,
@@ -446,6 +487,7 @@ class CastService extends GetxController {
         subtitleUrl: subtitleUrl,
         title: title,
         isHls: isHls,
+        mime: mime,
       );
 
       final envelope =
@@ -488,8 +530,9 @@ class CastService extends GetxController {
     String? subtitleUrl,
     required String title,
     required bool isHls,
+    String? mime,
   }) {
-    final protocolInfo = isHls ? 'http-get:*:application/vnd.apple.mpegurl:*' : 'http-get:*:video/mp4:*';
+    final protocolInfo = isHls ? 'http-get:*:application/vnd.apple.mpegurl:*' : 'http-get:*:${mime ?? 'video/mp4'}:*';
 
     final subTag = (subtitleUrl != null && subtitleUrl.isNotEmpty)
         ? '<res protocolInfo="http-get:*:text/vtt:*">${_xmlEscape(subtitleUrl)}</res>\n'
