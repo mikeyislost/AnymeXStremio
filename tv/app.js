@@ -192,11 +192,10 @@
         // Keep playing: the phone may only be locked. It picks up again
         // when it is back.
         setNote('Phone disconnected. Still playing; waiting for it to come back…');
-      } else if (was && !B.has()) {
-        show('pair');
+      } else if (was && screen === 'pair') {
         setStatus('The phone disconnected. Waiting for it to come back…');
       } else if (was) {
-        // Synced: the TV carries on by itself.
+        // The TV carries on by itself; the phone joins again when it's back.
         B.onDisconnected();
       } else {
         setStatus('Waiting for AnymeX+ on ' + phone.host + '. Open TV Remote on the phone.');
@@ -729,8 +728,8 @@
     document.addEventListener('webOSRelaunch', onLaunch, true);
 
     phone = loadPhone();
-    // Already synced: straight to Home; the phone joins when it is around.
-    if (B.has()) B.home();
+    // Paired before: straight to Home; the phone joins when it is around.
+    if (B.has() || phone) B.home();
     if (phone) connect('Reconnecting');
     else setStatus('Waiting for your phone.');
     // Launch details can also be there before the launch event arrives.

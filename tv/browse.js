@@ -1007,7 +1007,7 @@ window.AXBrowse = function (A) {
   // The player was closed (Back / Stop). Returns the screen to show.
   function leftPlayer() {
     closeTracks();
-    if (!cur) return has() || A.connected() ? 'home' : 'pair';
+    if (!cur) return has() || A.phone() ? 'home' : 'pair';
     var c = cur;
     saveProgress(false);
     cur = null;

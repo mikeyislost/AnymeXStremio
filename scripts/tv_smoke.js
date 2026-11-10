@@ -205,18 +205,27 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   check('starts on the pairing screen', screenNow() === 'pair');
 
   // The phone opens the app through LG's link, with its address and key.
-  const KEYHEX = nodeCrypto.randomBytes(32).toString('hex');
-  docFire('webOSLaunch', { detail: { host: '192.168.1.23', port: 41733, token: 'tok', key: KEYHEX } });
+  let KEYHEX = '';
+  docFire('webOSLaunch', { detail: { host: '192.168.1.23', port: 41733, token: 'tok' } });
   check('dials the phone', sock && sock.url === 'ws://192.168.1.23:41733/tv');
   sock.readyState = 1; sock.onopen();
   const hello = last('hello');
-  check('hello says it can sync and has the key', hello && hello.sync === true && hello.hasKey === true && hello.have === '', hello);
-  check('the key is never sent back', JSON.stringify(sent).indexOf(KEYHEX) < 0);
+  check('saved from before: hello says it has no key', hello && hello.sync === true && hello.hasKey === false, hello);
 
   fromPhone({ t: 'welcome', name: 'iPhone', token: 'tok' });
   await wait();
   check('goes to Home once connected', screenNow() === 'home');
   check('Home has the built-in rows before any sync', focusName() === 'Default Title', focusName());
+
+  // The phone reopens the app through LG's link with the key: the TV keeps
+  // its connection and asks for the sync.
+  KEYHEX = nodeCrypto.randomBytes(32).toString('hex');
+  docFire('webOSRelaunch', { detail: { host: '192.168.1.23', port: 41733, token: 'tok', key: KEYHEX } });
+  check('key from the phone → asks for the sync', sent[sent.length - 1].t === 'need' && sock.readyState === 1);
+  check('the key is never sent back', JSON.stringify(sent).indexOf(KEYHEX) < 0);
+  const css = fs.readFileSync(path.join(TV, 'style.css'), 'utf8');
+  check('highlight style comes after the button styles', css.lastIndexOf('.btn.focus') > css.lastIndexOf('.btn {') &&
+    css.lastIndexOf('.sitem.focus') > css.lastIndexOf('.sitem {'));
 
   // A sync locked with the wrong key is refused.
   fromPhone(Object.assign({ t: 'sync', h: 'bad' }, seal(nodeCrypto.randomBytes(32).toString('hex'), { v: 1 })));

@@ -37,6 +37,7 @@ class PlusTvSync {
   bool _attached = false;
   Timer? _debounce;
   String _lastSentHash = '';
+  bool _keyTried = false;
   final _workers = <Worker>[];
 
   PlusTvLink get _link => PlusTvLink.instance;
@@ -69,15 +70,40 @@ class PlusTvSync {
 
   void _onConnected() {
     _lastSentHash = '';
+    _keyTried = false;
     if (!_tvCanSync) {
       status.value = 'This TV app is too old to sync. Update it in Homebrew Channel.';
       return;
     }
     if (!_tvHasKey) {
-      status.value = 'Open the TV app from this page once (tap your TV) to sync.';
+      unawaited(_sendKey());
       return;
     }
     unawaited(sendNow(onlyIfChanged: true));
+  }
+
+  /// The TV connected on its own (saved from before), so it never got the
+  /// key. Reopen the TV app through LG's link with the key; the TV then asks
+  /// for the sync by itself. Once per connection unless [force].
+  Future<void> _sendKey({bool force = false}) async {
+    if (_keyTried && !force) return;
+    _keyTried = true;
+    final host = _link.tvAddress.value;
+    if (host.isEmpty) {
+      status.value = 'Tap your TV in the list (Disconnect first) to sync.';
+      return;
+    }
+    status.value = 'Sending the key to the TV…';
+    try {
+      await _link.openOnTv(host,
+          onPrompt: () => status.value = 'Choose Allow on the TV to finish.');
+      if (status.value.startsWith('Sending') || status.value.startsWith('Choose')) {
+        status.value = 'Waiting for the TV…';
+      }
+    } catch (e) {
+      Logger.i('TV sync: key: $e');
+      status.value = "Couldn't reach the TV's LG link: $e";
+    }
   }
 
   /// Something changed on the phone: send it along in a moment.
@@ -91,8 +117,12 @@ class PlusTvSync {
   /// sent when the TV already has the same one.
   Future<void> sendNow({bool onlyIfChanged = false}) async {
     if (!_link.isConnected) return;
-    if (!_tvCanSync || !_tvHasKey) {
+    if (!_tvCanSync) {
       _onConnected();
+      return;
+    }
+    if (!_tvHasKey) {
+      await _sendKey(force: !onlyIfChanged);
       return;
     }
     try {
@@ -124,9 +154,13 @@ class PlusTvSync {
         status.value = 'Synced: ${m['addons'] ?? 0} addons, ${m['rows'] ?? 0} rows';
       case 'syncFail':
         _lastSentHash = '';
-        status.value = m['why'] == 'wrong key' || m['why'] == 'no key'
-            ? 'The TV has an old key. Tap your TV above to open it again, then it syncs.'
-            : "The TV couldn't read the sync (${m['why']}).";
+        if (m['why'] == 'wrong key' || m['why'] == 'no key') {
+          _link.hello['hasKey'] = false;
+          await _sendKey();
+          if (_keyTried && status.value.startsWith('Waiting')) return;
+        } else {
+          status.value = "The TV couldn't read the sync (${m['why']}).";
+        }
       case 'watched':
         await _onWatched(m);
     }

@@ -110,3 +110,7 @@ h2 { font-size: 40px; margin: 0 0 16px; }
 .srows { top: 250px; }
 .setinfo { font-size: 28px; margin: 12px 0 32px; }
 #setbtns { padding: 0; }
+
+/* Highlight last, so it wins over each item's own colours. */
+.btn.focus, .sitem.focus, .key.focus { border-color: #fff; background: #5b45a8; }
+.sitem.on.focus { background: #3d8a5f; }
