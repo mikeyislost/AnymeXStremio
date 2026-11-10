@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "55",
-      "versionDate": "2026-11-10T04:31:56Z",
-      "versionDescription": "Beta v1.1.3-beta+1\n\n- Play on TV: watch on your LG TV with the phone as the remote\n  - The player on your phone becomes the remote: play/pause, the seek bar, skip buttons, skip intro, audio and subtitle pickers and next episode all act on the TV.\n  - Your progress is kept as usual (AniList, Simkl, Stremio, resume point), and the next episode starts on the TV by itself.\n  - Works for anime and Movies & TV. Streams that need special headers and downloaded files are passed through the phone.\n  - Subtitle files (SRT, ASS, VTT) are drawn by the TV app. ASS styling is dropped for now; the lines and timing are kept.\n  - If the phone locks, the TV keeps playing and picks the link back up.\n  - \"Play here\" brings the video back to the phone at the TV's spot.\n  - TV report: the wrong \"mkv=no\" line is replaced by what actually played.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B1/AnymeX-Stremio-v1.1.3-beta.1.ipa",
-      "size": 75540114,
+      "buildVersion": "57",
+      "versionDate": "2026-11-10T05:11:47Z",
+      "versionDescription": "Beta v1.1.3-beta+2\n\n- Windows: fix the in-app update closing the app without updating\n- Long-press an anime episode to set your progress\n  - Holding an episode on an anime page now opens a small menu: mark watched up to that episode, set progress back, or choose a source (what holding did before). Needs AniList, MAL or Simkl signed in; without one it goes straight to the source picker as before.\n  - TV report: also says which subtitle and audio the phone asked the TV for, to track down videos whose subtitles don't show.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B2/AnymeX-Stremio-v1.1.3-beta.2.ipa",
+      "size": 75546615,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "55",
-          "date": "2026-11-10T04:31:56Z",
-          "localizedDescription": "Beta v1.1.3-beta+1\n\n- Play on TV: watch on your LG TV with the phone as the remote\n  - The player on your phone becomes the remote: play/pause, the seek bar, skip buttons, skip intro, audio and subtitle pickers and next episode all act on the TV.\n  - Your progress is kept as usual (AniList, Simkl, Stremio, resume point), and the next episode starts on the TV by itself.\n  - Works for anime and Movies & TV. Streams that need special headers and downloaded files are passed through the phone.\n  - Subtitle files (SRT, ASS, VTT) are drawn by the TV app. ASS styling is dropped for now; the lines and timing are kept.\n  - If the phone locks, the TV keeps playing and picks the link back up.\n  - \"Play here\" brings the video back to the phone at the TV's spot.\n  - TV report: the wrong \"mkv=no\" line is replaced by what actually played.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B1/AnymeX-Stremio-v1.1.3-beta.1.ipa",
-          "size": 75540114,
+          "buildVersion": "57",
+          "date": "2026-11-10T05:11:47Z",
+          "localizedDescription": "Beta v1.1.3-beta+2\n\n- Windows: fix the in-app update closing the app without updating\n- Long-press an anime episode to set your progress\n  - Holding an episode on an anime page now opens a small menu: mark watched up to that episode, set progress back, or choose a source (what holding did before). Needs AniList, MAL or Simkl signed in; without one it goes straight to the source picker as before.\n  - TV report: also says which subtitle and audio the phone asked the TV for, to track down videos whose subtitles don't show.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B2/AnymeX-Stremio-v1.1.3-beta.2.ipa",
+          "size": 75546615,
           "minOSVersion": "15.0"
         }
       ]
