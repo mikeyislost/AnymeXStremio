@@ -704,10 +704,12 @@
     document.addEventListener('keydown', function (e) {
       var typing = document.activeElement && document.activeElement.tagName === 'INPUT';
       if (typing) {
-        // The TV's keyboard is up: only Enter and Back are ours.
-        if (e.keyCode === 13) { onKey('ok'); e.preventDefault(); }
-        else if (e.keyCode === 461 || e.keyCode === 27) { onKey('back'); e.preventDefault(); }
-        return;
+        // In the search box: Enter and Back are ours; an arrow means the
+        // TV's keyboard is gone, so leave the box and move on.
+        if (e.keyCode === 13) { onKey('ok'); e.preventDefault(); return; }
+        if (e.keyCode === 461 || e.keyCode === 27) { onKey('back'); e.preventDefault(); return; }
+        if (e.keyCode < 37 || e.keyCode > 40) return;
+        try { document.activeElement.blur(); } catch (x) { /* ignore */ }
       }
       var map = { 37: 'left', 38: 'up', 39: 'right', 40: 'down', 13: 'ok', 461: 'back', 27: 'back', 8: 'back' };
       var k = map[e.keyCode];

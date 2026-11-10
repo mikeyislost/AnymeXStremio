@@ -854,6 +854,24 @@ window.AXBrowse = function (A) {
       start: s.start || 0, kind: kindOf(s), id: -(++localId)
     });
     A.playing().local = true;
+    readMkvTracks(cur, s);
+  }
+
+  // MKV: name the tracks inside the file (the TV's player doesn't).
+  function readMkvTracks(c, s) {
+    var k = kindOf(s);
+    if (k !== 'mkv' && k !== '') return;
+    if (!window.AXMkv) return;
+    c.mkvLoading = true;
+    window.AXMkv.tracks(s.url, function (r) {
+      if (cur !== c) return;
+      c.mkvLoading = false;
+      c.mkv = r && (r.audio.length || r.subs.length) ? r : null;
+      if (c.mkv) {
+        for (var i = 0; i < c.mkv.audio.length; i++) if (c.mkv.audio[i].def) { c.aud = i; break; }
+      }
+      if (tracksOpen) buildTracks();
+    });
   }
 
   function loadSubtitleList(c) {
@@ -1081,19 +1099,32 @@ window.AXBrowse = function (A) {
     clear(list);
     var v = A.video(), i;
     list.appendChild(el('div', 'thead', 'Audio'));
-    var tracks = v && v.audioTracks;
-    if (tracks && tracks.length > 1) {
+    var tracks = v && v.audioTracks, mkv = cur.mkv;
+    if (mkv && mkv.audio.length) {
+      for (i = 0; i < mkv.audio.length; i++) {
+        list.appendChild(titem(window.AXMkv.label(mkv.audio[i], i + 1), 'audio', { i: i }, cur.aud === i));
+      }
+    } else if (tracks && tracks.length > 1) {
       for (i = 0; i < tracks.length; i++) {
         list.appendChild(titem('Audio ' + (i + 1) + (tracks[i].language ? '  ·  ' + langName(tracks[i].language) : '') +
           (tracks[i].label ? '  ·  ' + tracks[i].label : ''), 'audio', { i: i }, tracks[i].enabled === true));
       }
+    } else if (cur.mkvLoading) {
+      list.appendChild(el('div', 'pmsg dim', 'Reading the track list…'));
     } else {
       list.appendChild(titem('Next audio track (now: ' + (cur.aud + 1) + ')', 'audio', { next: true }, false));
     }
     list.appendChild(el('div', 'thead', 'Subtitles'));
     list.appendChild(titem('Off', 'sub', { off: true }, cur.subOn == null));
-    list.appendChild(titem('Inside the video: next' + (cur.emb >= 0 ? ' (now: ' + (cur.emb + 1) + ')' : ''), 'sub',
-      { emb: true }, cur.subOn === 'emb'));
+    if (mkv && mkv.subs.length) {
+      for (i = 0; i < mkv.subs.length; i++) {
+        list.appendChild(titem('In the video: ' + window.AXMkv.label(mkv.subs[i], i + 1), 'sub', { embI: i },
+          cur.subOn === 'emb' + i));
+      }
+    } else if (!mkv) {
+      list.appendChild(titem('Inside the video: next' + (cur.emb >= 0 ? ' (now: ' + (cur.emb + 1) + ')' : ''), 'sub',
+        { emb: true }, cur.subOn === 'emb'));
+    }
     var subs = cur.subs.slice();
     subs.sort(function (a, b) {
       var ae = /^en/i.test(a.lang) ? 0 : 1, be = /^en/i.test(b.lang) ? 0 : 1;
@@ -1128,6 +1159,7 @@ window.AXBrowse = function (A) {
   function pickSub(s) {
     if (!cur || !s) return;
     if (s.off) { cur.subOn = null; A.clearSubs(); A.selectSub(-1); }
+    else if (s.embI != null) { cur.emb = s.embI; cur.subOn = 'emb' + s.embI; A.clearSubs(); A.selectSub(s.embI); }
     else if (s.emb) { cur.emb++; cur.subOn = 'emb'; A.clearSubs(); A.selectSub(cur.emb); checkSub(cur, cur.emb); }
     else { cur.subOn = s.url; A.loadSubs(s.url, s.label); }
     buildTracks();
@@ -1327,6 +1359,13 @@ window.AXBrowse = function (A) {
     var input = $('sq');
     input.addEventListener('input', onInput);
     input.addEventListener('change', function () { runSearch(input.value); });
+    input.addEventListener('blur', function () { runSearch(input.value); });
+    // The TV's keyboard closed (Back, or its own hide button): let go of the
+    // box so the arrows move around again.
+    document.addEventListener('keyboardStateChange', function (e) {
+      var d = e && e.detail;
+      if (d && d.visibility === false && document.activeElement === input) input.blur();
+    });
   }
 
   return {

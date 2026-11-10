@@ -120,12 +120,66 @@ function last(t) { for (let i = sent.length - 1; i >= 0; i--) if (sent[i].t === 
 
 const requests = [];
 const routes = [];   // [test(url, body) → answer or undefined]
+// A small MKV: header, segment, (optional seek head + filler), tracks, cluster.
+function vsize(n) { const b = Buffer.alloc(8); b[0] = 1; b.writeUIntBE(n, 2, 6); return b; }
+function ebml(idHex, ...kids) {
+  const body = Buffer.concat(kids.map(k => (Buffer.isBuffer(k) ? k : Buffer.from(String(k), 'utf8'))));
+  return Buffer.concat([Buffer.from(idHex, 'hex'), vsize(body.length), body]);
+}
+const u8 = n => Buffer.from([n]);
+function track(type, lang, codec, opts) {
+  opts = opts || {};
+  const kids = [ebml('83', u8(type)), ebml('22b59c', lang), ebml('86', codec)];
+  if (opts.name) kids.push(ebml('536e', opts.name));
+  if (opts.def === false) kids.push(ebml('88', u8(0)));
+  if (opts.forced) kids.push(ebml('55aa', u8(1)));
+  if (opts.ch) kids.push(ebml('e1', ebml('9f', u8(opts.ch))));
+  return ebml('ae', ...kids);
+}
+function makeMkv(far) {
+  const tracks = ebml('1654ae6b',
+    track(1, 'und', 'V_MPEG4/ISO/AVC'),
+    track(2, 'eng', 'A_EAC3', { ch: 6, def: false }),
+    track(2, 'jpn', 'A_AAC', { ch: 2 }),
+    track(0x11, 'eng', 'S_TEXT/UTF8', { name: 'Full' }),
+    track(0x11, 'eng', 'S_HDMV/PGS', { forced: true, def: false }));
+  const cluster = ebml('1f43b675', Buffer.alloc(64));
+  let kids;
+  if (far) {
+    const filler = ebml('ec', Buffer.alloc(1300000));      // Void
+    const seekLen = ebml('114d9b74', ebml('4dbb', ebml('53ab', Buffer.from('1654ae6b', 'hex')), ebml('53ac', Buffer.alloc(8)))).length;
+    const pos = Buffer.alloc(8); pos.writeUIntBE(seekLen + filler.length, 2, 6);
+    const seek = ebml('114d9b74', ebml('4dbb', ebml('53ab', Buffer.from('1654ae6b', 'hex')), ebml('53ac', pos)));
+    kids = [seek, filler, tracks, cluster];
+  } else kids = [tracks, cluster];
+  return Buffer.concat([ebml('1a45dfa3', ebml('4282', 'matroska')), ebml('18538067', ...kids)]);
+}
+const MKV_NEAR = makeMkv(false), MKV_FAR = makeMkv(true);
+const rangeReads = [];
+
 global.XMLHttpRequest = class {
+  constructor() { this.headers = {}; }
   open(method, url) { this.method = method; this.url = url; }
-  setRequestHeader() {}
+  setRequestHeader(k, v) { this.headers[k] = v; }
+  abort() {}
   send(bodyText) {
     const reqBody = bodyText ? JSON.parse(bodyText) : null;
     requests.push({ method: this.method, url: this.url, body: reqBody });
+    if (this.responseType === 'arraybuffer') {
+      const file = /cdn\.example\/.*%3A1%3A1\.mkv$/.test(this.url) ? MKV_NEAR : /\.mkv$/.test(this.url) ? MKV_FAR : null;
+      const m = /bytes=(\d+)-(\d+)/.exec(this.headers.Range || '');
+      rangeReads.push(this.headers.Range);
+      setImmediate(() => {
+        if (!file || !m) { this.status = 404; this.response = null; }
+        else {
+          this.status = 206;
+          const part = file.subarray(Number(m[1]), Number(m[2]) + 1);
+          this.response = part.buffer.slice(part.byteOffset, part.byteOffset + part.length);
+        }
+        if (this.onload) this.onload();
+      });
+      return;
+    }
     setImmediate(() => {
       let answer;
       for (const r of routes) { answer = r(this.url, reqBody); if (answer !== undefined) break; }
@@ -197,7 +251,7 @@ const screenNow = () => ['pair', 'home', 'details', 'search', 'settings', 'playe
 const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus')); return f ? (f.getAttribute('data-name') || f.textContent) : ''; };
 
 (async function main() {
-  for (const f of ['gcm.js', 'browse.js', 'app.js']) {
+  for (const f of ['gcm.js', 'mkv.js', 'browse.js', 'app.js']) {
     // eslint-disable-next-line no-eval
     (0, eval)(fs.readFileSync(path.join(TV, f), 'utf8'));
   }
@@ -276,10 +330,29 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   check('plays in the TV player', screenNow() === 'player' && video.src === 'https://cdn.example/tt7654321%3A1%3A1.mkv', video.src);
   check('title and episode on screen', $('ptitle').textContent === 'Test Show' && /S1 E1/.test($('psub').textContent));
 
-  // Audio / subtitles panel.
+  // Audio / subtitles panel, with the tracks read from the MKV itself.
+  const far = window.AXMkv.parse(new Uint8Array(MKV_FAR.subarray(0, 1048576)), 0);
+  check('MKV: track list far into the file → where to read next', far && far.need > 1048576, far);
+  await new Promise(r => window.AXMkv.tracks('https://cdn.example/far.mkv', t => {
+    check('MKV: second read finds the far track list', t && t.audio.length === 2 && t.subs.length === 2, t);
+    r();
+  }));
+  check('MKV: only small parts of the file are read', rangeReads.every(x => /bytes=\d+-\d+/.test(x)), rangeReads);
+  await wait(30);
   video.readyState = 4; video.duration = 1000; video.currentTime = 10; video.fire('loadedmetadata');
   press(KEY.up);
   check('Up opens audio and subtitles', !$('tpanel').classList.contains('hidden'));
+  const labels = $('tlist').childNodes.map(e => e.textContent);
+  check('audio tracks listed by name', labels.includes('English  ·  E-AC3 5.1') && labels.includes('Japanese  ·  AAC stereo'), labels);
+  const jp = $('tlist').childNodes.find(e => e.textContent === 'Japanese  ·  AAC stereo');
+  check('the default audio track is marked', jp && jp.classList.contains('on'));
+  check('subtitles in the video listed by name', labels.includes('In the video: English  ·  Full  ·  SRT') &&
+    labels.includes('In the video: English  ·  PGS  ·  forced'), labels);
+  check('no "next track" buttons when the list is known', !labels.some(l => /next/i.test(l)), labels);
+  press(KEY.ok);   // English E-AC3 is first
+  await wait(350);
+  const en = $('tlist').childNodes.find(e => e.textContent === 'English  ·  E-AC3 5.1');
+  check('choosing an audio track marks it', en && en.classList.contains('on'));
   const english = $('tlist').childNodes.find(e => /^English 1/.test(e.textContent));
   check('subtitle from the stream is listed', !!english);
   while (focusName() !== english.textContent && focusName() !== '') { const before = focusName(); press(KEY.down); if (focusName() === before) break; }
@@ -325,6 +398,11 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   check('search from the phone shows results', screenNow() === 'search' && $('srows').childNodes[0]._strip.childNodes[0]._card.name === 'The Matrix');
   press(KEY.down);
   check('results can be reached with the remote', focusName() === 'The Matrix', focusName());
+  // Into the search box, keyboard closed without Enter, arrows still move.
+  press(KEY.up); press(KEY.ok);
+  check('OK on the box starts typing', document.activeElement === $('sq'));
+  press(KEY.down);
+  check('an arrow leaves the box after the keyboard closed', document.activeElement !== $('sq') && focusName() === 'The Matrix', focusName());
   press(KEY.back);
   check('Back from search → Home', screenNow() === 'home');
   press(KEY.back);
