@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/plus/airplay.dart';
 import 'package:anymex/plus/tv/lg_link.dart';
+import 'package:anymex/plus/tv/tv_sync.dart';
 import 'package:get/get.dart';
 
 /// AnymeX+: the link between this app and the AnymeX+ TV app (LG webOS).
@@ -32,6 +33,7 @@ class PlusTvLink {
   static const appId = 'com.mikeyislost.anymexplus.tv';
   static const defaultPort = 41733;
   static const _kToken = 'plus_tv_link_token';
+  static const _kSyncKey = 'plus_tv_sync_key';
 
   final status = PlusTvStatus.off.obs;
   final localIp = ''.obs;
@@ -46,6 +48,12 @@ class PlusTvLink {
 
   /// Asked when a TV connects without the shared key (typed address).
   Future<bool> Function(String tvIp)? askAllow;
+
+  /// What the TV said when it connected (its `hello`).
+  final hello = <String, dynamic>{}.obs;
+
+  /// Messages from the TV other than `hello` and `state` (sync, watched…).
+  final List<void Function(Map<String, dynamic>)> listeners = [];
 
   /// Gives the TV a subtitle file as WebVTT text (`/sub/<name>.vtt`); set
   /// by Play on TV. Null result = not found.
@@ -69,6 +77,22 @@ class PlusTvLink {
       KvHelper.set(_kToken, t);
     }
     return t;
+  }
+
+  /// The key that locks what is synced to the TV (logins, addons). The TV
+  /// only ever gets it through LG's own phone link (`openOnTv`), never over
+  /// this app's plain connection. 32 random bytes as hex.
+  static String get syncKey {
+    var k = '';
+    try {
+      k = KvHelper.get<String>(_kSyncKey, defaultVal: '');
+    } catch (_) {}
+    if (k.length != 64) {
+      final r = Random.secure();
+      k = List.generate(32, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+      KvHelper.set(_kSyncKey, k);
+    }
+    return k;
   }
 
   /// This device's address on the home network, from a list of
@@ -114,6 +138,7 @@ class PlusTvLink {
   /// Starts listening for the TV app. Safe to call again.
   Future<void> start() async {
     localIp.value = await _findLocalIp();
+    PlusTvSync.instance.attach();
     if (_server != null) return;
     HttpServer server;
     try {
@@ -206,12 +231,21 @@ class PlusTvLink {
         tvInfo.assignAll(info is Map ? Map<String, dynamic>.from(info) : {});
         tvAddress.value = ip;
         tvState.clear();
+        hello.assignAll(m);
         status.value = PlusTvStatus.connected;
         if (PlusCastSearch.isIp(ip)) PlusCastSearch.saveHost(ip);
         _sendTo(ws, {'t': 'welcome', 'name': deviceName, 'token': token});
         return;
       }
-      if (type == 'state') tvState.assignAll(m);
+      if (type == 'state') {
+        tvState.assignAll(m);
+      } else {
+        for (final l in List.of(listeners)) {
+          try {
+            l(m);
+          } catch (_) {}
+        }
+      }
     }, onDone: () {
       if (identical(_tv, ws)) {
         _tv = null;
@@ -236,6 +270,9 @@ class PlusTvLink {
       ws.add(jsonEncode(msg));
     } catch (_) {}
   }
+
+  /// Sends [msg] to the connected TV (nothing happens without one).
+  void send(Map<String, dynamic> msg) => _send(msg);
 
   void _send(Map<String, dynamic> msg) {
     final ws = _tv;
@@ -330,7 +367,7 @@ class PlusTvLink {
     try {
       await lg.request('system.launcher/launch', {
         'id': appId,
-        'params': {'host': localIp.value, 'port': port.value, 'token': token},
+        'params': {'host': localIp.value, 'port': port.value, 'token': token, 'key': syncKey},
       });
       PlusCastSearch.saveHost(host);
     } finally {

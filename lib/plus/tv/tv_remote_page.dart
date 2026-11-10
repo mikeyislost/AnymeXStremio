@@ -1,13 +1,14 @@
 import 'package:anymex/plus/airplay.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
+import 'package:anymex/plus/tv/tv_sync.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 /// Settings → TV Remote: connects to the AnymeX+ TV app (LG webOS) and
-/// works as its remote. Test build: a D-pad, a few test videos and a
-/// report about the TV.
+/// works as its remote: a D-pad, a search box that types on the TV, the
+/// sync of your Stremio account and addons, test videos and a report.
 class PlusTvRemotePage extends StatefulWidget {
   const PlusTvRemotePage({super.key});
 
@@ -19,6 +20,7 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
   final link = PlusTvLink.instance;
   final _ip = TextEditingController();
   final _url = TextEditingController();
+  final _tvSearch = TextEditingController();
   List<PlusTvDevice> _tvs = const [];
   bool _searching = false;
   String _opening = '';
@@ -43,6 +45,7 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
     link.askAllow = null;
     _ip.dispose();
     _url.dispose();
+    _tvSearch.dispose();
     super.dispose();
   }
 
@@ -266,6 +269,42 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
                   '${(state['focus'] ?? '') == '' ? '' : ' · on "${state['focus']}"'}'
                   ' · ${state['presses'] ?? 0} presses',
           style: text.bodySmall,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _tvSearch,
+              textInputAction: TextInputAction.search,
+              decoration: const InputDecoration(
+                labelText: 'Search on the TV',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              onSubmitted: (q) => PlusTvSync.instance.search(q.trim()),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: () => PlusTvSync.instance.search(_tvSearch.text.trim()),
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.sync_rounded),
+          title: const Text('Sync to the TV'),
+          subtitle: Obx(() => Text(PlusTvSync.instance.status.value.isEmpty
+              ? 'Your Stremio account, addons and Movies & TV rows, locked so only this TV can read them.'
+              : PlusTvSync.instance.status.value)),
+          trailing: TextButton(
+            onPressed: () => PlusTvSync.instance.sendNow(),
+            child: const Text('Sync now'),
+          ),
         ),
       ),
       const SizedBox(height: 24),

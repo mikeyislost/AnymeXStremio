@@ -111,7 +111,8 @@ jobs:
 
       - name: Package AnymeX+ TV
         run: |
-          node --check tv/app.js
+          for f in tv/*.js; do node --check "$f"; done
+          node scripts/tv_smoke.js
           scripts/build_tv.sh "0.0.${{ github.run_number }}" "check-${{ github.run_number }}" dist "AnymeX-Plus-TV-check.ipk"
           python3 scripts/tv_repo.py dist/AnymeX-Plus-TV-check.ipk https://example.com/x.ipk "0.0.${{ github.run_number }}" https://example.com/i.png /tmp/webos.json > /dev/null
 

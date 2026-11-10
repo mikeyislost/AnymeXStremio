@@ -1,0 +1,343 @@
+#!/usr/bin/env node
+// Runs the AnymeX+ TV app (tv/) without a TV: a small fake page, a fake
+// phone and fake web answers, then walks through pairing, the locked sync,
+// browsing, playing, progress and the next episode, and checks what the app
+// did. Run: node scripts/tv_smoke.js
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const nodeCrypto = require('crypto');
+
+const TV = path.join(__dirname, '..', 'tv');
+let failed = 0;
+function check(name, ok, extra) {
+  if (!ok) { failed++; console.log('FAIL  ' + name + (extra !== undefined ? '  → ' + JSON.stringify(extra) : '')); }
+  else console.log('ok    ' + name);
+}
+
+// ------------------------------------------------------------- a tiny page
+
+class El {
+  constructor(tag) {
+    this.tagName = tag.toUpperCase(); this.childNodes = []; this.parentNode = null; this.attrs = {};
+    this.cls = []; this.style = {}; this._text = ''; this.listeners = {}; this.value = '';
+    this.scrollTop = 0; this.scrollLeft = 0; this.offsetTop = 0; this.offsetLeft = 0; this.offsetHeight = 0; this.clientHeight = 0;
+    const self = this;
+    this.classList = {
+      add(c) { if (!self.cls.includes(c)) self.cls.push(c); },
+      remove(c) { self.cls = self.cls.filter(x => x !== c); },
+      contains(c) { return self.cls.includes(c); },
+      toggle(c) { if (self.cls.includes(c)) this.remove(c); else this.add(c); }
+    };
+    if (tag === 'video') {
+      this.paused = true; this.ended = false; this.currentTime = 0; this.duration = NaN; this.readyState = 0;
+      this.play = () => { this.paused = false; }; this.pause = () => { this.paused = true; }; this.load = () => {};
+      this.canPlayType = () => '';
+    }
+  }
+  get className() { return this.cls.join(' '); }
+  set className(v) { this.cls = String(v).split(/\s+/).filter(Boolean); }
+  get firstChild() { return this.childNodes[0] || null; }
+  get src() { return this.attrs.src || ''; }
+  set src(v) { this.attrs.src = v; }
+  appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c); c.parentNode = this; this.childNodes.push(c); return c; }
+  removeChild(c) { this.childNodes = this.childNodes.filter(x => x !== c); c.parentNode = null; return c; }
+  get textContent() { return this._text + this.childNodes.map(c => c.textContent).join(''); }
+  set textContent(v) { this.childNodes.forEach(c => { c.parentNode = null; }); this.childNodes = []; this._text = String(v); }
+  setAttribute(k, v) { if (k === 'class') this.className = v; else this.attrs[k] = String(v); }
+  getAttribute(k) { return k === 'class' ? this.className : (k in this.attrs ? this.attrs[k] : null); }
+  removeAttribute(k) { delete this.attrs[k]; }
+  contains(n) { while (n) { if (n === this) return true; n = n.parentNode; } return false; }
+  all(out) { for (const c of this.childNodes) { out.push(c); c.all(out); } return out; }
+  querySelectorAll(sel) {
+    const parts = sel.split(',').map(s => s.trim().replace(/^\./, ''));
+    return this.all([]).filter(e => parts.some(p => e.cls.includes(p)));
+  }
+  querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+  addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn); }
+  fire(t, ev) { (this.listeners[t] || []).forEach(fn => fn(ev || {})); }
+  getBoundingClientRect() { return { left: 0, top: 0, width: 0, height: 0 }; }
+  focus() { document.activeElement = this; }
+  blur() { if (document.activeElement === this) document.activeElement = null; }
+}
+
+function parse(html) {
+  const body = new El('body');
+  let cur = body;
+  const src = html.slice(html.indexOf('<body>') + 6, html.indexOf('</body>'));
+  const re = /<!--[\s\S]*?-->|<\/([a-zA-Z0-9]+)>|<([a-zA-Z0-9]+)([^>]*)>|([^<]+)/g;
+  let m;
+  while ((m = re.exec(src))) {
+    if (m[1]) { cur = cur.parentNode || body; }
+    else if (m[2]) {
+      const tag = m[2].toLowerCase();
+      const e = new El(tag);
+      const ar = /([\w-]+)(?:="([^"]*)")?/g;
+      let a;
+      while ((a = ar.exec(m[3]))) e.setAttribute(a[1], a[2] === undefined ? '' : a[2]);
+      cur.appendChild(e);
+      if (!['img', 'input', 'br', 'meta', 'link'].includes(tag)) cur = e;
+    } else if (m[4] && m[4].trim()) { const t = new El('#text'); t._text = m[4]; cur.appendChild(t); }
+  }
+  return body;
+}
+
+const body = parse(fs.readFileSync(path.join(TV, 'index.html'), 'utf8'));
+const docListeners = {};
+global.document = {
+  readyState: 'complete', activeElement: null, body,
+  getElementById(id) { return body.all([]).find(e => e.attrs.id === id) || null; },
+  createElement(tag) { return new El(tag); },
+  addEventListener(t, fn) { (docListeners[t] = docListeners[t] || []).push(fn); }
+};
+function docFire(t, ev) { (docListeners[t] || []).forEach(fn => fn(ev)); }
+function press(code) { docFire('keydown', { keyCode: code, preventDefault() {} }); }
+const KEY = { left: 37, up: 38, right: 39, down: 40, ok: 13, back: 461 };
+
+const store = new Map();
+global.localStorage = {
+  getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k)
+};
+global.window = global;
+Object.defineProperty(global, 'navigator', { value: { userAgent: 'Fake TV Chrome/132.0' }, configurable: true });
+global.atob = s => Buffer.from(s, 'base64').toString('binary');
+let exits = 0;
+global.webOSSystem = { platformBack() { exits++; }, activate() {} };
+
+// ------------------------------------------------------------ a fake phone
+
+const sent = [];
+let sock = null;
+global.WebSocket = class {
+  constructor(url) { this.url = url; this.readyState = 0; sock = this; }
+  send(s) { sent.push(JSON.parse(s)); }
+  close() { this.readyState = 3; }
+};
+function fromPhone(msg) { sock.onmessage({ data: JSON.stringify(msg) }); }
+function last(t) { for (let i = sent.length - 1; i >= 0; i--) if (sent[i].t === t) return sent[i]; return null; }
+
+// ------------------------------------------------------- fake web answers
+
+const requests = [];
+const routes = [];   // [test(url, body) → answer or undefined]
+global.XMLHttpRequest = class {
+  open(method, url) { this.method = method; this.url = url; }
+  setRequestHeader() {}
+  send(bodyText) {
+    const reqBody = bodyText ? JSON.parse(bodyText) : null;
+    requests.push({ method: this.method, url: this.url, body: reqBody });
+    setImmediate(() => {
+      let answer;
+      for (const r of routes) { answer = r(this.url, reqBody); if (answer !== undefined) break; }
+      if (answer === undefined) { this.status = 404; this.responseText = ''; }
+      else { this.status = 200; this.responseText = typeof answer === 'string' ? answer : JSON.stringify(answer); }
+      if (this.onload) this.onload();
+    });
+  }
+};
+const wait = (ms) => new Promise(r => setTimeout(r, ms || 20));
+
+const ADDON = 'https://debrid.example/abc123';
+const libraryItems = [{
+  _id: 'tt0000001', name: 'Old Show', type: 'series', poster: 'https://img.example/old.jpg', removed: false, temp: false,
+  _mtime: '2026-11-01T00:00:00.000Z',
+  state: { timeOffset: 600000, duration: 1200000, video_id: 'tt0000001:1:2', timeWatched: 0, overallTimeWatched: 0, timesWatched: 0, flaggedWatched: 0, watched: 'keep-me' }
+}];
+const puts = [];
+const showMeta = {
+  id: 'tt7654321', type: 'series', name: 'Test Show', description: 'A show.', background: 'https://img.example/bg.jpg',
+  videos: [
+    { id: 'tt7654321:1:2', title: 'Two', season: 1, episode: 2, released: '2020-01-08T00:00:00.000Z' },
+    { id: 'tt7654321:1:1', title: 'One', season: 1, episode: 1, released: '2020-01-01T00:00:00.000Z' },
+    { id: 'tt7654321:2:1', title: 'Later', season: 2, episode: 1, released: '2021-01-01T00:00:00.000Z' },
+    { id: 'tt7654321:0:1', title: 'Special', season: 0, episode: 1, released: '2020-06-01T00:00:00.000Z' }
+  ]
+};
+routes.push((url, b) => {
+  if (url === 'https://api.strem.io/api/datastoreGet') {
+    return { result: b.all ? libraryItems : libraryItems.filter(i => b.ids.includes(i._id)) };
+  }
+  if (url === 'https://api.strem.io/api/datastorePut') { puts.push(b); return { result: { success: true } }; }
+  if (url.startsWith('https://v3-cinemeta.strem.io/catalog/movie/top/search=')) {
+    return { metas: [{ id: 'tt0133093', type: 'movie', name: 'The Matrix', poster: 'https://img.example/m.jpg' }] };
+  }
+  if (url.startsWith('https://v3-cinemeta.strem.io/catalog/series/top/search=')) return { metas: [] };
+  if (url.startsWith('https://v3-cinemeta.strem.io/catalog/')) {
+    return { metas: [{ id: 'tt0111161', type: 'movie', name: 'Default Title', poster: 'https://img.example/d.jpg' }] };
+  }
+  if (url.startsWith('https://api.themoviedb.org/3/trending/tv/day?api_key=TMDBKEY')) {
+    return { results: [{ id: 42, name: 'Test Show', poster_path: '/p.jpg', backdrop_path: '/b.jpg', overview: 'About.', first_air_date: '2020-01-01', vote_average: 8.26 },
+      { id: 43, name: 'No Poster' }] };
+  }
+  if (url.startsWith('https://api.themoviedb.org/3/tv/42/external_ids')) return { imdb_id: 'tt7654321' };
+  if (url === 'https://v3-cinemeta.strem.io/meta/series/tt7654321.json') return { meta: showMeta };
+  if (url.startsWith(ADDON + '/stream/series/')) {
+    const id = decodeURIComponent(url.split('/stream/series/')[1].replace('.json', ''));
+    return { streams: [
+      { name: 'Debrid\n4K', title: 'Show.' + id + '.2160p.mkv\n12 GB', infoHash: 'abcdef' },
+      { name: 'Debrid\n1080p', title: 'Show.' + id + '.1080p.mkv\n2 GB', url: 'https://cdn.example/' + encodeURIComponent(id) + '.mkv',
+        behaviorHints: { bingeGroup: 'debrid-1080p', filename: 'Show.1080p.mkv' },
+        subtitles: [{ url: 'https://subs.example/en.srt', lang: 'eng' }] },
+      { name: 'Needs phone', url: 'https://cdn.example/h.mp4', behaviorHints: { proxyHeaders: { request: { Referer: 'x' } } } }
+    ] };
+  }
+  if (url === 'https://subs.example/en.srt') return '1\n00:00:01,000 --> 00:00:02,000\nHello there\n';
+  return undefined;
+});
+
+function seal(keyHex, obj) {
+  const iv = nodeCrypto.randomBytes(12);
+  const c = nodeCrypto.createCipheriv('aes-256-gcm', Buffer.from(keyHex, 'hex'), iv);
+  const data = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final(), c.getAuthTag()]);
+  return { iv: iv.toString('base64'), data: data.toString('base64') };
+}
+
+const $ = id => document.getElementById(id);
+const screenNow = () => ['pair', 'home', 'details', 'search', 'settings', 'player'].find(s => !$(s).classList.contains('hidden'));
+const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus')); return f ? (f.getAttribute('data-name') || f.textContent) : ''; };
+
+(async function main() {
+  for (const f of ['gcm.js', 'browse.js', 'app.js']) {
+    // eslint-disable-next-line no-eval
+    (0, eval)(fs.readFileSync(path.join(TV, f), 'utf8'));
+  }
+  const video = $('video');
+  check('starts on the pairing screen', screenNow() === 'pair');
+
+  // The phone opens the app through LG's link, with its address and key.
+  const KEYHEX = nodeCrypto.randomBytes(32).toString('hex');
+  docFire('webOSLaunch', { detail: { host: '192.168.1.23', port: 41733, token: 'tok', key: KEYHEX } });
+  check('dials the phone', sock && sock.url === 'ws://192.168.1.23:41733/tv');
+  sock.readyState = 1; sock.onopen();
+  const hello = last('hello');
+  check('hello says it can sync and has the key', hello && hello.sync === true && hello.hasKey === true && hello.have === '', hello);
+  check('the key is never sent back', JSON.stringify(sent).indexOf(KEYHEX) < 0);
+
+  fromPhone({ t: 'welcome', name: 'iPhone', token: 'tok' });
+  await wait();
+  check('goes to Home once connected', screenNow() === 'home');
+  check('Home has the built-in rows before any sync', focusName() === 'Default Title', focusName());
+
+  // A sync locked with the wrong key is refused.
+  fromPhone(Object.assign({ t: 'sync', h: 'bad' }, seal(nodeCrypto.randomBytes(32).toString('hex'), { v: 1 })));
+  await wait(60);
+  check('wrong key → refused', last('syncFail') && !last('syncOk'), last('syncFail'));
+
+  const bundle = {
+    v: 1, from: 'iPhone', at: Date.now(),
+    stremio: { authKey: 'AUTH', email: 'me@example.com', addons: [
+      { url: ADDON + '/manifest.json', manifest: { id: 'x.debrid', name: 'Debrid', types: ['movie', 'series'], idPrefixes: ['tt'],
+        resources: ['stream'], catalogs: [] } },
+      { url: 'https://v3-cinemeta.strem.io/manifest.json', manifest: { id: 'com.linvo.cinemeta', name: 'Cinemeta', types: ['movie', 'series'],
+        idPrefixes: ['tt'], resources: ['catalog', 'meta'], catalogs: [{ type: 'movie', id: 'top', extra: [{ name: 'search' }] },
+          { type: 'series', id: 'top', extra: [{ name: 'search' }] }] } }
+    ] },
+    tmdb: { key: 'TMDBKEY', region: 'US' },
+    rows: [{ kind: 'cw', title: 'Continue Watching' },
+      { kind: 'tmdb', title: 'Trending · Series', type: 'series', path: 'trending/tv/day', query: '' }],
+    settings: { watchedPoint: 0.8 }
+  };
+  fromPhone(Object.assign({ t: 'sync', h: 'h1' }, seal(KEYHEX, bundle)));
+  await wait(80);
+  const okMsg = last('syncOk');
+  check('right key → synced', okMsg && okMsg.h === 'h1' && okMsg.addons === 2 && okMsg.rows === 2, okMsg);
+  check('the bundle is kept for next time', JSON.parse(store.get('anymexplus_tv_bundle')).stremio.authKey === 'AUTH');
+  const rows = $('hrows').childNodes;
+  check('Home shows the phone\'s rows', rows.length === 2 && rows[0].childNodes[0].textContent === 'Continue Watching');
+  check('Continue Watching comes from the Stremio library', rows[0]._strip.childNodes.length === 1 && focusName() === 'Old Show', focusName());
+  check('TMDB row skips titles without a poster', rows[1]._strip.childNodes.length === 1);
+
+  // Down to the TMDB row, open the title.
+  press(KEY.down);
+  check('down moves to the next row', focusName() === 'Test Show', focusName());
+  check('focused title is described', $('hititle').textContent === 'Test Show' && /8\.3/.test($('himeta').textContent), $('himeta').textContent);
+  press(KEY.ok);
+  await wait(60);
+  check('opens details by IMDb id', screenNow() === 'details' && $('dtitle').textContent === 'Test Show');
+  check('main button plays the first real episode', focusName() === 'Play S1 E1', focusName());
+  check('season chips, specials last', $('dseasons').childNodes.map(c => c.textContent).join('|') === 'Season 1|Season 2|Specials');
+  check('episodes of season 1 in order', $('deps').childNodes.map(c => c._video.episode).join(',') === '1,2');
+
+  press(KEY.ok);
+  await wait(60);
+  const list = $('splist');
+  check('streams panel lists only what the TV can play', list.childNodes.length === 1 && focusName() === 'Debrid 1080p', focusName());
+  press(KEY.ok);
+  await wait();
+  check('plays in the TV player', screenNow() === 'player' && video.src === 'https://cdn.example/tt7654321%3A1%3A1.mkv', video.src);
+  check('title and episode on screen', $('ptitle').textContent === 'Test Show' && /S1 E1/.test($('psub').textContent));
+
+  // Audio / subtitles panel.
+  video.readyState = 4; video.duration = 1000; video.currentTime = 10; video.fire('loadedmetadata');
+  press(KEY.up);
+  check('Up opens audio and subtitles', !$('tpanel').classList.contains('hidden'));
+  const english = $('tlist').childNodes.find(e => /^English 1/.test(e.textContent));
+  check('subtitle from the stream is listed', !!english);
+  while (focusName() !== english.textContent && focusName() !== '') { const before = focusName(); press(KEY.down); if (focusName() === before) break; }
+  press(KEY.ok);
+  await wait();
+  video.currentTime = 1.5;
+  await wait(200);
+  check('subtitle file is fetched and drawn', $('subs').textContent === 'Hello there', $('subs').textContent);
+  press(KEY.back);
+  check('Back closes the panel, not the video', $('tpanel').classList.contains('hidden') && screenNow() === 'player');
+
+  // The episode ends: progress is saved, the phone is told, the next one plays.
+  video.currentTime = 999; video.ended = true;
+  video.fire('ended');
+  await wait(120);
+  const put = puts[puts.length - 1];
+  const item = put && put.changes[0];
+  check('progress written to the Stremio library', put && put.authKey === 'AUTH' && item._id === 'tt7654321', put);
+  check('finished episode → library points at the next one', item && item.state.video_id === 'tt7654321:1:2' && item.state.timeOffset === 1, item && item.state);
+  check('new library item is a Continue Watching one', item && item.removed === true && item.temp === true && item.name === 'Test Show');
+  const w = last('watched');
+  check('the phone is told it was watched', w && w.id === 'tt7654321' && w.videoId === 'tt7654321:1:1' && w.type === 'series', w);
+  fromPhone({ t: 'watchedOk', q: w.q });
+  check('watched mark leaves the queue when the phone confirms', store.get('anymexplus_tv_wq') === '[]', store.get('anymexplus_tv_wq'));
+  check('next episode starts by itself (same kind of stream)', screenNow() === 'player' && video.src === 'https://cdn.example/tt7654321%3A1%3A2.mkv', video.src);
+
+  // Back out of the player half way: resume point, details again.
+  video.ended = false; video.currentTime = 300;
+  press(KEY.back);
+  await wait(80);
+  check('Back returns to details on that episode', screenNow() === 'details' && /^S1 E2/.test(focusName()), focusName());
+  const item2 = puts[puts.length - 1].changes[0];
+  check('resume point saved', item2.state.video_id === 'tt7654321:1:2' && item2.state.timeOffset === 300000 && item2.state.duration === 1000000, item2.state);
+  check('main button offers to resume', $('dbtns').childNodes[0].textContent === 'Resume S1 E2 from 5:00', $('dbtns').childNodes[0].textContent);
+
+  // An item the phone changed meanwhile keeps its other fields.
+  press(KEY.back);
+  check('Back from details → Home', screenNow() === 'home');
+
+  // Typing a search on the phone.
+  fromPhone({ t: 'search', q: 'matrix' });
+  await wait(60);
+  check('search from the phone shows results', screenNow() === 'search' && $('srows').childNodes[0]._strip.childNodes[0]._card.name === 'The Matrix');
+  press(KEY.down);
+  check('results can be reached with the remote', focusName() === 'The Matrix', focusName());
+  press(KEY.back);
+  check('Back from search → Home', screenNow() === 'home');
+  press(KEY.back);
+  check('Back on Home leaves the app', exits === 1);
+
+  // The phone goes away: the TV carries on.
+  sock.onclose();
+  check('phone gone → still on Home', screenNow() === 'home' && /Phone not connected/.test($('hstatus').textContent));
+
+  // Settings.
+  press(KEY.up); press(KEY.up); press(KEY.right); press(KEY.right); press(KEY.ok);
+  check('Settings opens and shows the sync', screenNow() === 'settings' && /me@example.com/.test($('setinfo').textContent));
+
+  // Phone-driven playback (stage 1) still works and returns to Home.
+  sock.readyState = 1; fromPhone({ t: 'welcome', name: 'iPhone', token: 'tok' });
+  fromPhone({ t: 'play', url: 'https://x.example/a.mp4', title: 'From phone', id: 7, start: 0, kind: 'mp4' });
+  check('Play on TV from the phone', screenNow() === 'player' && video.src === 'https://x.example/a.mp4');
+  const before = puts.length;
+  fromPhone({ t: 'stop' });
+  await wait(40);
+  check('phone stop → Home, nothing written by the TV', screenNow() === 'home' && puts.length === before);
+
+  console.log(failed ? '\n' + failed + ' check(s) failed' : '\nAll TV checks passed');
+  process.exit(failed ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(1); });

@@ -1108,6 +1108,34 @@ class StremioService extends GetxController {
     }
   }
 
+  /// AnymeX+ TV: a movie or episode was watched on the TV by itself. The TV
+  /// already saved the progress in the Stremio library; this adds the
+  /// watched mark there (the TV can't build it) and tells AniList / Simkl.
+  Future<void> markWatchedFromTv(
+      String type, String id, String videoId) async {
+    final meta = await fetchMeta(type, id);
+    StremioVideo? video;
+    for (final v in meta?.videos ?? const <StremioVideo>[]) {
+      if (v.id == videoId) video = v;
+    }
+    final pb = StremioPlayback(
+        libraryId: id,
+        type: type,
+        name: meta?.name ?? '',
+        poster: meta?.poster,
+        videoId: videoId,
+        videos: meta?.videos ?? const []);
+    if (meta != null && video != null && _authKey != null) {
+      // Fresh copy first: the TV changed this item a moment ago.
+      await getLibraryItem(id, refresh: true);
+      await setVideoWatched(meta, video, true); // also Simkl
+    } else {
+      unawaited(_syncToSimkl(pb));
+    }
+    unawaited(_syncToAnilist(pb));
+    libraryRevision.value++;
+  }
+
   // ---- playback sync --------------------------------------------------------
 
   /// Bumped when more anime → Stremio matches are known (Home's Continue

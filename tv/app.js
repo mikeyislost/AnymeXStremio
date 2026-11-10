@@ -5,6 +5,9 @@
  * requests from it, plays video with the TV's own player and reports back
  * what it is doing, so the phone can keep your watch progress.
  *
+ * browse.js adds browsing on the TV itself (rows, details, streams) with
+ * what the phone has synced over; gcm.js opens that locked sync.
+ *
  * Written in old-style JavaScript on purpose so it runs on older webOS too.
  */
 (function () {
@@ -137,6 +140,7 @@
   var retryTimer = null;
   var typed = '';
   var peerName = '';
+  var B = null;          // browsing on the TV (browse.js)
 
   function loadPhone() {
     try {
@@ -168,7 +172,10 @@
     try { sock = new WebSocket(url); } catch (e) { setStatus('Bad address: ' + phone.host); return; }
     ws = sock;
     sock.onopen = function () {
-      send({ t: 'hello', app: 'anymexplus-tv', v: APP_VERSION, token: phone.token || '', info: info });
+      var hello = { t: 'hello', app: 'anymexplus-tv', v: APP_VERSION, token: phone.token || '', info: info };
+      var extra = B.helloExtra();
+      for (var k in extra) if (extra.hasOwnProperty(k)) hello[k] = extra[k];
+      send(hello);
       if (!phone.token) setStatus('Check your phone and tap Allow.');
     };
     sock.onmessage = function (ev) {
@@ -185,9 +192,12 @@
         // Keep playing: the phone may only be locked. It picks up again
         // when it is back.
         setNote('Phone disconnected. Still playing; waiting for it to come back…');
-      } else if (was) {
+      } else if (was && !B.has()) {
         show('pair');
         setStatus('The phone disconnected. Waiting for it to come back…');
+      } else if (was) {
+        // Synced: the TV carries on by itself.
+        B.onDisconnected();
       } else {
         setStatus('Waiting for AnymeX+ on ' + phone.host + '. Open TV Remote on the phone.');
       }
@@ -203,9 +213,9 @@
         peerName = m.name || 'phone';
         if (m.token) phone.token = m.token;
         savePhone();
-        text($('peer'), 'to ' + peerName);
         setNote('');
-        if (!(screen === 'player' && playing.url)) show('home');
+        if (screen === 'pair') B.home();
+        B.onConnected();
         sendState();
         break;
       case 'denied':
@@ -214,8 +224,9 @@
       case 'key': onKey(m.k); break;
       case 'play': playVideo(m); break;
       case 'player': playerCommand(m); break;
-      case 'stop': stopVideo(); show('home'); break;
+      case 'stop': leavePlayer(); break;
       case 'ping': send({ t: 'pong' }); break;
+      default: B.onMessage(m);
     }
   }
 
@@ -233,10 +244,17 @@
     var same = p && p.host && phone && connected && phone.host === String(p.host) &&
       (phone.port || DEFAULT_PORT) === (Number(p.port) || DEFAULT_PORT);
     if (p && p.host && !same) {
-      phone = { host: String(p.host), port: Number(p.port) || DEFAULT_PORT, token: String(p.token || '') };
+      // key: opens what the phone syncs over (logins, addons). It only ever
+      // arrives this way, through LG's own phone link.
+      phone = { host: String(p.host), port: Number(p.port) || DEFAULT_PORT, token: String(p.token || ''),
+        key: String(p.key || '') };
       savePhone();
       connected = false;
       connect('Connecting');
+    } else if (same && p.key && phone.key !== String(p.key)) {
+      phone.key = String(p.key);
+      savePhone();
+      send({ t: 'need' });
     }
     var sys = window.webOSSystem || window.PalmSystem;
     if (sys && sys.activate) { try { sys.activate(); } catch (e4) { /* ignore */ } }
@@ -249,13 +267,14 @@
 
   function show(name) {
     screen = name;
-    var all = ['pair', 'home', 'player'];
+    var all = ['pair', 'home', 'details', 'search', 'settings', 'player'];
     for (var i = 0; i < all.length; i++) {
       var el = $(all[i]);
       if (all[i] === name) el.classList.remove('hidden'); else el.classList.add('hidden');
     }
-    var first = firstFocusable();
-    setFocus(first);
+    if (name === 'pair') setFocus(firstFocusable());
+    else if (name === 'player') setFocus(null);
+    else B.enter(name);
     sendState();
   }
 
@@ -311,25 +330,30 @@
       } else {
         setStatus('That address looks incomplete. It should look like 192.168.1.23');
       }
-    } else if (act === 'tile') {
-      focused.classList.toggle('on');
-      presses++;
-      text($('presses'), presses + (presses === 1 ? ' press' : ' presses') + ' received');
-    } else if (act === 'forget') {
-      try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
-      phone = null;
-      clearTimeout(retryTimer);
-      if (ws) { try { ws.onclose = null; ws.close(); } catch (e2) { /* ignore */ } ws = null; }
-      connected = false;
-      show('pair');
-      setStatus('Forgotten. Connect again from the phone.');
     }
+  }
+
+  function forgetPhone() {
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+    phone = null;
+    clearTimeout(retryTimer);
+    if (ws) { try { ws.onclose = null; ws.close(); } catch (e2) { /* ignore */ } ws = null; }
+    connected = false;
+    show('pair');
+    setStatus('Forgotten. Connect again from the phone.');
+  }
+
+  function leaveApp() {
+    var sys = window.webOSSystem || window.PalmSystem;
+    if (sys && sys.platformBack) { try { sys.platformBack(); } catch (e) { /* ignore */ } }
   }
 
   function showTyped() { text($('addr'), typed || ' '); }
 
   function onKey(k) {
+    presses++;
     if (screen === 'player') { playerKey(k); return; }
+    if (B.screens.indexOf(screen) >= 0) { B.key(k); sendState(); return; }
     if (k === 'up') move(0, -1);
     else if (k === 'down') move(0, 1);
     else if (k === 'left') move(-1, 0);
@@ -337,11 +361,8 @@
     else if (k === 'ok') press();
     else if (k === 'back') {
       if (screen === 'pair' && typed) { typed = typed.slice(0, -1); showTyped(); }
-      else {
-        // Nothing left to go back to: leave the app, like other TV apps.
-        var sys = window.webOSSystem || window.PalmSystem;
-        if (sys && sys.platformBack) { try { sys.platformBack(); } catch (e) { /* ignore */ } }
-      }
+      else if (B.has()) B.home();
+      else leaveApp();   // nothing left to go back to, like other TV apps
     }
     sendState();
   }
@@ -361,22 +382,6 @@
     d.setAttribute('data-v', v);
     text(d, label);
     parent.appendChild(d);
-  }
-
-  function buildGrid() {
-    var grid = $('grid');
-    for (var i = 1; i <= 7; i++) {
-      var d = document.createElement('div');
-      d.className = 'tile';
-      d.setAttribute('data-act', 'tile');
-      text(d, 'Tile ' + i);
-      grid.appendChild(d);
-    }
-    var f = document.createElement('div');
-    f.className = 'tile';
-    f.setAttribute('data-act', 'forget');
-    text(f, 'Forget phone');
-    grid.appendChild(f);
   }
 
   // ---------------------------------------------------------------- player
@@ -517,7 +522,8 @@
         if (!m) continue;
         var t = lines.slice(j + 1).join('\n').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')
           .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-        if (t.replace(/\s/g, '')) out.push({ s: vttTime(m[1]), e: vttTime(m[2]), t: t });
+        t = t.replace(/\s+$/, '');
+        if (t) out.push({ s: vttTime(m[1]), e: vttTime(m[2]), t: t });
         break;
       }
     }
@@ -585,11 +591,19 @@
     sendState();
   }
 
+  // Back / Stop in the player, or the phone ending it.
+  function leavePlayer() {
+    var to = B.leftPlayer();
+    stopVideo();
+    show(to);
+  }
+
   function playerKey(k) {
+    if (B.playerKey(k)) { sendState(); return; }
     if (k === 'ok') playerCommand({ cmd: 'toggle' });
     else if (k === 'left') playerCommand({ cmd: 'seekBy', by: -10 });
     else if (k === 'right') playerCommand({ cmd: 'seekBy', by: 10 });
-    else if (k === 'back') { stopVideo(); show(connected ? 'home' : 'pair'); }
+    else if (k === 'back') leavePlayer();
     else wakeOsd();
   }
 
@@ -651,7 +665,8 @@
   function sendState() {
     showPlayerState();
     if (!connected) return;
-    send({ t: 'state', screen: screen, focus: focused ? focused.textContent : '', presses: presses,
+    var name = focused ? (focused.getAttribute('data-name') || focused.textContent || '') : '';
+    send({ t: 'state', screen: screen, focus: name.slice(0, 60), presses: presses,
       played: info.played, player: playerState() });
   }
 
@@ -664,12 +679,22 @@
     // First, so the jump to the resume point happens before the report.
     video.addEventListener('loadedmetadata', onLoaded);
     video.addEventListener('playing', onPlaying);
+    video.addEventListener('ended', function () { if (playing.local) B.ended(); });
     for (var i = 0; i < events.length; i++) video.addEventListener(events[i], sendState);
-    setInterval(function () { if (screen === 'player') sendState(); }, 1000);
+    setInterval(function () { if (screen === 'player') { sendState(); B.tick(); } }, 1000);
     setInterval(function () { if (screen === 'player') drawSubs(); }, 150);
 
+    B = window.AXBrowse({
+      $: $, text: text, luna: luna, send: send, info: info, show: show, setFocus: setFocus, setNote: setNote,
+      screen: function () { return screen; }, focused: function () { return focused; },
+      connected: function () { return connected; }, phone: function () { return phone; },
+      peer: function () { return peerName; }, video: function () { return video; },
+      playing: function () { return playing; }, play: playVideo, stop: stopVideo,
+      selectAudio: selectAudio, selectSub: selectEmbeddedSub, loadSubs: loadSubs, clearSubs: clearSubs,
+      exit: leaveApp, forget: forgetPhone
+    });
+    B.start();
     buildKeys();
-    buildGrid();
     readDeviceInfo();
     showInfo();
     readSystemInfo();
@@ -678,13 +703,20 @@
 
     // The TV remote: arrows, OK, Back (461), and the play / pause buttons.
     document.addEventListener('keydown', function (e) {
+      var typing = document.activeElement && document.activeElement.tagName === 'INPUT';
+      if (typing) {
+        // The TV's keyboard is up: only Enter and Back are ours.
+        if (e.keyCode === 13) { onKey('ok'); e.preventDefault(); }
+        else if (e.keyCode === 461 || e.keyCode === 27) { onKey('back'); e.preventDefault(); }
+        return;
+      }
       var map = { 37: 'left', 38: 'up', 39: 'right', 40: 'down', 13: 'ok', 461: 'back', 27: 'back', 8: 'back' };
       var k = map[e.keyCode];
       if (k) { onKey(k); e.preventDefault(); return; }
       if (screen === 'player') {
         if (e.keyCode === 415) playerCommand({ cmd: 'play' });
         else if (e.keyCode === 19) playerCommand({ cmd: 'pause' });
-        else if (e.keyCode === 413) { stopVideo(); show(connected ? 'home' : 'pair'); }
+        else if (e.keyCode === 413) leavePlayer();
         else if (e.keyCode === 412) playerCommand({ cmd: 'seekBy', by: -30 });
         else if (e.keyCode === 417) playerCommand({ cmd: 'seekBy', by: 30 });
       } else if (e.keyCode >= 48 && e.keyCode <= 57 && screen === 'pair') {
@@ -697,6 +729,8 @@
     document.addEventListener('webOSRelaunch', onLaunch, true);
 
     phone = loadPhone();
+    // Already synced: straight to Home; the phone joins when it is around.
+    if (B.has()) B.home();
     if (phone) connect('Reconnecting');
     else setStatus('Waiting for your phone.');
     // Launch details can also be there before the launch event arrives.

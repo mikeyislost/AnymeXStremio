@@ -16,13 +16,10 @@ h2 { font-size: 40px; margin: 0 0 16px; }
 .addr { font-size: 56px; font-family: monospace; min-height: 84px; padding: 8px 24px; margin: 16px 0;
   background: #1a1a22; border-radius: 16px; letter-spacing: 2px; }
 .keys { display: flex; flex-wrap: wrap; width: 760px; }
-.key, .tile { background: #23232e; border: 4px solid transparent; border-radius: 16px; text-align: center; }
+.key { background: #23232e; border: 4px solid transparent; border-radius: 16px; text-align: center; }
 .key { width: 132px; height: 84px; line-height: 76px; margin: 0 12px 12px 0; font-size: 36px; }
 .key.wide { width: 276px; }
 .focus { border-color: #7c4dff; background: #34285c; }
-.grid { display: flex; flex-wrap: wrap; width: 1500px; margin-top: 40px; }
-.tile { width: 340px; height: 220px; margin: 0 28px 28px 0; padding-top: 70px; font-size: 34px; }
-.tile.on { background: #2c6e49; }
 #player { padding: 0; background: #000; }
 #video { width: 100%; height: 100%; background: #000; }
 .osd { position: absolute; left: 0; right: 0; bottom: 0; padding: 48px 96px 56px;
@@ -39,3 +36,77 @@ h2 { font-size: 40px; margin: 0 0 16px; }
   text-shadow: 0 0 6px #000, 3px 3px 4px #000, -2px -2px 3px #000, 2px -2px 3px #000, -2px 2px 3px #000; }
 .pnote { position: absolute; left: 96px; top: 56px; padding: 12px 24px; font-size: 26px; background: rgba(0,0,0,.7);
   border-radius: 12px; color: #ffd27a; }
+
+/* ---- browsing on the TV ---- */
+.browse { padding: 0; }
+.bg { position: absolute; right: 0; top: 0; width: 1344px; height: 756px; object-fit: cover; opacity: .55;
+  transition: opacity .5s; }
+.bg.off { opacity: 0; }
+.shade { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, #101014 30%, rgba(16,16,20,.55) 65%, rgba(16,16,20,.25)),
+    linear-gradient(0deg, #101014 30%, rgba(16,16,20,0) 62%); }
+.top { position: absolute; left: 96px; right: 96px; top: 40px; height: 76px; display: flex; align-items: center; }
+.brand { font-size: 40px; font-weight: bold; color: #b9a4ff; margin-right: 48px; }
+.btn { background: rgba(35,35,46,.9); border: 4px solid transparent; border-radius: 16px; padding: 12px 32px;
+  margin-right: 20px; font-size: 30px; white-space: nowrap; flex: 0 0 auto; }
+.btn.on { background: #4a3a86; }
+.hstatus { margin-left: auto; font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hinfo { position: absolute; left: 96px; top: 140px; width: 1000px; height: 300px; overflow: hidden; }
+.hititle { font-size: 60px; font-weight: bold; line-height: 1.15; max-height: 138px; overflow: hidden; }
+.himeta { font-size: 28px; color: #c9c9d6; margin: 10px 0; min-height: 34px; }
+.hidesc, .ddesc { font-size: 26px; line-height: 1.4; color: #dcdce6; max-height: 110px; overflow: hidden; }
+.hnote { font-size: 28px; line-height: 1.45; color: #ffd27a; }
+.rows { position: absolute; left: 0; right: 0; top: 452px; bottom: 0; overflow: hidden; }
+.row { position: relative; height: 420px; }
+.rtitle { font-size: 32px; font-weight: bold; padding: 0 96px; height: 56px; line-height: 56px; }
+.strip { position: relative; display: flex; overflow: hidden; padding: 0 96px; white-space: nowrap; }
+.strip:after { content: ""; flex: 0 0 1700px; }
+.card { position: relative; flex: 0 0 220px; width: 220px; height: 330px; margin-right: 24px; border-radius: 14px;
+  background: #23232e; border: 4px solid transparent; overflow: hidden; }
+.cname { position: absolute; left: 12px; right: 12px; top: 16px; font-size: 26px; line-height: 1.25; white-space: normal;
+  color: #c9c9d6; }
+.cimg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.cprog { position: absolute; left: 10px; right: 10px; bottom: 10px; height: 8px; background: rgba(0,0,0,.6);
+  border-radius: 4px; overflow: hidden; }
+.cprog i { display: block; height: 100%; background: #7c4dff; }
+.card.focus, .epc.focus { border-color: #fff; background: #34285c; }
+
+.dscroll { position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow: hidden; }
+.dhead { padding: 110px 96px 0; width: 1200px; height: 470px; overflow: hidden; }
+.dtitle { font-size: 72px; font-weight: bold; line-height: 1.12; max-height: 162px; overflow: hidden; }
+.ddesc { max-height: 146px; }
+.btns { display: flex; padding: 0 96px; height: 92px; align-items: center; }
+#dseasons { height: 84px; }
+#dseasons:empty, #dbtns:empty { display: none; }
+.chip { font-size: 26px; padding: 8px 24px; }
+.eps { margin-top: 12px; }
+.epc { position: relative; flex: 0 0 340px; width: 340px; height: 290px; margin-right: 24px; border-radius: 14px;
+  background: #23232e; border: 4px solid transparent; overflow: hidden; white-space: normal; }
+.epc.cur { background: #2b2540; }
+.eimg { display: block; width: 100%; height: 187px; object-fit: cover; background: #1a1a22; }
+.enum { font-size: 22px; color: #b9a4ff; padding: 8px 14px 0; }
+.etitle { font-size: 24px; line-height: 1.25; padding: 2px 14px; max-height: 60px; overflow: hidden; }
+.dmsg { padding: 16px 96px; font-size: 28px; }
+
+.panel { position: absolute; right: 0; top: 0; bottom: 0; width: 860px; padding: 64px 48px 48px;
+  background: rgba(16,16,20,.97); border-left: 2px solid #2c2c3a; }
+.ptl { font-size: 38px; font-weight: bold; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pmsg { font-size: 26px; line-height: 1.4; min-height: 40px; margin-bottom: 12px; }
+.vlist { position: absolute; left: 48px; right: 48px; top: 190px; bottom: 40px; overflow: hidden; }
+#tlist { top: 130px; }
+.sitem { background: #23232e; border: 4px solid transparent; border-radius: 14px; padding: 14px 20px; margin-bottom: 12px; }
+.sitem.on { background: #2c6e49; }
+.sname { font-size: 28px; font-weight: bold; }
+.sdesc { font-size: 22px; line-height: 1.35; color: #c9c9d6; white-space: pre-line; word-break: break-word;
+  max-height: 92px; overflow: hidden; margin-top: 4px; }
+.thead { font-size: 26px; color: #b9a4ff; margin: 14px 0 10px; }
+
+.spad { padding: 72px 96px 0; }
+.sbar { display: block; }
+.sinput { display: block; width: 1100px; height: 88px; font-size: 40px; padding: 0 28px; color: #f2f2f7;
+  background: #1a1a22; border: 4px solid #2c2c3a; border-radius: 16px; outline: none; font-family: inherit; }
+.sinput.focus { border-color: #7c4dff; }
+.shint { font-size: 26px; margin-top: 18px; }
+.srows { top: 250px; }
+.setinfo { font-size: 28px; margin: 12px 0 32px; }
+#setbtns { padding: 0; }

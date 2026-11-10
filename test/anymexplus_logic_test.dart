@@ -3,6 +3,7 @@
 //
 // Run locally with: flutter test
 
+import 'dart:convert';
 import 'package:anymex/controllers/service_handler/service_handler.dart'
     show ServicesType;
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
@@ -10,6 +11,7 @@ import 'package:anymex/plus/airplay.dart' show plusMimeFromPath, PlusCastSearch;
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
+import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
 import 'package:anymex/plus/episode_hold.dart';
 import 'package:anymex/plus/episode_order.dart';
@@ -960,6 +962,20 @@ void main() {
   });
 
   group('TV link', () {
+    test('sync is locked the way the TV app opens it (AES-256-GCM)', () {
+      // Same answer as Node's crypto, which tv/gcm.js is checked against.
+      final (iv, data) = PlusTvSync.seal('07' * 32, utf8.encode('{"hello":"wörld ✓","n":1}'),
+          iv: td.Uint8List.fromList(List.generate(12, (i) => i)));
+      expect(iv, 'AAECAwQFBgcICQoL');
+      expect(data, 'Y6OBFXFltmtNkJJfVCoAnsHeKh06TlVfNPRSxx3hlJ260ydZhBoamybRuWw=');
+      expect(() => PlusTvSync.seal('07', const [1]), throwsArgumentError);
+    });
+    test('sync hash ignores when the bundle was made', () {
+      final a = {'v': 1, 'at': 1, 'rows': [1, 2]};
+      final b = {'v': 1, 'at': 2, 'rows': [1, 2]};
+      expect(PlusTvSync.bundleHash(a), PlusTvSync.bundleHash(b));
+      expect(PlusTvSync.bundleHash(a), isNot(PlusTvSync.bundleHash({'v': 1, 'at': 1, 'rows': [2, 1]})));
+    });
     test('picks the home network address', () {
       expect(
         PlusTvLink.pickLocalIp([('lo0', '127.0.0.1'), ('utun3', '10.8.0.2'), ('en0', '192.168.1.23')]),

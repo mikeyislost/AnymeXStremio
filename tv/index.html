@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Pairing: shown until a phone is connected. -->
+  <!-- Pairing: shown until a phone has connected and synced. -->
   <section id="pair" class="screen">
     <div class="col">
       <h1>AnymeX+ TV <span id="ver" class="dim"></span></h1>
@@ -27,12 +27,74 @@
     </div>
   </section>
 
-  <!-- Connected: a grid to try the remote on. -->
-  <section id="home" class="screen hidden">
-    <h1>Connected <span id="peer" class="dim"></span></h1>
-    <p class="dim">Open something in AnymeX+ on your phone, tap the cast button in the player and choose AnymeX+ TV.</p>
-    <div id="grid" class="grid"></div>
-    <p id="presses" class="dim"></p>
+  <!-- Home: rows of Movies & TV, the same ones as on the phone. -->
+  <section id="home" class="screen browse hidden">
+    <img id="hbg" class="bg off" alt="">
+    <div class="shade"></div>
+    <div id="htop" class="top grp">
+      <div class="brand">AnymeX+</div>
+      <div class="fo btn" data-act="search">Search</div>
+      <div class="fo btn" data-act="refresh">Refresh</div>
+      <div class="fo btn" data-act="settings">Settings</div>
+      <div id="hstatus" class="hstatus dim"></div>
+    </div>
+    <div class="hinfo">
+      <div id="hititle" class="hititle"></div>
+      <div id="himeta" class="himeta"></div>
+      <div id="hidesc" class="hidesc"></div>
+      <div id="hnote" class="hnote hidden">Nothing is synced from your phone yet. Open AnymeX+ on the phone, go to
+        Settings → TV Remote and tap this TV: your Stremio account, addons and rows come over by themselves.</div>
+    </div>
+    <div id="hrows" class="rows"></div>
+  </section>
+
+  <!-- Details: a movie or a show, its seasons and episodes, and streams. -->
+  <section id="details" class="screen browse hidden">
+    <img id="dbg" class="bg off" alt="">
+    <div class="shade"></div>
+    <div id="dscroll" class="dscroll">
+      <div class="dhead">
+        <div id="dtitle" class="dtitle"></div>
+        <div id="dmeta" class="himeta"></div>
+        <div id="ddesc" class="ddesc"></div>
+      </div>
+      <div id="dbtns" class="grp btns"></div>
+      <div id="dseasons" class="grp btns strip"></div>
+      <div id="deps" class="grp strip eps"></div>
+      <div id="dmsg" class="dmsg dim"></div>
+    </div>
+    <div id="spanel" class="panel hidden">
+      <div id="sptitle" class="ptl"></div>
+      <div id="spmsg" class="pmsg dim"></div>
+      <div id="splist" class="grp vlist" data-dir="v"></div>
+    </div>
+  </section>
+
+  <!-- Search. -->
+  <section id="search" class="screen browse hidden">
+    <div class="spad">
+      <div class="grp sbar"><input id="sq" class="fo sinput" data-act="input" data-name="Search box" type="text"
+        placeholder="Search movies and shows" autocomplete="off" spellcheck="false"></div>
+      <div id="shint" class="shint dim">Press OK to type. You can also type the name in AnymeX+ on your phone (Settings → TV Remote).</div>
+    </div>
+    <div id="srows" class="rows srows"></div>
+  </section>
+
+  <!-- Settings. -->
+  <section id="settings" class="screen browse hidden">
+    <div class="spad">
+      <h1>Settings</h1>
+      <pre id="setinfo" class="info setinfo"></pre>
+      <div id="setbtns" class="grp btns">
+        <div class="fo btn" data-act="resync">Sync again from the phone</div>
+        <div class="fo btn" data-act="pairscreen">Connect a phone</div>
+        <div class="fo btn" data-act="clear">Remove synced data</div>
+        <div class="fo btn" data-act="forget">Forget the phone</div>
+      </div>
+      <p id="setnote" class="status"></p>
+      <p class="dim">Your phone sends its Stremio account, addons and Movies &amp; TV rows here, locked with a key only this
+        TV has. Watch progress goes to your Stremio library; watched marks reach AniList and Simkl through the phone.</p>
+    </div>
   </section>
 
   <!-- Player: the TV's own video player. -->
@@ -46,8 +108,14 @@
       <div id="pstate" class="pstate"></div>
       <div class="bar"><div id="pfill" class="fill"></div></div>
     </div>
+    <div id="tpanel" class="panel hidden">
+      <div class="ptl">Audio and subtitles</div>
+      <div id="tlist" class="grp vlist" data-dir="v"></div>
+    </div>
   </section>
 
+  <script src="gcm.js"></script>
+  <script src="browse.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
