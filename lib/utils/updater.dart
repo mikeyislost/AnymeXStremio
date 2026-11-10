@@ -89,6 +89,11 @@ class UpdateManager {
         isBeta = isBetaApp;
         debugPrint('Checking ${packageInfo.packageName} for updates');
         final currentVersion = await _getCurrentVersion();
+        // AnymeX+: after a Windows update, tidy up or say that it failed.
+        final updateNote = await PlusWindowsUpdate.afterStart(currentVersion);
+        if (updateNote != null) {
+          snackBar(updateNote, duration: 10000, maxLines: 4);
+        }
 
         if (isBetaApp) {
           final betaRelease = await _fetchLatestRelease(isBeta: true);
@@ -504,7 +509,8 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
     // Run the installer, then close so it can replace the app's files.
     try {
       setState(() => _downloadStatus = 'Installing update...');
-      if (!await PlusWindowsUpdate.start(savePath)) {
+      if (!await PlusWindowsUpdate.start(savePath,
+          currentVersion: await AppChannel.version())) {
         await Process.start(savePath, const [],
             mode: ProcessStartMode.detached);
       }

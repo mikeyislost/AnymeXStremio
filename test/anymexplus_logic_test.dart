@@ -893,15 +893,10 @@ void main() {
       expect(PlusWindowsUpdate.isAllUsersPath(
           r'C:\Users\me\AppData\Local\Programs\AnymeXStremio', env), isFalse);
     });
-    test('script quotes paths and keeps /DIR as one switch', () {
-      final s = PlusWindowsUpdate.script(
-        installer: r"C:\Temp\it's.exe",
-        args: const ['/SILENT', r'/DIR=C:\Program Files\A'],
-        app: r'C:\Program Files\A\anymex.exe',
-      );
-      expect(s, contains(r"'C:\Temp\it''s.exe'"));
-      expect(s, contains(r'''-ArgumentList '/SILENT "/DIR=C:\Program Files\A"' -Wait'''));
-      expect(s, contains(r'Remove-Item -LiteralPath $PSCommandPath'));
+    test('an update that left the version unchanged failed', () {
+      expect(PlusWindowsUpdate.updateFailed('v1.1.3-beta+1', 'v1.1.3-beta+1'), isTrue);
+      expect(PlusWindowsUpdate.updateFailed('v1.1.3-beta+1', 'v1.1.3-beta+2'), isFalse);
+      expect(PlusWindowsUpdate.updateFailed('', ''), isFalse);
     });
   });
 

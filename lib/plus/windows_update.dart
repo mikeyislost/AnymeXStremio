@@ -1,9 +1,9 @@
 // AnymeX+: Windows in-app update. The new installer is downloaded to the
 // temp folder (not Downloads) and run silently over the installed copy:
 // no wizard or license pages, same folder, same "just me" / "all users"
-// choice. A small hidden script waits for it, deletes the installer and
-// opens the updated app. Old installers left in Downloads by earlier
-// versions of the updater are cleaned up too.
+// choice. The installer opens the updated app when it is done; the next
+// start removes the installer, or says so if the update didn't install.
+// Old installers left in Downloads by earlier versions are cleaned up too.
 
 import 'dart:io';
 
@@ -57,6 +57,7 @@ class PlusWindowsUpdate {
         '/NORESTART',
         '/SP-',
         '/CLOSEAPPLICATIONS',
+        '/FORCECLOSEAPPLICATIONS',
         allUsers ? '/ALLUSERS' : '/CURRENTUSER',
         '/DIR=$installDir',
       ];
@@ -73,56 +74,62 @@ class PlusWindowsUpdate {
     return false;
   }
 
-  /// A PowerShell single-quoted string.
-  static String psQuote(String s) => "'${s.replaceAll("'", "''")}'";
+  static Future<File> _tempFile(String name) async =>
+      File('${(await getTemporaryDirectory()).path}${Platform.pathSeparator}$name');
 
-  /// The hidden script that runs the installer, deletes it and opens the
-  /// app again.
-  static String script({
-    required String installer,
-    required List<String> args,
-    required String app,
-  }) {
-    // ArgumentList as one string so /DIR=... with spaces stays one switch.
-    final argLine = args
-        .map((a) => a.contains(' ') ? '"$a"' : a)
-        .join(' ');
-    return [
-      r'$ErrorActionPreference = "SilentlyContinue"',
-      'Start-Sleep -Seconds 2',
-      'Start-Process -FilePath ${psQuote(installer)} '
-          '-ArgumentList ${psQuote(argLine)} -Wait',
-      'Remove-Item -LiteralPath ${psQuote(installer)} -Force',
-      'Start-Process -FilePath ${psQuote(app)}',
-      r'Remove-Item -LiteralPath $PSCommandPath -Force',
-    ].join('\r\n');
-  }
+  /// The installer's own log of the last update (for when it fails).
+  static Future<String> logPath() async => (await _tempFile('anymexplus_update.log')).path;
 
   /// Runs the update and returns true when it started (the caller then
   /// closes the app). False for a portable copy (no uninstaller next to
   /// the app): the caller opens the installer the normal way.
-  static Future<bool> start(String installer) async {
+  ///
+  /// The installer is started straight from the app, so a Windows
+  /// permission prompt (apps installed for all users) comes up in front.
+  /// It closes nothing itself and opens the app again when it is done (a
+  /// [Run] line added to the installer by the build). An earlier version
+  /// went through a hidden PowerShell script: on some PCs that never got
+  /// as far as installing, and the app stayed closed.
+  static Future<bool> start(String installer, {required String currentVersion}) async {
     final app = Platform.resolvedExecutable;
     final dir = File(app).parent.path;
     final installed = File('$dir${Platform.pathSeparator}unins000.exe');
     if (!await installed.exists()) return false;
-    final args = installerArgs(dir,
-        allUsers: isAllUsersPath(dir, Platform.environment));
-    final ps1 = File(installer.replaceAll(RegExp(r'\.exe$'), '.ps1'));
-    await ps1.writeAsString(script(installer: installer, args: args, app: app));
-    await Process.start(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-WindowStyle',
-        'Hidden',
-        '-File',
-        ps1.path,
-      ],
-      mode: ProcessStartMode.detached,
-    );
+    final args = [
+      ...installerArgs(dir, allUsers: isAllUsersPath(dir, Platform.environment)),
+      '/LOG=${await logPath()}',
+    ];
+    try {
+      await (await _tempFile(_pendingName)).writeAsString(currentVersion);
+    } catch (_) {}
+    await Process.start(installer, args, mode: ProcessStartMode.detached);
     return true;
+  }
+
+  static const _pendingName = 'anymexplus_update_pending.txt';
+
+  /// True when the version before the update is still the version now.
+  static bool updateFailed(String versionBefore, String versionNow) =>
+      versionBefore.trim().isNotEmpty && versionBefore.trim() == versionNow.trim();
+
+  /// At startup: after an update, removes the installer, and returns a
+  /// message when the app is still the old version (the update didn't
+  /// install). Null otherwise.
+  static Future<String?> afterStart(String currentVersion) async {
+    if (!Platform.isWindows) return null;
+    try {
+      final pending = await _tempFile(_pendingName);
+      if (!await pending.exists()) return null;
+      final before = await pending.readAsString();
+      await pending.delete();
+      if (!updateFailed(before, currentVersion)) {
+        await cleanUp();
+        return null;
+      }
+      return "The update didn't install. Download the Setup.exe from the release page and run it. "
+          'Details: ${await logPath()}';
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -364,6 +364,8 @@ jobs:
           if (-not (Test-Path $issFile)) { Write-Error "ISS file not found: $issFile"; exit 1 }
           $content = Get-Content $issFile -Raw
           $content = $content -replace '.*Icelandic\.isl.*\r?\n', ''
+          # In-app updates run the installer silently: open the app again when it is done.
+          $content = $content.TrimEnd() + "`r`n`r`n[Run]`r`nFilename: ""{app}\anymex.exe""; Flags: nowait skipifnotsilent runasoriginaluser`r`n"
           Set-Content $issFile -Value $content -NoNewline
           & iscc $issFile
           if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup failed ($LASTEXITCODE)"; exit 1 }
