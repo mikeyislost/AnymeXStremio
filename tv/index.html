@@ -27,7 +27,7 @@
     </div>
   </section>
 
-  <!-- Home: rows of Movies & TV, the same ones as on the phone. -->
+  <!-- Home: your anime rows and Movies & TV, the same ones as on the phone. -->
   <section id="home" class="screen browse hidden">
     <img id="hbg" class="bg off" alt="">
     <div class="shade"></div>
@@ -43,7 +43,7 @@
       <div id="himeta" class="himeta"></div>
       <div id="hidesc" class="hidesc"></div>
       <div id="hnote" class="hnote hidden">Nothing is synced from your phone yet. Open AnymeX+ on the phone, go to
-        Settings → TV Remote and tap this TV: your Stremio account, addons and rows come over by themselves.</div>
+        Settings → TV Remote and tap this TV: your anime rows, Stremio account, addons and Movies &amp; TV rows come over by themselves.</div>
     </div>
     <div id="hrows" class="rows"></div>
   </section>
@@ -74,7 +74,7 @@
   <section id="search" class="screen browse hidden">
     <div class="spad">
       <div class="grp sbar"><input id="sq" class="fo sinput" data-act="input" data-name="Search box" type="text"
-        placeholder="Search movies and shows" autocomplete="off" spellcheck="false"></div>
+        placeholder="Search anime, movies and shows" autocomplete="off" spellcheck="false"></div>
       <div id="shint" class="shint dim">Press OK to type. You can also type the name in AnymeX+ on your phone (Settings → TV Remote).</div>
     </div>
     <div id="srows" class="rows srows"></div>
@@ -92,8 +92,10 @@
         <div class="fo btn" data-act="forget">Forget the phone</div>
       </div>
       <p id="setnote" class="status"></p>
-      <p class="dim">Your phone sends its Stremio account, addons and Movies &amp; TV rows here, locked with a key only this
-        TV has. Watch progress goes to your Stremio library; watched marks reach AniList and Simkl through the phone.</p>
+      <p class="dim">Your phone sends its Home rows, Stremio account and addons here, locked with a key only this
+        TV has. Movies &amp; TV play by themselves; watch progress goes to your Stremio library and watched marks reach
+        AniList and Simkl through the phone. Anime episodes are found by the extensions on your phone, so AnymeX+ has to
+        be open on it; it then acts as the remote and keeps your progress.</p>
     </div>
   </section>
 
@@ -106,10 +108,11 @@
       <div id="ptitle" class="ptitle"></div>
       <div id="psub" class="psub"></div>
       <div id="pstate" class="pstate"></div>
+      <div id="phint" class="phint"></div>
       <div class="bar"><div id="pfill" class="fill"></div></div>
     </div>
     <div id="tpanel" class="panel hidden">
-      <div class="ptl">Audio and subtitles</div>
+      <div id="tptitle" class="ptl">Audio and subtitles</div>
       <div id="tlist" class="grp vlist" data-dir="v"></div>
     </div>
   </section>

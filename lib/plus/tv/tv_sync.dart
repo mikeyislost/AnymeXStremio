@@ -9,6 +9,7 @@ import 'package:anymex/plus/layout/layout_store.dart';
 import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart' show stremioHomeRows;
+import 'package:anymex/plus/tv/tv_anime.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
 import 'package:anymex/utils/logger.dart';
 import 'package:crypto/crypto.dart' show sha256;
@@ -17,9 +18,10 @@ import 'package:pointycastle/export.dart';
 
 /// AnymeX+: sends the TV app what it needs to browse by itself.
 ///
-/// The bundle: your Stremio sign-in and addons, the rows of your Movies &
-/// TV page (as you arranged them in Edit layout), the TMDB key and the
-/// "watched" point. It is locked with AES-256-GCM using a key the TV got
+/// The bundle: your Stremio sign-in and addons, the rows of your Home
+/// (anime lists and rows with their titles, Movies & TV rows) and of your
+/// Movies & TV page (as you arranged them in Edit layout), the TMDB key
+/// and the "watched" point. It is locked with AES-256-GCM using a key the TV got
 /// through LG's own phone link, so the home network only sees locked bytes.
 ///
 /// The TV answers `syncOk` / `syncFail`, asks with `need`, and reports
@@ -62,6 +64,7 @@ class PlusTvSync {
       ]);
     } catch (_) {}
     _workers.add(ever(PlusLayoutStore.version, (_) => _soon()));
+    PlusTvAnime.instance.attach(_soon);
     if (_link.isConnected) _onConnected();
   }
 
@@ -203,7 +206,7 @@ class PlusTvSync {
   static Map<String, dynamic> buildBundle() {
     final st = StremioService.to;
     return {
-      'v': 1,
+      'v': 2,
       'from': PlusTvLink.deviceName,
       'at': DateTime.now().millisecondsSinceEpoch,
       'stremio': {
@@ -215,7 +218,8 @@ class PlusTvSync {
         ],
       },
       'tmdb': {'key': MoviesForYou.tmdbKey ?? '', 'region': PlusBuiltinRows.region},
-      'rows': tvRows(),
+      'rows': PlusTvAnime.homeRows(),
+      'anime': true,
       'settings': {'watchedPoint': StremioService.watchedPoint},
     };
   }
@@ -236,23 +240,51 @@ class PlusTvSync {
         out.add({'kind': 'cw', 'title': r.title});
         continue;
       }
-      final b = PlusBuiltinRows.byLayoutKey(r.key);
-      if (b != null) {
-        if (!PlusBuiltinRows.enabled) continue;
-        out.add({
-          'kind': 'tmdb',
-          'title': r.title,
-          'type': b.type,
-          'path': b.path,
-          'query': PlusBuiltinRows.queryFor(b, PlusBuiltinRows.region),
-        });
+      final row = builtinRow(r.key, r.title);
+      if (row != null) {
+        out.add(row);
         continue;
       }
+      if (PlusBuiltinRows.byLayoutKey(r.key) != null) continue;
       final cat = byKey[r.key];
       if (cat == null || !st.isAddonUsable(cat.$1)) continue;
       out.add({'kind': 'cat', 'title': r.title, 'base': cat.$1.baseUrl, 'type': cat.$2.type, 'id': cat.$2.id});
     }
     return out;
+  }
+
+  /// A built-in (TMDB) Movies & TV row by its layout key, or null.
+  static Map<String, dynamic>? builtinRow(String layoutKey, String title) {
+    final b = PlusBuiltinRows.byLayoutKey(layoutKey);
+    if (b == null || !PlusBuiltinRows.enabled) return null;
+    return {
+      'kind': 'tmdb',
+      'title': title,
+      'type': b.type,
+      'path': b.path,
+      'query': PlusBuiltinRows.queryFor(b, PlusBuiltinRows.region),
+    };
+  }
+
+  /// An addon catalog row (key from StremioService.rowKey), or null.
+  static Map<String, dynamic>? catalogRow(String rowKey, String title, {String? genre}) {
+    if (!Get.isRegistered<StremioService>()) return null;
+    final st = StremioService.to;
+    for (final a in st.addons) {
+      if (!st.isAddonUsable(a)) continue;
+      for (final c in a.catalogs) {
+        if (StremioService.rowKey(a, c) != rowKey) continue;
+        return {
+          'kind': 'cat',
+          'title': title,
+          'base': a.baseUrl,
+          'type': c.type,
+          'id': c.id,
+          if (genre != null && genre.isNotEmpty) 'extra': 'genre=${Uri.encodeComponent(genre)}',
+        };
+      }
+    }
+    return null;
   }
 
   /// Same bundle → same hash (the time it was made doesn't count).

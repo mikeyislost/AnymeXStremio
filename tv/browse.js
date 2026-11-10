@@ -1,10 +1,16 @@
-/* AnymeX+ TV: browsing on the TV itself (Movies & TV).
+/* AnymeX+ TV: browsing on the TV itself (Movies & TV, and anime).
  *
  * The phone sends over what it knows (Stremio login, addons, the rows of
  * its Movies & TV page, the TMDB key). With that the TV can show rows,
  * details, episodes and streams by itself, and play them with the LG
  * remote, also when the phone is not around. Progress goes to your Stremio
  * library; "watched" marks go to the phone, which updates AniList / Simkl.
+ *
+ * Anime: the phone also sends its Home's anime rows (your lists, trending…).
+ * The TV shows them and reads titles' details from AniList by itself.
+ * Episodes and video links come from the anime extensions, which only run
+ * on the phone, so for those the TV asks the phone ("anime" messages); the
+ * phone then plays the episode here and keeps your progress.
  *
  * Old-style JavaScript on purpose, like app.js.
  */
@@ -18,6 +24,10 @@ window.AXBrowse = function (A) {
   var IMG = 'https://image.tmdb.org/t/p/';
   var K_BUNDLE = 'anymexplus_tv_bundle', K_HASH = 'anymexplus_tv_bundle_h';
   var K_RESUME = 'anymexplus_tv_resume', K_WQ = 'anymexplus_tv_wq';
+  var ANILIST = 'https://graphql.anilist.co';
+  var K_ALINFO = 'anymexplus_tv_alinfo';
+  var AL_FIELDS = 'id title{english romaji} coverImage{large} bannerImage description(asHtml:false) ' +
+    'averageScore seasonYear episodes format status isAdult';
   var SCREENS = ['home', 'details', 'search', 'settings'];
 
   // ------------------------------------------------------------------ storage
@@ -293,6 +303,10 @@ window.AXBrowse = function (A) {
     else if (act === 'season') { showSeason(f._season, null); }
     else if (act === 'ep') openStreams(f._video, -1);
     else if (act === 'stream') playStream(f._stream);
+    else if (act === 'aplay' || act === 'aep') playAnime(f._ep);
+    else if (act === 'achunk') { showChunk(f._chunk, null); }
+    else if (act === 'aretry') { askEpisodes(true); }
+    else if (act === 'server') pickServer(f._server);
     else if (act === 'sub') pickSub(f._sub);
     else if (act === 'audio') pickAudio(f._audio);
     else if (act === 'resync') { A.send({ t: 'need' }); setSettingsNote(A.connected() ? 'Asked the phone…' : 'The phone is not connected. Open AnymeX+ on it.'); }
@@ -340,7 +354,7 @@ window.AXBrowse = function (A) {
     var meta = [];
     if (c.year) meta.push(c.year);
     if (c.rating) meta.push('★ ' + c.rating);
-    if (c.type) meta.push(c.type === 'series' ? 'Series' : (c.type === 'movie' ? 'Movie' : c.type));
+    if (c.type) meta.push(c.type === 'series' ? 'Series' : (c.type === 'movie' ? 'Movie' : (c.type === 'anime' ? 'Anime' : c.type)));
     if (c.sub) meta.push(c.sub);
     text($('himeta'), meta.join('  ·  '));
     text($('hidesc'), c.desc || '');
@@ -381,9 +395,15 @@ window.AXBrowse = function (A) {
   }
 
   function fillRow(row, cards) {
+    // Filled a second time (Continue Watching): stay where you were in it.
+    var f = A.focused(), had = f && row._strip.contains(f) ? items(row._strip).indexOf(f) : -1;
     clear(row._strip);
     for (var i = 0; i < cards.length && i < 30; i++) row._strip.appendChild(cardEl(cards[i]));
     hide(row, !cards.length);
+    if (had >= 0) {
+      var its = items(row._strip);
+      if (its.length) focusOn(its[Math.min(had, its.length - 1)]); else focusFirst();
+    }
   }
 
   function yearOf(s) { var m = /(\d{4})/.exec(String(s || '')); return m ? m[1] : ''; }
@@ -427,6 +447,7 @@ window.AXBrowse = function (A) {
       out.push({
         id: String(x._id), type: String(x.type || ''), name: String(x.name || ''), poster: x.poster || '',
         bg: '', desc: '', year: '', rating: '', sub: sub,
+        at: Date.parse(s.lastWatched || x._mtime || '') || 0,
         progress: s.duration > 0 ? Math.max(0.03, s.timeOffset / s.duration) : 0.03
       });
     }
@@ -463,7 +484,19 @@ window.AXBrowse = function (A) {
       }
     }
     if (spec.kind === 'cw') {
-      loadLibrary(function () { fill(continueCards()); });
+      var mine = animeCards(spec.anime);
+      if (mine.length) { fill(mine); enrich(mine); }   // shown at once; Movies & TV join when loaded
+      loadLibrary(function () { fill(mergeContinue(mine, continueCards())); });
+    } else if (spec.kind === 'anime') {
+      var cards = animeCards(spec.cards);
+      fill(cards);
+      enrich(cards);
+    } else if (spec.kind === 'alq') {
+      anilist('query($type:MediaType,$genres:[String],$from:FuzzyDateInt,$to:FuzzyDateInt,$minScore:Int,$sort:[MediaSort]){' +
+        'Page(perPage:30){media(type:$type,genre_in:$genres,startDate_greater:$from,startDate_lesser:$to,' +
+        'averageScore_greater:$minScore,sort:$sort,isAdult:false){' + AL_FIELDS + '}}}', spec.vars || {}, function (list) {
+        fill(cardsFromAnilist(list));
+      });
     } else if (spec.kind === 'tmdb') {
       if (!tmdbKey()) { fill([]); return; }
       getJson(TMDB + spec.path + '?api_key=' + encodeURIComponent(tmdbKey()) + (spec.query || ''), function (r) {
@@ -515,6 +548,7 @@ window.AXBrowse = function (A) {
 
   function openCard(c) {
     if (!c) return;
+    if (c.a) { openAnime(c); return; }
     if (c.id) { openDetails(c.type, c.id, c); return; }
     if (!c.tmdb) return;
     text($('hstatus'), 'Opening ' + c.name + '…');
@@ -527,9 +561,369 @@ window.AXBrowse = function (A) {
     });
   }
 
+
+  // -------------------------------------------------------------------- anime
+  //
+  // Cards with an "a" (AniList id). What a title is about comes from
+  // AniList, read by the TV and kept; episodes come from the phone.
+
+  var alInfo = load(K_ALINFO, {});    // AniList id → {bg, desc, year, rating, eps, fmt, st}
+  var alCards = {};                   // AniList id → cards on screen, to fill in later
+  var alWant = [], alTimer = null;
+
+  function cleanText(s) {
+    s = String(s || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/&quot;/g, '"')
+      .replace(/&#0?39;|&apos;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+    return s.length > 600 ? s.slice(0, 600) + '…' : s;
+  }
+
+  function anilist(query, vars, done) {
+    postJson(ANILIST, { query: query, variables: vars }, function (r) {
+      done((r && r.data && r.data.Page && r.data.Page.media) || []);
+    });
+  }
+
+  function infoFromAnilist(m) {
+    return {
+      bg: m.bannerImage || '', desc: cleanText(m.description), year: m.seasonYear ? String(m.seasonYear) : '',
+      rating: m.averageScore ? (m.averageScore / 10).toFixed(1) : '', eps: m.episodes || 0,
+      fmt: String(m.format || '').replace(/_/g, ' '), st: String(m.status || '')
+    };
+  }
+
+  function applyInfo(c) {
+    var i = alInfo[c.a];
+    if (!i) return false;
+    c.bg = i.bg; c.desc = i.desc; c.year = i.year; c.eps = i.eps; c.fmt = i.fmt; c.st = i.st;
+    if (i.rating) c.rating = i.rating;
+    return true;
+  }
+
+  function saveInfo() {
+    var keys = [];
+    for (var k in alInfo) if (alInfo.hasOwnProperty(k)) keys.push(k);
+    for (var i = 0; i < keys.length - 800; i++) delete alInfo[keys[i]];
+    save(K_ALINFO, alInfo);
+  }
+
+  // "3 | 12" (watched | episodes; sometimes with the released count in
+  // between) → "3 of 12 watched".
+  function watchedLine(sub) {
+    if (!sub) return '';
+    var p = String(sub).split('|'), cur = p[0].replace(/\s/g, ''), tot = p[p.length - 1].replace(/\s/g, '');
+    if (!cur) return '';
+    return p.length > 1 && /^\d+$/.test(tot) ? cur + ' of ' + tot + ' watched' : cur + ' watched';
+  }
+
+  // A card as the phone sent it → a card of this app.
+  function animeCards(list) {
+    var out = [];
+    for (var i = 0; list && i < list.length; i++) {
+      var x = list[i];
+      if (!x || !x.a) continue;
+      var c = { a: String(x.a), type: 'anime', name: String(x.name || ''), romaji: String(x.romaji || ''),
+        poster: x.poster || '', sub: watchedLine(x.sub),
+        rating: x.rating ? String(x.rating) : '', at: Number(x.at) || 0, bg: '', desc: '', year: '' };
+      applyInfo(c);
+      out.push(c);
+    }
+    return out;
+  }
+
+  function cardsFromAnilist(list) {
+    var out = [];
+    for (var i = 0; list && i < list.length; i++) {
+      var m = list[i];
+      if (!m || !m.id || m.isAdult) continue;
+      var t = m.title || {};
+      alInfo[String(m.id)] = infoFromAnilist(m);
+      var c = { a: String(m.id), type: 'anime', name: String(t.english || t.romaji || ''), romaji: String(t.romaji || ''),
+        poster: (m.coverImage && m.coverImage.large) || '', sub: '', rating: '', at: 0, bg: '', desc: '', year: '' };
+      applyInfo(c);
+      out.push(c);
+    }
+    if (out.length) saveInfo();
+    return out;
+  }
+
+  // Fills in what AniList knows (picture behind, description, year, score)
+  // for cards that don't have it yet; a few rows are asked for together.
+  function enrich(cards) {
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      (alCards[c.a] = alCards[c.a] || []).push(c);
+      if (!alInfo[c.a] && alWant.indexOf(c.a) < 0 && /^\d+$/.test(c.a)) alWant.push(c.a);
+    }
+    if (!alWant.length) return;
+    clearTimeout(alTimer);
+    alTimer = setTimeout(function () {
+      var ids = alWant;
+      alWant = [];
+      for (var at = 0; at < ids.length && at < 400; at += 50) {
+        (function (chunk) {
+          var nums = [];
+          for (var j = 0; j < chunk.length; j++) nums.push(Number(chunk[j]));
+          anilist('query($ids:[Int]){Page(perPage:50){media(id_in:$ids,type:ANIME){' + AL_FIELDS + '}}}', { ids: nums },
+            function (list) {
+              for (var k = 0; k < list.length; k++) {
+                var id = String(list[k].id);
+                alInfo[id] = infoFromAnilist(list[k]);
+                var cs = alCards[id] || [];
+                for (var n = 0; n < cs.length; n++) applyInfo(cs[n]);
+              }
+              if (!list.length) return;
+              saveInfo();
+              var f = A.focused();
+              if (A.screen() === 'home' && f && f._card && f._card.a && alInfo[f._card.a]) showHomeInfo(f._card);
+              if (det && det.kind === 'anime' && A.screen() === 'details') animeHead();
+            });
+        })(ids.slice(at, at + 50));
+      }
+    }, 400);
+  }
+
+  function normTitle(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  // Anime and Movies & TV in one Continue Watching row, newest first. A
+  // Movies & TV entry of a show that is also among the anime is left out.
+  function mergeContinue(anime, stremio) {
+    var titles = {}, all = [], i;
+    for (i = 0; i < anime.length; i++) {
+      if (anime[i].name) titles[normTitle(anime[i].name)] = 1;
+      if (anime[i].romaji) titles[normTitle(anime[i].romaji)] = 1;
+      all.push(anime[i]);
+    }
+    for (i = 0; i < stremio.length; i++) if (!titles[normTitle(stremio[i].name)]) all.push(stremio[i]);
+    all.sort(function (x, y) { return (y.at || 0) - (x.at || 0); });
+    return all.slice(0, 30);
+  }
+
+  var CHUNK = 50;
+  var askN = 0, epsTimer = null, playTimer = null;
+
+  // Long shows are shown 50 episodes at a time: [[from, to], …] as places
+  // in the list.
+  function chunks(count) {
+    var out = [];
+    for (var i = 0; i < count; i += CHUNK) out.push([i, Math.min(count, i + CHUNK) - 1]);
+    return out;
+  }
+
+  // The episode the big button plays: the one the phone says is next, else
+  // the first after your progress, else the first.
+  function nextEpisode(eps, next, progress) {
+    var i;
+    for (i = 0; i < eps.length; i++) if (String(eps[i].n) === String(next)) return eps[i];
+    for (i = 0; i < eps.length; i++) if (parseFloat(eps[i].n) > progress) return eps[i];
+    return eps[0] || null;
+  }
+
+  function openAnime(c) {
+    detToken++;
+    det = { kind: 'anime', id: String(c.a), card: c, eps: null, err: '', next: '', progress: 0, source: '',
+      chunk: 0, busy: '', asked: false, q: '' };
+    closePanel(true);
+    if (A.screen() !== 'details') go('details');
+    clear($('dbtns')); clear($('dseasons')); clear($('deps'));
+    A.setFocus(null);
+    lastFocus.details = null;
+    animeHead();
+    enrich([c]);
+    renderAnime();
+    askEpisodes(false);
+  }
+
+  function animeHead() {
+    var c = det.card, bits = [];
+    text($('dtitle'), c.name || c.romaji || '');
+    if (c.year) bits.push(c.year);
+    if (c.fmt) bits.push(c.fmt);
+    if (c.eps) bits.push(c.eps + (c.eps === 1 ? ' episode' : ' episodes'));
+    if (c.rating) bits.push('★ ' + c.rating);
+    if (c.st === 'RELEASING') bits.push('Airing');
+    if (det.progress > 0) bits.push('You: episode ' + det.progress);
+    text($('dmeta'), bits.join('  ·  '));
+    text($('ddesc'), c.desc || '');
+    setBackdrop($('dbg'), c.bg || '');
+  }
+
+  function animeMsg(s) { text($('dmsg'), s || ''); }
+
+  function askEpisodes(again) {
+    if (!det || det.kind !== 'anime') return;
+    clearTimeout(epsTimer);
+    if (!A.connected()) { renderAnime(); return; }
+    det.q = 'a' + (++askN);
+    det.err = '';
+    if (!det.eps) renderAnime();
+    var c = det.card, d = det;
+    A.send({ t: 'anime', cmd: 'eps', q: det.q, id: det.id, name: c.name, romaji: c.romaji || '', poster: c.poster || '',
+      again: !!again });
+    epsTimer = setTimeout(function () {
+      if (det !== d || d.eps) return;
+      d.err = "Your phone didn't answer. Make sure AnymeX+ is open on it.";
+      if (A.screen() === 'details') renderAnime();
+    }, 75000);
+  }
+
+  function onEpisodes(m) {
+    if (!det || det.kind !== 'anime' || String(m.id) !== det.id) return;
+    clearTimeout(epsTimer);
+    det.source = String(m.source || '');
+    det.progress = Number(m.progress) || 0;
+    det.next = String(m.next || '');
+    if (m.ok && m.eps && m.eps.length) { det.eps = m.eps; det.err = ''; }
+    else if (!det.eps) det.err = String(m.err || "Couldn't load the episodes.");
+    if (A.screen() === 'details') { animeHead(); renderAnime(); }
+  }
+
+  function renderAnime() {
+    if (!det || det.kind !== 'anime') return;
+    var f = A.focused(), keep = f && $('details').contains(f) ? { act: f.getAttribute('data-act'), n: f._ep && f._ep.n } : null;
+    var btns = $('dbtns'), i;
+    clear(btns); clear($('dseasons')); clear($('deps'));
+    if (det.eps) {
+      var next = nextEpisode(det.eps, det.next, det.progress);
+      var b = button((det.progress > 0 ? 'Continue: episode ' : 'Play episode ') + next.n, 'aplay');
+      b._ep = next;
+      btns.appendChild(b);
+      var at = 0;
+      for (i = 0; i < det.eps.length; i++) if (det.eps[i] === next) at = i;
+      var keepAt = -1;
+      if (keep && keep.act === 'aep') for (i = 0; i < det.eps.length; i++) if (det.eps[i].n === keep.n) keepAt = i;
+      var cs = chunks(det.eps.length);
+      if (cs.length > 1) {
+        for (i = 0; i < cs.length; i++) {
+          var chip = button(det.eps[cs[i][0]].n + ' – ' + det.eps[cs[i][1]].n, 'achunk');
+          chip.classList.add('chip');
+          chip._chunk = i;
+          $('dseasons').appendChild(chip);
+        }
+      }
+      showChunk(Math.floor((keepAt >= 0 ? keepAt : at) / CHUNK), next);
+      animeMsg(det.busy || (det.source ? 'Episodes from ' + det.source + ' on your phone.' : ''));
+      if (A.screen() !== 'details' || panelOpen) return;
+      if (keepAt >= 0) {
+        var eps = $('deps').querySelectorAll('.fo');
+        for (i = 0; i < eps.length; i++) if (eps[i]._ep.n === keep.n) { focusOn(eps[i]); return; }
+      }
+      focusOn(b);
+      return;
+    }
+    if (det.err || !A.connected()) btns.appendChild(button('Try again', 'aretry'));
+    animeMsg(det.err || (A.connected() ? 'Getting the episodes from your phone…'
+      : 'Open AnymeX+ on your phone to see the episodes. Anime is found by the extensions on your phone, so it has to be open.'));
+    if (A.screen() === 'details' && !panelOpen) { if (btns.firstChild) focusOn(btns.firstChild); else A.setFocus(null); }
+  }
+
+  function showChunk(index, mark) {
+    if (!det || !det.eps) return;
+    var cs = chunks(det.eps.length), range = cs[index] || cs[0], i;
+    det.chunk = index;
+    var chips = $('dseasons').querySelectorAll('.fo');
+    for (i = 0; i < chips.length; i++) {
+      if (chips[i]._chunk === index) chips[i].classList.add('on'); else chips[i].classList.remove('on');
+    }
+    var box = $('deps');
+    clear(box);
+    box.scrollLeft = 0;
+    box._last = 0;
+    for (i = range[0]; i <= range[1]; i++) {
+      var e = det.eps[i], seen = parseFloat(e.n) <= det.progress;
+      var c = el('div', 'fo epc' + (seen ? ' seen' : ''));
+      c.setAttribute('data-act', 'aep');
+      c.setAttribute('data-name', 'Episode ' + e.n);
+      c._ep = e;
+      if (e.thumb) {
+        var img = el('img', 'eimg');
+        img.setAttribute('loading', 'lazy');
+        img.onerror = (function (im) { return function () { im.classList.add('hidden'); }; })(img);
+        img.setAttribute('src', e.thumb);
+        c.appendChild(img);
+      }
+      c.appendChild(el('div', 'enum', 'E' + e.n + (seen ? '  ·  watched' : '') + (e.filler ? '  ·  filler' : '')));
+      c.appendChild(el('div', 'etitle', e.title || 'Episode ' + e.n));
+      if (mark && mark === e) { c.classList.add('cur'); box._last = box.childNodes.length; }
+      box.appendChild(c);
+    }
+    if (box._last > 0 && box.childNodes[box._last]) box.scrollLeft = Math.max(0, box.childNodes[box._last].offsetLeft - 96);
+  }
+
+  function playAnime(ep) {
+    if (!det || det.kind !== 'anime' || !ep) return;
+    if (!A.connected()) { animeMsg('Your phone is not connected. Open AnymeX+ on it, then try again.'); return; }
+    var c = det.card, d = det;
+    det.asked = true;
+    det.q = 'a' + (++askN);
+    det.busy = 'Asking your phone for episode ' + ep.n + '…';
+    animeMsg(det.busy);
+    A.send({ t: 'anime', cmd: 'play', q: det.q, id: det.id, n: String(ep.n), name: c.name, romaji: c.romaji || '',
+      poster: c.poster || '' });
+    clearTimeout(playTimer);
+    playTimer = setTimeout(function () {
+      if (det !== d || !d.busy || A.screen() !== 'details') return;
+      d.busy = ''; d.asked = false;
+      animeMsg("Your phone didn't answer. Make sure AnymeX+ is open on it, then try again.");
+    }, 90000);
+  }
+
+  function onAnimePlay(m) {
+    if (!det || det.kind !== 'anime' || String(m.id) !== det.id) return;
+    if (m.state === 'fail') {
+      clearTimeout(playTimer);
+      det.busy = ''; det.asked = false;
+      if (A.screen() === 'details') animeMsg(String(m.msg || "Couldn't play this episode."));
+      else if (A.screen() === 'player') A.setNote(String(m.msg || ''));
+      return;
+    }
+    det.busy = String(m.msg || 'Working…');
+    if (A.screen() === 'details') animeMsg(det.busy);
+  }
+
+  // ---- the servers of the episode the phone is playing here
+
+  var srv = null;   // {id, list, on}
+
+  function setHint(s) { var h = $('phint'); if (h) text(h, s || ''); }
+
+  function hasServers() {
+    var p = A.playing();
+    return !!(srv && srv.list.length > 1 && p && p.url && p.id === srv.id);
+  }
+
+  function buildServers() {
+    var list = $('tlist');
+    clear(list);
+    if (!hasServers()) return;
+    text($('tptitle'), 'Source');
+    list.appendChild(el('div', 'thead', 'Servers from your phone'));
+    var pick = null;
+    for (var i = 0; i < srv.list.length; i++) {
+      var d = el('div', 'fo sitem' + (srv.on === i ? ' on' : ''), String(srv.list[i]));
+      d.setAttribute('data-act', 'server');
+      d._server = i;
+      list.appendChild(d);
+      if (srv.on === i) pick = d;
+    }
+    if (tracksOpen) focusOn(pick || list.querySelector('.fo'));
+  }
+
+  function pickServer(i) {
+    if (!hasServers()) { closeTracks(); return; }
+    var name = String(srv.list[i]);
+    if (i !== srv.on) {
+      srv.on = i;
+      A.send({ t: 'anime', cmd: 'server', i: i });
+      A.setNote('Switching to ' + name + '…');
+      setTimeout(function () { A.setNote(''); }, 5000);
+    }
+    closeTracks();
+  }
+
   // ------------------------------------------------------------------ details
 
-  var det = null;       // {type, id, meta, videos, season}
+  var det = null;       // {type, id, meta, videos, season}, or an anime: {kind: 'anime', id, card, eps…}
   var detToken = 0;
 
   function metaSources(type, id) {
@@ -1017,7 +1411,10 @@ window.AXBrowse = function (A) {
 
   // Once a second while the player is up.
   function tick() {
-    if (!cur) return;
+    if (!cur) {
+      if (tracksOpen && !hasServers()) closeTracks();
+      return;
+    }
     if (!A.playing().local) { cur = null; closeTracks(); return; }
     if (Date.now() - cur.lastSave > 30000) saveProgress(false);
   }
@@ -1025,7 +1422,21 @@ window.AXBrowse = function (A) {
   // The player was closed (Back / Stop). Returns the screen to show.
   function leftPlayer() {
     closeTracks();
-    if (!cur) return has() || A.phone() ? 'home' : 'pair';
+    srv = null;
+    setHint('');
+    if (!cur) {
+      if (det && det.kind === 'anime' && det.asked) {
+        // An episode the phone played here: back to its episodes, with
+        // your progress read again.
+        det.asked = false;
+        det.busy = '';
+        setTimeout(function () {
+          if (det && det.kind === 'anime' && A.screen() === 'details') { renderAnime(); askEpisodes(false); }
+        }, 1200);
+        return 'details';
+      }
+      return has() || A.phone() ? 'home' : 'pair';
+    }
     var c = cur;
     saveProgress(false);
     cur = null;
@@ -1094,7 +1505,8 @@ window.AXBrowse = function (A) {
   }
 
   function buildTracks() {
-    if (!cur) return;
+    if (!cur) { buildServers(); return; }
+    text($('tptitle'), 'Audio and subtitles');
     var list = $('tlist'), keepText = A.focused() && $('tpanel').contains(A.focused()) ? A.focused().textContent : null;
     clear(list);
     var v = A.video(), i;
@@ -1143,7 +1555,7 @@ window.AXBrowse = function (A) {
   }
 
   function openTracks() {
-    if (!cur) return;
+    if (!cur && !hasServers()) return;
     tracksOpen = true;
     hide($('tpanel'), false);
     buildTracks();
@@ -1199,7 +1611,7 @@ window.AXBrowse = function (A) {
   // Keys while the player is up. True = taken care of here.
   function playerKey(k) {
     if (tracksOpen) { key(k); return true; }
-    if (k === 'up' && cur) { openTracks(); return true; }
+    if (k === 'up' && (cur || hasServers())) { openTracks(); return true; }
     return false;
   }
 
@@ -1239,6 +1651,19 @@ window.AXBrowse = function (A) {
     if (q.length < 2) { text($('shint'), 'Press OK to type. You can also type the name in AnymeX+ on your phone (Settings → TV Remote).'); return; }
     text($('shint'), 'Searching for "' + q + '"…');
     var sources = searchSources(), left = sources.length, found = 0;
+    if (bundle && bundle.anime) {
+      left++;
+      var arow = rowEl('Anime');
+      box.appendChild(arow);
+      anilist('query($q:String){Page(perPage:20){media(search:$q,type:ANIME,isAdult:false,sort:[SEARCH_MATCH]){' +
+        AL_FIELDS + '}}}', { q: q }, function (list) {
+        if (token !== searchToken) return;
+        var cards = cardsFromAnilist(list);
+        fillRow(arow, cards);
+        found += cards.length;
+        if (--left === 0) text($('shint'), found ? '' : 'Nothing found for "' + q + '".');
+      });
+    }
     for (var i = 0; i < sources.length; i++) {
       (function (src) {
         var row = rowEl(src.title);
@@ -1285,6 +1710,7 @@ window.AXBrowse = function (A) {
       lines.push('Addons       ' + addons().length);
       lines.push('Rows         ' + ((bundle.rows && bundle.rows.length) || 0));
       lines.push('TMDB rows    ' + (tmdbKey() ? 'yes' : 'no'));
+      lines.push('Anime        ' + (bundle.anime ? 'yes (your phone finds the episodes)' : 'update AnymeX+ on the phone'));
     } else {
       lines.push('Synced       nothing yet');
     }
@@ -1329,6 +1755,14 @@ window.AXBrowse = function (A) {
   function onMessage(m) {
     if (m.t === 'sync') { onSync(m); return true; }
     if (m.t === 'search') { searchFromPhone(m.q); return true; }
+    if (m.t === 'animeEps') { onEpisodes(m); return true; }
+    if (m.t === 'animePlay') { onAnimePlay(m); return true; }
+    if (m.t === 'servers') {
+      srv = { id: m.id, list: m.list || [], on: Number(m.on) };
+      if (hasServers()) setHint('▲ Change source');
+      if (tracksOpen && !cur) buildServers();
+      return true;
+    }
     if (m.t === 'watchedOk') {
       var keep = [];
       for (var i = 0; i < wq.length; i++) if (wq[i].q !== m.q) keep.push(wq[i]);
@@ -1343,16 +1777,18 @@ window.AXBrowse = function (A) {
     updateStatus();
     flushWatched();
     if (A.screen() === 'settings') showSettings();
+    if (det && det.kind === 'anime' && !det.eps && A.screen() === 'details') askEpisodes(false);
   }
 
   function onDisconnected() {
     updateStatus();
     if (A.screen() === 'settings') showSettings();
+    if (det && det.kind === 'anime' && !det.eps && A.screen() === 'details') renderAnime();
   }
 
   function helloExtra() {
     var p = A.phone();
-    return { sync: true, hasKey: !!(p && p.key), have: bundleHash };
+    return { sync: true, anime: true, hasKey: !!(p && p.key), have: bundleHash };
   }
 
   function start() {
@@ -1373,6 +1809,7 @@ window.AXBrowse = function (A) {
     onMessage: onMessage, onConnected: onConnected, onDisconnected: onDisconnected, helloExtra: helloExtra,
     tick: tick, ended: ended, leftPlayer: leftPlayer, playerKey: playerKey,
     // for tests
+    _mergeContinue: mergeContinue, _chunks: chunks, _nextEpisode: nextEpisode, _cleanText: cleanText, _watchedLine: watchedLine,
     _supports: supports, _applyProgress: applyProgress, _baseOf: baseOf
   };
 };

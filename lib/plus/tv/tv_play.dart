@@ -6,6 +6,7 @@ import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/plus/airplay.dart';
 import 'package:anymex/plus/mkv_audio.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
+import 'package:anymex/plus/tv/tv_anime.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/services/cast/cast_proxy_server.dart';
@@ -56,12 +57,79 @@ class PlusTvPlay with WidgetsBindingObserver {
   Map<String, String>? _headers;
   int _subCount = 0;
 
+  // An episode the TV app asked for (plus/tv/tv_anime.dart): the player
+  // that opens for it goes straight to the TV, and closes again when the
+  // TV leaves its player.
+  String? _autoFor;
+  DateTime _autoAt = DateTime.fromMillisecondsSinceEpoch(0);
+  void Function(String why)? _autoFailed;
+  Route<dynamic>? _tvRoute;
+
   /// True while [c]'s video is on the TV: its controls then go to the TV.
   bool takes(PlayerController c) => active.value && identical(_c, c);
 
   // ------------------------------------------------------------- starting
 
-  Future<void> start(PlayerController c, BuildContext context) async {
+  /// The TV app asked for an episode of [mediaId]; [route] is the player
+  /// being opened for it. [onFailed] tells the TV why it didn't start.
+  void expectFromTv(String mediaId, Route<dynamic> route, {void Function(String why)? onFailed}) {
+    _autoFor = mediaId;
+    _autoAt = DateTime.now();
+    _autoFailed = onFailed;
+    _tvRoute = route;
+  }
+
+  /// Called by the player once its video is open. When the TV app asked for
+  /// this video, it goes to the TV right away.
+  Future<void> playerReady(PlayerController c) async {
+    final want = _autoFor;
+    if (want == null || want != c.anilistData.id) return;
+    final failed = _autoFailed;
+    _autoFor = null;
+    _autoFailed = null;
+    if (DateTime.now().difference(_autoAt) > const Duration(seconds: 90)) return;
+    c.plusPauseLocal();
+    // Give the player a moment to land on your resume point: the TV starts
+    // from where this player is.
+    var saved = 0;
+    try {
+      saved = c.savedEpisode?.timeStampInMilliseconds ?? 0;
+    } catch (_) {}
+    for (var i = 0; saved > 0 && i < 15 && c.currentPosition.value == Duration.zero && !c.isClosed; i++) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+    final context = Get.context;
+    if (c.isClosed || context == null) return;
+    await start(c, context, fromTv: true);
+    if (!takes(c)) {
+      failed?.call("Your phone couldn't send the video to the TV.");
+      _closeTvRoute();
+    }
+  }
+
+  void _closeTvRoute() {
+    final r = _tvRoute;
+    _tvRoute = null;
+    try {
+      if (r != null && r.isActive) r.navigator?.removeRoute(r);
+    } catch (_) {}
+  }
+
+  /// Closes the player this device opened for the TV. False when the open
+  /// player is one you opened yourself (it is left alone).
+  Future<bool> closeTvPlayer() async {
+    final r = _tvRoute;
+    if (r == null || !r.isActive) return !Get.isRegistered<PlayerController>();
+    if (active.value) link.stopVideo();
+    await _finish(Duration.zero);
+    _closeTvRoute();
+    for (var i = 0; i < 20 && Get.isRegistered<PlayerController>(); i++) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    return !Get.isRegistered<PlayerController>();
+  }
+
+  Future<void> start(PlayerController c, BuildContext context, {bool fromTv = false}) async {
     if (loading.value) return;
     final url = c.selectedVideo.value?.url ?? c.offlineVideoPath;
     if (url == null || url.isEmpty) return;
@@ -93,7 +161,7 @@ class PlusTvPlay with WidgetsBindingObserver {
           );
           return;
         }
-      } else {
+      } else if (!fromTv) {
         unawaited(_bringToFront());
       }
       if (PlusAirPlayRemote.instance.active.value) await PlusAirPlayRemote.instance.stop();
@@ -272,6 +340,30 @@ class PlusTvPlay with WidgetsBindingObserver {
     );
     _sendAudio();
     _sendSub();
+    _sendServers(c);
+  }
+
+  /// The servers of this episode, for the TV's own "Source" list.
+  void _sendServers(PlayerController c) {
+    final tracks = c.episodeTracks.toList();
+    if (tracks.length < 2 || tracks.length > 80) return;
+    final on = tracks.indexWhere((v) => identical(v, c.selectedVideo.value));
+    link.send({
+      't': 'servers',
+      'id': _id,
+      'on': on,
+      'list': [for (var i = 0; i < tracks.length; i++) tracks[i].quality ?? 'Server ${i + 1}'],
+    });
+  }
+
+  /// The TV picked another server from that list.
+  void pickServer(int i) {
+    final c = _c;
+    if (c == null || !active.value || c.isClosed) return;
+    if (i < 0 || i >= c.episodeTracks.length) return;
+    final track = c.episodeTracks[i];
+    PlusTvAnime.rememberServer(c.anilistData.id, track.quality ?? track.originalUrl ?? '');
+    c.setServerTrack(track);
   }
 
   /// The player opened another video (next episode, another source or
@@ -287,7 +379,10 @@ class PlusTvPlay with WidgetsBindingObserver {
       return;
     }
     try {
-      await _send(c, url: url, headers: headers, start: start ?? Duration.zero);
+      // Same episode, another server or quality: carry on from where the TV
+      // is (this device's own player is paused somewhere behind it).
+      final at = _seen && position.value > Duration.zero ? position.value : (start ?? Duration.zero);
+      await _send(c, url: url, headers: headers, start: at);
     } catch (e) {
       snackBar("Couldn't start on the TV: ${_clean(e)}", duration: 5000, maxLines: 3);
     }
@@ -361,7 +456,12 @@ class PlusTvPlay with WidgetsBindingObserver {
     if (p is! Map || p['id'] != _id) {
       // Our video was showing and now the TV is out of its player (Back on
       // the TV remote): carry on here.
-      if (_seen && p is! Map && state.isNotEmpty) unawaited(_finish(position.value));
+      if (_seen && p is! Map && state.isNotEmpty) {
+        final fromTv = _tvRoute != null;
+        unawaited(_finish(position.value).then((_) {
+          if (fromTv) _closeTvRoute(); // the TV asked for it: nothing to carry on here
+        }));
+      }
       return;
     }
     _seen = true;
@@ -389,7 +489,7 @@ class PlusTvPlay with WidgetsBindingObserver {
       _endedHandled = true;
       if (!c.plusRemoteEnded()) {
         link.stopVideo();
-        unawaited(_finish(Duration.zero));
+        unawaited(_finish(Duration.zero).then((_) => _closeTvRoute()));
       }
     }
   }
@@ -421,6 +521,7 @@ class PlusTvPlay with WidgetsBindingObserver {
   /// The player was closed on this device: nothing is left to keep the
   /// progress, so the TV stops too.
   void playerClosed(PlayerController c) {
+    _tvRoute = null;
     if (!takes(c)) return;
     link.stopVideo();
     unawaited(_finish(Duration.zero));
@@ -428,6 +529,7 @@ class PlusTvPlay with WidgetsBindingObserver {
 
   /// Stops on the TV; the app's player picks up where the TV was.
   Future<void> stop() async {
+    _tvRoute = null; // "Play here": the player stays open on this device
     link.stopVideo();
     await _finish(position.value);
   }

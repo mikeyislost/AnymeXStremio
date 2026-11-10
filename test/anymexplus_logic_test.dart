@@ -12,6 +12,7 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
+import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
 import 'package:anymex/plus/episode_hold.dart';
 import 'package:anymex/plus/episode_order.dart';
@@ -1084,6 +1085,56 @@ void main() {
       List<String> nums(List<Episode> l) => l.map((e) => e.number).toList();
       expect(nums(plusOldestFirst([Episode(number: '3'), Episode(number: '2'), Episode(number: '1')])), ['1', '2', '3']);
       expect(nums(plusOldestFirst([Episode(number: '1'), Episode(number: '2')])), ['1', '2']);
+    });
+  });
+
+  group('TV app: anime', () {
+    test('plays the server saved for the show, else one in the same language', () {
+      const names = ['HD-1 Sub', 'HD-2 Sub', 'HD-1 Dub'];
+      const urls = ['https://a/1', 'https://a/2', 'https://a/3'];
+      expect(PlusTvAnime.pickServer(names, urls, null), 0);
+      expect(PlusTvAnime.pickServer(names, urls, 'hd-2 sub'), 1);
+      expect(PlusTvAnime.pickServer(names, urls, 'https://a/3'), 2);
+      // The saved one is gone: the first dub, not the first server.
+      expect(PlusTvAnime.pickServer(names, urls, 'Vid Dub'), 2);
+      expect(PlusTvAnime.pickServer(names, urls, 'Vid Sub'), 0);
+      // While servers are still coming in, only the saved one counts.
+      expect(PlusTvAnime.pickServer(names, urls, 'Vid Dub', exactOnly: true), -1);
+      expect(PlusTvAnime.pickServer(names, urls, null, exactOnly: true), -1);
+      expect(PlusTvAnime.pickServer(const [], const [], 'x'), -1);
+    });
+    test('Home rows first, then the Movies & TV rows not shown yet', () {
+      final home = [
+        {'kind': 'cw', 'title': 'Continue Watching', 'anime': []},
+        {'kind': 'anime', 'title': 'Trending Anime', 'cards': []},
+        {'kind': 'tmdb', 'title': 'Trending movies', 'path': 'trending/movie/day', 'query': ''},
+      ];
+      final movies = [
+        {'kind': 'cw', 'title': 'Continue Watching'},
+        {'kind': 'tmdb', 'title': 'Trending · Movies', 'path': 'trending/movie/day', 'query': ''},
+        {'kind': 'cat', 'title': 'Popular', 'base': 'https://x', 'type': 'movie', 'id': 'top'},
+      ];
+      final rows = PlusTvAnime.mergeRows(home, movies);
+      expect(rows.map((r) => r['title']), ['Continue Watching', 'Trending Anime', 'Trending movies', 'Popular']);
+      expect(rows.first.containsKey('anime'), isTrue);
+    });
+    test('cards and the episode list as the TV reads them', () {
+      expect(PlusTvAnime.card(id: '1', name: 'A', romaji: 'A', poster: '?', rating: '0'), {'a': '1', 'name': 'A'});
+      expect(PlusTvAnime.card(id: '1', name: 'A', romaji: 'B', poster: 'p', sub: '3 | 12', rating: '8.1', at: 5),
+          {'a': '1', 'name': 'A', 'romaji': 'B', 'poster': 'p', 'sub': '3 | 12', 'rating': '8.1', 'at': 5});
+      final ok = PlusTvAnime.episodesMessage(q: 'a1', id: '9', source: 'Ext', progress: 1, next: '2', episodes: [
+        Episode(number: '1', title: 'One', thumbnail: 't', filler: true),
+        Episode(number: '2'),
+      ]);
+      expect(ok['ok'], isTrue);
+      expect(ok['eps'], [
+        {'n': '1', 'title': 'One', 'thumb': 't', 'filler': true},
+        {'n': '2'},
+      ]);
+      final bad = PlusTvAnime.episodesMessage(
+          q: 'a1', id: '9', source: '', progress: 0, next: '', episodes: const [], error: 'No match');
+      expect(bad['ok'], isFalse);
+      expect(bad['err'], 'No match');
     });
   });
 }

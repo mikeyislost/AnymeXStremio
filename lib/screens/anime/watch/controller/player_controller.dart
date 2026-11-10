@@ -1120,6 +1120,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
     _performInitialTracking();
     applySavedProfile();
+    unawaited(PlusTvPlay.instance.playerReady(this)); // AnymeX+: asked for by the TV app
   }
 
   String _resolveDecoderHwdec() {
