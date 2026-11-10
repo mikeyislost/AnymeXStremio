@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "54",
-      "versionDate": "2026-11-10T02:54:13Z",
-      "versionDescription": "Beta v1.1.3-beta\n\n- AnymeX+ TV for LG TVs (test build) with your phone as the remote\n  - New: AnymeX+ TV, a small app for LG webOS TVs. Install it from Homebrew Channel (add the repository link from the install notes) or with the .ipk.\n  - New: Settings \u2192 TV Remote. Tap your TV to open AnymeX+ TV on it and connect, or type this device's address on the TV. The TV asks once to allow the phone.\n  - Once connected the phone is the remote: arrows, OK and Back move the highlight on the TV.\n  - Play a test video (MP4, MKV, HEVC, HLS or any pasted link) in the TV's own player, with play/pause, seek and stop from the phone.\n  - \"Copy TV report\" collects the TV's model, webOS version and what it can play.\n  - This is a test build to prove installing, connecting and playback. Browsing and syncing your logins and addons to the TV come in later betas.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta/AnymeX-Stremio-v1.1.3-beta.ipa",
-      "size": 75517632,
+      "buildVersion": "55",
+      "versionDate": "2026-11-10T04:31:56Z",
+      "versionDescription": "Beta v1.1.3-beta+1\n\n- Play on TV: watch on your LG TV with the phone as the remote\n  - The player on your phone becomes the remote: play/pause, the seek bar, skip buttons, skip intro, audio and subtitle pickers and next episode all act on the TV.\n  - Your progress is kept as usual (AniList, Simkl, Stremio, resume point), and the next episode starts on the TV by itself.\n  - Works for anime and Movies & TV. Streams that need special headers and downloaded files are passed through the phone.\n  - Subtitle files (SRT, ASS, VTT) are drawn by the TV app. ASS styling is dropped for now; the lines and timing are kept.\n  - If the phone locks, the TV keeps playing and picks the link back up.\n  - \"Play here\" brings the video back to the phone at the TV's spot.\n  - TV report: the wrong \"mkv=no\" line is replaced by what actually played.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B1/AnymeX-Stremio-v1.1.3-beta.1.ipa",
+      "size": 75540114,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "54",
-          "date": "2026-11-10T02:54:13Z",
-          "localizedDescription": "Beta v1.1.3-beta\n\n- AnymeX+ TV for LG TVs (test build) with your phone as the remote\n  - New: AnymeX+ TV, a small app for LG webOS TVs. Install it from Homebrew Channel (add the repository link from the install notes) or with the .ipk.\n  - New: Settings \u2192 TV Remote. Tap your TV to open AnymeX+ TV on it and connect, or type this device's address on the TV. The TV asks once to allow the phone.\n  - Once connected the phone is the remote: arrows, OK and Back move the highlight on the TV.\n  - Play a test video (MP4, MKV, HEVC, HLS or any pasted link) in the TV's own player, with play/pause, seek and stop from the phone.\n  - \"Copy TV report\" collects the TV's model, webOS version and what it can play.\n  - This is a test build to prove installing, connecting and playback. Browsing and syncing your logins and addons to the TV come in later betas.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta/AnymeX-Stremio-v1.1.3-beta.ipa",
-          "size": 75517632,
+          "buildVersion": "55",
+          "date": "2026-11-10T04:31:56Z",
+          "localizedDescription": "Beta v1.1.3-beta+1\n\n- Play on TV: watch on your LG TV with the phone as the remote\n  - The player on your phone becomes the remote: play/pause, the seek bar, skip buttons, skip intro, audio and subtitle pickers and next episode all act on the TV.\n  - Your progress is kept as usual (AniList, Simkl, Stremio, resume point), and the next episode starts on the TV by itself.\n  - Works for anime and Movies & TV. Streams that need special headers and downloaded files are passed through the phone.\n  - Subtitle files (SRT, ASS, VTT) are drawn by the TV app. ASS styling is dropped for now; the lines and timing are kept.\n  - If the phone locks, the TV keeps playing and picks the link back up.\n  - \"Play here\" brings the video back to the phone at the TV's spot.\n  - TV report: the wrong \"mkv=no\" line is replaced by what actually played.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B1/AnymeX-Stremio-v1.1.3-beta.1.ipa",
+          "size": 75540114,
           "minOSVersion": "15.0"
         }
       ]
