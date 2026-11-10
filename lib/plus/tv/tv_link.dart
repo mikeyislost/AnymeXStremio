@@ -10,8 +10,8 @@ import 'package:get/get.dart';
 
 /// AnymeX+: the link between this app and the AnymeX+ TV app (LG webOS).
 ///
-/// While the TV Remote page is open the app runs a small server on the home
-/// network. The TV app connects to it; from then on this app sends remote
+/// Once the TV Remote page or "Play on TV" has been used, the app runs a
+/// small server on the home network. The TV app connects to it; from then on this app sends remote
 /// presses and "play this" requests, and the TV reports what it is doing.
 /// The TV learns this device's address either from LG's phone link (the app
 /// opens the TV app and passes the address along) or by typing it on the TV.
@@ -46,6 +46,10 @@ class PlusTvLink {
 
   /// Asked when a TV connects without the shared key (typed address).
   Future<bool> Function(String tvIp)? askAllow;
+
+  /// Gives the TV a subtitle file as WebVTT text (`/sub/<name>.vtt`); set
+  /// by Play on TV. Null result = not found.
+  Future<String?> Function(String name)? subtitleProvider;
 
   HttpServer? _server;
   WebSocket? _tv;
@@ -128,6 +132,18 @@ class PlusTvLink {
           final ip = req.connectionInfo?.remoteAddress.address ?? '';
           final ws = await WebSocketTransformer.upgrade(req);
           unawaited(_onSocket(ws, ip));
+        } else if (req.uri.pathSegments.length == 2 && req.uri.pathSegments.first == 'sub') {
+          // The TV app is a web page: it may only read this with these headers.
+          req.response.headers.set('Access-Control-Allow-Origin', '*');
+          final name = req.uri.pathSegments[1].replaceAll('.vtt', '');
+          final vtt = await subtitleProvider?.call(name);
+          if (vtt == null) {
+            req.response.statusCode = HttpStatus.notFound;
+          } else {
+            req.response.headers.contentType = ContentType('text', 'vtt', charset: 'utf-8');
+            req.response.write(vtt);
+          }
+          await req.response.close();
         } else {
           req.response.statusCode = HttpStatus.notFound;
           await req.response.close();
@@ -229,18 +245,46 @@ class PlusTvLink {
   /// A remote press: up, down, left, right, ok, back.
   void key(String k) => _send({'t': 'key', 'k': k});
 
-  /// Plays [url] in the TV's own player.
-  void play(String url, {String title = ''}) => _send({'t': 'play', 'url': url, 'title': title});
+  /// Plays [url] in the TV's own player. [subtitle] is a second line under
+  /// the title, [start] where to begin, [kind] the file type (mkv, mp4,
+  /// hls…) and [id] comes back in the TV's reports about this video.
+  void play(String url, {String title = '', String subtitle = '', Duration start = Duration.zero, String kind = '', int id = 0}) =>
+      _send({
+        't': 'play',
+        'url': url,
+        'title': title,
+        'sub': subtitle,
+        'start': start.inMilliseconds / 1000.0,
+        'kind': kind,
+        'id': id,
+      });
 
   /// toggle, play, pause, seekBy ([by] seconds), seekTo ([to] seconds),
-  /// audio / sub ([index] of the track).
-  void player(String cmd, {num? by, num? to, int? index}) => _send({
+  /// audio ([index] of the track), sub ([url] of a subtitle file with its
+  /// [label], or [index] of one inside the video, or neither for off).
+  void player(String cmd, {num? by, num? to, int? index, String? url, String? label}) => _send({
         't': 'player',
         'cmd': cmd,
         if (by != null) 'by': by,
         if (to != null) 'to': to,
         if (index != null) 'i': index,
+        if (url != null) 'url': url,
+        if (label != null) 'label': label,
       });
+
+  /// Where the TV can fetch the subtitle called [name] from this device.
+  String subtitleUrl(String name) => 'http://${localIp.value}:${port.value}/sub/$name.vtt';
+
+  /// Listens again after the app was in the background long enough for the
+  /// system to close the server. The TV app keeps retrying the same address.
+  Future<void> restart() async {
+    if (_server == null) return start();
+    try {
+      await _server?.close(force: true);
+    } catch (_) {}
+    _server = null;
+    await start();
+  }
 
   void stopVideo() => _send({'t': 'stop'});
 
@@ -308,7 +352,12 @@ class PlusTvLink {
     }
     final can = info['canPlay'];
     if (can is Map) {
-      b.writeln('canPlay: ${can.entries.map((e) => '${e.key}=${e.value}').join(', ')}');
+      // The browser's own guess; "played" below is what really worked.
+      b.writeln('canPlay: ${can.entries.where((e) => e.key != 'mkv').map((e) => '${e.key}=${e.value}').join(', ')}');
+    }
+    final played = state['played'] ?? info['played'];
+    if (played is Map && played.isNotEmpty) {
+      b.writeln('played: ${played.entries.map((e) => '${e.key}=${e.value}').join(', ')}');
     }
     if (info['userAgent'] != null) b.writeln('userAgent: ${info['userAgent']}');
     if (state.isNotEmpty) {

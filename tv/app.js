@@ -1,9 +1,9 @@
-/* AnymeX+ TV (test build).
+/* AnymeX+ TV.
  *
  * A small web app for LG webOS. It connects out to AnymeX+ on the phone
- * (the phone runs a little server while its TV Remote page is open), takes
- * remote presses and "play this" requests from it, plays video with the
- * TV's own player and reports back what it is doing.
+ * (the phone runs a little server), takes remote presses and "play this"
+ * requests from it, plays video with the TV's own player and reports back
+ * what it is doing, so the phone can keep your watch progress.
  *
  * Written in old-style JavaScript on purpose so it runs on older webOS too.
  */
@@ -13,6 +13,7 @@
   var APP_VERSION = '0.0.1'; // replaced by the build
   var DEFAULT_PORT = 41733;
   var STORE_KEY = 'anymexplus_tv_phone';
+  var PLAYED_KEY = 'anymexplus_tv_played';
 
   function $(id) { return document.getElementById(id); }
   function text(el, s) { el.textContent = s; }
@@ -39,7 +40,6 @@
       mp4_h264: 'video/mp4; codecs="avc1.640028, mp4a.40.2"',
       mp4_hevc: 'video/mp4; codecs="hvc1.1.6.L120.90"',
       mp4_av1: 'video/mp4; codecs="av01.0.08M.08"',
-      mkv: 'video/x-matroska',
       webm_vp9: 'video/webm; codecs="vp9"',
       hls: 'application/vnd.apple.mpegurl',
       ac3: 'audio/mp4; codecs="ac-3"',
@@ -51,6 +51,9 @@
     }
     info.canPlay = can;
     info.audioTracksApi = 'audioTracks' in v;
+    // The browser part can't tell what LG's player really plays (it says no
+    // to MKV, which plays fine), so what has actually played is kept too.
+    try { info.played = JSON.parse(localStorage.getItem(PLAYED_KEY) || '{}') || {}; } catch (e) { info.played = {}; }
   }
 
   // Calls a webOS system service. Fails quietly anywhere else (a browser).
@@ -118,6 +121,11 @@
     for (var k in info.canPlay) {
       if (info.canPlay.hasOwnProperty(k)) lines.push('  ' + k + ': ' + info.canPlay[k]);
     }
+    var played = [];
+    for (var p in info.played) {
+      if (info.played.hasOwnProperty(p)) played.push(p + ': ' + info.played[p]);
+    }
+    if (played.length) lines.push('', 'Has played', '  ' + played.join(', '));
     text($('info'), lines.join('\n'));
   }
 
@@ -173,8 +181,11 @@
       ws = null;
       var was = connected;
       connected = false;
-      if (was) {
-        stopVideo();
+      if (was && playing.url) {
+        // Keep playing: the phone may only be locked. It picks up again
+        // when it is back.
+        setNote('Phone disconnected. Still playing; waiting for it to come back…');
+      } else if (was) {
         show('pair');
         setStatus('The phone disconnected. Waiting for it to come back…');
       } else {
@@ -193,14 +204,15 @@
         if (m.token) phone.token = m.token;
         savePhone();
         text($('peer'), 'to ' + peerName);
-        show('home');
+        setNote('');
+        if (!(screen === 'player' && playing.url)) show('home');
         sendState();
         break;
       case 'denied':
         setStatus('The phone said no. Try again from the phone.');
         break;
       case 'key': onKey(m.k); break;
-      case 'play': playVideo(m.url, m.title || ''); break;
+      case 'play': playVideo(m); break;
       case 'player': playerCommand(m); break;
       case 'stop': stopVideo(); show('home'); break;
       case 'ping': send({ t: 'pong' }); break;
@@ -218,7 +230,9 @@
     if (!p && window.PalmSystem && window.PalmSystem.launchParams) {
       try { p = JSON.parse(window.PalmSystem.launchParams); } catch (e3) { p = null; }
     }
-    if (p && p.host) {
+    var same = p && p.host && phone && connected && phone.host === String(p.host) &&
+      (phone.port || DEFAULT_PORT) === (Number(p.port) || DEFAULT_PORT);
+    if (p && p.host && !same) {
       phone = { host: String(p.host), port: Number(p.port) || DEFAULT_PORT, token: String(p.token || '') };
       savePhone();
       connected = false;
@@ -370,6 +384,8 @@
   var video = null;
   var playing = { url: '', title: '', error: '' };
   var osdTimer = null;
+  var cues = [];        // subtitles sent by the phone: {s, e, t}
+  var shownCue = '';
 
   function fmt(s) {
     if (!isFinite(s) || s < 0) s = 0;
@@ -378,15 +394,25 @@
     return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (x < 10 ? '0' : '') + x;
   }
 
-  function playVideo(url, title) {
-    if (!url) return;
-    playing = { url: url, title: title, error: '' };
+  function setNote(s) {
+    var n = $('pnote');
+    text(n, s || '');
+    if (s) n.classList.remove('hidden'); else n.classList.add('hidden');
+  }
+
+  // m: {url, title, sub (second line), start (seconds), kind (mkv, mp4, hls…), id}
+  function playVideo(m) {
+    if (!m || !m.url) return;
+    playing = { url: m.url, title: m.title || '', sub: m.sub || '', error: '', id: m.id || 0,
+      start: Number(m.start) || 0, kind: m.kind || '', audio: -1, subNote: '', audioNote: '', pendingAudio: -1 };
+    clearSubs();
     show('player');
-    text($('ptitle'), title || url);
+    text($('ptitle'), playing.title || m.url);
+    text($('psub'), playing.sub);
     text($('pstate'), 'Loading…');
     wakeOsd();
     try {
-      video.src = url;
+      video.src = m.url;
       video.load();
       var p = video.play();
       if (p && p.catch) p.catch(function (e) { playing.error = String(e && e.message || e); sendState(); });
@@ -400,6 +426,142 @@
     if (!video) return;
     try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) { /* ignore */ }
     playing = { url: '', title: '', error: '' };
+    clearSubs();
+    setNote('');
+  }
+
+  // Once the file is open: jump to where the phone was and pick its audio.
+  function onLoaded() {
+    if (!playing.url) return;
+    if (playing.start > 0) {
+      try { video.currentTime = playing.start; } catch (e) { /* ignore */ }
+      playing.start = 0;
+    }
+    if (playing.pendingAudio >= 0) { selectAudio(playing.pendingAudio); playing.pendingAudio = -1; }
+    if (playing.pendingSub != null) { selectEmbeddedSub(playing.pendingSub); playing.pendingSub = null; }
+  }
+
+  function onPlaying() {
+    if (playing.kind && info.played[playing.kind] !== 'yes') {
+      info.played[playing.kind] = 'yes';
+      try { localStorage.setItem(PLAYED_KEY, JSON.stringify(info.played)); } catch (e) { /* ignore */ }
+    }
+  }
+
+  // ---- audio and subtitles inside the file (MKV). LG's player is asked
+  // through the browser's track lists when it offers them, else directly.
+
+  function selectAudio(i) {
+    i = Number(i);
+    if (!(i >= 0)) return;
+    if (video.readyState < 1) { playing.pendingAudio = i; return; }
+    playing.audio = i;
+    var list = video.audioTracks;
+    if (list && list.length > i) {
+      for (var j = 0; j < list.length; j++) list[j].enabled = (j === i);
+      playing.audioNote = '';
+    } else if (video.mediaId) {
+      luna('luna://com.webos.media/selectTrack', { type: 'audio', index: i, mediaId: video.mediaId }, function (r) {
+        playing.audioNote = (r && r.returnValue !== false) ? '' : 'audio: ' + ((r && r.errorText) || 'refused');
+        sendState();
+      });
+    } else {
+      playing.audioNote = 'audio: this TV gives no way to switch';
+    }
+  }
+
+  function selectEmbeddedSub(i) {
+    i = Number(i);
+    if (video.readyState < 1) { playing.pendingSub = i; return; }
+    var list = video.textTracks, j;
+    if (list && list.length > i && i >= 0) {
+      for (j = 0; j < list.length; j++) list[j].mode = (j === i) ? 'showing' : 'disabled';
+      playing.subNote = '';
+      return;
+    }
+    if (list) for (j = 0; j < list.length; j++) list[j].mode = 'disabled';
+    if (!video.mediaId) {
+      if (i >= 0) playing.subNote = 'subtitles: this TV gives no way to switch';
+      return;
+    }
+    if (i < 0) {
+      luna('luna://com.webos.media/setSubtitleEnable', { mediaId: video.mediaId, enable: false }, function () {});
+      playing.subNote = '';
+      return;
+    }
+    luna('luna://com.webos.media/selectTrack', { type: 'text', index: i, mediaId: video.mediaId }, function (r) {
+      playing.subNote = (r && r.returnValue !== false) ? '' : 'subtitles: ' + ((r && r.errorText) || 'refused');
+      luna('luna://com.webos.media/setSubtitleEnable', { mediaId: video.mediaId, enable: true }, function () {});
+      sendState();
+    });
+  }
+
+  // ---- subtitles from the phone: fetched as text and drawn by this app,
+  // so they look the same on every TV.
+
+  function vttTime(s) {
+    var p = s.replace(',', '.').split(':');
+    var sec = parseFloat(p.pop()) || 0;
+    var min = parseInt(p.pop() || '0', 10) || 0;
+    var hr = parseInt(p.pop() || '0', 10) || 0;
+    return hr * 3600 + min * 60 + sec;
+  }
+
+  function parseVtt(raw) {
+    var out = [];
+    var blocks = String(raw).replace(/\r/g, '').split(/\n{2,}/);
+    for (var i = 0; i < blocks.length; i++) {
+      var lines = blocks[i].split('\n');
+      for (var j = 0; j < lines.length; j++) {
+        var m = /^\s*([\d:.,]+)\s+-->\s+([\d:.,]+)/.exec(lines[j]);
+        if (!m) continue;
+        var t = lines.slice(j + 1).join('\n').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        if (t.replace(/\s/g, '')) out.push({ s: vttTime(m[1]), e: vttTime(m[2]), t: t });
+        break;
+      }
+    }
+    return out;
+  }
+
+  function clearSubs() {
+    cues = [];
+    shownCue = '';
+    var el = $('subs');
+    if (el) text(el, '');
+  }
+
+  function loadSubs(url, label) {
+    clearSubs();
+    selectEmbeddedSub(-1);
+    var forId = playing.id;
+    playing.subNote = '';
+    try {
+      var x = new XMLHttpRequest();
+      x.open('GET', url, true);
+      x.onload = function () {
+        if (playing.id !== forId) return;
+        if (x.status >= 200 && x.status < 300) {
+          cues = parseVtt(x.responseText);
+          playing.subNote = cues.length ? '' : 'subtitles: the file was empty';
+        } else {
+          playing.subNote = 'subtitles: the phone answered ' + x.status;
+        }
+        playing.subLabel = label || '';
+        sendState();
+      };
+      x.onerror = function () { playing.subNote = 'subtitles: could not reach the phone'; sendState(); };
+      x.send();
+    } catch (e) { playing.subNote = 'subtitles: ' + String(e && e.message || e); }
+  }
+
+  function drawSubs() {
+    if (!video || !playing.url) return;
+    var t = (video.currentTime || 0) + (playing.subDelay || 0), s = '';
+    for (var i = 0; i < cues.length; i++) {
+      if (cues[i].s <= t && t < cues[i].e) s += (s ? '\n' : '') + cues[i].t;
+    }
+    if (s !== shownCue) { shownCue = s; text($('subs'), s); }
   }
 
   function playerCommand(m) {
@@ -410,13 +572,13 @@
       else if (m.cmd === 'pause') video.pause();
       else if (m.cmd === 'seekBy') video.currentTime = Math.max(0, video.currentTime + Number(m.by || 0));
       else if (m.cmd === 'seekTo') video.currentTime = Math.max(0, Number(m.to || 0));
-      else if (m.cmd === 'audio' && video.audioTracks) {
-        for (var i = 0; i < video.audioTracks.length; i++) video.audioTracks[i].enabled = (i === Number(m.i));
-      } else if (m.cmd === 'sub' && video.textTracks) {
-        for (var j = 0; j < video.textTracks.length; j++) {
-          video.textTracks[j].mode = (j === Number(m.i)) ? 'showing' : 'disabled';
-        }
-      }
+      else if (m.cmd === 'audio') selectAudio(m.i);
+      else if (m.cmd === 'sub') {
+        // {url, label}: a subtitle file from the phone; {i}: one inside the
+        // video file; neither: subtitles off.
+        if (m.url) loadSubs(m.url, m.label);
+        else { clearSubs(); selectEmbeddedSub(m.i == null ? -1 : m.i); }
+      } else if (m.cmd === 'subDelay') playing.subDelay = Number(m.by || 0);
     } catch (e) { playing.error = String(e && e.message || e); }
     wakeOsd();
     sendState();
@@ -458,12 +620,15 @@
       err = (codes[video.error.code] || 'error ' + video.error.code) +
         (video.error.message ? ' (' + video.error.message + ')' : '');
     }
+    var notes = [];
+    if (playing.audioNote) notes.push(playing.audioNote);
+    if (playing.subNote) notes.push(playing.subNote);
     return {
-      url: playing.url, title: playing.title,
+      id: playing.id || 0, url: playing.url, title: playing.title,
       paused: video.paused, ended: video.ended, waiting: video.readyState < 3,
       pos: video.currentTime || 0, dur: isFinite(video.duration) ? video.duration : 0,
       w: video.videoWidth || 0, h: video.videoHeight || 0,
-      error: err || '',
+      error: err || '', note: notes.join('; '), cues: cues.length,
       audio: trackList(video.audioTracks), subs: trackList(video.textTracks)
     };
   }
@@ -472,11 +637,10 @@
     var s = playerState();
     if (!s) return;
     var line = s.error ? 'Problem: ' + s.error
-      : (s.waiting && !s.paused ? 'Loading…' : (s.paused ? 'Paused' : 'Playing'));
+      : (s.ended ? 'Finished' : (s.waiting && !s.paused ? 'Loading…' : (s.paused ? 'Paused' : 'Playing')));
     line += '   ' + fmt(s.pos) + ' / ' + fmt(s.dur);
     if (s.w) line += '   ' + s.w + '×' + s.h;
-    if (s.audio.length) line += '   audio tracks: ' + s.audio.length;
-    if (s.subs.length) line += '   subtitles: ' + s.subs.length;
+    if (s.note) line += '   (' + s.note + ')';
     text($('pstate'), line);
     $('pfill').style.width = (s.dur ? Math.min(100, s.pos / s.dur * 100) : 0) + '%';
   }
@@ -485,17 +649,21 @@
     showPlayerState();
     if (!connected) return;
     send({ t: 'state', screen: screen, focus: focused ? focused.textContent : '', presses: presses,
-      player: playerState() });
+      played: info.played, player: playerState() });
   }
 
   // ------------------------------------------------------------------ start
 
   function start() {
-    text($('ver'), 'test build ' + APP_VERSION);
+    text($('ver'), APP_VERSION);
     video = $('video');
     var events = ['playing', 'pause', 'waiting', 'ended', 'error', 'loadedmetadata', 'seeked', 'stalled'];
+    // First, so the jump to the resume point happens before the report.
+    video.addEventListener('loadedmetadata', onLoaded);
+    video.addEventListener('playing', onPlaying);
     for (var i = 0; i < events.length; i++) video.addEventListener(events[i], sendState);
     setInterval(function () { if (screen === 'player') sendState(); }, 1000);
+    setInterval(function () { if (screen === 'player') drawSubs(); }, 150);
 
     buildKeys();
     buildGrid();

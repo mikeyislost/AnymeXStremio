@@ -30,7 +30,7 @@
   <!-- Connected: a grid to try the remote on. -->
   <section id="home" class="screen hidden">
     <h1>Connected <span id="peer" class="dim"></span></h1>
-    <p class="dim">Move the highlight with the remote on your phone, or with the TV remote. OK presses a tile.</p>
+    <p class="dim">Open something in AnymeX+ on your phone, tap the cast button in the player and choose AnymeX+ TV.</p>
     <div id="grid" class="grid"></div>
     <p id="presses" class="dim"></p>
   </section>
@@ -38,8 +38,11 @@
   <!-- Player: the TV's own video player. -->
   <section id="player" class="screen hidden">
     <video id="video" autoplay></video>
+    <div id="subs" class="subs"></div>
+    <div id="pnote" class="pnote hidden"></div>
     <div id="osd" class="osd">
       <div id="ptitle" class="ptitle"></div>
+      <div id="psub" class="psub"></div>
       <div id="pstate" class="pstate"></div>
       <div class="bar"><div id="pfill" class="fill"></div></div>
     </div>

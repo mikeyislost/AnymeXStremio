@@ -9,6 +9,8 @@ import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/plus/airplay.dart' show plusMimeFromPath, PlusCastSearch;
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
+import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
+import 'package:anymex/plus/tv/subtitle_vtt.dart';
 import 'package:anymex/plus/mkv_audio.dart' show MkvTrackPatch;
 import 'dart:typed_data' as td;
 import 'package:anymex/plus/backup.dart';
@@ -985,14 +987,55 @@ void main() {
         {
           'screen': 'player',
           'presses': 3,
+          'played': {'mkv': 'yes'},
           'player': {'error': '', 'w': 1920},
         },
         '192.168.1.49',
       );
       expect(r, contains('TV address: 192.168.1.49'));
       expect(r, contains('model: OLED42C3PUA'));
-      expect(r, contains('mkv=maybe'));
+      // The browser's guess about MKV is wrong on LG; what played is shown.
+      expect(r, isNot(contains('mkv=maybe')));
+      expect(r, contains('mp4_hevc=probably'));
+      expect(r, contains('played: mkv=yes'));
       expect(r, contains('screen now: player'));
+    });
+
+    test('names for the TV: file kind and episode line', () {
+      expect(PlusTvPlay.kindOf('video/x-matroska'), 'mkv');
+      expect(PlusTvPlay.kindOf('video/mp4'), 'mp4');
+      expect(PlusTvPlay.kindOf('video/odd'), 'video/odd');
+      expect(PlusTvPlay.episodeLine('3', 'The Promise', 12), 'Episode 3 · The Promise');
+      expect(PlusTvPlay.episodeLine('3', 'Episode 3', 12), 'Episode 3');
+      expect(PlusTvPlay.episodeLine('3', null, 12), 'Episode 3');
+      expect(PlusTvPlay.episodeLine('1', 'Some Movie', 1), '');
+    });
+  });
+
+  group('Subtitles for the TV', () {
+    test('WebVTT is left alone', () {
+      const vtt = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi';
+      expect(plusSubtitleToVtt('\uFEFF$vtt\n'), vtt);
+    });
+
+    test('SRT times get a dot', () {
+      final out = plusSubtitleToVtt('1\r\n00:00:01,500 --> 00:00:03,000\r\nHello, there\r\n\r\n2\r\n00:00:04,000 --> 00:00:05,000\r\nBye');
+      expect(out, startsWith('WEBVTT\n\n1\n00:00:01.500 --> 00:00:03.000\nHello, there'));
+      expect(out, contains('00:00:04.000 --> 00:00:05.000\nBye'));
+    });
+
+    test('ASS lines keep their text and timing, lose their styling', () {
+      const ass = '[Script Info]\nTitle: x\n\n[V4+ Styles]\nFormat: Name, Fontname\nStyle: Default,Arial\n\n[Events]\n'
+          'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n'
+          'Dialogue: 0,0:00:05.00,0:00:07.50,Default,,0,0,0,,{\\i1}Second{\\i0}, with a comma\\Nnext line\n'
+          'Dialogue: 0,0:00:01.20,0:00:02.00,Default,,0,0,0,,First\n'
+          'Dialogue: 0,0:00:08.00,0:00:09.00,Sign,,0,0,0,,{\\p1}m 0 0 l 10 10{\\p0}\n'
+          'Comment: 0,0:00:08.00,0:00:09.00,Default,,0,0,0,,ignored\n';
+      expect(
+        plusSubtitleToVtt(ass),
+        'WEBVTT\n\n00:00:01.200 --> 00:00:02.000\nFirst\n\n'
+        '00:00:05.000 --> 00:00:07.500\nSecond, with a comma\nnext line',
+      );
     });
   });
 }

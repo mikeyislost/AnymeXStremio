@@ -32,3 +32,10 @@ h2 { font-size: 40px; margin: 0 0 16px; }
 .pstate { font-size: 28px; color: #c9c9d6; margin-bottom: 20px; white-space: pre-wrap; }
 .bar { height: 10px; background: rgba(255,255,255,.25); border-radius: 5px; overflow: hidden; }
 .fill { height: 100%; width: 0; background: #7c4dff; }
+.psub { font-size: 30px; color: #c9c9d6; margin-bottom: 8px; }
+.psub:empty { display: none; }
+.subs { position: absolute; left: 10%; right: 10%; bottom: 96px; text-align: center; font-size: 54px; line-height: 1.25;
+  font-weight: bold; color: #fff; white-space: pre-line; pointer-events: none;
+  text-shadow: 0 0 6px #000, 3px 3px 4px #000, -2px -2px 3px #000, 2px -2px 3px #000, -2px 2px 3px #000; }
+.pnote { position: absolute; left: 96px; top: 56px; padding: 12px 24px; font-size: 26px; background: rgba(0,0,0,.7);
+  border-radius: 12px; color: #ffd27a; }

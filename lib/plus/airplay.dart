@@ -5,6 +5,7 @@ import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/services/cast/cast_proxy_server.dart';
 import 'package:anymex/services/cast/cast_service.dart';
+import 'package:anymex/plus/tv/tv_play.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
@@ -431,6 +432,7 @@ class _PlusCastExtrasState extends State<PlusCastExtras> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        PlusTvPlayRow(controller: controller), // the AnymeX+ TV app (LG)
         if (Platform.isIOS)
           Obx(() => remote.active.value
               ? _remoteCard(theme, remote)

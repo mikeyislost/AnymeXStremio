@@ -28,6 +28,7 @@ import 'package:anymex/utils/external_player.dart';
 import 'package:anymex/plus/mini_player.dart';
 import 'package:anymex/plus/rate_prompt.dart';
 import 'package:anymex/plus/skip_times.dart';
+import 'package:anymex/plus/tv/tv_play.dart';
 import 'package:anymex/utils/pip_controller.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/bottom_sheet.dart';
 import 'package:anymex/screens/anime/watch/player/base_player.dart';
@@ -687,6 +688,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     delete();
     RatePrompt.showIfPending(); // AnymeX+
     PlusMiniPlayer.exit(); // AnymeX+: leaving the player restores the window
+    PlusTvPlay.instance.playerClosed(this); // AnymeX+: stops the TV too
     super.onClose();
   }
 
@@ -924,6 +926,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     final duration = Duration(seconds: interval.end);
     currentPosition.value = duration;
     _basePlayer.seek(duration);
+    if (PlusTvPlay.instance.takes(this)) PlusTvPlay.instance.seekTo(duration); // AnymeX+
     if (identical(skipTimes?.op, interval)) {
       isOPSkippedOnce.value = true;
       snackBar('Skipped Opening', duration: 2000);
@@ -1355,6 +1358,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
         .throttleTime(const Duration(seconds: 1))
         .listen((pos) {
       if (_isReloadingPlayer.value) return;
+      if (PlusTvPlay.instance.takes(this)) return; // AnymeX+: the TV reports instead
       if (isSeeking.value) return;
       currentPosition.value = pos;
       currentEpisode.value.timeStampInMilliseconds = pos.inMilliseconds;
@@ -2155,6 +2159,8 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     await _basePlayer.open(url, headers: headers, startPosition: startPosition);
     await _basePlayer.setRate(_sessionSpeed);
     _autoSelectAudioTrack();
+    // AnymeX+: while playing on the TV, the new video goes there.
+    await PlusTvPlay.instance.mediaChanged(this, url, headers, startPosition);
   }
 
   Future<void> switchTorrentFile(TorrentFileStat file) async {
@@ -2284,20 +2290,79 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
     });
   }
 
-  void _seekTo(Duration pos) async => await _basePlayer.seek(pos);
+  void _seekTo(Duration pos) async {
+    // AnymeX+: while the video is on the TV, the controls act on the TV.
+    if (PlusTvPlay.instance.takes(this)) {
+      PlusTvPlay.instance.seekTo(pos);
+      return;
+    }
+    await _basePlayer.seek(pos);
+  }
 
   void play() {
-    _basePlayer.play();
+    if (PlusTvPlay.instance.takes(this)) {
+      PlusTvPlay.instance.command('play'); // AnymeX+
+    } else {
+      _basePlayer.play();
+    }
     onUserInteraction();
   }
 
   void pause() {
-    _basePlayer.pause();
+    if (PlusTvPlay.instance.takes(this)) {
+      PlusTvPlay.instance.command('pause'); // AnymeX+
+    } else {
+      _basePlayer.pause();
+    }
     onUserInteraction();
   }
 
+  /// AnymeX+: the video is playing on the TV (plus/tv/tv_play.dart); the
+  /// TV's position drives the same tracking the app's own player does.
+  void plusRemoteTick(Duration pos, Duration dur, {required bool playing}) {
+    if (isClosed) return;
+    if (dur > Duration.zero) {
+      episodeDuration.value = dur;
+      currentEpisode.value.durationInMilliseconds = dur.inMilliseconds;
+    }
+    isPlaying.value = playing;
+    if (isSeeking.value) return;
+    currentPosition.value = pos;
+    currentEpisode.value.timeStampInMilliseconds = pos.inMilliseconds;
+    if (isOffline.value) return;
+    if (playing) {
+      StremioService.to.onPlaybackProgress(
+        media: anilistData,
+        episode: currentEpisode.value,
+        position: pos,
+        duration: dur,
+      );
+      _maybePrefetchNextEpisode(pos);
+    }
+    if (_shouldMarkAsCompleted && !_hasTrackedCompletedOnline) {
+      _hasTrackedCompletedOnline = true;
+      _trackOnline(true);
+    }
+    if (playing && skipTimes != null) {
+      _updateSkipUiState();
+      _handleAutoSkip();
+    }
+  }
+
+  /// AnymeX+: the TV played the video to the end. True when the next
+  /// episode is being opened (it goes to the TV as well).
+  bool plusRemoteEnded() {
+    if (isClosed || isOffline.value || !hasNextEpisode) return false;
+    navigator(true);
+    return true;
+  }
+
+  /// AnymeX+: pauses this device's own player, whatever is on the TV.
+  void plusPauseLocal() => _basePlayer.pause();
+
   Future<T?> showSheetWithPause<T>(Future<T?> Function() openSheet) async {
-    final wasPlaying = isPlaying.value;
+    // AnymeX+: on the TV there is nothing here to pause and resume.
+    final wasPlaying = isPlaying.value && !PlusTvPlay.instance.takes(this);
     if (wasPlaying) _basePlayer.pause();
     try {
       return await openSheet();
@@ -2353,7 +2418,11 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
   }
 
   void togglePlayPause() {
-    _basePlayer.playOrPause();
+    if (PlusTvPlay.instance.takes(this)) {
+      PlusTvPlay.instance.command('toggle'); // AnymeX+
+    } else {
+      _basePlayer.playOrPause();
+    }
     onUserInteraction();
   }
 
