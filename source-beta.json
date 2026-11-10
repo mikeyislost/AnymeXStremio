@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "59",
-      "versionDate": "2026-11-10T14:38:31Z",
-      "versionDescription": "Beta v1.1.3-beta+4\n\n- TV app: browse Movies & TV on the TV, synced from the phone\n  - The phone sends the TV your Stremio sign-in, addons, Movies & TV rows (your Edit layout order), the TMDB key and the watched point, locked with AES-256-GCM. The key only reaches the TV through LG's own phone link when the phone opens the TV app.\n  - New TV screens: Home rows with a backdrop and details of the highlighted title, details with seasons and episodes, a streams panel, search, settings. All with the LG remote; works when the phone is away.\n  - Plays debrid and direct streams on the TV by itself (torrent-only and header streams are left out). Up in the player opens audio and subtitles (addon subtitles included).\n  - Progress goes to the Stremio library like the phone does it; resume points; the next episode starts by itself with the same kind of stream. Watched marks go to the phone, which sets the Stremio mark and updates AniList and Simkl.\n  - TV Remote page: sync status, Sync now, and a search box that types on the TV.\n  - scripts/tv_smoke.js walks the TV app through all of it without a TV; runs in checks.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B4/AnymeX-Stremio-v1.1.3-beta.4.ipa",
-      "size": 75547768,
+      "buildVersion": "60",
+      "versionDate": "2026-11-10T22:27:43Z",
+      "versionDescription": "Beta v1.1.3-beta+5\n\n- TV app: sync key reaches a TV that reconnected by itself, highlight on buttons, Home without the phone\n  - A TV that reconnected from its saved connection (stage 1) never had the sync key, and the phone said to tap the TV in a list that isn't shown while connected. The phone now reopens the TV app over LG's link with the key by itself (once per connection; Sync now tries again); the TV then asks for the sync.\n  - The highlight didn't show on the Search / Refresh / Settings buttons, stream and track lists: their own style came later and won. Highlight rules now come last.\n  - The TV opens on Home whenever a phone has been paired before, and stays there when the phone goes away, also before the first sync.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B5/AnymeX-Stremio-v1.1.3-beta.5.ipa",
+      "size": 75549191,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "59",
-          "date": "2026-11-10T14:38:31Z",
-          "localizedDescription": "Beta v1.1.3-beta+4\n\n- TV app: browse Movies & TV on the TV, synced from the phone\n  - The phone sends the TV your Stremio sign-in, addons, Movies & TV rows (your Edit layout order), the TMDB key and the watched point, locked with AES-256-GCM. The key only reaches the TV through LG's own phone link when the phone opens the TV app.\n  - New TV screens: Home rows with a backdrop and details of the highlighted title, details with seasons and episodes, a streams panel, search, settings. All with the LG remote; works when the phone is away.\n  - Plays debrid and direct streams on the TV by itself (torrent-only and header streams are left out). Up in the player opens audio and subtitles (addon subtitles included).\n  - Progress goes to the Stremio library like the phone does it; resume points; the next episode starts by itself with the same kind of stream. Watched marks go to the phone, which sets the Stremio mark and updates AniList and Simkl.\n  - TV Remote page: sync status, Sync now, and a search box that types on the TV.\n  - scripts/tv_smoke.js walks the TV app through all of it without a TV; runs in checks.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B4/AnymeX-Stremio-v1.1.3-beta.4.ipa",
-          "size": 75547768,
+          "buildVersion": "60",
+          "date": "2026-11-10T22:27:43Z",
+          "localizedDescription": "Beta v1.1.3-beta+5\n\n- TV app: sync key reaches a TV that reconnected by itself, highlight on buttons, Home without the phone\n  - A TV that reconnected from its saved connection (stage 1) never had the sync key, and the phone said to tap the TV in a list that isn't shown while connected. The phone now reopens the TV app over LG's link with the key by itself (once per connection; Sync now tries again); the TV then asks for the sync.\n  - The highlight didn't show on the Search / Refresh / Settings buttons, stream and track lists: their own style came later and won. Highlight rules now come last.\n  - The TV opens on Home whenever a phone has been paired before, and stays there when the phone goes away, also before the first sync.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B5/AnymeX-Stremio-v1.1.3-beta.5.ipa",
+          "size": 75549191,
           "minOSVersion": "15.0"
         }
       ]
