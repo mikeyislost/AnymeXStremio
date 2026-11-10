@@ -189,9 +189,8 @@
       var was = connected;
       connected = false;
       if (was && playing.url) {
-        // Keep playing: the phone may only be locked. It picks up again
-        // when it is back.
-        setNote('Phone disconnected. Still playing; waiting for it to come back…');
+        // Keep playing, and say nothing: the TV plays by itself, and a
+        // phone that was only locked picks up again when it is back.
       } else if (was && screen === 'pair') {
         setStatus('The phone disconnected. Waiting for it to come back…');
       } else if (was) {
@@ -692,6 +691,7 @@
       selectAudio: selectAudio, selectSub: selectEmbeddedSub, loadSubs: loadSubs, clearSubs: clearSubs,
       exit: leaveApp, forget: forgetPhone
     });
+    window.AXBrowse._test = B._test;
     B.start();
     buildKeys();
     readDeviceInfo();

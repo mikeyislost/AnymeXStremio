@@ -300,12 +300,9 @@ window.AXBrowse = function (A) {
     }
     else if (act === 'play') playMain(false);
     else if (act === 'restart') playMain(true);
-    else if (act === 'season') { showSeason(f._season, null); }
+    else if (act === 'season') { showPart(f._part, null); }
     else if (act === 'ep') openStreams(f._video, -1);
     else if (act === 'stream') playStream(f._stream);
-    else if (act === 'aplay' || act === 'aep') playAnime(f._ep);
-    else if (act === 'achunk') { showChunk(f._chunk, null); }
-    else if (act === 'aretry') { askEpisodes(true); }
     else if (act === 'server') pickServer(f._server);
     else if (act === 'sub') pickSub(f._sub);
     else if (act === 'audio') pickAudio(f._audio);
@@ -623,7 +620,7 @@ window.AXBrowse = function (A) {
       var x = list[i];
       if (!x || !x.a) continue;
       var c = { a: String(x.a), type: 'anime', name: String(x.name || ''), romaji: String(x.romaji || ''),
-        poster: x.poster || '', sub: watchedLine(x.sub),
+        poster: x.poster || '', sub: watchedLine(x.sub), watched: parseInt(String(x.sub || ''), 10) || 0,
         rating: x.rating ? String(x.rating) : '', at: Number(x.at) || 0, bg: '', desc: '', year: '' };
       applyInfo(c);
       out.push(c);
@@ -676,7 +673,6 @@ window.AXBrowse = function (A) {
               saveInfo();
               var f = A.focused();
               if (A.screen() === 'home' && f && f._card && f._card.a && alInfo[f._card.a]) showHomeInfo(f._card);
-              if (det && det.kind === 'anime' && A.screen() === 'details') animeHead();
             });
         })(ids.slice(at, at + 50));
       }
@@ -699,186 +695,125 @@ window.AXBrowse = function (A) {
     return all.slice(0, 30);
   }
 
-  var CHUNK = 50;
-  var askN = 0, epsTimer = null, playTimer = null;
+  // ---- an anime → the id your Stremio addons know it by
+  //
+  // ani.zip says which Kitsu and IMDb ids an AniList title has, and for
+  // IMDb which season / episode each of its episodes is. Kitsu ids are
+  // used when a stream addon takes them (one id per AniList entry, same
+  // episode numbers), IMDb ids otherwise. From there on an anime is a
+  // title like any other: streams from your addons, played by the TV
+  // itself, progress to your Stremio library and, through the phone when
+  // it is around, to AniList.
 
-  // Long shows are shown 50 episodes at a time: [[from, to], …] as places
-  // in the list.
-  function chunks(count) {
-    var out = [];
-    for (var i = 0; i < count; i += CHUNK) out.push([i, Math.min(count, i + CHUNK) - 1]);
-    return out;
+  var ANIZIP = 'https://api.ani.zip/mappings?anilist_id=';
+  var ARM = 'https://arm.haglund.dev/api/v2/ids?source=anilist&id=';
+  var KITSU = 'https://anime-kitsu.strem.fun';
+  var K_ANIMAP = 'anymexplus_tv_animap';
+  var aniMap = load(K_ANIMAP, {});    // AniList id → {k, i, m, e: {n: [season, episode]}}
+
+  function mappingFromAniZip(r) {
+    var mp = (r && r.mappings) || {}, eps = {}, any = false;
+    var kitsu = mp.kitsu_id != null ? String(mp.kitsu_id) : '', imdb = String(mp.imdb_id || '');
+    var list = (r && r.episodes) || {};
+    for (var n in list) {
+      if (!list.hasOwnProperty(n) || !list[n]) continue;
+      var se = parseInt(list[n].seasonNumber, 10), ep = parseInt(list[n].episodeNumber, 10);
+      if (se > 0 && ep >= 0 && /^\d+$/.test(n)) { eps[n] = [se, ep]; any = true; }
+    }
+    if (!/^\d+$/.test(kitsu)) kitsu = '';
+    if (imdb.indexOf('tt') !== 0) imdb = '';
+    if (!kitsu && !imdb) return null;
+    return { k: kitsu, i: imdb, m: String(mp.type || '').toUpperCase() === 'MOVIE', e: any ? eps : null };
   }
 
-  // The episode the big button plays: the one the phone says is next, else
-  // the first after your progress, else the first.
-  function nextEpisode(eps, next, progress) {
-    var i;
-    for (i = 0; i < eps.length; i++) if (String(eps[i].n) === String(next)) return eps[i];
-    for (i = 0; i < eps.length; i++) if (parseFloat(eps[i].n) > progress) return eps[i];
-    return eps[0] || null;
+  function animeMapping(id, done) {
+    if (aniMap[id]) { done(aniMap[id]); return; }
+    function keep(m) {
+      if (m) {
+        aniMap[id] = m;
+        var keys = [];
+        for (var k in aniMap) if (aniMap.hasOwnProperty(k)) keys.push(k);
+        for (var i = 0; i < keys.length - 500; i++) delete aniMap[keys[i]];
+        save(K_ANIMAP, aniMap);
+      }
+      done(m);
+    }
+    getJson(ANIZIP + encodeURIComponent(id), function (r) {
+      var m = mappingFromAniZip(r);
+      if (m) { keep(m); return; }
+      // ani.zip doesn't know it (or can't be reached): ids only.
+      getJson(ARM + encodeURIComponent(id), function (a) {
+        var kitsu = a && a.kitsu != null ? String(a.kitsu) : '', imdb = String((a && a.imdb) || '');
+        if (!/^\d+$/.test(kitsu)) kitsu = '';
+        if (imdb.indexOf('tt') !== 0) imdb = '';
+        keep(kitsu || imdb ? { k: kitsu, i: imdb, m: false, e: null } : null);
+      });
+    });
+  }
+
+  // IMDb [season, episode] of an anime's episode n. Episodes ani.zip doesn't
+  // list yet continue on from the last one it does.
+  function imdbEpisode(map, n) {
+    var e = map.e || {};
+    if (e[n]) return e[n];
+    var best = null, bestK = 0;
+    for (var k in e) {
+      if (!e.hasOwnProperty(k)) continue;
+      var kn = parseInt(k, 10);
+      if (kn < n && kn > bestK) { bestK = kn; best = e[k]; }
+    }
+    return best ? [best[0], best[1] + (n - bestK)] : [1, n];
+  }
+
+  function streamTakes(type, id) {
+    var list = addons();
+    for (var i = 0; i < list.length; i++) {
+      if (supports(list[i], 'stream', type, id) || supports(list[i], 'stream', 'anime', id)) return true;
+    }
+    return false;
+  }
+
+  // What to open for an anime: {type, id, start (video to begin with),
+  // season, metaTypes, kitsu}.
+  function animeTarget(c, map) {
+    var movie = map.m || c.fmt === 'MOVIE';
+    var next = (c.watched || 0) + 1;
+    var kitsu = map.k ? 'kitsu:' + map.k : '';
+    var kitsuOk = kitsu && streamTakes(movie ? 'movie' : 'series', movie ? kitsu : kitsu + ':1');
+    var imdbOk = map.i && (movie || map.e) && streamTakes(movie ? 'movie' : 'series', movie ? map.i : map.i + ':1:1');
+    if (kitsu && (kitsuOk || !imdbOk)) {
+      return { type: movie ? 'movie' : 'series', id: kitsu, kitsu: true, start: movie ? '' : kitsu + ':' + next, season: 0,
+        metaTypes: movie ? ['movie', 'series', 'anime'] : ['series', 'anime', 'movie'] };
+    }
+    if (!map.i) return null;
+    var first = imdbEpisode(map, 1), at = imdbEpisode(map, next);
+    return { type: movie ? 'movie' : 'series', id: map.i, kitsu: false, season: movie ? 0 : first[0],
+      start: movie ? '' : map.i + ':' + at[0] + ':' + at[1], metaTypes: [movie ? 'movie' : 'series'] };
   }
 
   function openAnime(c) {
-    detToken++;
-    det = { kind: 'anime', id: String(c.a), card: c, eps: null, err: '', next: '', progress: 0, source: '',
-      chunk: 0, busy: '', asked: false, q: '' };
+    var token = ++detToken;
+    det = null;
     closePanel(true);
     if (A.screen() !== 'details') go('details');
-    clear($('dbtns')); clear($('dseasons')); clear($('deps'));
-    A.setFocus(null);
-    lastFocus.details = null;
-    animeHead();
-    enrich([c]);
-    renderAnime();
-    askEpisodes(false);
-  }
-
-  function animeHead() {
-    var c = det.card, bits = [];
     text($('dtitle'), c.name || c.romaji || '');
-    if (c.year) bits.push(c.year);
-    if (c.fmt) bits.push(c.fmt);
-    if (c.eps) bits.push(c.eps + (c.eps === 1 ? ' episode' : ' episodes'));
-    if (c.rating) bits.push('★ ' + c.rating);
-    if (c.st === 'RELEASING') bits.push('Airing');
-    if (det.progress > 0) bits.push('You: episode ' + det.progress);
-    text($('dmeta'), bits.join('  ·  '));
+    text($('dmeta'), '');
     text($('ddesc'), c.desc || '');
     setBackdrop($('dbg'), c.bg || '');
-  }
-
-  function animeMsg(s) { text($('dmsg'), s || ''); }
-
-  function askEpisodes(again) {
-    if (!det || det.kind !== 'anime') return;
-    clearTimeout(epsTimer);
-    if (!A.connected()) { renderAnime(); return; }
-    det.q = 'a' + (++askN);
-    det.err = '';
-    if (!det.eps) renderAnime();
-    var c = det.card, d = det;
-    A.send({ t: 'anime', cmd: 'eps', q: det.q, id: det.id, name: c.name, romaji: c.romaji || '', poster: c.poster || '',
-      again: !!again });
-    epsTimer = setTimeout(function () {
-      if (det !== d || d.eps) return;
-      d.err = "Your phone didn't answer. Make sure AnymeX+ is open on it.";
-      if (A.screen() === 'details') renderAnime();
-    }, 75000);
-  }
-
-  function onEpisodes(m) {
-    if (!det || det.kind !== 'anime' || String(m.id) !== det.id) return;
-    clearTimeout(epsTimer);
-    det.source = String(m.source || '');
-    det.progress = Number(m.progress) || 0;
-    det.next = String(m.next || '');
-    if (m.ok && m.eps && m.eps.length) { det.eps = m.eps; det.err = ''; }
-    else if (!det.eps) det.err = String(m.err || "Couldn't load the episodes.");
-    if (A.screen() === 'details') { animeHead(); renderAnime(); }
-  }
-
-  function renderAnime() {
-    if (!det || det.kind !== 'anime') return;
-    var f = A.focused(), keep = f && $('details').contains(f) ? { act: f.getAttribute('data-act'), n: f._ep && f._ep.n } : null;
-    var btns = $('dbtns'), i;
-    clear(btns); clear($('dseasons')); clear($('deps'));
-    if (det.eps) {
-      var next = nextEpisode(det.eps, det.next, det.progress);
-      var b = button((det.progress > 0 ? 'Continue: episode ' : 'Play episode ') + next.n, 'aplay');
-      b._ep = next;
-      btns.appendChild(b);
-      var at = 0;
-      for (i = 0; i < det.eps.length; i++) if (det.eps[i] === next) at = i;
-      var keepAt = -1;
-      if (keep && keep.act === 'aep') for (i = 0; i < det.eps.length; i++) if (det.eps[i].n === keep.n) keepAt = i;
-      var cs = chunks(det.eps.length);
-      if (cs.length > 1) {
-        for (i = 0; i < cs.length; i++) {
-          var chip = button(det.eps[cs[i][0]].n + ' – ' + det.eps[cs[i][1]].n, 'achunk');
-          chip.classList.add('chip');
-          chip._chunk = i;
-          $('dseasons').appendChild(chip);
-        }
+    clear($('dbtns')); clear($('dseasons')); clear($('deps'));
+    text($('dmsg'), 'Finding this anime on your addons…');
+    A.setFocus(null);
+    lastFocus.details = null;
+    enrich([c]);
+    animeMapping(c.a, function (map) {
+      if (token !== detToken) return;
+      var t = map && animeTarget(c, map);
+      if (!t) {
+        text($('dmsg'), "Couldn't match this anime to an id your Stremio addons use. Try Search: it may be listed under Movies or Series.");
+        return;
       }
-      showChunk(Math.floor((keepAt >= 0 ? keepAt : at) / CHUNK), next);
-      animeMsg(det.busy || (det.source ? 'Episodes from ' + det.source + ' on your phone.' : ''));
-      if (A.screen() !== 'details' || panelOpen) return;
-      if (keepAt >= 0) {
-        var eps = $('deps').querySelectorAll('.fo');
-        for (i = 0; i < eps.length; i++) if (eps[i]._ep.n === keep.n) { focusOn(eps[i]); return; }
-      }
-      focusOn(b);
-      return;
-    }
-    if (det.err || !A.connected()) btns.appendChild(button('Try again', 'aretry'));
-    animeMsg(det.err || (A.connected() ? 'Getting the episodes from your phone…'
-      : 'Open AnymeX+ on your phone to see the episodes. Anime is found by the extensions on your phone, so it has to be open.'));
-    if (A.screen() === 'details' && !panelOpen) { if (btns.firstChild) focusOn(btns.firstChild); else A.setFocus(null); }
-  }
-
-  function showChunk(index, mark) {
-    if (!det || !det.eps) return;
-    var cs = chunks(det.eps.length), range = cs[index] || cs[0], i;
-    det.chunk = index;
-    var chips = $('dseasons').querySelectorAll('.fo');
-    for (i = 0; i < chips.length; i++) {
-      if (chips[i]._chunk === index) chips[i].classList.add('on'); else chips[i].classList.remove('on');
-    }
-    var box = $('deps');
-    clear(box);
-    box.scrollLeft = 0;
-    box._last = 0;
-    for (i = range[0]; i <= range[1]; i++) {
-      var e = det.eps[i], seen = parseFloat(e.n) <= det.progress;
-      var c = el('div', 'fo epc' + (seen ? ' seen' : ''));
-      c.setAttribute('data-act', 'aep');
-      c.setAttribute('data-name', 'Episode ' + e.n);
-      c._ep = e;
-      if (e.thumb) {
-        var img = el('img', 'eimg');
-        img.setAttribute('loading', 'lazy');
-        img.onerror = (function (im) { return function () { im.classList.add('hidden'); }; })(img);
-        img.setAttribute('src', e.thumb);
-        c.appendChild(img);
-      }
-      c.appendChild(el('div', 'enum', 'E' + e.n + (seen ? '  ·  watched' : '') + (e.filler ? '  ·  filler' : '')));
-      c.appendChild(el('div', 'etitle', e.title || 'Episode ' + e.n));
-      if (mark && mark === e) { c.classList.add('cur'); box._last = box.childNodes.length; }
-      box.appendChild(c);
-    }
-    if (box._last > 0 && box.childNodes[box._last]) box.scrollLeft = Math.max(0, box.childNodes[box._last].offsetLeft - 96);
-  }
-
-  function playAnime(ep) {
-    if (!det || det.kind !== 'anime' || !ep) return;
-    if (!A.connected()) { animeMsg('Your phone is not connected. Open AnymeX+ on it, then try again.'); return; }
-    var c = det.card, d = det;
-    det.asked = true;
-    det.q = 'a' + (++askN);
-    det.busy = 'Asking your phone for episode ' + ep.n + '…';
-    animeMsg(det.busy);
-    A.send({ t: 'anime', cmd: 'play', q: det.q, id: det.id, n: String(ep.n), name: c.name, romaji: c.romaji || '',
-      poster: c.poster || '' });
-    clearTimeout(playTimer);
-    playTimer = setTimeout(function () {
-      if (det !== d || !d.busy || A.screen() !== 'details') return;
-      d.busy = ''; d.asked = false;
-      animeMsg("Your phone didn't answer. Make sure AnymeX+ is open on it, then try again.");
-    }, 90000);
-  }
-
-  function onAnimePlay(m) {
-    if (!det || det.kind !== 'anime' || String(m.id) !== det.id) return;
-    if (m.state === 'fail') {
-      clearTimeout(playTimer);
-      det.busy = ''; det.asked = false;
-      if (A.screen() === 'details') animeMsg(String(m.msg || "Couldn't play this episode."));
-      else if (A.screen() === 'player') A.setNote(String(m.msg || ''));
-      return;
-    }
-    det.busy = String(m.msg || 'Working…');
-    if (A.screen() === 'details') animeMsg(det.busy);
+      openDetails(t.type, t.id, c, t);
+    });
   }
 
   // ---- the servers of the episode the phone is playing here
@@ -923,7 +858,7 @@ window.AXBrowse = function (A) {
 
   // ------------------------------------------------------------------ details
 
-  var det = null;       // {type, id, meta, videos, season}, or an anime: {kind: 'anime', id, card, eps…}
+  var det = null;       // {type, id, meta, videos, parts, part, anime (how an anime was matched)}
   var detToken = 0;
 
   function metaSources(type, id) {
@@ -935,6 +870,7 @@ window.AXBrowse = function (A) {
       }
     }
     if (id.indexOf('tt') === 0 && !seen[CINEMETA]) out.push(CINEMETA);
+    if (id.indexOf('kitsu:') === 0 && !seen[KITSU]) out.push(KITSU);
     return out;
   }
 
@@ -953,7 +889,8 @@ window.AXBrowse = function (A) {
     return out;
   }
 
-  function openDetails(type, id, hint) {
+  // anime: how an anime was matched to this id (animeTarget), if it was.
+  function openDetails(type, id, hint, anime) {
     var token = ++detToken;
     det = null;
     closePanel(true);
@@ -966,20 +903,65 @@ window.AXBrowse = function (A) {
     text($('dmsg'), 'Loading…');
     A.setFocus(null);
     lastFocus.details = null;
-    var sources = metaSources(type, id), at = 0;
+    // Where to read the title from: each place, under each type it may be
+    // listed as there (an anime can be a series, an "anime" or a movie).
+    var types = (anime && anime.metaTypes) || [type], tries = [], seen = {}, i, j;
+    for (i = 0; i < types.length; i++) {
+      var srcs = metaSources(types[i], id);
+      for (j = 0; j < srcs.length; j++) {
+        if (!seen[srcs[j] + '|' + types[i]]) { seen[srcs[j] + '|' + types[i]] = 1; tries.push([srcs[j], types[i]]); }
+      }
+    }
+    var at = 0;
+    function ready(meta) {
+      var t = type;
+      if (anime && anime.kitsu && type === 'series' && !(meta.videos && meta.videos.length > 1)) {
+        // One video: a film after all (unless episodes are only missing from the list).
+        if (String(meta.type) === 'movie' || !(hint && hint.eps > 1)) t = 'movie';
+      }
+      det = { type: t, id: id, meta: meta, videos: sortVideos(meta.videos || []), parts: [], part: 0, anime: anime || null };
+      if (anime && t !== 'movie') fillAnimeVideos(det, hint);
+      if (!libraryLoaded && authKey()) loadLibrary(function () { if (token === detToken) renderDetails(null); });
+      else renderDetails(null);
+    }
     function next() {
       if (token !== detToken) return;
-      if (at >= sources.length) { text($('dmsg'), "Couldn't load this title. Check the TV's internet and try again."); return; }
-      getJson(resourceUrl(sources[at++], 'meta', type, id), function (r) {
+      if (at >= tries.length) {
+        if (anime && hint) {
+          // No addon describes it: what AniList said is enough to play it.
+          ready({ id: id, type: type, name: hint.name, description: hint.desc, background: hint.bg, poster: hint.poster, videos: [] });
+          return;
+        }
+        text($('dmsg'), "Couldn't load this title. Check the TV's internet and try again.");
+        return;
+      }
+      var tr = tries[at++];
+      getJson(resourceUrl(tr[0], 'meta', tr[1], id), function (r) {
         if (token !== detToken) return;
-        if (r && r.meta && r.meta.id) {
-          det = { type: type, id: id, meta: r.meta, videos: sortVideos(r.meta.videos || []), season: null };
-          if (!libraryLoaded && authKey()) loadLibrary(function () { if (token === detToken) renderDetails(null); });
-          else renderDetails(null);
-        } else next();
+        if (r && r.meta && r.meta.id) ready(r.meta); else next();
       });
     }
     next();
+  }
+
+  // An anime by its Kitsu id: every episode AniList counts gets a place,
+  // also the ones the addon doesn't list (yet).
+  function fillAnimeVideos(d, c) {
+    if (!d.anime.kitsu) return;
+    var have = {}, max = 0, i;
+    for (i = 0; i < d.videos.length; i++) {
+      var v = d.videos[i];
+      if (!(v.episode > 0)) { var m = /:(\d+)$/.exec(v.id); v.episode = m ? Number(m[1]) : 0; }
+      v.season = 1;
+      have[v.episode] = 1;
+      if (v.episode > max) max = v.episode;
+    }
+    var count = Math.max(max, (c && c.st !== 'RELEASING' && c.eps) || 0, (c && c.watched) || 0);
+    if (!d.videos.length && !count) count = 1;
+    for (i = 1; i <= count && i <= 3000; i++) {
+      if (!have[i]) d.videos.push({ id: d.id + ':' + i, title: '', season: 1, episode: i, released: NaN, thumb: '', overview: '' });
+    }
+    d.videos.sort(function (a, b) { return a.episode - b.episode; });
   }
 
   function isSeries() { return det && det.type !== 'movie' && det.videos.length > 0; }
@@ -1019,6 +1001,13 @@ window.AXBrowse = function (A) {
         if (r && r.at > at) { at = r.at; newest = det.videos[i]; }
       }
       v = newest;
+    }
+    // An anime that is one season of a longer show: stay in that season.
+    if (v && det.anime && det.anime.season && v.season !== det.anime.season) v = null;
+    // An anime not started here yet: the episode after your AniList progress.
+    if (!v && det.anime && det.anime.start) v = findVideo(det.anime.start);
+    if (!v && det.anime && det.anime.season) {
+      for (var a = 0; a < det.videos.length; a++) if (det.videos[a].season === det.anime.season) { v = det.videos[a]; break; }
     }
     if (!v) {
       for (var j = 0; j < det.videos.length; j++) if (det.videos[j].season > 0) { v = det.videos[j]; break; }
@@ -1064,19 +1053,18 @@ window.AXBrowse = function (A) {
     clear(seasonsBox);
     clear($('deps'));
     if (isSeries()) {
-      var seasons = [], i;
-      for (i = 0; i < det.videos.length; i++) if (seasons.indexOf(det.videos[i].season) < 0) seasons.push(det.videos[i].season);
-      seasons.sort(function (a, b) { return (a === 0 ? 1e9 : a) - (b === 0 ? 1e9 : b); });
-      if (seasons.length > 1) {
-        for (i = 0; i < seasons.length; i++) {
-          var chip = button(seasons[i] === 0 ? 'Specials' : 'Season ' + seasons[i], 'season');
+      var i;
+      det.parts = parts(det.videos);
+      if (det.parts.length > 1) {
+        for (i = 0; i < det.parts.length; i++) {
+          var chip = button(det.parts[i].label, 'season');
           chip.classList.add('chip');
-          chip._season = seasons[i];
+          chip._part = i;
           seasonsBox.appendChild(chip);
         }
       }
       var focusVideo = focusVideoId ? findVideo(focusVideoId) : null;
-      showSeason(focusVideo ? focusVideo.season : target.season, focusVideo || target);
+      showPart(partOf(focusVideo || target), focusVideo || target);
       if (focusVideo) {
         var eps = $('deps').querySelectorAll('.fo');
         for (i = 0; i < eps.length; i++) if (eps[i]._video === focusVideo) { focusOn(eps[i]); return; }
@@ -1085,21 +1073,50 @@ window.AXBrowse = function (A) {
     if (A.screen() === 'details') focusOn(btns.firstChild);
   }
 
-  function showSeason(season, mark) {
-    if (!det) return;
-    det.season = season;
+  var PART = 50;
+
+  // The episode list in pieces: one per season, and long seasons 50
+  // episodes at a time. [{label, videos}]
+  function parts(videos) {
+    var seasons = [], by = {}, i, out = [];
+    for (i = 0; i < videos.length; i++) {
+      var s = videos[i].season;
+      if (!by[s]) { by[s] = []; seasons.push(s); }
+      by[s].push(videos[i]);
+    }
+    seasons.sort(function (a, b) { return (a === 0 ? 1e9 : a) - (b === 0 ? 1e9 : b); });
+    for (i = 0; i < seasons.length; i++) {
+      var list = by[seasons[i]], name = seasons[i] === 0 ? 'Specials' : 'Season ' + seasons[i];
+      if (list.length <= PART) { out.push({ label: name, videos: list }); continue; }
+      for (var at = 0; at < list.length; at += PART) {
+        var piece = list.slice(at, at + PART);
+        var range = piece[0].episode + ' – ' + piece[piece.length - 1].episode;
+        out.push({ label: seasons.length > 1 ? name + '  ·  ' + range : range, videos: piece });
+      }
+    }
+    return out;
+  }
+
+  function partOf(video) {
+    for (var i = 0; i < det.parts.length; i++) if (det.parts[i].videos.indexOf(video) >= 0) return i;
+    return 0;
+  }
+
+  function showPart(index, mark) {
+    if (!det || !det.parts.length) return;
+    if (!det.parts[index]) index = 0;
+    det.part = index;
     var chips = $('dseasons').querySelectorAll('.fo'), i;
     for (i = 0; i < chips.length; i++) {
-      if (chips[i]._season === season) chips[i].classList.add('on'); else chips[i].classList.remove('on');
+      if (chips[i]._part === index) chips[i].classList.add('on'); else chips[i].classList.remove('on');
     }
     var box = $('deps');
     clear(box);
     box.scrollLeft = 0;
     box._last = 0;
-    var now = Date.now();
-    for (i = 0; i < det.videos.length; i++) {
-      var v = det.videos[i];
-      if (v.season !== season) continue;
+    var now = Date.now(), list = det.parts[index].videos;
+    for (i = 0; i < list.length; i++) {
+      var v = list[i];
       var c = el('div', 'fo epc');
       c.setAttribute('data-act', 'ep');
       c.setAttribute('data-name', epLabel(v) + ' ' + v.title);
@@ -1148,7 +1165,9 @@ window.AXBrowse = function (A) {
   // Asks every stream addon; each(list, addonName) per answer, done() at the end.
   function collectStreams(type, videoId, each, done) {
     var list = addons(), todo = [];
-    for (var i = 0; i < list.length; i++) if (supports(list[i], 'stream', type, videoId)) todo.push(list[i]);
+    for (var i = 0; i < list.length; i++) {
+      if (supports(list[i], 'stream', type, videoId) || supports(list[i], 'stream', 'anime', videoId)) todo.push(list[i]);
+    }
     var left = todo.length;
     if (!left) { done(0); return; }
     for (var j = 0; j < todo.length; j++) {
@@ -1424,19 +1443,7 @@ window.AXBrowse = function (A) {
     closeTracks();
     srv = null;
     setHint('');
-    if (!cur) {
-      if (det && det.kind === 'anime' && det.asked) {
-        // An episode the phone played here: back to its episodes, with
-        // your progress read again.
-        det.asked = false;
-        det.busy = '';
-        setTimeout(function () {
-          if (det && det.kind === 'anime' && A.screen() === 'details') { renderAnime(); askEpisodes(false); }
-        }, 1200);
-        return 'details';
-      }
-      return has() || A.phone() ? 'home' : 'pair';
-    }
+    if (!cur) return has() || A.phone() ? 'home' : 'pair';
     var c = cur;
     saveProgress(false);
     cur = null;
@@ -1710,7 +1717,7 @@ window.AXBrowse = function (A) {
       lines.push('Addons       ' + addons().length);
       lines.push('Rows         ' + ((bundle.rows && bundle.rows.length) || 0));
       lines.push('TMDB rows    ' + (tmdbKey() ? 'yes' : 'no'));
-      lines.push('Anime        ' + (bundle.anime ? 'yes (your phone finds the episodes)' : 'update AnymeX+ on the phone'));
+      lines.push('Anime rows   ' + (bundle.anime ? 'yes (streams from your Stremio addons)' : 'update AnymeX+ on the phone'));
     } else {
       lines.push('Synced       nothing yet');
     }
@@ -1755,8 +1762,7 @@ window.AXBrowse = function (A) {
   function onMessage(m) {
     if (m.t === 'sync') { onSync(m); return true; }
     if (m.t === 'search') { searchFromPhone(m.q); return true; }
-    if (m.t === 'animeEps') { onEpisodes(m); return true; }
-    if (m.t === 'animePlay') { onAnimePlay(m); return true; }
+    if (m.t === 'animeEps' || m.t === 'animePlay') return true;   // older idea: episodes from the phone
     if (m.t === 'servers') {
       srv = { id: m.id, list: m.list || [], on: Number(m.on) };
       if (hasServers()) setHint('▲ Change source');
@@ -1777,13 +1783,11 @@ window.AXBrowse = function (A) {
     updateStatus();
     flushWatched();
     if (A.screen() === 'settings') showSettings();
-    if (det && det.kind === 'anime' && !det.eps && A.screen() === 'details') askEpisodes(false);
   }
 
   function onDisconnected() {
     updateStatus();
     if (A.screen() === 'settings') showSettings();
-    if (det && det.kind === 'anime' && !det.eps && A.screen() === 'details') renderAnime();
   }
 
   function helloExtra() {
@@ -1809,7 +1813,8 @@ window.AXBrowse = function (A) {
     onMessage: onMessage, onConnected: onConnected, onDisconnected: onDisconnected, helloExtra: helloExtra,
     tick: tick, ended: ended, leftPlayer: leftPlayer, playerKey: playerKey,
     // for tests
-    _mergeContinue: mergeContinue, _chunks: chunks, _nextEpisode: nextEpisode, _cleanText: cleanText, _watchedLine: watchedLine,
+    _test: { parts: parts, mappingFromAniZip: mappingFromAniZip, imdbEpisode: imdbEpisode },
+    _mergeContinue: mergeContinue, _cleanText: cleanText, _watchedLine: watchedLine,
     _supports: supports, _applyProgress: applyProgress, _baseOf: baseOf
   };
 };

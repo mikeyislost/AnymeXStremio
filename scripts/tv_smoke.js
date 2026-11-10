@@ -235,6 +235,17 @@ routes.push((url, b) => {
       { name: 'Needs phone', url: 'https://cdn.example/h.mp4', behaviorHints: { proxyHeaders: { request: { Referer: 'x' } } } }
     ] };
   }
+  if (url === 'https://api.ani.zip/mappings?anilist_id=101') {
+    return { mappings: { anilist_id: 101, kitsu_id: 46474, imdb_id: 'tt22248376', type: 'TV' },
+      episodes: { '1': { seasonNumber: 1, episodeNumber: 1 } } };
+  }
+  if (url === 'https://api.ani.zip/mappings?anilist_id=202') {
+    return { mappings: { anilist_id: 202, imdb_id: 'tt7654321', type: 'TV' }, episodes: { '1': { seasonNumber: 2, episodeNumber: 1 } } };
+  }
+  if (url === 'https://anime-kitsu.strem.fun/meta/series/kitsu%3A46474.json') {
+    return { meta: { id: 'kitsu:46474', type: 'series', name: 'Sousou no Frieren (Kitsu)', description: 'Kitsu says.',
+      videos: [{ id: 'kitsu:46474:1', title: 'The Journey\'s End', episode: 1, season: 1 }, { id: 'kitsu:46474:2', title: 'Two', episode: 2 }] } };
+  }
   if (url === 'https://graphql.anilist.co') {
     const v = (b && b.variables) || {};
     const all = [
@@ -451,7 +462,7 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   reconnect();
   check('hello says the TV does anime', last('hello').anime === true);
   const now = Date.now();
-  const bundle2 = Object.assign({}, bundle, {
+  const bundle2 = Object.assign({}, JSON.parse(JSON.stringify(bundle)), {
     v: 2, anime: true,
     rows: [
       { kind: 'cw', title: 'Continue Watching', anime: [
@@ -461,6 +472,7 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
       { kind: 'alq', title: 'Romance', vars: { type: 'ANIME', sort: ['POPULARITY_DESC'], genres: ['Romance'] } },
       { kind: 'tmdb', title: 'Trending · Series', type: 'series', path: 'trending/tv/day', query: '' }]
   });
+  bundle2.stremio.addons[0].manifest.idPrefixes = ['tt', 'kitsu'];
   fromPhone(Object.assign({ t: 'sync', h: 'h2' }, seal(KEYHEX, bundle2)));
   await wait(120);
   const rows2 = $('hrows').childNodes;
@@ -478,72 +490,69 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
     [$('hidesc').textContent, $('himeta').textContent]);
   check('details are kept for next time', JSON.parse(store.get('anymexplus_tv_alinfo'))['101'].eps === 28);
 
+  // Open an anime: matched to its Kitsu id, episodes and streams from addons.
+  press(KEY.ok);
+  await wait(80);
+  check('an anime opens through its Kitsu id', screenNow() === 'details' && $('dtitle').textContent === 'Sousou no Frieren (Kitsu)' &&
+    requests.some(r => r.url === 'https://api.ani.zip/mappings?anilist_id=101') &&
+    requests.some(r => r.url === 'https://anime-kitsu.strem.fun/meta/series/kitsu%3A46474.json'), $('dtitle').textContent);
+  check('nothing is asked of the phone', !sent.some(m => m.t === 'anime'));
+  check('main button starts after your AniList progress', focusName() === 'Play S1 E4', focusName());
+  check('every episode AniList counts is listed', $('deps').childNodes.length === 28 &&
+    $('deps').childNodes[27]._video.id === 'kitsu:46474:28' && $('deps').childNodes[0]._video.title === 'The Journey\'s End');
+  check('the match is kept for next time', JSON.parse(store.get('anymexplus_tv_animap'))['101'].k === '46474');
+  press(KEY.ok);
+  await wait(60);
+  check('streams come from the addon, by Kitsu id', $('splist').childNodes.length === 1 && focusName() === 'Debrid 1080p' &&
+    requests.some(r => r.url === ADDON + '/stream/series/kitsu%3A46474%3A4.json'), focusName());
   press(KEY.ok);
   await wait();
-  const ask = last('anime');
-  check('opening an anime asks the phone for its episodes', screenNow() === 'details' && $('dtitle').textContent === 'Frieren' &&
-    ask && ask.cmd === 'eps' && ask.id === '101' && ask.romaji === 'Sousou no Frieren', ask);
-  check('says it is waiting for the phone', /Getting the episodes from your phone/.test($('dmsg').textContent), $('dmsg').textContent);
-  const eps = [];
-  for (let i = 1; i <= 60; i++) eps.push({ n: String(i), title: i === 4 ? 'Four' : undefined });
-  fromPhone({ t: 'animeEps', q: 'zzz', id: '999', ok: true, eps: eps, progress: 1, next: '2', source: 'Wrong' });
-  check('an answer for another show is ignored', $('dbtns').childNodes.length === 0);
-  fromPhone({ t: 'animeEps', q: ask.q, id: '101', ok: true, eps: eps, progress: 3, next: '4', source: 'AllAnime' });
-  check('main button continues after your progress', focusName() === 'Continue: episode 4', focusName());
-  check('long shows are split in groups of 50', $('dseasons').childNodes.map(c => c.textContent).join('|') === '1 – 50|51 – 60' &&
-    $('deps').childNodes.length === 50);
-  check('watched episodes are marked', $('deps').childNodes[2].classList.contains('seen') && !$('deps').childNodes[3].classList.contains('seen') &&
-    /watched/.test($('deps').childNodes[0].textContent));
-  check('says where the episodes come from', /AllAnime/.test($('dmsg').textContent));
-  press(KEY.down); press(KEY.right); press(KEY.ok);
-  check('the second group shows the rest', $('deps').childNodes.length === 10 && $('deps').childNodes[0]._ep.n === '51');
-  press(KEY.up);
-  press(KEY.ok);
-  const playAsk = last('anime');
-  check('Play asks the phone for that episode', playAsk.cmd === 'play' && playAsk.id === '101' && playAsk.n === '4', playAsk);
-  fromPhone({ t: 'animePlay', q: playAsk.q, id: '101', n: '4', state: 'servers', msg: 'Finding servers for episode 4…' });
-  check('shows what the phone is doing', $('dmsg').textContent === 'Finding servers for episode 4…');
-  fromPhone({ t: 'play', url: 'http://192.168.1.23:9000/proxy.m3u8', title: 'Frieren', sub: 'Episode 4 · Four', id: 21, start: 120, kind: 'hls' });
-  check('the phone plays it here', screenNow() === 'player' && video.src === 'http://192.168.1.23:9000/proxy.m3u8');
-  press(KEY.up);
-  check('no source list before the phone sends one', $('tpanel').classList.contains('hidden'));
-  fromPhone({ t: 'servers', id: 21, on: 0, list: ['HD-1 Sub', 'HD-2 Sub', 'HD-1 Dub'] });
-  check('hint that the source can be changed', /Change source/.test($('phint').textContent));
-  press(KEY.up);
-  check('Up lists the servers from the phone', !$('tpanel').classList.contains('hidden') && $('tptitle').textContent === 'Source' &&
-    $('tlist').querySelectorAll('.fo').length === 3 && focusName() === 'HD-1 Sub', focusName());
-  press(KEY.down); press(KEY.down); press(KEY.ok);
-  const sv = last('anime');
-  check('picking a server tells the phone', sv.cmd === 'server' && sv.i === 2 && $('tpanel').classList.contains('hidden'), sv);
-  const asks = sent.filter(m => m.t === 'anime' && m.cmd === 'eps').length;
-  fromPhone({ t: 'stop' });
-  await wait(1400);
-  check('when it ends: back on the episodes, progress asked again', screenNow() === 'details' && $('dtitle').textContent === 'Frieren' &&
-    sent.filter(m => m.t === 'anime' && m.cmd === 'eps').length === asks + 1 && $('phint').textContent === '');
-  fromPhone({ t: 'animeEps', q: last('anime').q, id: '101', ok: true, eps: eps, progress: 4, next: '5', source: 'AllAnime' });
-  check('the list moves on with your progress', $('dbtns').childNodes[0].textContent === 'Continue: episode 5' &&
-    /You: episode 4/.test($('dmeta').textContent), $('dmeta').textContent);
-  fromPhone({ t: 'animePlay', q: 'x', id: '101', n: '5', state: 'fail', msg: 'No servers found for episode 5.' });
-  check('a problem on the phone is shown', $('dmsg').textContent === 'No servers found for episode 5.');
-
-  // Without the phone: browsing still works, playing says what is needed.
-  press(KEY.back);
+  check('the TV plays it by itself', screenNow() === 'player' && video.src === 'https://cdn.example/kitsu%3A46474%3A4.mkv', video.src);
+  video.readyState = 4; video.duration = 1000; video.currentTime = 900; video.ended = false;
   sock.onclose();
-  press(KEY.down); press(KEY.ok);
-  await wait();
-  check('anime details open without the phone', screenNow() === 'details' && $('dtitle').textContent === 'Other Anime' &&
-    /Open AnymeX\+ on your phone/.test($('dmsg').textContent) && focusName() === 'Try again', [$('dmsg').textContent, focusName()]);
-  check('shows what AniList knows meanwhile', /TV SHORT/.test($('dmeta').textContent) && /Airing/.test($('dmeta').textContent), $('dmeta').textContent);
+  check('phone gone while playing → no message on screen', $('pnote').classList.contains('hidden') && screenNow() === 'player');
   reconnect();
-  const again = last('anime');
-  check('asks by itself once the phone is back', again.cmd === 'eps' && again.id === '202', again);
-  fromPhone({ t: 'animeEps', q: again.q, id: '202', ok: false, err: 'No anime extension is set up in AnymeX+ on your phone.', eps: [] });
-  check('the phone\'s reason is shown with a way to retry', /No anime extension/.test($('dmsg').textContent) && focusName() === 'Try again');
-  press(KEY.ok);
-  check('Try again asks again', last('anime').again === true);
+  press(KEY.back);
+  await wait(80);
+  const aput = puts[puts.length - 1].changes[0];
+  check('progress goes to the Stremio library under the Kitsu id', aput._id === 'kitsu:46474' && aput.state.video_id === 'kitsu:46474:4' &&
+    aput.state.timeOffset === 900000, aput.state);
+  const aw = last('watched');
+  check('the phone is told, so AniList follows', aw && aw.id === 'kitsu:46474' && aw.videoId === 'kitsu:46474:4', aw);
+  check('back on the episodes', screenNow() === 'details' && /^S1 E4/.test(focusName()), focusName());
+  press(KEY.back);
+
+  // A long show: 50 episodes at a time. And one only known by its IMDb id.
+  const BT = window.AXBrowse._test;
+  const many = [];
+  for (let i = 1; i <= 120; i++) many.push({ id: 'k:' + i, season: 1, episode: i });
+  const ps = BT.parts(many.concat([{ id: 's', season: 0, episode: 1 }]));
+  check('long seasons are split in groups of 50', ps.map(x => x.label).join('|') ===
+    'Season 1  ·  1 – 50|Season 1  ·  51 – 100|Season 1  ·  101 – 120|Specials', ps.map(x => x.label));
+  check('one season: just the ranges', BT.parts(many).map(x => x.label).join('|') === '1 – 50|51 – 100|101 – 120');
+  const mp = BT.mappingFromAniZip({ mappings: { imdb_id: 'tt9999999', kitsu_id: null, type: 'TV' },
+    episodes: { '1': { seasonNumber: 2, episodeNumber: 1 }, '2': { seasonNumber: 2, episodeNumber: 2 }, 'S1': { seasonNumber: 0, episodeNumber: 1 } } });
+  check('ani.zip: IMDb season and episode of each anime episode', mp && mp.i === 'tt9999999' && mp.k === '' &&
+    JSON.stringify(mp.e) === '{"1":[2,1],"2":[2,2]}', mp);
+  check('episodes ani.zip does not list yet carry on from the last', BT.imdbEpisode(mp, 5).join(':') === '2:5' && BT.imdbEpisode({ e: null }, 3).join(':') === '1:3');
+  check('no ids at all → no match', BT.mappingFromAniZip({ mappings: {} }) === null);
+
+  press(KEY.down); press(KEY.ok);
+  await wait(80);
+  check('an anime without a Kitsu id opens by IMDb id, on its season', screenNow() === 'details' && $('dtitle').textContent === 'Test Show' &&
+    focusName() === 'Play S2 E1', [$('dtitle').textContent, focusName()]);
   press(KEY.back);
 
   // Anime in search.
+  fromPhone({ t: 'search', q: 'other' });
+  await wait(80);
+  fromPhone({ t: 'play', url: 'http://192.168.1.23:9000/proxy.m3u8', title: 'From phone', id: 21, start: 0, kind: 'hls' });
+  fromPhone({ t: 'servers', id: 21, on: 0, list: ['HD-1 Sub', 'HD-2 Sub', 'HD-1 Dub'] });
+  press(KEY.up);
+  check('Play on TV from the phone: Up lists its servers', $('tptitle').textContent === 'Source' && $('tlist').querySelectorAll('.fo').length === 3);
+  press(KEY.down); press(KEY.ok);
+  check('picking a server tells the phone', last('anime').cmd === 'server' && last('anime').i === 1);
+  fromPhone({ t: 'stop' });
   fromPhone({ t: 'search', q: 'other' });
   await wait(80);
   check('search has an Anime row first', $('srows').childNodes[0].childNodes[0].textContent === 'Anime' &&
