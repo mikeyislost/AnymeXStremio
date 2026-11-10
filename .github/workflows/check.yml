@@ -94,3 +94,29 @@ jobs:
         run: |
           python3 scripts/test_versions.py
           if [ -d test ]; then flutter test --reporter expanded; else echo "No tests"; fi
+
+  # The LG webOS TV app: package it the way a release would, and keep the
+  # .ipk as a download to try on a TV.
+  tv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install LG's packaging tool
+        run: npm install -g @webos-tools/cli
+
+      - name: Package AnymeX+ TV
+        run: |
+          node --check tv/app.js
+          scripts/build_tv.sh "0.0.${{ github.run_number }}" "check-${{ github.run_number }}" dist "AnymeX-Plus-TV-check.ipk"
+          python3 scripts/tv_repo.py dist/AnymeX-Plus-TV-check.ipk https://example.com/x.ipk "0.0.${{ github.run_number }}" https://example.com/i.png /tmp/webos.json > /dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tv-ipk
+          path: dist/*.ipk
+

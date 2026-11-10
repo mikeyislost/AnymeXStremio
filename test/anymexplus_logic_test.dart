@@ -8,6 +8,7 @@ import 'package:anymex/controllers/service_handler/service_handler.dart'
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/plus/airplay.dart' show plusMimeFromPath, PlusCastSearch;
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/mkv_audio.dart' show MkvTrackPatch;
 import 'dart:typed_data' as td;
 import 'package:anymex/plus/backup.dart';
@@ -956,6 +957,42 @@ void main() {
     test('not an MKV, or no such track', () {
       expect(MkvTrackPatch.build(td.Uint8List.fromList([0, 1, 2, 3]), 1), isNull);
       expect(MkvTrackPatch.build(head, 5), isNull);
+    });
+  });
+
+  group('TV link', () {
+    test('picks the home network address', () {
+      expect(
+        PlusTvLink.pickLocalIp([('lo0', '127.0.0.1'), ('utun3', '10.8.0.2'), ('en0', '192.168.1.23')]),
+        '192.168.1.23',
+      );
+      expect(
+        PlusTvLink.pickLocalIp([('vEthernet (WSL)', '172.20.0.1'), ('Wi-Fi', '192.168.1.40')]),
+        '192.168.1.40',
+      );
+      expect(PlusTvLink.pickLocalIp([('lo', '127.0.0.1')]), '');
+      expect(PlusTvLink.pickLocalIp(const []), '');
+    });
+
+    test('TV report lists what the TV said', () {
+      final r = PlusTvLink.buildReport(
+        {
+          'model': 'OLED42C3PUA',
+          'sdkVersion': '10.2.0',
+          'chrome': '120',
+          'canPlay': {'mkv': 'maybe', 'mp4_hevc': 'probably'},
+        },
+        {
+          'screen': 'player',
+          'presses': 3,
+          'player': {'error': '', 'w': 1920},
+        },
+        '192.168.1.49',
+      );
+      expect(r, contains('TV address: 192.168.1.49'));
+      expect(r, contains('model: OLED42C3PUA'));
+      expect(r, contains('mkv=maybe'));
+      expect(r, contains('screen now: player'));
     });
   });
 }

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <title>AnymeX+ TV</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Pairing: shown until a phone is connected. -->
+  <section id="pair" class="screen">
+    <div class="col">
+      <h1>AnymeX+ TV <span id="ver" class="dim"></span></h1>
+      <p id="status" class="status">Starting…</p>
+      <ol class="steps">
+        <li>Open <b>AnymeX+</b> on your phone.</li>
+        <li>Go to <b>Settings → TV Remote</b>.</li>
+        <li>Tap your TV in the list. This screen connects by itself.</li>
+      </ol>
+      <p class="dim">No luck? Type the phone address shown on that page, then choose Connect.</p>
+      <div id="addr" class="addr"></div>
+      <div id="keys" class="keys"></div>
+    </div>
+    <div class="col side">
+      <h2>This TV</h2>
+      <pre id="info" class="info">Reading…</pre>
+    </div>
+  </section>
+
+  <!-- Connected: a grid to try the remote on. -->
+  <section id="home" class="screen hidden">
+    <h1>Connected <span id="peer" class="dim"></span></h1>
+    <p class="dim">Move the highlight with the remote on your phone, or with the TV remote. OK presses a tile.</p>
+    <div id="grid" class="grid"></div>
+    <p id="presses" class="dim"></p>
+  </section>
+
+  <!-- Player: the TV's own video player. -->
+  <section id="player" class="screen hidden">
+    <video id="video" autoplay></video>
+    <div id="osd" class="osd">
+      <div id="ptitle" class="ptitle"></div>
+      <div id="pstate" class="pstate"></div>
+      <div class="bar"><div id="pfill" class="fill"></div></div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

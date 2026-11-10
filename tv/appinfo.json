@@ -1,0 +1,15 @@
+{
+  "id": "com.mikeyislost.anymexplus.tv",
+  "version": "0.0.1",
+  "vendor": "mikeyislost",
+  "type": "web",
+  "main": "index.html",
+  "title": "AnymeX+ TV",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#101014",
+  "iconColor": "#7C4DFF",
+  "resolution": "1920x1080",
+  "handlesRelaunch": true,
+  "disableBackHistoryAPI": true
+}

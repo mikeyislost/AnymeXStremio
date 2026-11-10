@@ -12,6 +12,7 @@ import 'package:anymex/screens/settings/sub_settings/settings_downloads.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_extensions.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_logs.dart';
 import 'package:anymex/plus/settings_self_test.dart';
+import 'package:anymex/plus/tv/tv_remote_page.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_network.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_performance.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_player.dart';
@@ -1358,6 +1359,23 @@ abstract final class SettingsRegistry {
           category: 'Logs',
           icon: HugeIcons.strokeRoundedFolder01,
           searchTags: ['folder', 'documents', 'path'],
+        ),
+      ],
+    ),
+    // AnymeX+: remote for the AnymeX+ TV app (LG webOS).
+    SettingsCategory(
+      id: 'tv_remote',
+      groupTitle: 'Extensions & Diagnostics',
+      title: 'TV Remote',
+      description: 'Connect to AnymeX+ TV on an LG TV and use this device as its remote',
+      icon: Icons.settings_remote_rounded,
+      destination: () => const PlusTvRemotePage(),
+      items: [
+        SettingItem(
+          title: 'Connect to a TV',
+          category: 'TV Remote',
+          icon: Icons.tv_rounded,
+          searchTags: ['lg', 'webos', 'television', 'remote', 'pair', 'cast'],
         ),
       ],
     ),

@@ -52,6 +52,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/simkl_send_all.dart` | "Send everything to Simkl" (Movies & TV history and AniList anime list) |
 | `plus/airplay.dart` | Casting extras. iPhone AirPlay: a hidden Apple player (native side in `ios/Runner/AppDelegate.swift`, `PlusAirPlay`) sends the video to the TV and the cast sheet shows our remote (play/pause, seek, ±10 s, change TV, stop → the player resumes there); streams that need headers go through the cast proxy. Finding TVs on iPhone: Bonjour for Chromecasts and AirPlay TVs, then each AirPlay TV is asked directly for DLNA (unicast SSDP); "Add a TV by IP address" (saved). DLNA gets the real file type (MKV → `video/x-matroska`) |
 | `plus/mkv_audio.dart` | Casting MKVs with the audio picked in the app: the cast proxy rewrites the file's track list (picked audio first and the only default, same size, so seeking works); changing audio while casting re-casts at the TV's spot |
+| `plus/tv/` | Remote for the AnymeX+ TV app (LG webOS, in the repo's `tv/` folder): `tv_link.dart` (a small server the TV app connects to; remote presses, "play this", the TV's reports), `lg_link.dart` (LG's phone link, used to open the TV app and hand it this device's address), `tv_remote_page.dart` (Settings → TV Remote) |
 | `plus/splash_gate.dart` | When the splash gives way to Home (as soon as AniList has loaded; 0.8–3 s) |
 
 ## Hooks in AnymeX files
@@ -91,7 +92,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `screens/settings/sub_settings/settings_accounts.dart` | Stremio account in Accounts; "Send everything to Simkl" |
 | `screens/settings/sub_settings/settings_ui.dart` | Stremio tab in the tab editor; "Edit layout" entry |
 | `screens/settings/sub_settings/settings_about.dart` | Shows the beta tag as the version |
-| `screens/settings/registry/settings_registry.dart` | Self Test page in settings |
+| `screens/settings/registry/settings_registry.dart` | Self Test and TV Remote pages in settings |
 | `utils/updater.dart` | Updates from this repo; beta app follows beta pre-releases; Windows updates install silently from the temp folder (`plus/windows_update.dart`) |
 | `utils/notification.dart` | Firebase push removed; local notifications set up on their own |
 | `utils/external_font_loader.dart` | Subtitle fonts load after launch (`ensureBundledFonts`) |

@@ -38,6 +38,7 @@ jobs:
       channel: ${{ steps.ver.outputs.channel }}
       tag: ${{ steps.ver.outputs.tag }}
       file_ver: ${{ steps.ver.outputs.file_ver }}
+      tv_version: ${{ steps.ver.outputs.tv_version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -88,6 +89,9 @@ jobs:
             echo "channel=$CHANNEL"
             echo "tag=$TAG"
             echo "file_ver=$FILE_VER"
+            # The TV app's own version has to be three plain numbers that
+            # only go up: major.minor from the app, then the build count.
+            echo "tv_version=${VERSION%.*}.$COUNT"
           } >> "$GITHUB_OUTPUT"
           echo "Channel: $CHANNEL · tag v$TAG · version $VERSION (build $COUNT) · files $FILE_VER"
 
@@ -372,10 +376,35 @@ jobs:
           name: windows
           path: dist/*
 
+  # The LG webOS TV app (tv/): a small web app packaged as an .ipk. A few
+  # seconds; the release goes out without it if this fails.
+  tv:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install LG's packaging tool
+        run: npm install -g @webos-tools/cli
+
+      - name: Package AnymeX+ TV
+        run: |
+          node --check tv/app.js
+          scripts/build_tv.sh "${{ needs.version.outputs.tv_version }}" "${{ needs.version.outputs.tag }}" dist "AnymeX-Plus-TV-v${{ needs.version.outputs.file_ver }}.ipk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tv
+          path: dist/*.ipk
+
   # One release per update, with everything in it. Publishes even if only
   # the iOS build succeeded (the Windows files are then missing).
   release:
-    needs: [version, analyze, ios, windows]
+    needs: [version, analyze, ios, windows, tv]
     if: ${{ !cancelled() && needs.analyze.result == 'success' && needs.ios.result == 'success' }}
     runs-on: ubuntu-latest
     env:
@@ -384,6 +413,7 @@ jobs:
       RELEASE_CHANNEL: ${{ needs.version.outputs.channel }}
       TAG: ${{ needs.version.outputs.tag }}
       FILE_VER: ${{ needs.version.outputs.file_ver }}
+      TV_VERSION: ${{ needs.version.outputs.tv_version }}
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
     steps:
@@ -421,9 +451,15 @@ jobs:
             if [ "$RELEASE_CHANNEL" = beta ]; then
               echo "- **iPhone (Feather):** add the beta source \`https://raw.githubusercontent.com/$REPO/feather/source-beta.json\` and install **AnymeX+ β**, or download the \`.ipa\` below."
               echo "- **Windows:** run the \`Setup.exe\` (installs **AnymeXStremio Beta** next to the normal app), or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
+              if ls dist/*.ipk >/dev/null 2>&1; then
+                echo "- **LG TV (webOS):** in Homebrew Channel, Settings → Add repository: \`https://raw.githubusercontent.com/$REPO/feather/webos-beta.json\`, then install **AnymeX+ TV**. Or install the \`.ipk\` below with webOS Dev Manager."
+              fi
             else
               echo "- **iPhone (Feather):** add the source \`https://github.com/$REPO/releases/latest/download/source.json\` and update **AnymeX+**, or download the \`.ipa\` below."
               echo "- **Windows:** run the \`Setup.exe\`, or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
+              if ls dist/*.ipk >/dev/null 2>&1; then
+                echo "- **LG TV (webOS):** in Homebrew Channel, Settings → Add repository: \`https://github.com/$REPO/releases/latest/download/webos.json\`, then install **AnymeX+ TV**. Or install the \`.ipk\` below with webOS Dev Manager."
+              fi
             fi
             echo
             echo "Built from ${GITHUB_SHA:0:7} (build $BUILD)."
@@ -500,6 +536,17 @@ jobs:
           print(json.dumps(source, indent=2)[:3000])
           PY
 
+      # Homebrew Channel repository file for the TV app (stable): a release
+      # file, so the "latest release" link always has the newest one.
+      - name: TV app source (Homebrew Channel)
+        if: env.RELEASE_CHANNEL == 'stable'
+        run: |
+          IPK=$(ls dist/*.ipk 2>/dev/null | head -n 1 || true)
+          if [ -z "$IPK" ]; then echo "No TV app in this build"; exit 0; fi
+          python3 scripts/tv_repo.py "$IPK" \
+            "https://github.com/$REPO/releases/download/v$VERSION/$(basename "$IPK")" \
+            "$TV_VERSION" "https://raw.githubusercontent.com/$REPO/main/tv/largeIcon.png" dist/webos.json
+
       - name: Publish release v${{ env.VERSION }}
         if: env.RELEASE_CHANNEL == 'stable'
         uses: softprops/action-gh-release@v2
@@ -574,6 +621,14 @@ jobs:
             (cd /tmp/feather && git checkout -q --orphan feather && git rm -rqf .)
           fi
           cp source-beta.json /tmp/feather/source-beta.json
+          # The TV app's Homebrew Channel repository file, next to it.
+          IPK=$(ls dist/*.ipk 2>/dev/null | head -n 1 || true)
+          if [ -n "$IPK" ]; then
+            IPK_URL=$(python3 -c "import json; print(next(a['url'] for a in json.load(open('beta_release.json'))['assets'] if a['name'].endswith('.ipk')))")
+            cp tv/largeIcon.png /tmp/feather/tv-icon.png
+            python3 scripts/tv_repo.py "$IPK" "$IPK_URL" "$TV_VERSION" \
+              "https://raw.githubusercontent.com/$REPO/feather/tv-icon.png" /tmp/feather/webos-beta.json
+          fi
           cp beta/logo.png /tmp/feather/beta-logo.png
           printf '# Feather source for AnymeX+ betas\n\nUpdated automatically by every beta build. Add this source in Feather:\n\nhttps://raw.githubusercontent.com/%s/feather/source-beta.json\n' "$REPO" > /tmp/feather/README.md
           cd /tmp/feather
