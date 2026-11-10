@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.2",
-      "buildVersion": "48",
-      "versionDate": "2026-11-09T06:40:28Z",
-      "versionDescription": "Beta v1.1.2-beta+7\n\n- LG TVs: play on the TV's own player (MKV included) without DLNA\n  - LG TVs ignore the DLNA search from iPhone, so AnymeX+ now talks to them the way LG's phone app does: the TV shows up in Cast to Device as an LG TV, asks once to \"Allow\" the phone, then plays the video in its own player (MKV included).\n  - Remote in the Cast sheet: play/pause, rewind, fast forward, stop. The TV starts from the beginning (seek with the TV remote).\n  - \"Add it by IP address\" now also accepts LG TVs.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B7/AnymeX-Stremio-v1.1.2-beta.7.ipa",
-      "size": 75493152,
+      "buildVersion": "49",
+      "versionDate": "2026-11-10T01:13:36Z",
+      "versionDescription": "Beta v1.1.2-beta+8\n\n- Google Cast works on TVs; Cast sheet no longer spills off screen\n  - Casting to a TV with Google Cast (like LG) opened the receiver and then did nothing: the video was sent before the TV had the receiver ready. It now waits for the TV, sends the real file type (MKV etc.) and says so if the TV can't play the video.\n  - The same TV no longer shows up twice under Google Cast.\n  - The Cast to Device sheet scrolls instead of running past the bottom.\n  - Removed the \"LG TV\" entry from beta+7: newer LG software refuses that way of opening videos (Google Cast replaces it).",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B8/AnymeX-Stremio-v1.1.2-beta.8.ipa",
+      "size": 75487677,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.2",
-          "buildVersion": "48",
-          "date": "2026-11-09T06:40:28Z",
-          "localizedDescription": "Beta v1.1.2-beta+7\n\n- LG TVs: play on the TV's own player (MKV included) without DLNA\n  - LG TVs ignore the DLNA search from iPhone, so AnymeX+ now talks to them the way LG's phone app does: the TV shows up in Cast to Device as an LG TV, asks once to \"Allow\" the phone, then plays the video in its own player (MKV included).\n  - Remote in the Cast sheet: play/pause, rewind, fast forward, stop. The TV starts from the beginning (seek with the TV remote).\n  - \"Add it by IP address\" now also accepts LG TVs.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B7/AnymeX-Stremio-v1.1.2-beta.7.ipa",
-          "size": 75493152,
+          "buildVersion": "49",
+          "date": "2026-11-10T01:13:36Z",
+          "localizedDescription": "Beta v1.1.2-beta+8\n\n- Google Cast works on TVs; Cast sheet no longer spills off screen\n  - Casting to a TV with Google Cast (like LG) opened the receiver and then did nothing: the video was sent before the TV had the receiver ready. It now waits for the TV, sends the real file type (MKV etc.) and says so if the TV can't play the video.\n  - The same TV no longer shows up twice under Google Cast.\n  - The Cast to Device sheet scrolls instead of running past the bottom.\n  - Removed the \"LG TV\" entry from beta+7: newer LG software refuses that way of opening videos (Google Cast replaces it).",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.2-beta%2B8/AnymeX-Stremio-v1.1.2-beta.8.ipa",
+          "size": 75487677,
           "minOSVersion": "15.0"
         }
       ]
