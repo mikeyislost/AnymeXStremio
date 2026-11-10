@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "57",
-      "versionDate": "2026-11-10T05:11:47Z",
-      "versionDescription": "Beta v1.1.3-beta+2\n\n- Windows: fix the in-app update closing the app without updating\n- Long-press an anime episode to set your progress\n  - Holding an episode on an anime page now opens a small menu: mark watched up to that episode, set progress back, or choose a source (what holding did before). Needs AniList, MAL or Simkl signed in; without one it goes straight to the source picker as before.\n  - TV report: also says which subtitle and audio the phone asked the TV for, to track down videos whose subtitles don't show.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B2/AnymeX-Stremio-v1.1.3-beta.2.ipa",
-      "size": 75546615,
+      "buildVersion": "58",
+      "versionDate": "2026-11-10T05:47:48Z",
+      "versionDescription": "Beta v1.1.3-beta+3\n\n- Fix the wrong episode playing, and add \"Mark as not watched\"\n  - Some extensions list episodes oldest first; the list then came out backwards (6, 5, 4\u2026) and the numbers and titles landed on the wrong episodes, so the card for episode 2 played episode 5. Such lists are now put the right way round, so cards, titles and what plays match.\n  - Long-press on a watched episode has \"Mark as not watched\": the eye mark and resume point go, and your list progress steps back to before it. It also works without a tracker signed in.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B3/AnymeX-Stremio-v1.1.3-beta.3.ipa",
+      "size": 75547747,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "57",
-          "date": "2026-11-10T05:11:47Z",
-          "localizedDescription": "Beta v1.1.3-beta+2\n\n- Windows: fix the in-app update closing the app without updating\n- Long-press an anime episode to set your progress\n  - Holding an episode on an anime page now opens a small menu: mark watched up to that episode, set progress back, or choose a source (what holding did before). Needs AniList, MAL or Simkl signed in; without one it goes straight to the source picker as before.\n  - TV report: also says which subtitle and audio the phone asked the TV for, to track down videos whose subtitles don't show.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B2/AnymeX-Stremio-v1.1.3-beta.2.ipa",
-          "size": 75546615,
+          "buildVersion": "58",
+          "date": "2026-11-10T05:47:48Z",
+          "localizedDescription": "Beta v1.1.3-beta+3\n\n- Fix the wrong episode playing, and add \"Mark as not watched\"\n  - Some extensions list episodes oldest first; the list then came out backwards (6, 5, 4\u2026) and the numbers and titles landed on the wrong episodes, so the card for episode 2 played episode 5. Such lists are now put the right way round, so cards, titles and what plays match.\n  - Long-press on a watched episode has \"Mark as not watched\": the eye mark and resume point go, and your list progress steps back to before it. It also works without a tracker signed in.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B3/AnymeX-Stremio-v1.1.3-beta.3.ipa",
+          "size": 75547747,
           "minOSVersion": "15.0"
         }
       ]
