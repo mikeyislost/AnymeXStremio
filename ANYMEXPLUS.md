@@ -27,6 +27,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `plus/stremio/ui/` | Movies & TV tab, details page, Info tab, streams sheet (`stremio_streams_sheet.dart`), downloads (`stremio_download.dart`), player bridge, account page |
 | `plus/stremio_anime_episodes.dart` | Stremio streams on the anime Watch tab (source switch, episode list) |
 | `plus/movie_watch_card.dart` | Movie card instead of "Episode 1" |
+| `plus/episode_hold.dart` | Long-press on an anime episode: mark watched up to it, set progress back, or choose a source (what long-press did before); unit-tested |
 | `plus/simkl_auth_v2.dart` | Simkl OAuth 2 (PKCE) sign-in and token refresh |
 | `plus/self_test.dart` (+ parts `self_test_basics.dart`, `self_test_stremio.dart`, `self_test_other.dart`), `plus/settings_self_test.dart` | Self Test page and its checks |
 | `plus/app_channel.dart` | Stable vs beta build (from `.env`) |
@@ -77,7 +78,7 @@ Everything that is only AnymeX+ lives here; AnymeX never touches it.
 | `screens/anime/details/media_details_page.dart` | Movie wording on the continue bar; hidden in Stremio stream mode; comments built as you scroll; Like / Love / Dislike on the Overview tab (`PlusAnimeTasteRow`) |
 | `screens/anime/widgets/comments/comments_section.dart` | `asSliver` mode: comments are built as you scroll |
 | `screens/anime/widgets/episode_section.dart` | Extensions / Stremio stream source switch |
-| `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet |
+| `screens/anime/widgets/episode_list_builder.dart` | Movie card; Stremio episodes open the Stremio streams sheet; long-press on an episode opens `PlusEpisodeHold` (set progress / choose a source) |
 | `screens/anime/watch/controller/player_controller.dart` | Stremio playback + progress sync (also when the app goes to the background); iOS rotation fix (`landscapeForTilt`); tilt sensor only while unlocked; next episode's streams found early; subtitle fonts on open; after a show is marked Completed, `RatePrompt` asks for a score when the player closes; Movies & TV skip times (`plusAttachSkipTimes`) at the top of `_initializeAniSkip`; leaving the player ends the mini player; Play on TV (`plus/tv/tv_play.dart`): while `PlusTvPlay.instance.takes(this)`, `play`/`pause`/`togglePlayPause`/`_seekTo`/segment skips act on the TV, the position listener is skipped, `showSheetWithPause` doesn't resume, `_switchMedia` hands the new video to the TV, and `plusRemoteTick`/`plusRemoteEnded`/`plusPauseLocal` let the TV's position drive tracking and next episode; `onClose` stops the TV |
 | `screens/anime/watch/watch_view.dart` | `PlusUpNext` card; mini player (`PlusMiniPlayerOverlay`, controls hidden while it's on) |
 | `services/cast/widgets/cast_device_dialog.dart` | `PlusCastExtras` (AirPlay, add TV by IP) above the device list; the body scrolls (list spilled out of the landscape sheet) |

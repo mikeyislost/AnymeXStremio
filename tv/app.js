@@ -572,10 +572,11 @@
       else if (m.cmd === 'pause') video.pause();
       else if (m.cmd === 'seekBy') video.currentTime = Math.max(0, video.currentTime + Number(m.by || 0));
       else if (m.cmd === 'seekTo') video.currentTime = Math.max(0, Number(m.to || 0));
-      else if (m.cmd === 'audio') selectAudio(m.i);
+      else if (m.cmd === 'audio') { playing.audioWanted = m.i; selectAudio(m.i); }
       else if (m.cmd === 'sub') {
         // {url, label}: a subtitle file from the phone; {i}: one inside the
         // video file; neither: subtitles off.
+        playing.subWanted = m.url ? 'file: ' + (m.label || '?') : (m.i == null ? 'off' : 'in the video, number ' + m.i);
         if (m.url) loadSubs(m.url, m.label);
         else { clearSubs(); selectEmbeddedSub(m.i == null ? -1 : m.i); }
       } else if (m.cmd === 'subDelay') playing.subDelay = Number(m.by || 0);
@@ -629,6 +630,8 @@
       pos: video.currentTime || 0, dur: isFinite(video.duration) ? video.duration : 0,
       w: video.videoWidth || 0, h: video.videoHeight || 0,
       error: err || '', note: notes.join('; '), cues: cues.length,
+      subWanted: playing.subWanted || '', audioWanted: playing.audioWanted == null ? '' : playing.audioWanted,
+      mediaId: video.mediaId ? 'yes' : 'no',
       audio: trackList(video.audioTracks), subs: trackList(video.textTracks)
     };
   }

@@ -19,6 +19,7 @@ import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/screens/anime/widgets/episode_range.dart';
 import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/episode_hold.dart';
 import 'package:anymex/screens/anime/widgets/track_dialog.dart';
 import 'package:anymex/plus/stremio/ui/stremio_details_page.dart'
     show StremioStreamsSheet;
@@ -421,7 +422,15 @@ class _StremioAnimeEpisodesState extends State<StremioAnimeEpisodes> {
           _progressFor(ep),
           widget.media,
           () => _openStreams(ep),
-          () => _openStreams(ep, bypassDialog: true),
+          () => PlusEpisodeHold.show(
+            context,
+            media: widget.media,
+            episode: ep,
+            chooseSource: () => _openStreams(ep, bypassDialog: true),
+            onChanged: () {
+              if (mounted) setState(() {});
+            },
+          ),
         );
       }
 

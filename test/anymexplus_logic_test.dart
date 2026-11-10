@@ -11,6 +11,7 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
+import 'package:anymex/plus/episode_hold.dart';
 import 'package:anymex/plus/mkv_audio.dart' show MkvTrackPatch;
 import 'dart:typed_data' as td;
 import 'package:anymex/plus/backup.dart';
@@ -1036,6 +1037,23 @@ void main() {
         'WEBVTT\n\n00:00:01.200 --> 00:00:02.000\nFirst\n\n'
         '00:00:05.000 --> 00:00:07.500\nSecond, with a comma\nnext line',
       );
+    });
+  });
+
+  group('Long-press on an episode', () {
+    test('offers watched-up-to and back-to-before', () {
+      expect(PlusEpisodeHold.offers(5, 2), (5, null));
+      expect(PlusEpisodeHold.offers(5, 5), (null, 4));
+      expect(PlusEpisodeHold.offers(3, 8), (3, 2));
+      expect(PlusEpisodeHold.offers(1, 1), (null, 0));
+      expect(PlusEpisodeHold.offers(0, 0), (null, null));
+    });
+
+    test('status follows the progress', () {
+      expect(PlusEpisodeHold.statusFor(progress: 12, totalEpisodes: 12, mediaStatus: 'FINISHED', listStatus: 'CURRENT'), 'COMPLETED');
+      expect(PlusEpisodeHold.statusFor(progress: 12, totalEpisodes: 12, mediaStatus: 'RELEASING', listStatus: 'CURRENT'), 'CURRENT');
+      expect(PlusEpisodeHold.statusFor(progress: 3, totalEpisodes: 12, mediaStatus: 'FINISHED', listStatus: 'REPEATING'), 'REPEATING');
+      expect(PlusEpisodeHold.statusFor(progress: 3, totalEpisodes: null, mediaStatus: 'FINISHED', listStatus: null), 'CURRENT');
     });
   });
 }

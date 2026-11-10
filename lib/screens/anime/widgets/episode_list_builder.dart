@@ -14,6 +14,7 @@ import 'package:anymex/screens/anime/watch/watch_view.dart';
 import 'package:anymex/screens/anime/widgets/episode/episode_style_registry.dart';
 import 'package:anymex/screens/anime/widgets/episode_range.dart';
 import 'package:anymex/plus/movie_watch_card.dart';
+import 'package:anymex/plus/episode_hold.dart';
 import 'package:anymex/plus/stremio_anime_episodes.dart';
 import 'package:anymex/screens/anime/widgets/track_dialog.dart';
 import 'package:anymex/screens/downloads/controller/download_controller.dart';
@@ -662,10 +663,20 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
                     prog,
                     widget.anilistData,
                     () => _handleEpisodeSelection(episode),
-                    () {
-                      selectedEpisode.value = episode;
-                      fetchServers(episode, bypassDialog: true);
-                    },
+                    // AnymeX+: long-press also sets your progress.
+                    () => PlusEpisodeHold.show(
+                      context,
+                      media: widget.anilistData,
+                      episode: episode,
+                      chooseSource: () {
+                        selectedEpisode.value = episode;
+                        fetchServers(episode, bypassDialog: true);
+                      },
+                      onChanged: () {
+                        _initUserProgress();
+                        if (mounted) setState(() {});
+                      },
+                    ),
                     downloadButton: _buildEpisodeDownloadButton(
                       context,
                       episode,
@@ -794,10 +805,20 @@ class _EpisodeListBuilderState extends State<EpisodeListBuilder>
                     prog,
                     widget.anilistData,
                     () => _handleEpisodeSelection(episode),
-                    () {
-                      selectedEpisode.value = episode;
-                      fetchServers(episode, bypassDialog: true);
-                    },
+                    // AnymeX+: long-press also sets your progress.
+                    () => PlusEpisodeHold.show(
+                      context,
+                      media: widget.anilistData,
+                      episode: episode,
+                      chooseSource: () {
+                        selectedEpisode.value = episode;
+                        fetchServers(episode, bypassDialog: true);
+                      },
+                      onChanged: () {
+                        _initUserProgress();
+                        if (mounted) setState(() {});
+                      },
+                    ),
                     downloadButton: _buildEpisodeDownloadButton(
                       context,
                       episode,
