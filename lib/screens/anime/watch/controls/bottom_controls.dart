@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/plus/desktop_volume.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/control_button.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/progress_slider.dart';
@@ -392,9 +393,10 @@ class BottomControls extends StatelessWidget {
       ),
     };
 
-    List<Widget> buildButtonList(List<String> ids) {
+    List<Widget> buildButtonList(List<String> ids,
+        {List<Widget> extra = const []}) {
       final regularButtons = <Widget>[];
-      final compactButtons = <Widget>[];
+      final compactButtons = <Widget>[...extra]; // AnymeX+
 
       for (var id in ids) {
         if (!isVisible(id)) continue;
@@ -445,7 +447,9 @@ class BottomControls extends StatelessWidget {
     }
 
     final leftButtons = buildButtonList(leftButtonIds);
-    final rightButtons = buildButtonList(rightButtonIds);
+    // AnymeX+: PC volume and brightness lead the right-hand button group.
+    final rightButtons = buildButtonList(rightButtonIds,
+        extra: plusDesktopVolumeButtons(controller));
 
     if (controller.isTorrentStream.value &&
         !leftButtonIds.contains('torrent') &&

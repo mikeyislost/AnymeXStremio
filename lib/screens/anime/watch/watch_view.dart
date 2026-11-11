@@ -243,7 +243,7 @@ class _WatchScreenState extends State<WatchScreen> {
                     ),
                     ShaderOsd(controller: controller),
                     PlusUpNext(controller: controller), // AnymeX+
-                    PlusDesktopVolumeBar(controller: controller), // AnymeX+
+                    PlusDesktopKeys(controller: controller), // AnymeX+
                     Positioned(
                       right: 0,
                       top: 0,
