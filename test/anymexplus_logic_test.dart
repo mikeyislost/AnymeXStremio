@@ -28,6 +28,7 @@ import 'package:anymex/controllers/services/backup_restore/backup_restore_servic
 import 'package:anymex/plus/continue_watching_row.dart';
 import 'package:anymex/plus/skip_times.dart';
 import 'package:anymex/plus/up_next.dart';
+import 'package:anymex/plus/desktop_volume.dart' show PlusDesktopVolume;
 import 'package:anymex/plus/custom_lists.dart';
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
@@ -1135,6 +1136,21 @@ void main() {
           q: 'a1', id: '9', source: '', progress: 0, next: '', episodes: const [], error: 'No match');
       expect(bad['ok'], isFalse);
       expect(bad['err'], 'No match');
+    });
+  });
+
+  group('PC volume and brightness', () {
+    test('volume stays between 0 and 200%, two decimals', () {
+      expect(PlusDesktopVolume.clampVolume(-0.1), 0.0);
+      expect(PlusDesktopVolume.clampVolume(2.4), 2.0);
+      expect(PlusDesktopVolume.clampVolume(0.30000000000000004), 0.3);
+    });
+    test('brightness never goes fully dark', () {
+      expect(PlusDesktopVolume.clampBrightness(0), 0.2);
+      expect(PlusDesktopVolume.clampBrightness(1.5), 1.0);
+      expect(PlusDesktopVolume.dimFor(1.0), 0.0);
+      expect(PlusDesktopVolume.dimFor(0.2), closeTo(0.72, 1e-9));
+      expect(PlusDesktopVolume.dimFor(0.0), closeTo(0.72, 1e-9));
     });
   });
 }

@@ -6,6 +6,7 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/isar_models/video.dart' as model;
 import 'package:anymex/models/Media/media.dart' as anymex;
+import 'package:anymex/plus/desktop_volume.dart';
 import 'package:anymex/plus/mini_player.dart';
 import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
@@ -200,6 +201,7 @@ class _WatchScreenState extends State<WatchScreen> {
                         key: ValueKey(controller.playerReloadVersion.value),
                         child: controller.videoWidget,
                       )),
+                  PlusDesktopDim(controller: controller), // AnymeX+ brightness on PC
                   if (!PlayerKeys.useLibass.get<bool>(false))
                     SubtitleText(controller: controller),
                   // AnymeX+: the mini player (Windows) shows only the video.
@@ -209,6 +211,7 @@ class _WatchScreenState extends State<WatchScreen> {
                     DoubleTapSeekWidget(
                       controller: controller,
                     ),
+                    PlusDesktopWheel(controller: controller), // AnymeX+
                     ExcludeFocus(
                       excluding: !controller.showControls.value,
                       child: const Align(
@@ -240,6 +243,7 @@ class _WatchScreenState extends State<WatchScreen> {
                     ),
                     ShaderOsd(controller: controller),
                     PlusUpNext(controller: controller), // AnymeX+
+                    PlusDesktopVolumeBar(controller: controller), // AnymeX+
                     Positioned(
                       right: 0,
                       top: 0,

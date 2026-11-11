@@ -365,7 +365,13 @@ jobs:
           $content = Get-Content $issFile -Raw
           $content = $content -replace '.*Icelandic\.isl.*\r?\n', ''
           # In-app updates run the installer silently: open the app again when it is done.
-          $content = $content.TrimEnd() + "`r`n`r`n[Run]`r`nFilename: ""{app}\anymex.exe""; Flags: nowait skipifnotsilent runasoriginaluser`r`n"
+          # inno_bundle installs the app under its own name ("AnymeXStremio Beta.exe"), not
+          # anymex.exe: take the name from the script's shortcuts.
+          $exeMatch = [regex]::Matches($content, '\{app\}\\([^"\\]+\.exe)') | Where-Object { $_.Groups[1].Value -notmatch '^unins' } | Select-Object -First 1
+          if (-not $exeMatch) { Write-Error "App exe not found in $issFile"; exit 1 }
+          $appExe = $exeMatch.Groups[1].Value
+          Write-Host "Relaunch after silent update: $appExe"
+          $content = $content.TrimEnd() + "`r`n`r`n[Run]`r`nFilename: ""{app}\$appExe""; Flags: nowait skipifnotsilent runasoriginaluser`r`n"
           Set-Content $issFile -Value $content -NoNewline
           & iscc $issFile
           if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup failed ($LASTEXITCODE)"; exit 1 }
