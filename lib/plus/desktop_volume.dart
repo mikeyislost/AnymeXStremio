@@ -2,8 +2,9 @@
 //
 // AnymeX only has the phone's swipe gestures (click and drag on PC), and
 // brightness does nothing on a PC screen. Here:
-// - volume and brightness buttons in the player's bottom button group;
-//   hover one and a slider pops up above it (click: mute / 100%);
+// - a small box with volume and brightness buttons in the player's bottom
+//   bar; hovering it grows the box upwards with a slider above each button
+//   (click: mute / back to 100%);
 // - mouse wheel over the video = volume, Shift + wheel = brightness;
 // - Up / Down arrow keys = volume, M = mute;
 // - brightness dims the picture (a dark layer over the video), remembered.
@@ -12,6 +13,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:anymex/database/kv_helper.dart';
+import 'package:anymex/plus/focus_watch.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/control_button.dart';
 import 'package:flutter/gestures.dart';
@@ -135,6 +137,7 @@ class _PlusDesktopKeysState extends State<PlusDesktopKeys> {
     super.initState();
     if (!PlusDesktopVolume.supported) return;
     PlusDesktopVolume.start(c);
+    PlusFocusWatch.start(); // AnymeX+: logs focus changes (Windows), for the focus bug
     HardwareKeyboard.instance.addHandler(_onKey);
   }
 
@@ -170,111 +173,186 @@ class _PlusDesktopKeysState extends State<PlusDesktopKeys> {
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
-/// The two buttons for the player's bottom button group (PC only): volume
-/// and brightness. Hover one and its slider pops up above it.
-List<Widget> plusDesktopVolumeButtons(PlayerController c) {
+/// Volume and brightness for the player's bottom bar (PC only): their own
+/// small box of two buttons. Hover it and the box grows upwards with a
+/// slider above each button, then slides back down when the mouse leaves.
+/// Click: volume = mute, brightness = back to 100%.
+List<Widget> plusDesktopVolumeGroup(PlayerController c) {
   if (!PlusDesktopVolume.supported) return const [];
-  return [
-    Obx(() {
-      final v = c.volume.value;
-      return PlusHoverSlider(
-        controller: c,
-        icon: v <= 0
-            ? Icons.volume_off_rounded
-            : (v < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
-        label: 'Volume (click to mute)',
-        value: v,
-        min: 0,
-        max: PlusDesktopVolume.maxVolume,
-        onTap: () => PlusDesktopVolume.toggleMute(c),
-        onChanged: (x) => c.setVolume(PlusDesktopVolume.clampVolume(x), isDragging: true),
-        onEnd: (x) => c.setVolume(PlusDesktopVolume.clampVolume(x)),
-      );
-    }),
-    Obx(() => PlusHoverSlider(
-          controller: c,
-          icon: Icons.brightness_6_rounded,
-          label: 'Brightness (click for 100%)',
-          value: c.brightness.value,
-          min: PlusDesktopVolume.minBrightness,
-          max: 1.0,
-          onTap: () => PlusDesktopVolume.setBrightness(c, 1.0),
-          onChanged: (x) => PlusDesktopVolume.setBrightness(c, x, save: false),
-          onEnd: (x) => PlusDesktopVolume.setBrightness(c, x),
-        )),
-  ];
+  return [PlusVolumeGroup(controller: c), const SizedBox(width: 8)];
 }
 
-/// An icon button that pops a vertical slider up above itself on hover.
-class PlusHoverSlider extends StatefulWidget {
+class PlusVolumeGroup extends StatefulWidget {
   final PlayerController controller;
-  final IconData icon;
-  final String label;
-  final double value, min, max;
-  final VoidCallback onTap;
-  final ValueChanged<double> onChanged, onEnd;
-
-  const PlusHoverSlider({
-    super.key,
-    required this.controller,
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onTap,
-    required this.onChanged,
-    required this.onEnd,
-  });
+  const PlusVolumeGroup({super.key, required this.controller});
 
   @override
-  State<PlusHoverSlider> createState() => _PlusHoverSliderState();
+  State<PlusVolumeGroup> createState() => _PlusVolumeGroupState();
 }
 
-class _PlusHoverSliderState extends State<PlusHoverSlider> {
+class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProviderStateMixin {
+  static const _grow = 168.0; // how far the box grows upwards
+
   final _link = LayerLink();
   final _portal = OverlayPortalController();
-  bool _overIcon = false, _overPop = false, _dragging = false;
-  Timer? _hide, _keepUp;
+  final _boxKey = GlobalKey();
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 240),
+    reverseDuration: const Duration(milliseconds: 200),
+  );
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _anim,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeInCubic,
+  );
+  bool _overBar = false, _overPop = false, _dragging = false;
+  Size _size = const Size(96, 48);
+  Timer? _close, _keepUp;
+
+  PlayerController get c => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim.addStatusListener((s) {
+      if (s == AnimationStatus.dismissed && _portal.isShowing) {
+        _portal.hide();
+        if (mounted) setState(() {});
+      }
+    });
+  }
 
   @override
   void dispose() {
-    _hide?.cancel();
+    _close?.cancel();
     _keepUp?.cancel();
+    _anim.dispose();
     super.dispose();
   }
 
   void _update() {
-    final want = _overIcon || _overPop || _dragging;
-    if (want) {
-      _hide?.cancel();
-      if (!_portal.isShowing) _portal.show();
-      // Keep the player's controls up while the slider is open.
-      widget.controller.onUserInteraction();
-      _keepUp ??= Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) widget.controller.onUserInteraction();
-      });
+    if (_overBar || _overPop || _dragging) {
+      _close?.cancel();
+      _open();
     } else {
-      _hide?.cancel();
-      _hide = Timer(const Duration(milliseconds: 250), () {
+      _close?.cancel();
+      _close = Timer(const Duration(milliseconds: 220), () {
         _keepUp?.cancel();
         _keepUp = null;
-        if (mounted && _portal.isShowing) _portal.hide();
+        if (mounted) _anim.reverse();
       });
     }
   }
 
+  void _open() {
+    final box = _boxKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box != null && box.hasSize) _size = box.size;
+    if (!_portal.isShowing) {
+      _portal.show();
+      setState(() {});
+    }
+    _anim.forward();
+    // Keep the player's controls up while the box is open.
+    c.onUserInteraction();
+    _keepUp ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) c.onUserInteraction();
+    });
+  }
+
+  BoxDecoration _decoration(BuildContext context, double t) {
+    final theme = context.theme;
+    final isDark = theme.brightness == Brightness.dark;
+    // Same look as the bar's other button groups, a little darker as it
+    // opens so the sliders read well over the video.
+    final base = isDark
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
+        : theme.colorScheme.surfaceContainerHighest;
+    final open = isDark ? const Color(0xD9141418) : theme.colorScheme.surfaceContainerHighest;
+    return BoxDecoration(
+      color: Color.lerp(base, open, t),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(
+        color: theme.colorScheme.outline.withValues(alpha: isDark ? 0.15 : 0.3),
+        width: 0.5,
+      ),
+    );
+  }
+
+  Widget _buttons() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Obx(() {
+          final v = c.volume.value;
+          return ControlButton(
+            icon: v <= 0
+                ? Icons.volume_off_rounded
+                : (v < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
+            onPressed: () => PlusDesktopVolume.toggleMute(c),
+            compact: true,
+          );
+        }),
+        ControlButton(
+          icon: Icons.brightness_6_rounded,
+          onPressed: () => PlusDesktopVolume.setBrightness(c, 1.0),
+          compact: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _slider(BuildContext context, double value, double min, double max, String pct,
+      ValueChanged<double> onChanged, ValueChanged<double> onEnd) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(pct, style: const TextStyle(color: Colors.white, fontSize: 11)),
+          Expanded(
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 4,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                  activeTrackColor: Colors.white,
+                  inactiveTrackColor: Colors.white24,
+                  thumbColor: Colors.white,
+                ),
+                child: Slider(
+                  value: value.clamp(min, max).toDouble(),
+                  min: min,
+                  max: max,
+                  onChangeStart: (_) {
+                    _dragging = true;
+                    _update();
+                  },
+                  onChanged: onChanged,
+                  onChangeEnd: (x) {
+                    _dragging = false;
+                    onEnd(x);
+                    _update();
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // The open box, drawn over the bar's own box (same spot, same width).
   Widget _popup(BuildContext context) {
     return Obx(() {
-      // The bar went away: so does the slider.
-      if (!widget.controller.showControls.value) return const SizedBox.shrink();
+      if (!c.showControls.value) return const SizedBox.shrink();
       return CompositedTransformFollower(
         link: _link,
-        targetAnchor: Alignment.topCenter,
-        followerAnchor: Alignment.bottomCenter,
-        offset: const Offset(0, -6),
+        targetAnchor: Alignment.bottomLeft,
+        followerAnchor: Alignment.bottomLeft,
         child: Align(
-          alignment: Alignment.bottomCenter,
+          alignment: Alignment.bottomLeft,
           widthFactor: 1,
           heightFactor: 1,
           child: MouseRegion(
@@ -286,50 +364,45 @@ class _PlusHoverSliderState extends State<PlusHoverSlider> {
               _overPop = false;
               _update();
             },
-            child: Material(
-              color: const Color(0xE6101014),
-              borderRadius: BorderRadius.circular(14),
-              child: SizedBox(
-                width: 46,
-                height: 170,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    Text('${(widget.value * 100).round()}%',
-                        style: const TextStyle(color: Colors.white, fontSize: 11)),
-                    Expanded(
-                      child: RotatedBox(
-                        quarterTurns: 3,
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            trackHeight: 4,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                            activeTrackColor: Colors.white,
-                            inactiveTrackColor: Colors.white24,
-                            thumbColor: Colors.white,
-                          ),
-                          child: Slider(
-                            value: widget.value.clamp(widget.min, widget.max).toDouble(),
-                            min: widget.min,
-                            max: widget.max,
-                            onChangeStart: (_) {
-                              _dragging = true;
-                              _update();
-                            },
-                            onChanged: widget.onChanged,
-                            onChangeEnd: (x) {
-                              _dragging = false;
-                              widget.onEnd(x);
-                              _update();
-                            },
+            child: AnimatedBuilder(
+              animation: _t,
+              builder: (context, _) {
+                final t = _t.value;
+                return Container(
+                  width: _size.width,
+                  height: _size.height + _grow * t,
+                  decoration: _decoration(context, t),
+                  clipBehavior: Clip.antiAlias,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Column(
+                    children: [
+                      if (t > 0.05)
+                        Expanded(
+                          child: Opacity(
+                            opacity: ((t - 0.35) / 0.65).clamp(0.0, 1.0),
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Obx(() => Row(
+                                    children: [
+                                      _slider(context, c.volume.value, 0, PlusDesktopVolume.maxVolume,
+                                          '${(c.volume.value * 100).round()}%',
+                                          (x) => c.setVolume(PlusDesktopVolume.clampVolume(x), isDragging: true),
+                                          (x) => c.setVolume(PlusDesktopVolume.clampVolume(x))),
+                                      _slider(context, c.brightness.value, PlusDesktopVolume.minBrightness, 1.0,
+                                          '${(c.brightness.value * 100).round()}%',
+                                          (x) => PlusDesktopVolume.setBrightness(c, x, save: false),
+                                          (x) => PlusDesktopVolume.setBrightness(c, x)),
+                                    ],
+                                  )),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                      // Same buttons as in the bar, at the bottom of the box.
+                      SizedBox(height: _size.height - 12, child: Center(child: _buttons())),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -339,6 +412,8 @@ class _PlusHoverSliderState extends State<PlusHoverSlider> {
 
   @override
   Widget build(BuildContext context) {
+    if (!PlusDesktopVolume.supported) return const SizedBox.shrink();
+    final open = _portal.isShowing;
     return OverlayPortal(
       controller: _portal,
       overlayChildBuilder: _popup,
@@ -346,20 +421,21 @@ class _PlusHoverSliderState extends State<PlusHoverSlider> {
         link: _link,
         child: MouseRegion(
           onEnter: (_) {
-            _overIcon = true;
+            _overBar = true;
             _update();
           },
           onExit: (_) {
-            _overIcon = false;
+            _overBar = false;
             _update();
           },
-          child: Tooltip(
-            message: widget.label,
-            waitDuration: const Duration(milliseconds: 900),
-            child: ControlButton(
-              icon: widget.icon,
-              onPressed: widget.onTap,
-              compact: true,
+          // While open, the box in the overlay stands in for this one.
+          child: Opacity(
+            opacity: open ? 0 : 1,
+            child: Container(
+              key: _boxKey,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: _decoration(context, 0),
+              child: _buttons(),
             ),
           ),
         ),

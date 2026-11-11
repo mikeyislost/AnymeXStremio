@@ -289,7 +289,7 @@ class BottomControls extends StatelessWidget {
         compact: true,
       ),
       'audio': ControlButton(
-        icon: Icons.volume_up_rounded,
+        icon: Icons.record_voice_over_rounded, // AnymeX+: not the volume icon
         onPressed: () {
           controller.isAudioPaneOpened.value =
               !controller.isAudioPaneOpened.value;
@@ -393,10 +393,9 @@ class BottomControls extends StatelessWidget {
       ),
     };
 
-    List<Widget> buildButtonList(List<String> ids,
-        {List<Widget> extra = const []}) {
+    List<Widget> buildButtonList(List<String> ids) {
       final regularButtons = <Widget>[];
-      final compactButtons = <Widget>[...extra]; // AnymeX+
+      final compactButtons = <Widget>[];
 
       for (var id in ids) {
         if (!isVisible(id)) continue;
@@ -447,9 +446,11 @@ class BottomControls extends StatelessWidget {
     }
 
     final leftButtons = buildButtonList(leftButtonIds);
-    // AnymeX+: PC volume and brightness lead the right-hand button group.
-    final rightButtons = buildButtonList(rightButtonIds,
-        extra: plusDesktopVolumeButtons(controller));
+    // AnymeX+: PC volume and brightness box leads the right-hand buttons.
+    final rightButtons = [
+      ...plusDesktopVolumeGroup(controller),
+      ...buildButtonList(rightButtonIds)
+    ];
 
     if (controller.isTorrentStream.value &&
         !leftButtonIds.contains('torrent') &&

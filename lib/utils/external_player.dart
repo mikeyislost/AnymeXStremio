@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:anymex/plus/external_player_pc.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_toast.dart';
 
 class ExternalPlayer {
   static const MethodChannel _channel = MethodChannel('com.ryan.anymex/utils');
@@ -19,6 +21,13 @@ class ExternalPlayer {
         print("ExternalPlayer failed: $e");
         return false;
       }
+    } else if (Platform.isWindows) {
+      // AnymeX+: a real video player, not the browser (which downloaded it).
+      final problem = await PlusExternalPlayerPc.launch(url, headers: headers);
+      if (problem != null) {
+        AnymeXToast.show(message: problem, duration: const Duration(seconds: 4));
+      }
+      return true; // the message above already says what went wrong
     } else {
       try {
         if (await canLaunchUrlString(url)) {

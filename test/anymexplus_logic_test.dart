@@ -29,6 +29,7 @@ import 'package:anymex/plus/continue_watching_row.dart';
 import 'package:anymex/plus/skip_times.dart';
 import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/plus/desktop_volume.dart' show PlusDesktopVolume;
+import 'package:anymex/plus/external_player_pc.dart';
 import 'package:anymex/plus/custom_lists.dart';
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
@@ -1151,6 +1152,28 @@ void main() {
       expect(PlusDesktopVolume.dimFor(1.0), 0.0);
       expect(PlusDesktopVolume.dimFor(0.2), closeTo(0.72, 1e-9));
       expect(PlusDesktopVolume.dimFor(0.0), closeTo(0.72, 1e-9));
+    });
+  });
+
+  group('External player on PC', () {
+    test('mpv gets the headers, VLC the user agent and referrer', () {
+      final h = {'User-Agent': 'UA', 'Referer': 'https://r.example/', 'Origin': 'https://o.example'};
+      expect(PlusExternalPlayerPc.argsFor(r'C:\mpv\mpv.exe', 'https://x/v.mkv', h), [
+        '--user-agent=UA',
+        '--referrer=https://r.example/',
+        '--http-header-fields=origin: https://o.example',
+        '--force-window=immediate',
+        '--',
+        'https://x/v.mkv',
+      ]);
+      expect(PlusExternalPlayerPc.argsFor(r'C:\Program Files\VideoLAN\VLC\vlc.exe', 'u', h),
+          ['--http-user-agent=UA', '--http-referrer=https://r.example/', 'u']);
+      expect(PlusExternalPlayerPc.argsFor(r'C:\x\PotPlayerMini64.exe', 'u', h), ['u']);
+    });
+    test('looks in PATH and Program Files', () {
+      final c = PlusExternalPlayerPc.candidates({'PATH': r'C:\tools;', 'ProgramFiles': r'C:\Program Files'});
+      expect(c.first, r'C:\tools\mpv.exe');
+      expect(c, contains(r'C:\Program Files\VideoLAN\VLC\vlc.exe'));
     });
   });
 }
