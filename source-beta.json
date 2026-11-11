@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "64",
-      "versionDate": "2026-11-11T03:38:52Z",
-      "versionDescription": "Beta v1.1.3-beta+9\n\n- TV app: Stremio-style player (stage 4) and no debrid \"other\" row\n  - New controls over the video: seek bar (Left/Right move a target that grows the longer you hold, then jumps), time, clock and \"ends at\", and a button row: play/pause, Next episode, Subtitles, Audio, Streams, Episodes. Up/Down bring the buttons up, OK pauses, Back closes a menu or leaves.\n  - Subtitles menu in three columns: language | choices | settings (delay in 0.25 s steps, size, reset). Subtitles in your last language turn on by themselves (inside the video first, then subtitle files); audio language is remembered too.\n  - Streams menu: switch to another stream of the same episode at the same spot (subtitle file and delay kept), or pick one for another episode.\n  - Episodes menu: seasons | episodes; picking one lists its streams.\n  - Subtitles move up above the controls while they are showing.\n  - Play on TV from the phone keeps its Source button for the phone's servers.\n  - Home leaves out catalogs of type \"other\" (RealDebrid Downloads).",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B9/AnymeX-Stremio-v1.1.3-beta.9.ipa",
-      "size": 75576554,
+      "buildVersion": "65",
+      "versionDate": "2026-11-11T04:06:46Z",
+      "versionDescription": "Beta v1.1.3-beta+10\n\n- TV player: Back hides the buttons before leaving the video",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B10/AnymeX-Stremio-v1.1.3-beta.10.ipa",
+      "size": 75576550,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "64",
-          "date": "2026-11-11T03:38:52Z",
-          "localizedDescription": "Beta v1.1.3-beta+9\n\n- TV app: Stremio-style player (stage 4) and no debrid \"other\" row\n  - New controls over the video: seek bar (Left/Right move a target that grows the longer you hold, then jumps), time, clock and \"ends at\", and a button row: play/pause, Next episode, Subtitles, Audio, Streams, Episodes. Up/Down bring the buttons up, OK pauses, Back closes a menu or leaves.\n  - Subtitles menu in three columns: language | choices | settings (delay in 0.25 s steps, size, reset). Subtitles in your last language turn on by themselves (inside the video first, then subtitle files); audio language is remembered too.\n  - Streams menu: switch to another stream of the same episode at the same spot (subtitle file and delay kept), or pick one for another episode.\n  - Episodes menu: seasons | episodes; picking one lists its streams.\n  - Subtitles move up above the controls while they are showing.\n  - Play on TV from the phone keeps its Source button for the phone's servers.\n  - Home leaves out catalogs of type \"other\" (RealDebrid Downloads).",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B9/AnymeX-Stremio-v1.1.3-beta.9.ipa",
-          "size": 75576554,
+          "buildVersion": "65",
+          "date": "2026-11-11T04:06:46Z",
+          "localizedDescription": "Beta v1.1.3-beta+10\n\n- TV player: Back hides the buttons before leaving the video",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B10/AnymeX-Stremio-v1.1.3-beta.10.ipa",
+          "size": 75576550,
           "minOSVersion": "15.0"
         }
       ]
