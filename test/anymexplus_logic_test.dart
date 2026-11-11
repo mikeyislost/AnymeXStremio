@@ -28,7 +28,7 @@ import 'package:anymex/controllers/services/backup_restore/backup_restore_servic
 import 'package:anymex/plus/continue_watching_row.dart';
 import 'package:anymex/plus/skip_times.dart';
 import 'package:anymex/plus/up_next.dart';
-import 'package:anymex/plus/desktop_volume.dart' show PlusDesktopVolume;
+import 'package:anymex/plus/desktop_volume.dart' show PlusDesktopVolume, plusAddVolumeButtonIds;
 import 'package:anymex/plus/external_player_pc.dart';
 import 'package:anymex/plus/pc_video_quality.dart';
 import 'package:flutter/painting.dart' show BoxFit, Size;
@@ -1191,6 +1191,21 @@ void main() {
       expect(PlusPcVideo.mpvOptions['deband'], 'yes');
       expect(PlusPcVideo.mpvOptions['deband-grain'], '0');
       expect(PlusPcVideo.mpvOptions['scale'], 'ewa_lanczossharp');
+    });
+  });
+
+  group('PC volume buttons in the bar layout', () {
+    test('added at the start of the right side unless placed or hidden', () {
+      final left = <String>['playlist'], right = <String>['shaders', 'tracks'];
+      plusAddVolumeButtonIds(left, right, []);
+      if (PlusDesktopVolume.supported) {
+        expect(right, ['volume', 'brightness', 'shaders', 'tracks']);
+      } else {
+        expect(right, ['shaders', 'tracks']);
+      }
+      final r2 = <String>['tracks', 'volume'];
+      plusAddVolumeButtonIds(<String>[], r2, ['brightness']);
+      expect(r2, PlusDesktopVolume.supported ? ['tracks', 'volume'] : ['tracks']);
     });
   });
 }

@@ -104,6 +104,13 @@ class _AudioOption {
 }
 
 final List<_BottomControl> _bottomControls = [
+  // AnymeX+: PC volume and brightness buttons (hover for a slider).
+  if (!Platform.isAndroid && !Platform.isIOS) ...[
+    const _BottomControl(
+        id: 'volume', name: 'Volume', icon: Icons.volume_up_rounded),
+    const _BottomControl(
+        id: 'brightness', name: 'Brightness', icon: Icons.brightness_6_rounded),
+  ],
   const _BottomControl(
       id: 'playlist',
       name: 'Playlist',
@@ -121,7 +128,7 @@ final List<_BottomControl> _bottomControls = [
   const _BottomControl(
       id: 'tracks', name: 'Subtitles', icon: Icons.subtitles_rounded),
   const _BottomControl(
-      id: 'audio', name: 'Audio', icon: Icons.volume_up_rounded),
+      id: 'audio', name: 'Audio', icon: Icons.record_voice_over_rounded),
   const _BottomControl(
       id: 'sync_subs', name: 'Sync Subs', icon: Icons.sync_rounded),
   const _BottomControl(id: 'speed', name: 'Speed', icon: Icons.speed_rounded),
@@ -340,7 +347,15 @@ class _SettingsPlayerState extends State<SettingsPlayer>
         final position = control.defaultPosition == 'left'
             ? _leftButtonIds
             : _rightButtonIds;
-        position.add(control.id);
+        // AnymeX+: volume/brightness start the right side, like in the bar.
+        if (control.id == 'volume') {
+          position.insert(0, control.id);
+        } else if (control.id == 'brightness') {
+          final v = position.indexOf('volume');
+          position.insert(v + 1, control.id);
+        } else {
+          position.add(control.id);
+        }
         _buttonConfigs[control.id] = {'visible': true};
         changed = true;
       }

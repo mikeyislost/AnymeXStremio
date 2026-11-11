@@ -240,12 +240,19 @@ class BottomControls extends StatelessWidget {
         List<String>.from(decodedConfig['leftButtonIds'] ?? []);
     final List<String> rightButtonIds =
         List<String>.from(decodedConfig['rightButtonIds'] ?? []);
+    // AnymeX+: PC volume/brightness buttons start the right side until the
+    // settings place or hide them.
+    plusAddVolumeButtonIds(leftButtonIds, rightButtonIds,
+        List<String>.from(decodedConfig['hiddenButtonIds'] ?? []));
     final Map<String, dynamic> buttonConfigs =
         Map<String, dynamic>.from(decodedConfig['buttonConfigs'] ?? {});
     bool isVisible(String id) =>
         (buttonConfigs[id]?['visible'] as bool?) ?? true;
 
     final Map<String, Widget> buttonWidgets = {
+      // AnymeX+: PC volume and brightness (hover for a slider)
+      'volume': PlusSliderButton(controller: controller),
+      'brightness': PlusSliderButton(controller: controller, brightness: true),
       'playlist': ControlButton(
         icon: Icons.playlist_play_rounded,
         onPressed: () {
@@ -413,6 +420,7 @@ class BottomControls extends StatelessWidget {
         if (widget != null) {
           if (id == 'orientation' ||
               id == 'watch_together' ||
+              id == 'volume' || id == 'brightness' || // AnymeX+
               (widget is ControlButton && widget.compact)) {
             compactButtons.add(widget);
           } else {
@@ -446,11 +454,7 @@ class BottomControls extends StatelessWidget {
     }
 
     final leftButtons = buildButtonList(leftButtonIds);
-    // AnymeX+: PC volume and brightness box leads the right-hand buttons.
-    final rightButtons = [
-      ...plusDesktopVolumeGroup(controller),
-      ...buildButtonList(rightButtonIds)
-    ];
+    final rightButtons = buildButtonList(rightButtonIds);
 
     if (controller.isTorrentStream.value &&
         !leftButtonIds.contains('torrent') &&

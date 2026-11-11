@@ -2,9 +2,9 @@
 //
 // AnymeX only has the phone's swipe gestures (click and drag on PC), and
 // brightness does nothing on a PC screen. Here:
-// - a small box with volume and brightness buttons in the player's bottom
-//   bar; hovering it grows the box upwards with a slider above each button
-//   (click: mute / back to 100%);
+// - "volume" and "brightness" buttons in the player's bottom bar (editable
+//   in Settings → Player → Bottom controls); hovering one swells its box and
+//   grows it upwards with a slider inside (click: mute / back to 100%);
 // - mouse wheel over the video = volume, Shift + wheel = brightness;
 // - Up / Down arrow keys = volume, M = mute;
 // - brightness dims the picture (a dark layer over the video), remembered.
@@ -174,47 +174,51 @@ class _PlusDesktopKeysState extends State<PlusDesktopKeys> {
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
-/// Volume and brightness for the player's bottom bar (PC only): two small
-/// boxes of one button each, working on their own. Hover one and its box
-/// grows upwards with a slider inside, then slides back down when the mouse
-/// leaves. Click: volume = mute, brightness = back to 100%.
-List<Widget> plusDesktopVolumeGroup(PlayerController c) {
-  if (!PlusDesktopVolume.supported) return const [];
-  return [
-    PlusVolumeGroup(controller: c),
-    const SizedBox(width: 8),
-    PlusVolumeGroup(controller: c, brightness: true),
-    const SizedBox(width: 8),
-  ];
+/// Puts "volume" and "brightness" at the start of the right side when the
+/// saved layout doesn't have them yet (PC only; never on phones).
+void plusAddVolumeButtonIds(List<String> left, List<String> right, List<String> hidden) {
+  const ids = ['volume', 'brightness'];
+  if (!PlusDesktopVolume.supported) {
+    left.removeWhere(ids.contains);
+    right.removeWhere(ids.contains);
+    return;
+  }
+  var at = 0;
+  for (final id in ids) {
+    if (left.contains(id) || right.contains(id) || hidden.contains(id)) continue;
+    right.insert(at++, id);
+  }
 }
 
-class PlusVolumeGroup extends StatefulWidget {
+/// The bar buttons "volume" and "brightness" (PC only; ids in the bottom
+/// controls settings). Each is an ordinary button in the bar's button group;
+/// hover it and its own little box swells a few pixels all round, then grows
+/// upwards with a slider inside. Leaving plays the same motion backwards.
+/// Click: volume = mute, brightness = back to 100%.
+class PlusSliderButton extends StatefulWidget {
   final PlayerController controller;
   final bool brightness; // false = volume
-  const PlusVolumeGroup({super.key, required this.controller, this.brightness = false});
+  const PlusSliderButton({super.key, required this.controller, this.brightness = false});
 
   @override
-  State<PlusVolumeGroup> createState() => _PlusVolumeGroupState();
+  State<PlusSliderButton> createState() => _PlusSliderButtonState();
 }
 
-class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProviderStateMixin {
-  static const _grow = 168.0; // how far the box grows upwards
+class _PlusSliderButtonState extends State<PlusSliderButton> with SingleTickerProviderStateMixin {
+  static const _btn = 36.0; // ControlButton's compact box
+  static const _swell = 4.0; // grows this much on every side first
+  static const _rise = 150.0; // then this much upwards
+  static const _split = 0.28; // share of the motion spent swelling
 
   final _link = LayerLink();
   final _portal = OverlayPortalController();
-  final _boxKey = GlobalKey();
+  // One straight timeline; the easing is done per part, so going back is the
+  // exact same path in reverse (no jump at the end).
   late final AnimationController _anim = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 240),
-    reverseDuration: const Duration(milliseconds: 200),
-  );
-  late final Animation<double> _t = CurvedAnimation(
-    parent: _anim,
-    curve: Curves.easeOutCubic,
-    reverseCurve: Curves.easeInCubic,
+    duration: const Duration(milliseconds: 360),
   );
   bool _overBar = false, _overPop = false, _dragging = false;
-  Size _size = const Size(56, 48);
   Timer? _close, _keepUp;
 
   PlayerController get c => widget.controller;
@@ -223,10 +227,7 @@ class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProv
   void initState() {
     super.initState();
     _anim.addStatusListener((s) {
-      if (s == AnimationStatus.dismissed && _portal.isShowing) {
-        _portal.hide();
-        if (mounted) setState(() {});
-      }
+      if (s == AnimationStatus.dismissed && _portal.isShowing) _portal.hide();
     });
   }
 
@@ -239,12 +240,16 @@ class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProv
   }
 
   void _update() {
+    _close?.cancel();
     if (_overBar || _overPop || _dragging) {
-      _close?.cancel();
-      _open();
+      if (!_portal.isShowing) _portal.show();
+      _anim.forward();
+      c.onUserInteraction();
+      _keepUp ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) c.onUserInteraction();
+      });
     } else {
-      _close?.cancel();
-      _close = Timer(const Duration(milliseconds: 220), () {
+      _close = Timer(const Duration(milliseconds: 180), () {
         _keepUp?.cancel();
         _keepUp = null;
         if (mounted) _anim.reverse();
@@ -252,166 +257,160 @@ class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProv
     }
   }
 
-  void _open() {
-    final box = _boxKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box != null && box.hasSize) _size = box.size;
-    if (!_portal.isShowing) {
-      _portal.show();
-      setState(() {});
-    }
-    _anim.forward();
-    // Keep the player's controls up while the box is open.
-    c.onUserInteraction();
-    _keepUp ??= Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) c.onUserInteraction();
-    });
+  IconData get _icon {
+    if (widget.brightness) return Icons.brightness_6_rounded;
+    final v = c.volume.value;
+    if (v <= 0) return Icons.volume_off_rounded;
+    return v < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded;
   }
 
-  BoxDecoration _decoration(BuildContext context, double t) {
+  double get _value => widget.brightness ? c.brightness.value : c.volume.value;
+  double get _min => widget.brightness ? PlusDesktopVolume.minBrightness : 0;
+  double get _max => widget.brightness ? 1.0 : PlusDesktopVolume.maxVolume;
+
+  void _tap() => widget.brightness
+      ? PlusDesktopVolume.setBrightness(c, 1.0)
+      : PlusDesktopVolume.toggleMute(c);
+
+  void _change(double x) => widget.brightness
+      ? PlusDesktopVolume.setBrightness(c, x, save: false)
+      : c.setVolume(PlusDesktopVolume.clampVolume(x), isDragging: true);
+
+  void _end(double x) => widget.brightness
+      ? PlusDesktopVolume.setBrightness(c, x)
+      : c.setVolume(PlusDesktopVolume.clampVolume(x));
+
+  // The hovered button's own colours (as in ControlButton), and the colours
+  // of the open box.
+  ({Color bg, Color border}) _colors(BuildContext context, double open) {
     final theme = context.theme;
-    final isDark = theme.brightness == Brightness.dark;
-    // Same look as the bar's other button groups, a little darker as it
-    // opens so the sliders read well over the video.
-    final base = isDark
-        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
-        : theme.colorScheme.surfaceContainerHighest;
-    final open = isDark ? const Color(0xD9141418) : theme.colorScheme.surfaceContainerHighest;
-    return BoxDecoration(
-      color: Color.lerp(base, open, t),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: theme.colorScheme.outline.withValues(alpha: isDark ? 0.15 : 0.3),
-        width: 0.5,
-      ),
-    );
+    final dark = theme.brightness == Brightness.dark;
+    final p = theme.colorScheme.primary;
+    final hoverBg = dark ? p.withValues(alpha: 0.1) : theme.colorScheme.surfaceContainerHigh;
+    final hoverBorder = dark ? p.withValues(alpha: 0.3) : theme.colorScheme.outline.withValues(alpha: 0.4);
+    final openBg = dark
+        ? Color.alphaBlend(p.withValues(alpha: 0.12), const Color(0xF0141418))
+        : theme.colorScheme.surfaceContainerHigh;
+    return (bg: Color.lerp(hoverBg, openBg, open)!, border: hoverBorder);
   }
 
-  Widget _buttons() {
-    if (widget.brightness) {
-      return ControlButton(
-        icon: Icons.brightness_6_rounded,
-        onPressed: () => PlusDesktopVolume.setBrightness(c, 1.0),
-        compact: true,
-      );
-    }
-    return Obx(() {
-      final v = c.volume.value;
-      return ControlButton(
-        icon: v <= 0
-            ? Icons.volume_off_rounded
-            : (v < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
-        onPressed: () => PlusDesktopVolume.toggleMute(c),
-        compact: true,
-      );
-    });
-  }
-
-  Widget _slider(BuildContext context, double value, double min, double max, String pct,
-      ValueChanged<double> onChanged, ValueChanged<double> onEnd) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(pct, style: const TextStyle(color: Colors.white, fontSize: 11)),
-          Expanded(
-            child: RotatedBox(
-              quarterTurns: 3,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 4,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                  activeTrackColor: Colors.white,
-                  inactiveTrackColor: Colors.white24,
-                  thumbColor: Colors.white,
-                ),
-                child: Slider(
-                  value: value.clamp(min, max).toDouble(),
-                  min: min,
-                  max: max,
-                  onChangeStart: (_) {
-                    _dragging = true;
-                    _update();
-                  },
-                  onChanged: onChanged,
-                  onChangeEnd: (x) {
-                    _dragging = false;
-                    onEnd(x);
-                    _update();
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // The open box, drawn over the bar's own box (same spot, same width).
   Widget _popup(BuildContext context) {
     return Obx(() {
       if (!c.showControls.value) return const SizedBox.shrink();
-      return CompositedTransformFollower(
-        link: _link,
-        targetAnchor: Alignment.bottomLeft,
-        followerAnchor: Alignment.bottomLeft,
-        child: Align(
-          alignment: Alignment.bottomLeft,
-          widthFactor: 1,
-          heightFactor: 1,
-          child: MouseRegion(
-            onEnter: (_) {
-              _overPop = true;
-              _update();
-            },
-            onExit: (_) {
-              _overPop = false;
-              _update();
-            },
-            child: AnimatedBuilder(
-              animation: _t,
-              builder: (context, _) {
-                final t = _t.value;
-                return Container(
-                  width: _size.width,
-                  height: _size.height + _grow * t,
-                  decoration: _decoration(context, t),
+      final iconColor = context.theme.brightness == Brightness.dark
+          ? context.theme.colorScheme.primary
+          : context.theme.colorScheme.onSurface;
+      final icon = _icon, value = _value;
+      return AnimatedBuilder(
+        animation: _anim,
+        builder: (context, _) {
+          final t = _anim.value;
+          final swell = Curves.easeOutCubic.transform((t / _split).clamp(0.0, 1.0));
+          final rise = Curves.easeInOutCubic.transform(((t - _split) / (1 - _split)).clamp(0.0, 1.0));
+          final grow = _swell * swell;
+          final w = _btn + grow * 2, h = _btn + grow * 2 + _rise * rise;
+          final col = _colors(context, swell);
+          return CompositedTransformFollower(
+            link: _link,
+            targetAnchor: Alignment.bottomCenter,
+            followerAnchor: Alignment.bottomCenter,
+            offset: Offset(0, grow), // swells downwards too
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              widthFactor: 1,
+              heightFactor: 1,
+              child: MouseRegion(
+                onEnter: (_) {
+                  _overPop = true;
+                  _update();
+                },
+                onExit: (_) {
+                  _overPop = false;
+                  _update();
+                },
+                child: Container(
+                  width: w,
+                  height: h,
                   clipBehavior: Clip.antiAlias,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: col.bg,
+                    borderRadius: BorderRadius.circular(12 + grow),
+                    border: Border.all(color: col.border, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35 * swell),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
                   child: Column(
                     children: [
-                      if (t > 0.05)
+                      if (rise > 0.02)
                         Expanded(
                           child: Opacity(
-                            opacity: ((t - 0.35) / 0.65).clamp(0.0, 1.0),
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Obx(() => Row(
-                                    children: [
-                                      if (widget.brightness)
-                                        _slider(context, c.brightness.value, PlusDesktopVolume.minBrightness, 1.0,
-                                            '${(c.brightness.value * 100).round()}%',
-                                            (x) => PlusDesktopVolume.setBrightness(c, x, save: false),
-                                            (x) => PlusDesktopVolume.setBrightness(c, x))
-                                      else
-                                        _slider(context, c.volume.value, 0, PlusDesktopVolume.maxVolume,
-                                            '${(c.volume.value * 100).round()}%',
-                                            (x) => c.setVolume(PlusDesktopVolume.clampVolume(x), isDragging: true),
-                                            (x) => c.setVolume(PlusDesktopVolume.clampVolume(x))),
-                                    ],
-                                  )),
+                            opacity: ((rise - 0.3) / 0.7).clamp(0.0, 1.0),
+                            child: OverflowBox(
+                              alignment: Alignment.bottomCenter,
+                              minHeight: _rise,
+                              maxHeight: _rise,
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  Text('${(value * 100).round()}%',
+                                      style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                  Expanded(
+                                    child: RotatedBox(
+                                      quarterTurns: 3,
+                                      child: SliderTheme(
+                                        data: SliderTheme.of(context).copyWith(
+                                          trackHeight: 4,
+                                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                                          activeTrackColor: Colors.white,
+                                          inactiveTrackColor: Colors.white24,
+                                          thumbColor: Colors.white,
+                                        ),
+                                        child: Slider(
+                                          value: value.clamp(_min, _max).toDouble(),
+                                          min: _min,
+                                          max: _max,
+                                          onChangeStart: (_) {
+                                            _dragging = true;
+                                            _update();
+                                          },
+                                          onChanged: _change,
+                                          onChangeEnd: (x) {
+                                            _dragging = false;
+                                            _end(x);
+                                            _update();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      // Same buttons as in the bar, at the bottom of the box.
-                      SizedBox(height: _size.height - 12, child: Center(child: _buttons())),
+                      // The button itself, at the bottom of the box.
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _tap,
+                        child: SizedBox(
+                          width: w,
+                          height: _btn + grow * 2 - 2,
+                          child: Center(child: Icon(icon, size: 20, color: iconColor)),
+                        ),
+                      ),
                     ],
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
     });
   }
@@ -419,29 +418,36 @@ class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     if (!PlusDesktopVolume.supported) return const SizedBox.shrink();
-    final open = _portal.isShowing;
     return OverlayPortal(
       controller: _portal,
       overlayChildBuilder: _popup,
-      child: CompositedTransformTarget(
-        link: _link,
-        child: MouseRegion(
-          onEnter: (_) {
-            _overBar = true;
-            _update();
-          },
-          onExit: (_) {
-            _overBar = false;
-            _update();
-          },
-          // While open, the box in the overlay stands in for this one.
-          child: Opacity(
-            opacity: open ? 0 : 1,
-            child: Container(
-              key: _boxKey,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: _decoration(context, 0),
-              child: _buttons(),
+      child: MouseRegion(
+        onEnter: (_) {
+          _overBar = true;
+          _update();
+        },
+        onExit: (_) {
+          _overBar = false;
+          _update();
+        },
+        child: Padding(
+          // ControlButton's own side margin, outside the link so the box
+          // lines up with the button's box.
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: CompositedTransformTarget(
+            link: _link,
+            child: SizedBox(
+              width: _btn,
+              height: _btn,
+              child: widget.brightness
+                  ? OverflowBox(
+                      maxWidth: _btn + 6,
+                      child: ControlButton(icon: _icon, onPressed: _tap, compact: true),
+                    )
+                  : Obx(() => OverflowBox(
+                        maxWidth: _btn + 6,
+                        child: ControlButton(icon: _icon, onPressed: _tap, compact: true),
+                      )),
             ),
           ),
         ),
