@@ -12,18 +12,18 @@
       "iconUri": "https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/tv-icon.png",
       "manifest": {
         "id": "com.mikeyislost.anymexplus.tv",
-        "version": "1.1.67",
+        "version": "1.1.68",
         "type": "web",
         "title": "AnymeX+ TV",
         "appDescription": "AnymeX+ on the TV: pairs with AnymeX+ on your phone, which works as its remote. Test build.",
         "iconUri": "https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/tv-icon.png",
         "sourceUrl": "https://github.com/mikeyislost/AnymeXStremio",
         "rootRequired": false,
-        "ipkUrl": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B12/AnymeX-Plus-TV-v1.1.3-beta.12.ipk",
+        "ipkUrl": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B13/AnymeX-Plus-TV-v1.1.3-beta.13.ipk",
         "ipkHash": {
-          "sha256": "1bf7f20b3da78803e01a5c88f43704cce5dcbfb74526b07c85d70fa8ad864ac5"
+          "sha256": "fa0a5810a6edb6704a87ec87de1d795a328838e21ec8a12ac75ebd2f3387f343"
         },
-        "ipkSize": 62894
+        "ipkSize": 62896
       },
       "pool": "main",
       "shortDescription": "AnymeX+ on the TV: pairs with AnymeX+ on your phone, which works as its remote. Test build."

@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "67",
-      "versionDate": "2026-11-11T05:13:33Z",
-      "versionDescription": "Beta v1.1.3-beta+12\n\n- PC volume/brightness: buttons in the bottom bar with hover sliders",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B12/AnymeX-Stremio-v1.1.3-beta.12.ipa",
-      "size": 75576450,
+      "buildVersion": "68",
+      "versionDate": "2026-11-11T05:51:28Z",
+      "versionDescription": "Beta v1.1.3-beta+13\n\n- PC player: expanding volume box, external player, audio icon, focus log\n  - Volume and brightness are their own small box in the bottom bar; hover it and the box grows upwards (animated, 240 ms ease out) with a slider above each button, then slides back down when the mouse leaves.\n  - External player on Windows opened the link in the browser, which just downloaded the episode. It now opens in mpv, VLC, MPC-HC or PotPlayer (first installed one; headers passed to mpv/VLC), or says to install one.\n  - The Audio track button had the same speaker icon as volume: now a \"voice\" icon.\n  - Focus bug (AnymeX loses focus to a game behind it after about a second): [focus] lines in the app log say which window took focus and from which program, to find the cause.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B13/AnymeX-Stremio-v1.1.3-beta.13.ipa",
+      "size": 75586288,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "67",
-          "date": "2026-11-11T05:13:33Z",
-          "localizedDescription": "Beta v1.1.3-beta+12\n\n- PC volume/brightness: buttons in the bottom bar with hover sliders",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B12/AnymeX-Stremio-v1.1.3-beta.12.ipa",
-          "size": 75576450,
+          "buildVersion": "68",
+          "date": "2026-11-11T05:51:28Z",
+          "localizedDescription": "Beta v1.1.3-beta+13\n\n- PC player: expanding volume box, external player, audio icon, focus log\n  - Volume and brightness are their own small box in the bottom bar; hover it and the box grows upwards (animated, 240 ms ease out) with a slider above each button, then slides back down when the mouse leaves.\n  - External player on Windows opened the link in the browser, which just downloaded the episode. It now opens in mpv, VLC, MPC-HC or PotPlayer (first installed one; headers passed to mpv/VLC), or says to install one.\n  - The Audio track button had the same speaker icon as volume: now a \"voice\" icon.\n  - Focus bug (AnymeX loses focus to a game behind it after about a second): [focus] lines in the app log say which window took focus and from which program, to find the cause.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B13/AnymeX-Stremio-v1.1.3-beta.13.ipa",
+          "size": 75586288,
           "minOSVersion": "15.0"
         }
       ]
