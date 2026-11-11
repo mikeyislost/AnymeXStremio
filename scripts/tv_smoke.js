@@ -487,6 +487,10 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
 
   // Back out of the player half way: resume point, details again.
   video.ended = false; video.currentTime = 300;
+  press(KEY.up);
+  press(KEY.back);
+  check('Back with the buttons up hides them, the video keeps going', screenNow() === 'player' &&
+    $('osd').classList.contains('away') && focusName() === '', focusName());
   press(KEY.back);
   await wait(80);
   check('Back returns to details on that episode', screenNow() === 'details' && /^S1 E2/.test(focusName()), focusName());
@@ -592,7 +596,7 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   sock.onclose();
   check('phone gone while playing → no message on screen', $('pnote').classList.contains('hidden') && screenNow() === 'player');
   reconnect();
-  press(KEY.back);
+  press(KEY.back); press(KEY.back);   // buttons first (they show at the start), then the video
   await wait(80);
   const aput = puts[puts.length - 1].changes[0];
   check('progress goes to the Stremio library under the Kitsu id', aput._id === 'kitsu:46474' && aput.state.video_id === 'kitsu:46474:4' &&

@@ -1496,7 +1496,8 @@ window.AXBrowse = function (A) {
   // (subtitles, audio, streams, episodes) that open as a sheet on the right.
   //
   // Remote: Left / Right seek (hold on for bigger jumps), OK pauses, Up /
-  // Down bring up the buttons. Back closes a menu, else leaves the video.
+  // Down bring up the buttons. Back closes a menu, then hides the buttons,
+  // then leaves the video.
 
   var K_SUBSIZE = 'anymexplus_tv_subsize', K_PREF = 'anymexplus_tv_trackpref';
   var subSize = load(K_SUBSIZE, 100);
@@ -1522,6 +1523,12 @@ window.AXBrowse = function (A) {
     if (A.screen() !== 'player') return;
     var v = A.video(), p = A.playing();
     if (tracksOpen || seekTo != null || !v || v.paused || (p && p.error)) { osdTimer = setTimeout(sleepOsd, 2000); return; }
+    hideOsd();
+  }
+
+  function hideOsd() {
+    clearTimeout(osdTimer);
+    commitSeek();
     $('osd').classList.add('away');
     $('player').classList.remove('ctl');
     A.setFocus(null);
@@ -1601,7 +1608,11 @@ window.AXBrowse = function (A) {
       if (k === 'back') closeTracks(true); else key(k);
       return true;
     }
-    if (k === 'back') return false;   // leave the video
+    if (k === 'back') {
+      // Buttons up: Back hides them. Only a Back with nothing on screen leaves.
+      if (osdShown()) { hideOsd(); return true; }
+      return false;
+    }
     var f = A.focused();
     var up = osdShown() && f && $('osd').contains(f);
     wake();
