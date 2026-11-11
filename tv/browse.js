@@ -158,7 +158,7 @@ window.AXBrowse = function (A) {
   var homeTouched = false;
 
   function root() {
-    if (A.screen() === 'player') return $('tpanel');
+    if (A.screen() === 'player') return tracksOpen ? $('tpanel') : $('osd');
     if (panelOpen) return $('spanel');
     return $(A.screen());
   }
@@ -220,6 +220,7 @@ window.AXBrowse = function (A) {
     reveal(node);
     if (!panelOpen && !tracksOpen) lastFocus[A.screen()] = node;
     if (A.screen() === 'home' && node._card) showHomeInfo(node._card);
+    if (tracksOpen) menuFocus(node);
   }
 
   function focusFirst() {
@@ -235,6 +236,16 @@ window.AXBrowse = function (A) {
     var its = items(g), i = its.indexOf(f);
     var vert = g.getAttribute('data-dir') === 'v';
     var along = vert ? dy : dx, across = vert ? dx : dy;
+    if (vert && g.getAttribute('data-col')) {
+      // Menu columns side by side: up / down stay in the column.
+      if (along) { if (its[i + along]) focusOn(its[i + along]); return; }
+      var cg = gs[gs.indexOf(g) + across];
+      if (!cg || !cg.getAttribute('data-col')) return;
+      var cits = items(cg), to = null;
+      for (var q = 0; q < cits.length && !to; q++) if (cits[q].classList.contains('sel')) to = cits[q];
+      focusOn(to || (cg._last >= 0 && cits[cg._last]) || onItem(cg));
+      return;
+    }
     var d = 0;
     if (along) {
       if (its[i + along]) { focusOn(its[i + along]); return; }
@@ -304,6 +315,7 @@ window.AXBrowse = function (A) {
     else if (act === 'ep') openStreams(f._video, -1);
     else if (act === 'stream') playStream(f._stream);
     else if (act === 'server') pickServer(f._server);
+    else if (playerAct(act, f)) { /* player buttons and menus */ }
     else if (act === 'sub') pickSub(f._sub);
     else if (act === 'audio') pickAudio(f._audio);
     else if (act === 'resync') { A.send({ t: 'need' }); setSettingsNote(A.connected() ? 'Asked the phone…' : 'The phone is not connected. Open AnymeX+ on it.'); }
@@ -516,9 +528,21 @@ window.AXBrowse = function (A) {
     } else fill([]);
   }
 
+  // Rows the TV leaves out: catalogs of type "other", such as a debrid
+  // addon's Downloads list (raw file names, nothing to watch from there).
+  function shownRows(list) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (r && r.kind === 'cat' && String(r.type || '').toLowerCase() === 'other') continue;
+      out.push(r);
+    }
+    return out;
+  }
+
   function loadHome() {
     var token = ++homeToken;
-    var specs = (bundle && bundle.rows && bundle.rows.length) ? bundle.rows : defaultRows();
+    var specs = shownRows((bundle && bundle.rows && bundle.rows.length) ? bundle.rows : defaultRows());
     var box = $('hrows');
     clear(box);
     box.scrollTop = 0;
@@ -825,35 +849,6 @@ window.AXBrowse = function (A) {
   function hasServers() {
     var p = A.playing();
     return !!(srv && srv.list.length > 1 && p && p.url && p.id === srv.id);
-  }
-
-  function buildServers() {
-    var list = $('tlist');
-    clear(list);
-    if (!hasServers()) return;
-    text($('tptitle'), 'Source');
-    list.appendChild(el('div', 'thead', 'Servers from your phone'));
-    var pick = null;
-    for (var i = 0; i < srv.list.length; i++) {
-      var d = el('div', 'fo sitem' + (srv.on === i ? ' on' : ''), String(srv.list[i]));
-      d.setAttribute('data-act', 'server');
-      d._server = i;
-      list.appendChild(d);
-      if (srv.on === i) pick = d;
-    }
-    if (tracksOpen) focusOn(pick || list.querySelector('.fo'));
-  }
-
-  function pickServer(i) {
-    if (!hasServers()) { closeTracks(); return; }
-    var name = String(srv.list[i]);
-    if (i !== srv.on) {
-      srv.on = i;
-      A.send({ t: 'anime', cmd: 'server', i: i });
-      A.setNote('Switching to ' + name + '…');
-      setTimeout(function () { A.setNote(''); }, 5000);
-    }
-    closeTracks();
   }
 
   // ------------------------------------------------------------------ details
@@ -1248,14 +1243,17 @@ window.AXBrowse = function (A) {
   var cur = null;       // what this TV started by itself
   var localId = 0;
 
-  function playStream(s) {
+  // keep: {url, label, delay} of a subtitle file to carry over (another
+  // stream of the same episode).
+  function playStream(s, keep) {
     if (!s || !det) return;
     var video = s.video;
     closePanel(true);
+    closeTracks();
     cur = {
       type: det.type, id: det.id, videoId: video.id, video: video, meta: det.meta, videos: det.videos,
       binge: s.binge, addon: s.addon, name: s.name, lastPos: Math.round((s.start || 0) * 1000), lastAt: Date.now(),
-      lastSave: Date.now(), sentWatched: false, subs: [], emb: -1, aud: 0
+      lastSave: Date.now(), sentWatched: false, subs: [], emb: -1, aud: 0, delay: keep ? keep.delay || 0 : 0
     };
     var i;
     for (i = 0; i < s.subs.length; i++) {
@@ -1267,7 +1265,11 @@ window.AXBrowse = function (A) {
       start: s.start || 0, kind: kindOf(s), id: -(++localId)
     });
     A.playing().local = true;
+    if (keep && keep.url) { cur.subTouched = true; cur.subOn = keep.url; cur.subLabel = keep.label; A.loadSubs(keep.url, keep.label); }
+    A.playing().subDelay = -(cur.delay || 0);
+    applySubSize();
     readMkvTracks(cur, s);
+    autoSub(cur);
   }
 
   // MKV: name the tracks inside the file (the TV's player doesn't).
@@ -1282,8 +1284,10 @@ window.AXBrowse = function (A) {
       c.mkv = r && (r.audio.length || r.subs.length) ? r : null;
       if (c.mkv) {
         for (var i = 0; i < c.mkv.audio.length; i++) if (c.mkv.audio[i].def) { c.aud = i; break; }
+        autoAudio(c);
       }
-      if (tracksOpen) buildTracks();
+      autoSub(c);
+      if (tracksOpen && (pmode === 'subs' || pmode === 'audio')) renderMenu();
     });
   }
 
@@ -1300,7 +1304,8 @@ window.AXBrowse = function (A) {
                 from: String((addon.manifest && addon.manifest.name) || '') });
             }
           }
-          if (tracksOpen && cur === c) buildTracks();
+          autoSub(c);
+          if (tracksOpen && cur === c && pmode === 'subs') renderMenu();
         });
       })(list[i]);
     }
@@ -1431,7 +1436,7 @@ window.AXBrowse = function (A) {
   // Once a second while the player is up.
   function tick() {
     if (!cur) {
-      if (tracksOpen && !hasServers()) closeTracks();
+      if (tracksOpen && !(pmode === 'servers' && hasServers())) closeTracks(true);
       return;
     }
     if (!A.playing().local) { cur = null; closeTracks(); return; }
@@ -1463,14 +1468,7 @@ window.AXBrowse = function (A) {
     var next = c.type !== 'movie' ? nextVideo(c) : null;
     if (!next) { finish(c, null); return true; }
     A.setNote('Finding the next episode…');
-    var pick = null;
-    collectStreams(c.type, next.id, function (streams, addonName) {
-      for (var i = 0; i < streams.length && !pick; i++) {
-        if (!playable(streams[i])) continue;
-        var s = streamInfo(streams[i], addonName);
-        if ((c.binge && s.binge === c.binge) || (!c.binge && s.addon === c.addon && s.name === c.name)) pick = s;
-      }
-    }, function () {
+    sameStream(c, next, function (pick) {
       if (cur !== c) return;
       A.setNote('');
       if (!pick || !det || det.id !== c.id) { finish(c, next); return; }
@@ -1492,7 +1490,266 @@ window.AXBrowse = function (A) {
     } else A.show('home');
   }
 
-  // ---------------------------------------------- audio / subtitles panel
+  // ------------------------------------------------------- player controls
+  //
+  // Stremio-style: a seek bar and a row of buttons over the video, and menus
+  // (subtitles, audio, streams, episodes) that open as a sheet on the right.
+  //
+  // Remote: Left / Right seek (hold on for bigger jumps), OK pauses, Up /
+  // Down bring up the buttons. Back closes a menu, else leaves the video.
+
+  var K_SUBSIZE = 'anymexplus_tv_subsize', K_PREF = 'anymexplus_tv_trackpref';
+  var subSize = load(K_SUBSIZE, 100);
+  var pref = load(K_PREF, { sub: '', audio: '' });   // languages you picked last
+  var pmode = null;         // the open menu: subs | audio | streams | eps | servers
+  var pTarget = null;       // streams menu: the episode it lists streams for
+  var pLang = null;         // subtitles menu: the language shown on the right
+  var pPart = -1;           // episodes menu: the season shown
+  var menuBack = null, menuToken = 0, menuCols = {};
+  var osdTimer = null;
+  var seekTo = null, seekTimer = null, seekHits = 0, seekAt = 0;
+
+  function osdShown() { return !$('osd').classList.contains('away'); }
+
+  function wake() {
+    $('osd').classList.remove('away');
+    $('player').classList.add('ctl');   // subtitles move up above the controls
+    clearTimeout(osdTimer);
+    osdTimer = setTimeout(sleepOsd, 5000);
+  }
+
+  function sleepOsd() {
+    if (A.screen() !== 'player') return;
+    var v = A.video(), p = A.playing();
+    if (tracksOpen || seekTo != null || !v || v.paused || (p && p.error)) { osdTimer = setTimeout(sleepOsd, 2000); return; }
+    $('osd').classList.add('away');
+    $('player').classList.remove('ctl');
+    A.setFocus(null);
+  }
+
+  function hm(d) {
+    var h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
+  }
+
+  // Every second, and after each key, with the player's state from app.js.
+  function drawPlayer(s) {
+    var osd = $('osd');
+    if (s.paused) osd.classList.add('paused'); else osd.classList.remove('paused');
+    var line = s.error ? 'Problem: ' + s.error : (s.ended ? 'Finished' : (s.waiting && !s.paused ? 'Loading…' : ''));
+    if (s.note) line += (line ? '   ' : '') + '(' + s.note + ')';
+    text($('pstate'), line);
+    var pos = seekTo != null ? seekTo : s.pos, dur = s.dur;
+    var pct = dur ? Math.min(100, Math.max(0, pos / dur * 100)) : 0;
+    $('pfill').style.width = pct + '%';
+    $('pknob').style.left = pct + '%';
+    var v = A.video(), buf = 0;
+    try { if (v && v.buffered && v.buffered.length && dur) buf = v.buffered.end(v.buffered.length - 1) / dur * 100; } catch (e) { /* ignore */ }
+    $('pbuf').style.width = Math.min(100, Math.max(0, buf)) + '%';
+    text($('ppos'), fmt(s.pos));
+    text($('pseekto'), seekTo != null ? fmt(seekTo) + '   (' + (seekTo >= s.pos ? '+' : '−') + fmt(Math.abs(seekTo - s.pos)) + ')' : '');
+    text($('pdur'), dur ? fmt(dur) : '');
+    var now = new Date(), clock = hm(now);
+    if (dur > 0) clock += '\nEnds at ' + hm(new Date(now.getTime() + Math.max(0, dur - s.pos) * 1000));
+    text($('pclock'), clock);
+    updateButtons();
+  }
+
+  function mine() { return !!(cur && A.playing() && A.playing().local); }
+
+  function updateButtons() {
+    var m = mine();
+    hide($('bnext'), !(m && cur.type !== 'movie' && nextVideo(cur)));
+    hide($('bsubs'), !m);
+    hide($('baudio'), !m);
+    hide($('bsrc'), !(m || hasServers()));
+    text($('bsrcl'), m ? 'Streams' : 'Source');
+    hide($('beps'), !(m && cur.type !== 'movie' && cur.videos.length > 1));
+    var f = A.focused();
+    if (f && $('pctl').contains(f) && f.classList.contains('hidden')) focusOn($('bpp'));
+  }
+
+  // ---- seeking: each press moves a target; the jump happens when you stop.
+
+  function seekStep(dir) {
+    var v = A.video();
+    if (!v || !A.playing().url) return;
+    var dur = isFinite(v.duration) ? v.duration : 0, now = Date.now();
+    seekHits = now - seekAt < 700 ? seekHits + 1 : 0;
+    seekAt = now;
+    var step = seekHits < 4 ? 10 : (seekHits < 12 ? 30 : 60);
+    var to = Math.max(0, (seekTo != null ? seekTo : (v.currentTime || 0)) + dir * step);
+    if (dur) to = Math.min(to, Math.max(0, dur - 2));
+    seekTo = to;
+    clearTimeout(seekTimer);
+    seekTimer = setTimeout(commitSeek, 800);
+  }
+
+  function commitSeek() {
+    clearTimeout(seekTimer);
+    if (seekTo == null) return;
+    var to = seekTo;
+    seekTo = null;
+    seekHits = 0;
+    A.command({ cmd: 'seekTo', to: to });
+  }
+
+  // Keys while the player is up. True = taken care of here.
+  function playerKey(k) {
+    if (tracksOpen) {
+      if (k === 'back') closeTracks(true); else key(k);
+      return true;
+    }
+    if (k === 'back') return false;   // leave the video
+    var f = A.focused();
+    var up = osdShown() && f && $('osd').contains(f);
+    wake();
+    if (!up) {
+      if (k === 'left' || k === 'right') { focusOn($('pseek')); seekStep(k === 'left' ? -1 : 1); }
+      else if (k === 'ok') { A.command({ cmd: 'toggle' }); focusOn($('bpp')); }
+      else focusOn($('bpp'));
+      return true;
+    }
+    if (f === $('pseek')) {
+      if (k === 'left' || k === 'right') { seekStep(k === 'left' ? -1 : 1); return true; }
+      if (k === 'ok') { if (seekTo != null) commitSeek(); else A.command({ cmd: 'toggle' }); return true; }
+      if (k === 'up') return true;
+    }
+    key(k);
+    return true;
+  }
+
+  // Buttons and menu items (from press()).
+  function playerAct(act, f) {
+    if (act === 'pp') A.command({ cmd: 'toggle' });
+    else if (act === 'seek') { if (seekTo != null) commitSeek(); else A.command({ cmd: 'toggle' }); }
+    else if (act === 'pnext') playNext();
+    else if (act === 'psubs') openMenu('subs');
+    else if (act === 'paudio') openMenu('audio');
+    else if (act === 'psrc') { if (mine()) openMenu('streams', cur.video); else if (hasServers()) openMenu('servers'); }
+    else if (act === 'peps') openMenu('eps');
+    else if (act === 'sublang') pickLang(f._lang);
+    else if (act === 'subfx') subEffect(f._fx);
+    else if (act === 'pstream') switchStream(f._stream);
+    else if (act === 'ppart') { pPart = f._ppart; fillEps(); var e = menuCols.eps && items(menuCols.eps)[0]; if (e) focusOn(e); }
+    else if (act === 'pep') openMenu('streams', f._video);
+    else return false;
+    return true;
+  }
+
+  // ---- menus
+
+  function openMenu(mode, target) {
+    if (mode !== 'servers' && !mine()) return;
+    commitSeek();
+    menuBack = A.focused() && $('osd').contains(A.focused()) ? A.focused() : null;
+    pmode = mode;
+    pTarget = target || null;
+    pLang = null;
+    pPart = -1;
+    tracksOpen = true;
+    hide($('tpanel'), false);
+    A.setFocus(null);
+    renderMenu();
+  }
+
+  // back: opened by you with Back, so the highlight returns to the button.
+  function closeTracks(back) {
+    if (!tracksOpen) return;
+    tracksOpen = false;
+    pmode = null;
+    menuToken++;
+    hide($('tpanel'), true);
+    A.setFocus(null);
+    if (back && A.screen() === 'player') {
+      wake();
+      if (menuBack && shown(menuBack, $('osd'))) focusOn(menuBack); else focusOn($('bpp'));
+    }
+    menuBack = null;
+  }
+
+  function column(cls, head) {
+    var c = el('div', 'grp pcol' + (cls ? ' ' + cls : ''));
+    c.setAttribute('data-dir', 'v');
+    c.setAttribute('data-col', '1');
+    if (head) c.appendChild(el('div', 'thead', head));
+    $('tlist').appendChild(c);
+    return c;
+  }
+
+  function mitem(parent, label, act, key, on) {
+    var d = el('div', 'fo sitem' + (on ? ' on' : ''), label);
+    d.setAttribute('data-act', act);
+    d._key = key;
+    parent.appendChild(d);
+    return d;
+  }
+
+  function onItem(col) {
+    var its = items(col);
+    for (var i = 0; i < its.length; i++) if (its[i].classList.contains('on')) return its[i];
+    return its[0] || null;
+  }
+
+  // Draws the open menu again, keeping the highlight where it was.
+  function renderMenu() {
+    if (!tracksOpen) return;
+    var panel = $('tpanel'), list = $('tlist');
+    var f = A.focused(), keep = f && panel.contains(f) ? f._key : null;
+    menuToken++;
+    clear(list);
+    menuCols = {};
+    text($('tpmsg'), '');
+    panel.classList.remove('wide');
+    var want = null;
+    if (pmode === 'servers') want = renderServers();
+    else if (!cur) { closeTracks(true); return; }
+    else if (pmode === 'subs') want = renderSubs();
+    else if (pmode === 'audio') want = renderAudio();
+    else if (pmode === 'streams') want = renderStreams();
+    else if (pmode === 'eps') want = renderEps();
+    var its = list.querySelectorAll('.fo'), pick = null;
+    for (var i = 0; i < its.length && keep; i++) if (its[i]._key === keep) pick = its[i];
+    pick = pick || want || its[0];
+    if (pick) focusOn(pick);
+  }
+
+  // A menu item got the highlight: the subtitles menu shows that language's
+  // choices, the episodes menu that season.
+  function menuFocus(node) {
+    if (pmode === 'subs' && node._lang != null && node._lang !== pLang) { pLang = node._lang; fillVariants(); }
+    else if (pmode === 'eps' && node._ppart != null && node._ppart !== pPart) { pPart = node._ppart; fillEps(); }
+  }
+
+  // ---- the phone's servers (Play on TV from an anime extension)
+
+  function renderServers() {
+    text($('tptitle'), 'Source');
+    var col = column('', 'Servers from your phone'), pick = null;
+    for (var i = 0; i < srv.list.length; i++) {
+      var d = mitem(col, String(srv.list[i]), 'server', 'srv' + i, srv.on === i);
+      d._server = i;
+      if (srv.on === i) pick = d;
+    }
+    return pick;
+  }
+
+  function buildServers() { if (tracksOpen && pmode === 'servers') renderMenu(); }
+
+  function pickServer(i) {
+    if (!hasServers()) { closeTracks(true); return; }
+    var name = String(srv.list[i]);
+    if (i !== srv.on) {
+      srv.on = i;
+      A.send({ t: 'anime', cmd: 'server', i: i });
+      A.setNote('Switching to ' + name + '…');
+      setTimeout(function () { A.setNote(''); }, 5000);
+    }
+    closeTracks(true);
+  }
+
+  // ---- subtitles: languages | choices in that language | delay and size
 
   var LANGS = { eng: 'English', spa: 'Spanish', fre: 'French', fra: 'French', ger: 'German', deu: 'German', ita: 'Italian',
     por: 'Portuguese', pob: 'Portuguese (Brazil)', jpn: 'Japanese', kor: 'Korean', chi: 'Chinese', zho: 'Chinese',
@@ -1502,86 +1759,170 @@ window.AXBrowse = function (A) {
     hun: 'Hungarian', cze: 'Czech', ces: 'Czech', en: 'English', es: 'Spanish', fr: 'French', de: 'German',
     it: 'Italian', pt: 'Portuguese', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', ru: 'Russian', ar: 'Arabic' };
 
-  function langName(code) { return LANGS[String(code).toLowerCase()] || String(code); }
-
-  function titem(label, act, data, on) {
-    var d = el('div', 'fo sitem' + (on ? ' on' : ''), label);
-    d.setAttribute('data-act', act);
-    if (act === 'sub') d._sub = data; else d._audio = data;
-    return d;
+  function langName(code) {
+    var c = String(code || '').toLowerCase();
+    if (LANGS[c]) return LANGS[c];
+    var head = c.split(/[-_]/)[0];
+    if (LANGS[head]) return LANGS[head];
+    return code ? String(code) : 'Unknown';
   }
 
-  function buildTracks() {
-    if (!cur) { buildServers(); return; }
-    text($('tptitle'), 'Audio and subtitles');
-    var list = $('tlist'), keepText = A.focused() && $('tpanel').contains(A.focused()) ? A.focused().textContent : null;
-    clear(list);
-    var v = A.video(), i;
-    list.appendChild(el('div', 'thead', 'Audio'));
-    var tracks = v && v.audioTracks, mkv = cur.mkv;
-    if (mkv && mkv.audio.length) {
-      for (i = 0; i < mkv.audio.length; i++) {
-        list.appendChild(titem(window.AXMkv.label(mkv.audio[i], i + 1), 'audio', { i: i }, cur.aud === i));
-      }
-    } else if (tracks && tracks.length > 1) {
-      for (i = 0; i < tracks.length; i++) {
-        list.appendChild(titem('Audio ' + (i + 1) + (tracks[i].language ? '  ·  ' + langName(tracks[i].language) : '') +
-          (tracks[i].label ? '  ·  ' + tracks[i].label : ''), 'audio', { i: i }, tracks[i].enabled === true));
-      }
-    } else if (cur.mkvLoading) {
-      list.appendChild(el('div', 'pmsg dim', 'Reading the track list…'));
-    } else {
-      list.appendChild(titem('Next audio track (now: ' + (cur.aud + 1) + ')', 'audio', { next: true }, false));
+  // [{key, label, items: [{label, key, data, on}]}]
+  function subGroups(c) {
+    var out = [], by = {}, i;
+    function group(key, label) {
+      if (!by[key]) { by[key] = { key: key, label: label, items: [] }; out.push(by[key]); }
+      return by[key];
     }
-    list.appendChild(el('div', 'thead', 'Subtitles'));
-    list.appendChild(titem('Off', 'sub', { off: true }, cur.subOn == null));
-    if (mkv && mkv.subs.length) {
-      for (i = 0; i < mkv.subs.length; i++) {
-        list.appendChild(titem('In the video: ' + window.AXMkv.label(mkv.subs[i], i + 1), 'sub', { embI: i },
-          cur.subOn === 'emb' + i));
+    group('off', 'Off');
+    if (c.mkv && c.mkv.subs.length) {
+      var e = group('emb', 'In the video');
+      for (i = 0; i < c.mkv.subs.length; i++) {
+        e.items.push({ label: window.AXMkv.label(c.mkv.subs[i], i + 1), key: 'emb' + i, data: { embI: i }, on: c.subOn === 'emb' + i });
       }
-    } else if (!mkv) {
-      list.appendChild(titem('Inside the video: next' + (cur.emb >= 0 ? ' (now: ' + (cur.emb + 1) + ')' : ''), 'sub',
-        { emb: true }, cur.subOn === 'emb'));
+    } else if (!c.mkv && !c.mkvLoading) {
+      group('emb', 'In the video').items.push({ label: 'Next track' + (c.emb >= 0 ? ' (now: ' + (c.emb + 1) + ')' : ''),
+        key: 'embn', data: { emb: true }, on: c.subOn === 'emb' });
     }
-    var subs = cur.subs.slice();
+    var subs = c.subs.slice();
     subs.sort(function (a, b) {
-      var ae = /^en/i.test(a.lang) ? 0 : 1, be = /^en/i.test(b.lang) ? 0 : 1;
-      return ae - be || langName(a.lang).localeCompare(langName(b.lang));
+      var an = langName(a.lang), bn = langName(b.lang);
+      var ap = an === pref.sub ? 0 : (an === 'English' ? 1 : 2), bp = bn === pref.sub ? 0 : (bn === 'English' ? 1 : 2);
+      return ap - bp || an.localeCompare(bn);
     });
-    var perLang = {};
     for (i = 0; i < subs.length; i++) {
-      var n = perLang[subs[i].lang] = (perLang[subs[i].lang] || 0) + 1;
-      if (n > 6) continue;
-      list.appendChild(titem(langName(subs[i].lang) + ' ' + n + (subs[i].from ? '  ·  ' + subs[i].from : ''), 'sub',
-        { url: subs[i].url, label: langName(subs[i].lang) }, cur.subOn === subs[i].url));
+      var name = langName(subs[i].lang), g = group('l:' + name, name);
+      if (g.items.length >= 15) continue;
+      g.items.push({ label: name + ' ' + (g.items.length + 1) + (subs[i].from ? '  ·  ' + subs[i].from : ''),
+        key: 'u:' + subs[i].url, data: { url: subs[i].url, label: name }, on: c.subOn === subs[i].url });
     }
-    var its = items(list), pick = its[0];
-    for (i = 0; i < its.length; i++) if (keepText && its[i].textContent === keepText) pick = its[i];
-    if (tracksOpen) focusOn(pick);
+    return out;
   }
 
-  function openTracks() {
-    if (!cur && !hasServers()) return;
-    tracksOpen = true;
-    hide($('tpanel'), false);
-    buildTracks();
+  function groupOn(g, c) {
+    if (g.key === 'off') return c.subOn == null;
+    for (var i = 0; i < g.items.length; i++) if (g.items[i].on) return true;
+    return false;
   }
 
-  function closeTracks() {
-    if (!tracksOpen) return;
-    tracksOpen = false;
-    hide($('tpanel'), true);
-    A.setFocus(null);
+  function renderSubs() {
+    var c = cur, groups = subGroups(c), i, pick = null;
+    text($('tptitle'), 'Subtitles');
+    $('tpanel').classList.add('wide');
+    if (c.mkvLoading) text($('tpmsg'), 'Reading the subtitles inside the video…');
+    if (pLang == null) {
+      for (i = 0; i < groups.length; i++) if (groupOn(groups[i], c)) pLang = groups[i].key;
+      if (pLang == null) pLang = 'off';
+    }
+    var langs = menuCols.langs = column('narrow', 'Language');
+    for (i = 0; i < groups.length; i++) {
+      var d = mitem(langs, groups[i].label + (groups[i].items.length > 1 ? '  (' + groups[i].items.length + ')' : ''),
+        'sublang', 'g:' + groups[i].key, groupOn(groups[i], c));
+      d._lang = groups[i].key;
+      if (groups[i].key === pLang) { d.classList.add('sel'); pick = d; }
+    }
+    menuCols.vars = column('', '');
+    menuCols.groups = groups;
+    fillVariants();
+    var fx = menuCols.fx = column('narrow', 'Settings');
+    fx.appendChild(el('div', 'fxval', ''));
+    var fxs = [['later', 'Delay +0.25 s'], ['earlier', 'Delay −0.25 s'], ['bigger', 'Bigger'], ['smaller', 'Smaller'], ['reset', 'Reset']];
+    for (i = 0; i < fxs.length; i++) mitem(fx, fxs[i][1], 'subfx', 'fx:' + fxs[i][0], false)._fx = fxs[i][0];
+    showFx();
+    return pick;
   }
 
-  function pickSub(s) {
-    if (!cur || !s) return;
-    if (s.off) { cur.subOn = null; A.clearSubs(); A.selectSub(-1); }
-    else if (s.embI != null) { cur.emb = s.embI; cur.subOn = 'emb' + s.embI; A.clearSubs(); A.selectSub(s.embI); }
-    else if (s.emb) { cur.emb++; cur.subOn = 'emb'; A.clearSubs(); A.selectSub(cur.emb); checkSub(cur, cur.emb); }
-    else { cur.subOn = s.url; A.loadSubs(s.url, s.label); }
-    buildTracks();
+  function fillVariants() {
+    var col = menuCols.vars, groups = menuCols.groups || [];
+    if (!col) return;
+    clear(col);
+    var langs = menuCols.langs ? items(menuCols.langs) : [];
+    for (var j = 0; j < langs.length; j++) {
+      if (langs[j]._lang === pLang) langs[j].classList.add('sel'); else langs[j].classList.remove('sel');
+    }
+    var g = null;
+    for (var i = 0; i < groups.length; i++) if (groups[i].key === pLang) g = groups[i];
+    col.appendChild(el('div', 'thead', g ? g.label : ''));
+    if (!g || g.key === 'off') { col.appendChild(el('div', 'pmsg dim', g ? 'Press OK to turn subtitles off.' : '')); return; }
+    for (var k = 0; k < g.items.length; k++) {
+      var it = g.items[k];
+      mitem(col, it.label, 'sub', it.key, it.on)._sub = it.data;
+    }
+  }
+
+  function showFx() {
+    var box = menuCols.fx && menuCols.fx.querySelector('.fxval');
+    if (!box) return;
+    var d = (cur && cur.delay) || 0;
+    var s = 'Delay: ' + (d > 0 ? '+' : (d < 0 ? '−' : '')) + Math.abs(d).toFixed(2) + ' s\nSize: ' + subSize + '%';
+    if (cur && cur.subOn != null && String(cur.subOn).indexOf('emb') === 0) s += '\nDelay and size work on subtitle files only';
+    text(box, s);
+  }
+
+  function applySubSize() {
+    var n = $('subs');
+    if (n) n.style.fontSize = Math.round(54 * subSize / 100) + 'px';
+  }
+
+  function subEffect(fx) {
+    var c = cur;
+    if (!c) return;
+    if (fx === 'later') c.delay = Math.round(((c.delay || 0) + 0.25) * 100) / 100;
+    else if (fx === 'earlier') c.delay = Math.round(((c.delay || 0) - 0.25) * 100) / 100;
+    else if (fx === 'bigger') subSize = Math.min(200, subSize + 10);
+    else if (fx === 'smaller') subSize = Math.max(50, subSize - 10);
+    else if (fx === 'reset') { c.delay = 0; subSize = 100; }
+    A.playing().subDelay = -(c.delay || 0);   // app.js shows a cue at time + subDelay
+    save(K_SUBSIZE, subSize);
+    applySubSize();
+    showFx();
+  }
+
+  // OK on a language: off, or its first choice (or the one already on).
+  function pickLang(key) {
+    if (key === 'off') { pickSub({ off: true }); return; }
+    var groups = menuCols.groups || [], g = null, i;
+    for (i = 0; i < groups.length; i++) if (groups[i].key === key) g = groups[i];
+    if (!g || !g.items.length) return;
+    pLang = key;
+    var on = null;
+    for (i = 0; i < g.items.length; i++) if (g.items[i].on) on = g.items[i];
+    if (!on) { pickSub(g.items[0].data); on = g.items[0]; }
+    else fillVariants();
+    var its = menuCols.vars ? items(menuCols.vars) : [];
+    for (i = 0; i < its.length; i++) if (its[i]._key === on.key) { focusOn(its[i]); return; }
+  }
+
+  // auto: picked by the app from your last language, not by you.
+  function pickSub(s, auto) {
+    var c = cur;
+    if (!c || !s) return;
+    if (!auto) c.subTouched = true;
+    if (s.off) { c.subOn = null; A.clearSubs(); A.selectSub(-1); }
+    else if (s.embI != null) { c.emb = s.embI; c.subOn = 'emb' + s.embI; A.clearSubs(); A.selectSub(s.embI); }
+    else if (s.emb) { c.emb++; c.subOn = 'emb'; A.clearSubs(); A.selectSub(c.emb); checkSub(c, c.emb); }
+    else { c.subOn = s.url; c.subLabel = s.label; A.loadSubs(s.url, s.label); A.playing().subDelay = -(c.delay || 0); }
+    if (!auto && !s.emb) {
+      pref.sub = s.off ? 'off' : (s.embI != null ? langName(c.mkv.subs[s.embI].lang) : s.label);
+      save(K_PREF, pref);
+    }
+    if (tracksOpen && pmode === 'subs') renderMenu();
+  }
+
+  // Turns on subtitles in the language you used last: inside the video
+  // first, else a subtitle file from the stream or an addon.
+  function autoSub(c) {
+    if (cur !== c || c.subTouched || c.subOn != null || c.mkvLoading) return;
+    if (!pref.sub || pref.sub === 'off') return;
+    var i;
+    if (c.mkv) {
+      for (i = 0; i < c.mkv.subs.length; i++) {
+        if (!c.mkv.subs[i].forced && langName(c.mkv.subs[i].lang) === pref.sub) { pickSub({ embI: i }, true); return; }
+      }
+    }
+    for (i = 0; i < c.subs.length; i++) {
+      if (langName(c.subs[i].lang) === pref.sub) { pickSub({ url: c.subs[i].url, label: pref.sub }, true); return; }
+    }
   }
 
   // The TV says no once there are no more tracks: go back to the start.
@@ -1591,13 +1932,40 @@ window.AXBrowse = function (A) {
       c.emb = -1; c.subOn = null;
       A.selectSub(-1);
       A.playing().subNote = '';
-      if (tracksOpen) buildTracks();
+      if (tracksOpen && pmode === 'subs') renderMenu();
     }, 1200);
   }
 
-  function pickAudio(a) {
-    if (!cur || !a) return;
+  // ---- audio
+
+  function renderAudio() {
+    var c = cur, v = A.video(), col = column('', ''), i, pick = null, tracks = v && v.audioTracks, mkv = c.mkv;
+    text($('tptitle'), 'Audio');
+    if (mkv && mkv.audio.length) {
+      for (i = 0; i < mkv.audio.length; i++) {
+        var d = mitem(col, window.AXMkv.label(mkv.audio[i], i + 1), 'audio', 'a' + i, c.aud === i);
+        d._audio = { i: i };
+        if (c.aud === i) pick = d;
+      }
+    } else if (tracks && tracks.length > 1) {
+      for (i = 0; i < tracks.length; i++) {
+        var on = tracks[i].enabled === true;
+        var t = mitem(col, 'Audio ' + (i + 1) + (tracks[i].language ? '  ·  ' + langName(tracks[i].language) : '') +
+          (tracks[i].label ? '  ·  ' + tracks[i].label : ''), 'audio', 'a' + i, on);
+        t._audio = { i: i };
+        if (on) pick = t;
+      }
+    } else if (c.mkvLoading) {
+      col.appendChild(el('div', 'pmsg dim', 'Reading the track list…'));
+    } else {
+      mitem(col, 'Next audio track (now: ' + (c.aud + 1) + ')', 'audio', 'anext', false)._audio = { next: true };
+    }
+    return pick;
+  }
+
+  function pickAudio(a, auto) {
     var c = cur;
+    if (!c || !a) return;
     if (a.next) {
       c.aud++;
       A.selectAudio(c.aud);
@@ -1606,20 +1974,167 @@ window.AXBrowse = function (A) {
         if (cur !== c || c.aud !== i || !A.playing().audioNote) return;
         c.aud = 0;
         A.selectAudio(0);
-        if (tracksOpen) buildTracks();
+        if (tracksOpen && pmode === 'audio') renderMenu();
       }, 1200);
     } else {
       c.aud = a.i;
       A.selectAudio(a.i);
+      if (!auto && c.mkv && c.mkv.audio[a.i]) { pref.audio = langName(c.mkv.audio[a.i].lang); save(K_PREF, pref); }
     }
-    setTimeout(function () { if (tracksOpen && cur === c) buildTracks(); }, 300);
+    setTimeout(function () { if (tracksOpen && pmode === 'audio' && cur === c) renderMenu(); }, 300);
   }
 
-  // Keys while the player is up. True = taken care of here.
-  function playerKey(k) {
-    if (tracksOpen) { key(k); return true; }
-    if (k === 'up' && (cur || hasServers())) { openTracks(); return true; }
-    return false;
+  // The audio language you picked last, when the file has it.
+  function autoAudio(c) {
+    if (!c.mkv || !pref.audio) return;
+    var d = c.mkv.audio[c.aud];
+    if (d && langName(d.lang) === pref.audio) return;
+    for (var i = 0; i < c.mkv.audio.length; i++) {
+      if (langName(c.mkv.audio[i].lang) === pref.audio) { pickAudio({ i: i }, true); return; }
+    }
+  }
+
+  // ---- streams: switch to another stream of this episode (same spot), or
+  // pick one for another episode.
+
+  function renderStreams() {
+    var c = cur, video = pTarget || c.video, col = column('', ''), token = menuToken;
+    var same = video.id === c.videoId, url = A.playing().url, count = 0, hidden = 0;
+    text($('tptitle'), 'Streams' + (c.type !== 'movie' && video.season != null ? '  ·  ' + epLabel(video) +
+      (video.title ? '  ·  ' + video.title : '') : ''));
+    text($('tpmsg'), 'Finding streams…');
+    var cache = c.streams || (c.streams = {});
+    function add(s) {
+      var d = el('div', 'fo sitem' + (same && s.url === url ? ' on' : ''));
+      d.setAttribute('data-act', 'pstream');
+      d.setAttribute('data-name', s.name);
+      d._key = 's:' + s.url;
+      d._stream = s;
+      d.appendChild(el('div', 'sname', s.name));
+      if (s.desc) d.appendChild(el('div', 'sdesc', s.desc));
+      col.appendChild(d);
+      count++;
+      var f = A.focused();
+      if (!f || !$('tpanel').contains(f) || (same && s.url === url)) focusOn(d);
+    }
+    function msg(asked) {
+      if (count) { text($('tpmsg'), same ? 'Picking one keeps your place' : ''); return; }
+      if (!asked) text($('tpmsg'), 'No stream addons for this yet. Add them in AnymeX+ on your phone.');
+      else if (hidden) text($('tpmsg'), 'Nothing the TV can play by itself (' + hidden + ' torrent-only streams).');
+      else text($('tpmsg'), 'No streams found.');
+    }
+    var have = cache[video.id];
+    if (have && have.done) {
+      for (var i = 0; i < have.list.length; i++) add(have.list[i]);
+      hidden = have.hidden;
+      msg(have.asked);
+      return null;
+    }
+    var got = { list: [], hidden: 0, done: false };
+    collectStreams(c.type, video.id, function (streams, addonName) {
+      for (var j = 0; j < streams.length; j++) {
+        if (!playable(streams[j])) { got.hidden++; continue; }
+        var s = streamInfo(streams[j], addonName);
+        s.video = video;
+        got.list.push(s);
+        if (token === menuToken && cur === c) add(s);
+      }
+      hidden = got.hidden;
+    }, function (asked) {
+      got.done = true;
+      got.asked = asked;
+      if (cur === c) cache[video.id] = got;
+      if (token === menuToken && cur === c) msg(asked);
+    });
+    return null;
+  }
+
+  function switchStream(s) {
+    var c = cur;
+    if (!c || !s) return;
+    var same = s.video.id === c.videoId;
+    if (same && s.url === A.playing().url) { closeTracks(true); return; }
+    var v = A.video();
+    saveProgress(false);
+    s.start = same ? ((v && v.currentTime) || 0) : startFor(s.video.id);
+    var keep = same && c.subOn && String(c.subOn).indexOf('emb') !== 0 ? { url: c.subOn, label: c.subLabel, delay: c.delay } : null;
+    closeTracks();
+    playStream(s, keep);
+  }
+
+  // The next episode now: the same kind of stream if there is one, else the
+  // list of its streams.
+  function playNext() {
+    var c = cur;
+    if (!c) return;
+    var next = nextVideo(c);
+    if (!next) return;
+    saveProgress(false);
+    A.setNote('Finding the next episode…');
+    sameStream(c, next, function (pick) {
+      if (cur !== c) return;
+      A.setNote('');
+      if (pick) { pick.video = next; pick.start = 0; playStream(pick); return; }
+      wake();
+      openMenu('streams', next);
+    });
+  }
+
+  // A stream for [video] like the one playing now (same binge group, or same
+  // addon and name).
+  function sameStream(c, video, done) {
+    var pick = null;
+    collectStreams(c.type, video.id, function (streams, addonName) {
+      for (var i = 0; i < streams.length && !pick; i++) {
+        if (!playable(streams[i])) continue;
+        var s = streamInfo(streams[i], addonName);
+        if ((c.binge && s.binge === c.binge) || (!c.binge && s.addon === c.addon && s.name === c.name)) pick = s;
+      }
+    }, function () { done(pick); });
+  }
+
+  // ---- episodes: seasons | episodes; picking one lists its streams.
+
+  function renderEps() {
+    var c = cur, ps = parts(c.videos), i, j, here = -1;
+    text($('tptitle'), 'Episodes');
+    for (i = 0; i < ps.length && here < 0; i++) {
+      for (j = 0; j < ps[i].videos.length; j++) if (ps[i].videos[j].id === c.videoId) { here = i; break; }
+    }
+    if (pPart < 0 || !ps[pPart]) pPart = here >= 0 ? here : 0;
+    menuCols.parts = ps;
+    var pick = null;
+    if (ps.length > 1) {
+      var pc = menuCols.pcol = column('narrow', 'Season');
+      for (i = 0; i < ps.length; i++) {
+        var d = mitem(pc, ps[i].label, 'ppart', 'p' + i, i === here);
+        d._ppart = i;
+        if (i === pPart) d.classList.add('sel');
+      }
+    } else menuCols.pcol = null;
+    menuCols.eps = column('', '');
+    fillEps();
+    var its = items(menuCols.eps);
+    for (i = 0; i < its.length; i++) if (its[i].classList.contains('on')) pick = its[i];
+    return pick;
+  }
+
+  function fillEps() {
+    var col = menuCols.eps, ps = menuCols.parts || [];
+    if (!col || !ps[pPart]) return;
+    clear(col);
+    if (menuCols.pcol) {
+      var pcs = items(menuCols.pcol);
+      for (var k = 0; k < pcs.length; k++) { if (pcs[k]._ppart === pPart) pcs[k].classList.add('sel'); else pcs[k].classList.remove('sel'); }
+    }
+    col.appendChild(el('div', 'thead', ps[pPart].label));
+    var now = Date.now(), list = ps[pPart].videos;
+    for (var i = 0; i < list.length; i++) {
+      var v = list[i];
+      var d = mitem(col, 'E' + v.episode + '  ·  ' + (v.title || 'Episode ' + v.episode) + (v.released > now ? '  ·  not out yet' : ''),
+        'pep', 'e:' + v.id, v.id === cur.videoId);
+      d._video = v;
+    }
   }
 
   // ------------------------------------------------------------------- search
@@ -1765,8 +2280,8 @@ window.AXBrowse = function (A) {
     if (m.t === 'animeEps' || m.t === 'animePlay') return true;   // older idea: episodes from the phone
     if (m.t === 'servers') {
       srv = { id: m.id, list: m.list || [], on: Number(m.on) };
-      if (hasServers()) setHint('▲ Change source');
-      if (tracksOpen && !cur) buildServers();
+      setHint('');
+      buildServers();
       return true;
     }
     if (m.t === 'watchedOk') {
@@ -1796,6 +2311,7 @@ window.AXBrowse = function (A) {
   }
 
   function start() {
+    applySubSize();
     var input = $('sq');
     input.addEventListener('input', onInput);
     input.addEventListener('change', function () { runSearch(input.value); });
@@ -1811,9 +2327,9 @@ window.AXBrowse = function (A) {
   return {
     screens: SCREENS, has: has, start: start, enter: enter, key: key, home: home,
     onMessage: onMessage, onConnected: onConnected, onDisconnected: onDisconnected, helloExtra: helloExtra,
-    tick: tick, ended: ended, leftPlayer: leftPlayer, playerKey: playerKey,
+    tick: tick, ended: ended, leftPlayer: leftPlayer, playerKey: playerKey, wake: wake, drawPlayer: drawPlayer,
     // for tests
-    _test: { parts: parts, mappingFromAniZip: mappingFromAniZip, imdbEpisode: imdbEpisode },
+    _test: { parts: parts, mappingFromAniZip: mappingFromAniZip, imdbEpisode: imdbEpisode, shownRows: shownRows },
     _mergeContinue: mergeContinue, _cleanText: cleanText, _watchedLine: watchedLine,
     _supports: supports, _applyProgress: applyProgress, _baseOf: baseOf
   };

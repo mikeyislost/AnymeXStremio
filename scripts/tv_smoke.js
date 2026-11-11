@@ -366,29 +366,101 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   check('MKV: only small parts of the file are read', rangeReads.every(x => /bytes=\d+-\d+/.test(x)), rangeReads);
   await wait(30);
   video.readyState = 4; video.duration = 1000; video.currentTime = 10; video.fire('loadedmetadata');
+  // Stremio-style controls: Up brings up the buttons, menus open on the right.
+  const menuTexts = () => $('tlist').querySelectorAll('sitem').map(e => e.textContent);
+  const menuItem = (re) => $('tlist').querySelectorAll('sitem').find(e => re.test(e.textContent));
+  function toButton(name) {
+    for (let i = 0; i < 8 && focusName() !== name; i++) press(KEY.right);
+    return focusName() === name;
+  }
   press(KEY.up);
-  check('Up opens audio and subtitles', !$('tpanel').classList.contains('hidden'));
-  const labels = $('tlist').childNodes.map(e => e.textContent);
+  check('Up brings up the controls on the play button', focusName() === 'Play or pause' && !$('osd').classList.contains('away'), focusName());
+  check('buttons for this video: next episode, subtitles, audio, streams, episodes',
+    ['bnext', 'bsubs', 'baudio', 'bsrc', 'beps'].every(id => !$(id).classList.contains('hidden')) && $('bsrcl').textContent === 'Streams');
+  press(KEY.ok);
+  check('OK on the play button pauses', video.paused === true);
+  press(KEY.ok);
+  check('… and plays again', video.paused === false);
+  press(KEY.up);
+  check('Up again reaches the seek bar', focusName() === 'Seek bar', focusName());
+  press(KEY.right); press(KEY.right); press(KEY.right);
+  check('Right on the seek bar moves a target, not the video yet', video.currentTime === 10 && /^0:40/.test($('pseekto').textContent), $('pseekto').textContent);
+  await wait(900);
+  check('… then jumps there', video.currentTime === 40, video.currentTime);
+  press(KEY.down);
+  check('Down goes back to the buttons', focusName() === 'Play or pause', focusName());
+
+  // Audio menu.
+  check('Audio button reachable', toButton('Audio'), focusName());
+  press(KEY.ok);
+  check('Audio opens a menu', !$('tpanel').classList.contains('hidden') && $('tptitle').textContent === 'Audio');
+  const labels = menuTexts();
   check('audio tracks listed by name', labels.includes('English  ·  E-AC3 5.1') && labels.includes('Japanese  ·  AAC stereo'), labels);
-  const jp = $('tlist').childNodes.find(e => e.textContent === 'Japanese  ·  AAC stereo');
-  check('the default audio track is marked', jp && jp.classList.contains('on'));
-  check('subtitles in the video listed by name', labels.includes('In the video: English  ·  Full  ·  SRT') &&
-    labels.includes('In the video: English  ·  PGS  ·  forced'), labels);
+  const jp = menuItem(/^Japanese  ·  AAC stereo$/);
+  check('the default audio track is marked and highlighted', jp && jp.classList.contains('on') && focusName() === 'Japanese  ·  AAC stereo', focusName());
   check('no "next track" buttons when the list is known', !labels.some(l => /next/i.test(l)), labels);
-  press(KEY.ok);   // English E-AC3 is first
+  press(KEY.up); press(KEY.ok);   // English E-AC3
   await wait(350);
-  const en = $('tlist').childNodes.find(e => e.textContent === 'English  ·  E-AC3 5.1');
+  const en = menuItem(/^English  ·  E-AC3 5\.1$/);
   check('choosing an audio track marks it', en && en.classList.contains('on'));
-  const english = $('tlist').childNodes.find(e => /^English 1/.test(e.textContent));
-  check('subtitle from the stream is listed', !!english);
-  while (focusName() !== english.textContent && focusName() !== '') { const before = focusName(); press(KEY.down); if (focusName() === before) break; }
+  check('the language is remembered for next time', JSON.parse(store.get('anymexplus_tv_trackpref')).audio === 'English');
+  press(KEY.back);
+  check('Back closes the menu, the highlight goes back to its button', $('tpanel').classList.contains('hidden') && focusName() === 'Audio', focusName());
+
+  // Subtitles menu: languages | choices | settings.
+  press(KEY.left);
+  check('Subtitles button', focusName() === 'Subtitles', focusName());
+  press(KEY.ok);
+  check('Subtitles opens with three columns', $('tptitle').textContent === 'Subtitles' && $('tlist').childNodes.length === 3);
+  const langs = $('tlist').childNodes[0].querySelectorAll('sitem').map(e => e.textContent);
+  check('languages: off, inside the video, then each language', langs[0] === 'Off' && /^In the video/.test(langs[1]) && langs.some(l => /^English/.test(l)), langs);
+  check('starts on Off (nothing on yet)', focusName() === 'Off', focusName());
+  press(KEY.down);
+  check('highlighting a language shows its choices', $('tlist').childNodes[1].querySelectorAll('sitem').map(e => e.textContent).includes('English  ·  Full  ·  SRT'),
+    $('tlist').childNodes[1].textContent);
+  press(KEY.down);
+  check('English subtitle files listed', /English 1/.test($('tlist').childNodes[1].textContent), $('tlist').childNodes[1].textContent);
   press(KEY.ok);
   await wait();
+  check('OK on a language turns on its first choice', menuItem(/^English 1/).classList.contains('on') && /^English 1/.test(focusName()), focusName());
   video.currentTime = 1.5;
   await wait(200);
   check('subtitle file is fetched and drawn', $('subs').textContent === 'Hello there', $('subs').textContent);
+  press(KEY.right);
+  check('Right reaches the settings column', focusName() === 'Delay +0.25 s', focusName());
+  press(KEY.ok); press(KEY.ok);
+  check('delay shows and moves the subtitles later', /Delay: \+0\.50 s/.test($('tlist').childNodes[2].textContent) && window.AXBrowse && true);
+  video.currentTime = 1.3;
+  await wait(200);
+  check('… so a line starts half a second later', $('subs').textContent === '', $('subs').textContent);
+  press(KEY.down); press(KEY.down); press(KEY.ok);
+  check('subtitle size', $('subs').style.fontSize === '59px' && store.get('anymexplus_tv_subsize') === '110', $('subs').style.fontSize);
+  press(KEY.down); press(KEY.down); press(KEY.ok);
+  check('reset', $('subs').style.fontSize === '54px', $('subs').style.fontSize);
+  check('subtitle language remembered', JSON.parse(store.get('anymexplus_tv_trackpref')).sub === 'English');
   press(KEY.back);
   check('Back closes the panel, not the video', $('tpanel').classList.contains('hidden') && screenNow() === 'player');
+
+  // Streams menu: switch stream at the same spot.
+  check('Streams button', toButton('Streams'), focusName());
+  press(KEY.ok);
+  await wait(60);
+  check('Streams lists this episode\'s streams, the playing one marked', $('tptitle').textContent.indexOf('Streams  ·  S1 E1') === 0 &&
+    focusName() === 'Debrid 1080p' && menuItem(/Debrid 1080p/).classList.contains('on'), [$('tptitle').textContent, focusName()]);
+  press(KEY.ok);
+  check('picking the one already playing just closes', $('tpanel').classList.contains('hidden') && video.src === 'https://cdn.example/tt7654321%3A1%3A1.mkv');
+
+  // Episodes menu.
+  check('Episodes button', toButton('Episodes'), focusName());
+  press(KEY.ok);
+  check('Episodes: seasons | episodes, on this one', $('tptitle').textContent === 'Episodes' && $('tlist').childNodes.length === 2 &&
+    /^E1/.test(focusName()), focusName());
+  press(KEY.down); press(KEY.ok);
+  await wait(60);
+  check('picking an episode lists its streams', /S1 E2/.test($('tptitle').textContent) && focusName() === 'Debrid 1080p', [$('tptitle').textContent, focusName()]);
+  press(KEY.back);
+  press(KEY.left); press(KEY.left); press(KEY.left); press(KEY.left);
+  check('Back to the play button', focusName() === 'Play or pause', focusName());
 
   // The episode ends: progress is saved, the phone is told, the next one plays.
   video.currentTime = 999; video.ended = true;
@@ -404,6 +476,14 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   fromPhone({ t: 'watchedOk', q: w.q });
   check('watched mark leaves the queue when the phone confirms', store.get('anymexplus_tv_wq') === '[]', store.get('anymexplus_tv_wq'));
   check('next episode starts by itself (same kind of stream)', screenNow() === 'player' && video.src === 'https://cdn.example/tt7654321%3A1%3A2.mkv', video.src);
+
+  await wait(80);
+  press(KEY.up);
+  toButton('Subtitles'); press(KEY.ok);
+  const embRow = $('tlist').childNodes[0].querySelectorAll('sitem')[1];
+  check('next episode: subtitles in your last language turn on by themselves (inside the video first)',
+    embRow && /^In the video/.test(embRow.textContent) && embRow.classList.contains('on'), embRow && embRow.textContent);
+  press(KEY.back);
 
   // Back out of the player half way: resume point, details again.
   video.ended = false; video.currentTime = 300;
@@ -535,6 +615,8 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   check('ani.zip: IMDb season and episode of each anime episode', mp && mp.i === 'tt9999999' && mp.k === '' &&
     JSON.stringify(mp.e) === '{"1":[2,1],"2":[2,2]}', mp);
   check('episodes ani.zip does not list yet carry on from the last', BT.imdbEpisode(mp, 5).join(':') === '2:5' && BT.imdbEpisode({ e: null }, 3).join(':') === '1:3');
+  const shown = BT.shownRows([{ kind: 'cw' }, { kind: 'cat', type: 'other', title: 'RealDebrid · Other' }, { kind: 'cat', type: 'movie' }]);
+  check('Home leaves out "other" catalogs (debrid Downloads)', shown.length === 2 && shown.every(r => r.type !== 'other'));
   check('no ids at all → no match', BT.mappingFromAniZip({ mappings: {} }) === null);
 
   press(KEY.down); press(KEY.ok);
@@ -549,7 +631,10 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   fromPhone({ t: 'play', url: 'http://192.168.1.23:9000/proxy.m3u8', title: 'From phone', id: 21, start: 0, kind: 'hls' });
   fromPhone({ t: 'servers', id: 21, on: 0, list: ['HD-1 Sub', 'HD-2 Sub', 'HD-1 Dub'] });
   press(KEY.up);
-  check('Play on TV from the phone: Up lists its servers', $('tptitle').textContent === 'Source' && $('tlist').querySelectorAll('.fo').length === 3);
+  check('Play on TV from the phone: only play and Source', $('bsrcl').textContent === 'Source' && ['bnext', 'bsubs', 'baudio', 'beps'].every(id => $(id).classList.contains('hidden')));
+  for (let i = 0; i < 6 && focusName() !== 'Streams'; i++) press(KEY.right);
+  press(KEY.ok);
+  check('Source lists the phone\'s servers', $('tptitle').textContent === 'Source' && $('tlist').querySelectorAll('fo').length === 3);
   press(KEY.down); press(KEY.ok);
   check('picking a server tells the phone', last('anime').cmd === 'server' && last('anime').i === 1);
   fromPhone({ t: 'stop' });

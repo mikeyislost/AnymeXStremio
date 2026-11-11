@@ -99,21 +99,56 @@
     </div>
   </section>
 
-  <!-- Player: the TV's own video player. -->
+  <!-- Player: the TV's own video player, with Stremio-style controls. -->
   <section id="player" class="screen hidden">
     <video id="video" autoplay></video>
     <div id="subs" class="subs"></div>
     <div id="pnote" class="pnote hidden"></div>
     <div id="osd" class="osd">
-      <div id="ptitle" class="ptitle"></div>
-      <div id="psub" class="psub"></div>
-      <div id="pstate" class="pstate"></div>
-      <div id="phint" class="phint"></div>
-      <div class="bar"><div id="pfill" class="fill"></div></div>
+      <div class="ptop">
+        <div class="ptl2">
+          <div id="ptitle" class="ptitle"></div>
+          <div id="psub" class="psub"></div>
+        </div>
+        <div id="pclock" class="pclock"></div>
+      </div>
+      <div class="pbot">
+        <div id="pstate" class="pstate"></div>
+        <div id="pseekg" class="grp pseekg">
+          <div id="pseek" class="fo pseek" data-act="seek" data-name="Seek bar">
+            <div class="ptrack"><div id="pbuf" class="pbuf"></div><div id="pfill" class="fill"></div><div id="pknob" class="pknob"></div></div>
+          </div>
+        </div>
+        <div class="ptimes"><span id="ppos" class="ppos"></span><span id="pseekto" class="pseekto"></span><span id="pdur" class="pdur"></span></div>
+        <div id="pctl" class="grp pctl">
+          <div id="bpp" class="fo pbtn" data-act="pp" data-name="Play or pause">
+            <svg class="ico ipause" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"></path></svg>
+            <svg class="ico iplay" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"></path></svg>
+          </div>
+          <div id="bnext" class="fo pbtn" data-act="pnext" data-name="Next episode">
+            <svg class="ico" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8zM17 4h3v16h-3z"></path></svg><span class="plab">Next episode</span>
+          </div>
+          <div class="pgap"></div>
+          <div id="bsubs" class="fo pbtn" data-act="psubs" data-name="Subtitles">
+            <svg class="ico" viewBox="0 0 24 24"><path d="M3 5h18v14H3zM5 7v10h14V7zM7 13h4v2H7zM13 13h4v2h-4zM7 10h10v2H7z"></path></svg><span class="plab">Subtitles</span>
+          </div>
+          <div id="baudio" class="fo pbtn" data-act="paudio" data-name="Audio">
+            <svg class="ico" viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3zM15 8a5 5 0 010 8l-1.4-1.4a3 3 0 000-5.2zM17.5 5a9 9 0 010 14l-1.4-1.4a7 7 0 000-11.2z"></path></svg><span class="plab">Audio</span>
+          </div>
+          <div id="bsrc" class="fo pbtn" data-act="psrc" data-name="Streams">
+            <svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v3H4zM4 10.5h16v3H4zM4 16h16v3H4z"></path></svg><span id="bsrcl" class="plab">Streams</span>
+          </div>
+          <div id="beps" class="fo pbtn" data-act="peps" data-name="Episodes">
+            <svg class="ico" viewBox="0 0 24 24"><path d="M3 4h12v12H3zM17 6h2v12H7v-2h10zM21 8h1v12H9v-1h12z"></path></svg><span class="plab">Episodes</span>
+          </div>
+        </div>
+        <div id="phint" class="phint"></div>
+      </div>
     </div>
-    <div id="tpanel" class="panel hidden">
+    <div id="tpanel" class="panel ppanel hidden">
       <div id="tptitle" class="ptl">Audio and subtitles</div>
-      <div id="tlist" class="grp vlist" data-dir="v"></div>
+      <div id="tpmsg" class="pmsg dim"></div>
+      <div id="tlist" class="pcols"></div>
     </div>
   </section>
 

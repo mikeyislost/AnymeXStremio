@@ -22,18 +22,62 @@ h2 { font-size: 40px; margin: 0 0 16px; }
 .focus { border-color: #7c4dff; background: #34285c; }
 #player { padding: 0; background: #000; }
 #video { width: 100%; height: 100%; background: #000; }
-.osd { position: absolute; left: 0; right: 0; bottom: 0; padding: 48px 96px 56px;
-  background: linear-gradient(transparent, rgba(0,0,0,.85)); transition: opacity .4s; }
+/* ---- player (Stremio-style controls) ---- */
+.osd { position: absolute; left: 0; top: 0; right: 0; bottom: 0; transition: opacity .35s; pointer-events: none; }
 .osd.away { opacity: 0; }
-.ptitle { font-size: 44px; margin-bottom: 8px; }
-.pstate { font-size: 28px; color: #c9c9d6; margin-bottom: 20px; white-space: pre-wrap; }
-.bar { height: 10px; background: rgba(255,255,255,.25); border-radius: 5px; overflow: hidden; }
-.fill { height: 100%; width: 0; background: #7c4dff; }
-.psub { font-size: 30px; color: #c9c9d6; margin-bottom: 8px; }
+.ptop { position: absolute; left: 0; right: 0; top: 0; padding: 48px 96px 96px; display: flex; align-items: flex-start;
+  background: linear-gradient(rgba(0,0,0,.8), transparent); }
+.ptl2 { flex: 1; min-width: 0; }
+.ptitle { font-size: 44px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.psub { font-size: 28px; color: #c9c9d6; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .psub:empty { display: none; }
+.pclock { font-size: 28px; color: #c9c9d6; text-align: right; white-space: pre; margin-left: 40px; }
+.pbot { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 96px 40px;
+  background: linear-gradient(transparent, rgba(0,0,0,.88) 45%); }
+.pstate { font-size: 26px; color: #ffd27a; min-height: 34px; margin-bottom: 8px; white-space: pre-wrap; }
+.pseekg { display: block; }
+.pseek { padding: 18px 0; border-radius: 12px; }
+.ptrack { position: relative; height: 8px; background: rgba(255,255,255,.25); border-radius: 4px; transition: height .15s; }
+.pseek.focus .ptrack { height: 14px; border-radius: 7px; }
+.pbuf { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.35); border-radius: inherit; }
+.fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #7c4dff; border-radius: inherit; }
+.pknob { position: absolute; top: 50%; left: 0; width: 0; height: 0; margin: -14px 0 0 -14px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 10px rgba(0,0,0,.6); }
+.pseek.focus .pknob { width: 28px; height: 28px; }
+.ptimes { display: flex; font-size: 28px; color: #dcdce6; margin: 2px 0 18px; }
+.pseekto { flex: 1; text-align: center; color: #b9a4ff; font-weight: bold; }
+.pctl { display: flex; align-items: center; }
+.pbtn { display: flex; align-items: center; height: 76px; padding: 0 22px; margin-right: 14px; border-radius: 38px;
+  border: 4px solid transparent; background: rgba(255,255,255,.08); color: #f2f2f7; white-space: nowrap; }
+.pbtn .ico { width: 40px; height: 40px; fill: currentColor; flex: 0 0 auto; }
+.plab { font-size: 26px; margin-left: 12px; }
+#bpp { width: 76px; padding: 0; justify-content: center; }
+#bpp .iplay { display: none; }
+.osd.paused #bpp .iplay { display: block; }
+.osd.paused #bpp .ipause { display: none; }
+.pgap { flex: 1; }
+.pbtn.focus, .pseek.focus { border-color: transparent; background: rgba(255,255,255,.08); }
+.pbtn.focus { background: #f2f2f7; color: #101014; }
+.pseek.focus { background: transparent; }
+.pseek.focus .fill { background: #9d7bff; }
+
+/* Player menus: a dark sheet on the right with columns, like Stremio's. */
+.ppanel { width: 900px; padding: 56px 48px 40px; background: rgba(16,16,20,.94); }
+.ppanel.wide { width: 1400px; }
+.ppanel .pmsg:empty { display: none; }
+.pcols { position: absolute; left: 48px; right: 48px; top: 130px; bottom: 32px; display: flex; }
+.pcol { position: relative; flex: 1; min-width: 0; height: 100%; overflow: hidden; margin-right: 24px; }
+.pcol:last-child { margin-right: 0; }
+.pcol.narrow { flex: 0 0 320px; }
+.pcol .sitem { padding: 12px 20px; }
+.pcol .sitem.sel { background: #34285c; }
+.ppanel .thead { margin-top: 0; }
+.fxval { font-size: 26px; color: #dcdce6; margin: 0 0 14px; white-space: pre-line; line-height: 1.5; }
 .subs { position: absolute; left: 10%; right: 10%; bottom: 96px; text-align: center; font-size: 54px; line-height: 1.25;
   font-weight: bold; color: #fff; white-space: pre-line; pointer-events: none;
   text-shadow: 0 0 6px #000, 3px 3px 4px #000, -2px -2px 3px #000, 2px -2px 3px #000, -2px 2px 3px #000; }
+#player .subs { transition: bottom .3s; }
+#player.ctl .subs { bottom: 300px; }
 .pnote { position: absolute; left: 96px; top: 56px; padding: 12px 24px; font-size: 26px; background: rgba(0,0,0,.7);
   border-radius: 12px; color: #ffd27a; }
 

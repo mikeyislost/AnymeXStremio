@@ -412,7 +412,6 @@
     show('player');
     text($('ptitle'), playing.title || m.url);
     text($('psub'), playing.sub);
-    text($('pstate'), 'Loading…');
     wakeOsd();
     try {
       video.src = m.url;
@@ -596,23 +595,13 @@
     show(to);
   }
 
+  // The controls (seek bar, buttons, menus) live in browse.js.
   function playerKey(k) {
     if (B.playerKey(k)) { sendState(); return; }
-    if (k === 'ok') playerCommand({ cmd: 'toggle' });
-    else if (k === 'left') playerCommand({ cmd: 'seekBy', by: -10 });
-    else if (k === 'right') playerCommand({ cmd: 'seekBy', by: 10 });
-    else if (k === 'back') leavePlayer();
-    else wakeOsd();
+    if (k === 'back') leavePlayer();
   }
 
-  function wakeOsd() {
-    var osd = $('osd');
-    osd.classList.remove('away');
-    clearTimeout(osdTimer);
-    osdTimer = setTimeout(function () {
-      if (video && !video.paused && !playing.error) osd.classList.add('away');
-    }, 4000);
-  }
+  function wakeOsd() { if (B) B.wake(); }
 
   function trackList(list) {
     var out = [];
@@ -650,14 +639,8 @@
 
   function showPlayerState() {
     var s = playerState();
-    if (!s) return;
-    var line = s.error ? 'Problem: ' + s.error
-      : (s.ended ? 'Finished' : (s.waiting && !s.paused ? 'Loading…' : (s.paused ? 'Paused' : 'Playing')));
-    line += '   ' + fmt(s.pos) + ' / ' + fmt(s.dur);
-    if (s.w) line += '   ' + s.w + '×' + s.h;
-    if (s.note) line += '   (' + s.note + ')';
-    text($('pstate'), line);
-    $('pfill').style.width = (s.dur ? Math.min(100, s.pos / s.dur * 100) : 0) + '%';
+    if (!s || !B) return;
+    B.drawPlayer(s);
   }
 
   function sendState() {
@@ -687,7 +670,7 @@
       screen: function () { return screen; }, focused: function () { return focused; },
       connected: function () { return connected; }, phone: function () { return phone; },
       peer: function () { return peerName; }, video: function () { return video; },
-      playing: function () { return playing; }, play: playVideo, stop: stopVideo,
+      playing: function () { return playing; }, play: playVideo, stop: stopVideo, command: playerCommand,
       selectAudio: selectAudio, selectSub: selectEmbeddedSub, loadSubs: loadSubs, clearSubs: clearSubs,
       exit: leaveApp, forget: forgetPhone
     });
@@ -717,6 +700,7 @@
       if (screen === 'player') {
         if (e.keyCode === 415) playerCommand({ cmd: 'play' });
         else if (e.keyCode === 19) playerCommand({ cmd: 'pause' });
+        else if (e.keyCode === 10252) playerCommand({ cmd: 'toggle' });
         else if (e.keyCode === 413) leavePlayer();
         else if (e.keyCode === 412) playerCommand({ cmd: 'seekBy', by: -30 });
         else if (e.keyCode === 417) playerCommand({ cmd: 'seekBy', by: 30 });
