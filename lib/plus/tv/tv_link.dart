@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/plus/airplay.dart';
 import 'package:anymex/plus/tv/lg_link.dart';
+import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/tv_sync.dart';
 import 'package:get/get.dart';
 
@@ -138,6 +139,7 @@ class PlusTvLink {
   /// Starts listening for the TV app. Safe to call again.
   Future<void> start() async {
     localIp.value = await _findLocalIp();
+    PlusTvProxy.instance.base = () => 'http://${localIp.value}:${port.value}';
     PlusTvSync.instance.attach();
     if (_server != null) return;
     HttpServer server;
@@ -169,6 +171,8 @@ class PlusTvLink {
             req.response.write(vtt);
           }
           await req.response.close();
+        } else if (await PlusTvProxy.instance.handle(req)) {
+          // anime extension video for the TV (tv_proxy.dart)
         } else {
           req.response.statusCode = HttpStatus.notFound;
           await req.response.close();
@@ -234,7 +238,7 @@ class PlusTvLink {
         hello.assignAll(m);
         status.value = PlusTvStatus.connected;
         if (PlusCastSearch.isIp(ip)) PlusCastSearch.saveHost(ip);
-        _sendTo(ws, {'t': 'welcome', 'name': deviceName, 'token': token});
+        _sendTo(ws, {'t': 'welcome', 'name': deviceName, 'token': token, if (isComputer) 'pc': true});
         return;
       }
       if (type == 'state') {
@@ -253,6 +257,42 @@ class PlusTvLink {
         status.value = _server == null ? PlusTvStatus.off : PlusTvStatus.waiting;
       }
     }, onError: (_) {}, cancelOnError: true);
+  }
+
+  static bool get isComputer => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+
+  static const _kAuto = 'plus_tv_pc_source';
+
+  /// On a computer: let the TV use this app for anime from your extensions
+  /// whenever it is open (on by default).
+  static bool get pcSource {
+    try {
+      return KvHelper.get<bool>(_kAuto, defaultVal: true);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static set pcSource(bool on) {
+    try {
+      KvHelper.set(_kAuto, on);
+    } catch (_) {}
+    if (on) {
+      unawaited(instance.start());
+    } else if (!instance.isConnected) {
+      unawaited(instance.stop());
+    }
+  }
+
+  /// Called once the app has started: on a computer the link starts by
+  /// itself, so the TV app finds this PC when your phone isn't around.
+  static void autoStart() {
+    if (!isComputer || !pcSource) return;
+    Future.delayed(const Duration(seconds: 4), () async {
+      try {
+        await instance.start();
+      } catch (_) {}
+    });
   }
 
   static String get deviceName {
@@ -347,12 +387,44 @@ class PlusTvLink {
     for (final ip in PlusCastSearch.savedHosts()) {
       named.putIfAbsent(ip, () => 'LG TV ($ip)');
     }
+    if (isComputer) {
+      for (final ip in await searchLg()) {
+        named.putIfAbsent(ip, () => 'LG TV ($ip)');
+      }
+    }
     final found = <PlusTvDevice>[];
     await Future.wait(named.entries.map((e) async {
       if (await PlusLgTv.isLgTv(e.key)) found.add(PlusTvDevice(e.key, e.value));
     }));
     found.sort((a, b) => a.name.compareTo(b.name));
     return found;
+  }
+
+  /// LG TVs answering a network search (computers only: phones can't send
+  /// these searches without a special permission).
+  static Future<List<String>> searchLg() async {
+    final found = <String>{};
+    RawDatagramSocket? socket;
+    try {
+      socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      socket.broadcastEnabled = true;
+      socket.listen((ev) {
+        if (ev != RawSocketEvent.read) return;
+        final d = socket?.receive();
+        if (d == null) return;
+        final text = utf8.decode(d.data, allowMalformed: true).toLowerCase();
+        if (text.contains('webos') || text.contains('lge')) found.add(d.address.address);
+      });
+      for (final st in const ['urn:lge-com:service:webos-second-screen:1', 'urn:dial-multiscreen-org:service:dial:1']) {
+        final q = 'M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: "ssdp:discover"\r\nMX: 2\r\nST: $st\r\n\r\n';
+        socket.send(utf8.encode(q), InternetAddress('239.255.255.250'), 1900);
+      }
+      await Future.delayed(const Duration(milliseconds: 2500));
+    } catch (_) {
+    } finally {
+      socket?.close();
+    }
+    return found.toList();
   }
 
   /// Opens the AnymeX+ TV app on the TV at [host] and tells it where this

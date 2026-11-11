@@ -1,0 +1,154 @@
+# AnymeX+ Flutter tests for the LG TV (TV app phase 2).
+#
+# Builds the two small Flutter apps in tv_flutter/ with LG's flutter-webOS
+# SDK and publishes them on the `tv-flutter-test` pre-release, together with
+# a Homebrew Channel repository file. Not part of the normal builds: the TV
+# app itself stays the web app in tv/ unless these tests work on the TV.
+name: TV Flutter test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [beta, 'wip/**']
+    paths:
+      - 'tv_flutter/**'
+      - '.github/workflows/tv-flutter-test.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tv-flutter-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      NDK_DIR: /home/runner/starfish-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Linux packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl unzip cmake pkg-config file libgtk-3-0 libgtk-3-dev git ninja-build clang git-lfs
+          git config --global user.name "AnymeX+ CI"
+          git config --global user.email "ci@users.noreply.github.com"
+
+      - name: webOS CLI (ares)
+        run: npm install -g @webos-tools/cli && ares-package --version
+
+      - name: flutter-webOS SDK
+        run: |
+          git clone --depth 1 https://github.com/lg-flutter-webos/flutter-webos.git "$HOME/flutter-webos"
+          echo "$HOME/flutter-webos/bin" >> "$GITHUB_PATH"
+
+      - name: webOS NDK
+        run: |
+          mkdir -p "$HOME/ndk" && cd "$HOME/ndk"
+          curl -fL --retry 3 -o ndk.sh https://github.com/lg-flutter-webos/ndk/releases/download/11.2.0/webos-ndk-flutter-starfish-x86_64-ca9v1-11.2.0.sh
+          chmod +x ndk.sh
+          ./ndk.sh -y -d "$NDK_DIR"
+          rm ndk.sh
+          echo "WEBOS_FLUTTER_NDK_ENV=$NDK_DIR/environment-setup-ca9v1-webosmllib32-linux-gnueabi" >> "$GITHUB_ENV"
+
+      - name: Doctor and engine
+        run: |
+          flutter-webos --version
+          flutter-webos doctor -v || true
+          flutter-webos precache
+
+      - name: Build both tests
+        run: |
+          set -e
+          mkdir -p dist work
+          build() {   # build <folder> <app id> <title>
+            local name="$1" id="$2" title="$3"
+            ( cd work && flutter-webos create --platforms webos --project-name "anymexplus_flutter_$name" "$name" )
+            rm -rf "work/$name/lib" "work/$name/test"
+            cp -r "tv_flutter/$name/lib" "work/$name/lib"
+            cp "tv_flutter/$name/pubspec.yaml" "work/$name/pubspec.yaml"
+            python3 - "work/$name/webos/meta/appinfo.json" "$id" "$title" "1.0.${{ github.run_number }}" <<'PY'
+          import json, sys
+          path, app_id, title, version = sys.argv[1:5]
+          info = json.load(open(path))
+          info.update({"id": app_id, "title": title, "version": version, "vendor": "mikeyislost"})
+          json.dump(info, open(path, "w"), indent=4)
+          print(json.dumps(info, indent=2))
+          PY
+            if [ -f tv/icon.png ]; then cp tv/largeIcon.png "work/$name/webos/meta/icon.png" || true; fi
+            ( cd "work/$name" && flutter-webos pub get && flutter-webos build webos --release )
+            local ipk
+            ipk=$(find "work/$name/build/webos" -name '*.ipk' | head -n 1)
+            test -n "$ipk"
+            cp "$ipk" "dist/AnymeX-Plus-Flutter-test-$name.ipk"
+          }
+          build blank com.mikeyislost.anymexplus.flutter1 "AnymeX+ Flutter test 1"
+          build video com.mikeyislost.anymexplus.flutter2 "AnymeX+ Flutter test 2"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tv-flutter-test
+          path: dist/*.ipk
+
+      # Published from beta (or by hand), so the TV can install the tests
+      # through Homebrew Channel.
+      - name: Publish on the tv-flutter-test pre-release
+        if: github.ref == 'refs/heads/beta' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          TAG=tv-flutter-test
+          BASE="https://github.com/$REPO/releases/download/$TAG"
+          python3 - "$BASE" "1.0.${{ github.run_number }}" "https://raw.githubusercontent.com/$REPO/main/tv/largeIcon.png" <<'PY'
+          import hashlib, json, sys
+          base, version, icon = sys.argv[1:4]
+          tests = [
+              ("blank", "com.mikeyislost.anymexplus.flutter1", "AnymeX+ Flutter test 1",
+               "Does Flutter draw on this TV? A plain screen with a clock and three boxes."),
+              ("video", "com.mikeyislost.anymexplus.flutter2", "AnymeX+ Flutter test 2",
+               "A small AnymeX+ screen in Flutter with LG's video player and four test videos."),
+          ]
+          packages = []
+          for name, app_id, title, desc in tests:
+              f = "dist/AnymeX-Plus-Flutter-test-%s.ipk" % name
+              data = open(f, "rb").read()
+              manifest = {
+                  "id": app_id, "version": version, "type": "native", "title": title,
+                  "appDescription": desc, "iconUri": icon,
+                  "sourceUrl": "https://github.com/mikeyislost/AnymeXStremio",
+                  "rootRequired": False,
+                  "ipkUrl": "%s/AnymeX-Plus-Flutter-test-%s.ipk" % (base, name),
+                  "ipkHash": {"sha256": hashlib.sha256(data).hexdigest()},
+                  "ipkSize": len(data),
+              }
+              packages.append({"id": app_id, "title": title, "iconUri": icon, "manifest": manifest,
+                               "pool": "main", "shortDescription": desc})
+          repo = {"paging": {"page": 1, "count": len(packages), "maxPage": 1, "itemsTotal": len(packages)},
+                  "packages": packages}
+          json.dump(repo, open("dist/webos-flutter-test.json", "w"), indent=2)
+          print(json.dumps(repo, indent=2))
+          PY
+          if ! gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+            gh api -X POST "repos/$REPO/releases" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" \
+              -f name="TV Flutter test" -F prerelease=true \
+              -f body="Flutter tests for the LG TV (not the app). In Homebrew Channel, Settings → Add repository: $BASE/webos-flutter-test.json" >/dev/null
+          fi
+          REL_ID=$(gh api "repos/$REPO/releases/tags/$TAG" --jq .id)
+          for f in dist/AnymeX-Plus-Flutter-test-blank.ipk dist/AnymeX-Plus-Flutter-test-video.ipk dist/webos-flutter-test.json; do
+            n=$(basename "$f")
+            OLD=$(gh api "repos/$REPO/releases/$REL_ID/assets" --jq ".[] | select(.name == \"$n\") | .id")
+            if [ -n "$OLD" ]; then gh api -X DELETE "repos/$REPO/releases/assets/$OLD"; fi
+            curl -fsS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Content-Type: application/octet-stream" \
+              --data-binary @"$f" "https://uploads.github.com/repos/$REPO/releases/$REL_ID/assets?name=$n" >/dev/null
+          done
+          echo "Repository: $BASE/webos-flutter-test.json"

@@ -251,6 +251,10 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
         ),
       const SizedBox(height: 16),
       Text('Keep this page open while you use the TV app.', style: text.bodySmall),
+      if (PlusTvLink.isComputer) ...[
+        const SizedBox(height: 16),
+        _PcSourceSwitch(),
+      ],
     ];
   }
 
@@ -483,4 +487,30 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
       ),
     );
   }
+}
+
+/// AnymeX+: on a PC, whether the TV app may use this PC for anime from your
+/// extensions whenever AnymeX+ is open here.
+class _PcSourceSwitch extends StatefulWidget {
+  @override
+  State<_PcSourceSwitch> createState() => _PcSourceSwitchState();
+}
+
+class _PcSourceSwitchState extends State<_PcSourceSwitch> {
+  bool on = PlusTvLink.pcSource;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: SwitchListTile(
+          value: on,
+          title: const Text('Anime source for the TV'),
+          subtitle: const Text('While AnymeX+ is open on this PC, the TV app can play anime from your '
+              'extensions through it, also when your phone is asleep. Open the TV app from this PC once '
+              '(tap your TV above) so the TV knows this PC.'),
+          onChanged: (v) {
+            setState(() => on = v);
+            PlusTvLink.pcSource = v;
+          },
+        ),
+      );
 }

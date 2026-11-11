@@ -13,6 +13,7 @@ import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
 import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
+import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
 import 'package:anymex/plus/episode_hold.dart';
 import 'package:anymex/plus/episode_order.dart';
@@ -1206,6 +1207,91 @@ void main() {
       final r2 = <String>['tracks', 'volume'];
       plusAddVolumeButtonIds(<String>[], r2, ['brightness']);
       expect(r2, PlusDesktopVolume.supported ? ['tracks', 'volume'] : ['tracks']);
+    });
+  });
+
+  group('TV phase 2: extension video through this device', () {
+    String route(String kind, String url) => '<$kind:$url>';
+
+    test('a media playlist given straight away: segments stay segments', () {
+      const text = '#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n'
+          '#EXT-X-MAP:URI="init.mp4"\n#EXTINF:10,\nseg1.ts\n#EXTINF:10,\nhttps://cdn.example/seg2.jpg\n#EXT-X-ENDLIST\n';
+      final out = PlusTvProxy.rewritePlaylist(text, Uri.parse('https://a.example/hls/index.m3u8?t=1'), route);
+      expect(out, contains('URI="<key:https://a.example/hls/key.bin>"'));
+      expect(out, contains('URI="<segment:https://a.example/hls/init.mp4>"'));
+      expect(out, contains('<segment:https://a.example/hls/seg1.ts>'));
+      expect(out, contains('<segment:https://cdn.example/seg2.jpg>'));
+      expect(out, isNot(contains('<playlist:')));
+      expect(out, contains('#EXT-X-ENDLIST'));
+    });
+
+    test('a master playlist: variants, audio groups and i-frames are playlists', () {
+      const text = '#EXTM3U\r\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="Japanese",URI="audio/ja.m3u8"\r\n'
+          '#EXT-X-STREAM-INF:BANDWIDTH=1,AUDIO="a"\r\n1080/index.m3u8\r\n'
+          '#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1,URI="iframe.m3u8"\r\n#EXT-X-SESSION-KEY:METHOD=SAMPLE-AES,URI="skd://x"\r\n';
+      final out = PlusTvProxy.rewritePlaylist(text, Uri.parse('https://a.example/m/master.m3u8'), route);
+      expect(out, contains('URI="<playlist:https://a.example/m/audio/ja.m3u8>"'));
+      expect(out, contains('<playlist:https://a.example/m/1080/index.m3u8>'));
+      expect(out, contains('URI="<playlist:https://a.example/m/iframe.m3u8>"'));
+      expect(out, contains('URI="skd://x"'));
+    });
+
+    test('what a link is, from its first bytes', () {
+      td.Uint8List b(List<int> x) => td.Uint8List.fromList(x);
+      expect(PlusTvProxy.sniff(b([0xEF, 0xBB, 0xBF, ...utf8.encode('\n#EXTM3U\n')]), ''), 'hls');
+      expect(PlusTvProxy.sniff(b([0x1A, 0x45, 0xDF, 0xA3, ...utf8.encode('....matroska')]), ''), 'mkv');
+      expect(PlusTvProxy.sniff(b([0x1A, 0x45, 0xDF, 0xA3, ...utf8.encode('....webm')]), ''), 'webm');
+      expect(PlusTvProxy.sniff(b([0, 0, 0, 0x20, ...utf8.encode('ftypisom')]), ''), 'mp4');
+      expect(PlusTvProxy.sniff(b(utf8.encode('<html>')), 'application/x-mpegURL'), 'hls');
+      expect(PlusTvProxy.sniff(b(utf8.encode('<html>')), 'text/html'), '');
+      expect(PlusTvProxy.guessFromUrl('https://x/a/master.m3u8?x=1'), 'hls');
+      expect(PlusTvProxy.guessFromUrl('https://x/a/play?file=1'), '');
+    });
+
+    test('TS hidden behind a picture header is found', () {
+      final bytes = td.Uint8List(8 + 188 * 4);
+      bytes.setAll(0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+      for (var i = 0; i < 4; i++) {
+        bytes[8 + i * 188] = 0x47;
+      }
+      expect(PlusTvProxy.tsStart(bytes), 8);
+      expect(PlusTvProxy.sniff(bytes, 'image/png'), 'ts');
+      expect(PlusTvProxy.tsStart(td.Uint8List(600)), -1);
+    });
+
+    test('links in addresses survive the trip', () {
+      const u = 'https://a.example/x?y=1&z=ä/é==';
+      expect(PlusTvProxy.dec(PlusTvProxy.enc(u)), u);
+      expect(PlusTvProxy.enc(u).contains('='), isFalse);
+    });
+
+    test('the same link and headers keep their key', () {
+      final p = PlusTvProxy.instance;
+      final k1 = p.register('https://v.example/1.m3u8', {'Referer': 'https://site/'});
+      expect(p.register('https://v.example/1.m3u8', {'Referer': 'https://site/'}), k1);
+      expect(p.register('https://v.example/1.m3u8', {'Referer': 'https://other/'}), isNot(k1));
+    });
+
+    test('servers that did not answer are hidden unless none did', () {
+      final a = PlusTvAnime.serverEntry(name: 'A', url: 'u1', kind: 'hls');
+      final b = PlusTvAnime.serverEntry(name: 'B', url: 'u2', kind: '', dead: true);
+      expect(PlusTvAnime.shownServers([a, null, b]).map((e) => e['name']), ['A']);
+      expect(PlusTvAnime.shownServers([b]).map((e) => e['name']), ['B']);
+      expect(PlusTvAnime.serverEntry(name: '', url: 'u', kind: 'mp4')['name'], 'Server');
+    });
+
+    test('episode numbers match however they are written', () {
+      expect(PlusTvAnime.sameEpisode('4', '4'), isTrue);
+      expect(PlusTvAnime.sameEpisode('04', '4'), isTrue);
+      expect(PlusTvAnime.sameEpisode('4.0', '4'), isTrue);
+      expect(PlusTvAnime.sameEpisode('4.5', '4'), isFalse);
+    });
+
+    test('a PC leaves the sync from your phone alone', () {
+      expect(PlusTvSync.keepsOtherSync(isComputer: true, have: 'h', from: 'iPhone', me: 'PC'), isTrue);
+      expect(PlusTvSync.keepsOtherSync(isComputer: true, have: '', from: '', me: 'PC'), isFalse);
+      expect(PlusTvSync.keepsOtherSync(isComputer: true, have: 'h', from: 'PC', me: 'PC'), isFalse);
+      expect(PlusTvSync.keepsOtherSync(isComputer: false, have: 'h', from: 'iPhone', me: 'iPad'), isFalse);
     });
   });
 }

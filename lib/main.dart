@@ -3,6 +3,7 @@ import 'package:anymex/plus/launch_timer.dart';
 import 'package:anymex/plus/splash_gate.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
+import 'package:anymex/plus/tv/tv_link.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
@@ -385,6 +386,7 @@ class _MainAppState extends State<MainApp> {
         });
         WidgetsBinding.instance
             .addPostFrameCallback((_) => LaunchTimer.markHome());
+        PlusTvLink.autoStart(); // AnymeX+: a PC is the TV app's anime source
       }
     });
   }

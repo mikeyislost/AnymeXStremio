@@ -71,9 +71,26 @@ class PlusTvSync {
   bool get _tvCanSync => _link.hello['sync'] == true;
   bool get _tvHasKey => _link.hello['hasKey'] == true;
 
+  /// Set when the TV asks for this device's sync itself (Settings → sync again).
+  bool _asked = false;
+
+  /// On a PC: the TV already has what another device (your phone) synced,
+  /// so it is left alone; the PC only finds anime for it.
+  bool get keepsOther => keepsOtherSync(
+      isComputer: PlusTvLink.isComputer, have: '${_link.hello['have'] ?? ''}', from: '${_link.hello['from'] ?? ''}',
+      me: PlusTvLink.deviceName);
+
+  static bool keepsOtherSync({required bool isComputer, required String have, required String from, required String me}) =>
+      isComputer && have.isNotEmpty && from.isNotEmpty && from != me;
+
   void _onConnected() {
     _lastSentHash = '';
     _keyTried = false;
+    _asked = false;
+    if (keepsOther) {
+      status.value = 'Connected. The TV keeps the sync from ${_link.hello['from']}; anime from this PC works.';
+      return;
+    }
     if (!_tvCanSync) {
       status.value = 'This TV app is too old to sync. Update it in Homebrew Channel.';
       return;
@@ -120,6 +137,7 @@ class PlusTvSync {
   /// sent when the TV already has the same one.
   Future<void> sendNow({bool onlyIfChanged = false}) async {
     if (!_link.isConnected) return;
+    if (keepsOther && !_asked) return;
     if (!_tvCanSync) {
       _onConnected();
       return;
@@ -151,6 +169,7 @@ class PlusTvSync {
         // Asked by the TV, or after it got a new key: send even if unchanged.
         _link.hello['hasKey'] = true;
         _link.hello['sync'] = true;
+        _asked = true;
         await sendNow();
       case 'syncOk':
         _link.hello['have'] = m['h'];
@@ -182,7 +201,13 @@ class PlusTvSync {
         KvHelper.set(_kDone, jsonEncode(done));
       } catch (_) {}
       try {
-        await StremioService.to.markWatchedFromTv('${m['type'] ?? 'movie'}', id, videoId.isEmpty ? id : videoId);
+        if (id.startsWith('anilist:')) {
+          // Played from an extension (no Stremio id): AniList directly.
+          final n = videoId.isEmpty || videoId == id ? 1 : (int.tryParse(videoId.split(':').last) ?? 0);
+          await PlusTvAnime.markWatched(id.substring('anilist:'.length), n);
+        } else {
+          await StremioService.to.markWatchedFromTv('${m['type'] ?? 'movie'}', id, videoId.isEmpty ? id : videoId);
+        }
       } catch (e) {
         Logger.i('TV sync: watched mark failed: $e');
       }

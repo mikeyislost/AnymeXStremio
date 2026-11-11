@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -16,6 +17,7 @@ import 'package:anymex/plus/layout/page_rows.dart';
 import 'package:anymex/plus/missed_sequels.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
 import 'package:anymex/plus/tv/tv_play.dart';
+import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/tv_sync.dart';
 import 'package:anymex/screens/anime/details/controller/media_details_controller.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
@@ -40,6 +42,12 @@ import 'package:get/get.dart';
 ///    is the same as starting Play on TV yourself: this device is the
 ///    remote and keeps your progress;
 ///  * `anime {cmd: server, i}`: switch to another server from the TV.
+///
+/// Phase 2 (the TV plays by itself): `ext {cmd: servers, q, a, n}` asks for
+/// the servers of episode n of AniList show a. They come back as
+/// `extServers {q, a, n, source, list, done}` while they are found; each
+/// server's link goes through this device (tv_proxy.dart) so its headers
+/// are sent along, and the TV plays it in its own player.
 class PlusTvAnime {
   PlusTvAnime._();
   static final instance = PlusTvAnime._();
@@ -301,6 +309,10 @@ class PlusTvAnime {
   // ---- what the TV asks -----------------------------------------------------
 
   void _onMessage(Map<String, dynamic> m) {
+    if (m['t'] == 'ext') {
+      if (m['cmd'] == 'servers') unawaited(_extServers(m));
+      return;
+    }
     if (m['t'] != 'anime') return;
     switch (m['cmd']) {
       case 'eps':
@@ -601,6 +613,175 @@ class PlusTvAnime {
     } catch (e) {
       Logger.i('TV anime: play: $e');
       if (my == _playToken) say('fail', _clean(e));
+    }
+  }
+
+  // ---- phase 2: servers for the TV's own player ----------------------------
+
+  static bool sameEpisode(String a, String b) {
+    if (a == b) return true;
+    final x = double.tryParse(a.trim()), y = double.tryParse(b.trim());
+    return x != null && y != null && x == y;
+  }
+
+  /// One server as the TV gets it.
+  static Map<String, dynamic> serverEntry({
+    required String name,
+    required String url,
+    required String kind,
+    List<Map<String, String>> subs = const [],
+    bool dead = false,
+  }) =>
+      {
+        'name': name.isEmpty ? 'Server' : name,
+        'url': url,
+        'kind': kind,
+        if (subs.isNotEmpty) 'subs': subs,
+        if (dead) 'dead': true,
+      };
+
+  /// The servers worth showing: the ones that answered, or all of them
+  /// when none did (the check can be wrong).
+  static List<Map<String, dynamic>> shownServers(List<Map<String, dynamic>?> all) {
+    final have = all.whereType<Map<String, dynamic>>().toList();
+    final live = have.where((e) => e['dead'] != true).toList();
+    return live.isNotEmpty ? live : have;
+  }
+
+  Future<void> _extServers(Map<String, dynamic> m) async {
+    final q = '${m['q'] ?? ''}';
+    final id = '${m['a'] ?? ''}';
+    final n = '${m['n'] ?? ''}';
+    if (id.isEmpty || n.isEmpty) return;
+    var sourceName = '';
+    void send(List<Map<String, dynamic>> list, bool done, [String err = '']) => _link.send({
+          't': 'extServers',
+          'q': q,
+          'a': id,
+          'n': n,
+          'source': sourceName,
+          'done': done,
+          'list': list,
+          if (err.isNotEmpty) 'err': err,
+        });
+    try {
+      final c = _detailsFor(id, {'name': m['name'], 'romaji': m['romaji'], 'poster': m['poster']});
+      if (c.isLoading.value) await _waitLoaded(c, const Duration(seconds: 60));
+      sourceName = c.activeSource.value?.name ?? '';
+      final ep = c.episodeList.firstWhereOrNull((e) => sameEpisode(e.number, n));
+      if (ep == null) {
+        send(const [], true,
+            c.episodeError.value || c.isLoading.value ? _problem(c) : "Episode $n isn't in ${sourceName.isEmpty ? 'the extension' : sourceName}.");
+        return;
+      }
+      final source = c.activeSource.value ?? Get.find<SourceController>().activeSource.value;
+      if (source == null) {
+        send(const [], true, 'No anime extension is set up in AnymeX+.');
+        return;
+      }
+      sourceName = source.name ?? sourceName;
+      final proxy = PlusTvProxy.instance;
+      final entries = <Map<String, dynamic>?>[];
+      final probes = <Future<void>>[];
+      final seen = <String>{};
+      var lastSent = DateTime.fromMillisecondsSinceEpoch(0);
+      void update() {
+        final now = DateTime.now();
+        if (now.difference(lastSent).inMilliseconds < 400) return;
+        lastSent = now;
+        final shown = shownServers(entries);
+        if (shown.isNotEmpty) send(shown, false);
+      }
+
+      void add(hive.Video v) {
+        final url = v.url ?? '';
+        if (url.isEmpty || !seen.add('${v.quality}|$url')) return;
+        final at = entries.length;
+        entries.add(null);
+        probes.add(() async {
+          final headers = v.headers;
+          final key = proxy.register(url, headers);
+          final p = url.startsWith('http') ? await proxy.probe(url, headers) : (kind: PlusTvProxy.guessFromUrl(url), ok: true);
+          entries[at] = serverEntry(
+            name: v.quality ?? '',
+            url: proxy.videoUrl(key, p.kind),
+            kind: p.kind,
+            dead: !p.ok,
+            subs: [
+              for (final t in v.subtitles ?? const [])
+                if ((t.file ?? '').isNotEmpty) {'lang': t.label ?? '?', 'url': proxy.subtitleUrl(key, t.file!)},
+            ],
+          );
+          update();
+        }());
+      }
+
+      await _serversEach(source, ep, add);
+      await Future.wait(probes);
+      final shown = shownServers(entries);
+      send(shown, true, shown.isEmpty ? 'No servers found for episode $n in $sourceName.' : '');
+    } catch (e) {
+      Logger.i('TV anime: ext servers: $e');
+      send(const [], true, _clean(e));
+    }
+  }
+
+  /// All servers of [ep], each passed to [each] as it arrives.
+  Future<void> _serversEach(Source source, Episode ep, void Function(hive.Video) each) async {
+    final episode = DEpisode(
+      episodeNumber: ep.number,
+      url: ep.link,
+      sortMap: ep.sortMap.isEmpty ? null : ep.sortMap,
+    );
+    final params = SourceParams(cancelToken: 'tvx_${DateTime.now().millisecondsSinceEpoch}_${ep.number}');
+    final stream = source.methods.getVideoListStream(episode, parameters: params);
+    if (stream == null) {
+      final list =
+          await source.methods.getVideoList(episode, parameters: params).timeout(const Duration(seconds: 45));
+      for (final v in list) {
+        each(hive.Video.fromVideo(v));
+      }
+      return;
+    }
+    final done = Completer<void>();
+    final sub = stream.listen(
+      (d) => each(hive.Video.fromVideo(d)),
+      onError: (Object e) {
+        if (!done.isCompleted) done.complete();
+      },
+      onDone: () {
+        if (!done.isCompleted) done.complete();
+      },
+    );
+    try {
+      await done.future.timeout(const Duration(seconds: 45), onTimeout: () {});
+    } finally {
+      await sub.cancel();
+    }
+  }
+
+  /// The TV watched episode [ep] of AniList show [anilistId] (played from
+  /// an extension): progress goes to AniList when it is ahead.
+  static Future<void> markWatched(String anilistId, int ep) async {
+    if (anilistId.isEmpty || ep <= 0) return;
+    try {
+      final anilist = Get.find<ServiceHandler>().anilistService;
+      if (!anilist.isLoggedIn.value) return;
+      final entry = anilist.animeList.firstWhereOrNull((m) => m.id == anilistId);
+      final current = int.tryParse(entry?.episodeCount ?? '') ?? 0;
+      if (entry != null && current >= ep) return;
+      final total = int.tryParse(entry?.totalEpisodes ?? '');
+      final repeating = (entry?.watchingStatus ?? '').toUpperCase() == 'REPEATING';
+      final status = (total != null && total > 0 && ep >= total) ? 'COMPLETED' : (repeating ? 'REPEATING' : 'CURRENT');
+      await anilist.updateListEntry(UpdateListEntryParams(
+        listId: anilistId,
+        progress: ep,
+        status: status,
+        isAnime: true,
+      ));
+      Logger.i('TV → AniList: $anilistId progress $ep ($status)');
+    } catch (e) {
+      Logger.i('TV → AniList failed: $e');
     }
   }
 }
