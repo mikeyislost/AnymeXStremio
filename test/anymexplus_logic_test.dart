@@ -30,6 +30,8 @@ import 'package:anymex/plus/skip_times.dart';
 import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/plus/desktop_volume.dart' show PlusDesktopVolume;
 import 'package:anymex/plus/external_player_pc.dart';
+import 'package:anymex/plus/pc_video_quality.dart';
+import 'package:flutter/painting.dart' show BoxFit, Size;
 import 'package:anymex/plus/custom_lists.dart';
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
@@ -1174,6 +1176,21 @@ void main() {
       final c = PlusExternalPlayerPc.candidates({'PATH': r'C:\tools;', 'ProgramFiles': r'C:\Program Files'});
       expect(c.first, r'C:\tools\mpv.exe');
       expect(c, contains(r'C:\Program Files\VideoLAN\VLC\vlc.exe'));
+    });
+  });
+
+  group('PC video size', () {
+    test('window size in real pixels, even numbers, only when the video fits', () {
+      expect(PlusPcVideo.outputSize(const Size(1707, 960), 1.5, BoxFit.contain), (w: 2560, h: 1440));
+      expect(PlusPcVideo.outputSize(const Size(1001, 501), 1.0, BoxFit.contain), (w: 1000, h: 500));
+      expect(PlusPcVideo.outputSize(const Size(1920, 1080), 1.0, BoxFit.cover), isNull);
+      expect(PlusPcVideo.outputSize(const Size(40, 30), 1.0, BoxFit.contain), isNull);
+      expect(PlusPcVideo.outputSize(const Size(9000, 5000), 1.0, BoxFit.contain), isNull);
+    });
+    test('mpv quality options', () {
+      expect(PlusPcVideo.mpvOptions['deband'], 'yes');
+      expect(PlusPcVideo.mpvOptions['deband-grain'], '0');
+      expect(PlusPcVideo.mpvOptions['scale'], 'ewa_lanczossharp');
     });
   });
 }

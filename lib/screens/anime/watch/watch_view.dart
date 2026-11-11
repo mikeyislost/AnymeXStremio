@@ -7,6 +7,7 @@ import 'package:anymex/database/isar_models/episode.dart';
 import 'package:anymex/database/isar_models/video.dart' as model;
 import 'package:anymex/models/Media/media.dart' as anymex;
 import 'package:anymex/plus/desktop_volume.dart';
+import 'package:anymex/plus/pc_video_quality.dart';
 import 'package:anymex/plus/mini_player.dart';
 import 'package:anymex/plus/up_next.dart';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
@@ -199,7 +200,10 @@ class _WatchScreenState extends State<WatchScreen> {
                 children: [
                   Obx(() => KeyedSubtree(
                         key: ValueKey(controller.playerReloadVersion.value),
-                        child: controller.videoWidget,
+                        // AnymeX+: mpv draws at the window's size on PC.
+                        child: PlusPcVideoSize(
+                            controller: controller,
+                            child: controller.videoWidget),
                       )),
                   PlusDesktopDim(controller: controller), // AnymeX+ brightness on PC
                   if (!PlayerKeys.useLibass.get<bool>(false))

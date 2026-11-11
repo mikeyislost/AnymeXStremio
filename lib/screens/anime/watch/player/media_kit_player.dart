@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:anymex/plus/pc_video_quality.dart';
 import 'dart:typed_data';
 
 import 'package:anymex/utils/logger.dart';
@@ -128,6 +130,7 @@ class MediaKitPlayer extends base.BasePlayer {
         await mpv.setProperty("vd-lavc-threads", "4");
       }
       await mpv.setProperty("cache", "yes");
+      await PlusPcVideo.applyMpvOptions(mpv); // AnymeX+: quality on PC
       final savedAudioLayout =
           PlayerKeys.audioChannelLayout.get<String>('auto');
       if (savedAudioLayout != 'auto') {
