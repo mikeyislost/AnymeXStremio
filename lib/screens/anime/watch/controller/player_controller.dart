@@ -703,7 +703,9 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      isPipMode.value = true;
+      // AnymeX+: on PC "inactive" only means another window has focus;
+      // treating it as picture-in-picture hid all the player's controls.
+      if (Platform.isAndroid || Platform.isIOS) isPipMode.value = true;
       if (!kDebugMode) {
         _trackLocally();
       }

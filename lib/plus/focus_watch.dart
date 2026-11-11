@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:anymex/utils/logger.dart';
 import 'package:ffi/ffi.dart';
+import 'package:get/get.dart';
 import 'package:win32/win32.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -38,14 +39,31 @@ class PlusFocusWatch with WindowListener {
     final had = _focusedAt == null
         ? '?'
         : '${(DateTime.now().difference(_focusedAt!).inMilliseconds / 1000).toStringAsFixed(1)} s';
-    // Let Windows finish switching first.
-    await Future.delayed(const Duration(milliseconds: 80));
-    try {
-      Logger.i('[focus] AnymeX lost focus after $had to: ${_describe(GetForegroundWindow())}');
-    } catch (e) {
-      Logger.i('[focus] AnymeX lost focus after $had (could not read the new window: $e)');
+    // Who has focus right after, and a little later (a game may take it
+    // only once Windows has finished switching).
+    final seen = <String>[];
+    for (final ms in const [80, 600, 2000]) {
+      await Future.delayed(Duration(milliseconds: ms == 80 ? 80 : (ms == 600 ? 520 : 1400)));
+      try {
+        seen.add('${ms}ms: ${_describe(GetForegroundWindow())}');
+      } catch (e) {
+        seen.add('${ms}ms: ? ($e)');
+      }
     }
+    Logger.i('[focus] AnymeX lost focus after $had -> ${seen.join(' | ')}');
   }
+
+  /// Also log when the player's controls (and the mouse pointer with them)
+  /// show and hide: the focus loss comes 1–2 s after focus, about when they
+  /// hide.
+  static void watchControls(RxBool showControls) {
+    if (!Platform.isWindows) return;
+    _controlsWorker?.dispose();
+    _controlsWorker = ever<bool>(showControls,
+        (v) => Logger.i('[focus] player controls ${v ? 'shown' : 'hidden (pointer hidden too)'}'));
+  }
+
+  static Worker? _controlsWorker;
 
   static String _describe(int hwnd) {
     if (hwnd == 0) return 'no window (desktop or locked)';

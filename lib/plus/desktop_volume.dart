@@ -138,6 +138,7 @@ class _PlusDesktopKeysState extends State<PlusDesktopKeys> {
     if (!PlusDesktopVolume.supported) return;
     PlusDesktopVolume.start(c);
     PlusFocusWatch.start(); // AnymeX+: logs focus changes (Windows), for the focus bug
+    PlusFocusWatch.watchControls(c.showControls);
     HardwareKeyboard.instance.addHandler(_onKey);
   }
 
@@ -173,18 +174,24 @@ class _PlusDesktopKeysState extends State<PlusDesktopKeys> {
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
-/// Volume and brightness for the player's bottom bar (PC only): their own
-/// small box of two buttons. Hover it and the box grows upwards with a
-/// slider above each button, then slides back down when the mouse leaves.
-/// Click: volume = mute, brightness = back to 100%.
+/// Volume and brightness for the player's bottom bar (PC only): two small
+/// boxes of one button each, working on their own. Hover one and its box
+/// grows upwards with a slider inside, then slides back down when the mouse
+/// leaves. Click: volume = mute, brightness = back to 100%.
 List<Widget> plusDesktopVolumeGroup(PlayerController c) {
   if (!PlusDesktopVolume.supported) return const [];
-  return [PlusVolumeGroup(controller: c), const SizedBox(width: 8)];
+  return [
+    PlusVolumeGroup(controller: c),
+    const SizedBox(width: 8),
+    PlusVolumeGroup(controller: c, brightness: true),
+    const SizedBox(width: 8),
+  ];
 }
 
 class PlusVolumeGroup extends StatefulWidget {
   final PlayerController controller;
-  const PlusVolumeGroup({super.key, required this.controller});
+  final bool brightness; // false = volume
+  const PlusVolumeGroup({super.key, required this.controller, this.brightness = false});
 
   @override
   State<PlusVolumeGroup> createState() => _PlusVolumeGroupState();
@@ -207,7 +214,7 @@ class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProv
     reverseCurve: Curves.easeInCubic,
   );
   bool _overBar = false, _overPop = false, _dragging = false;
-  Size _size = const Size(96, 48);
+  Size _size = const Size(56, 48);
   Timer? _close, _keepUp;
 
   PlayerController get c => widget.controller;
@@ -280,26 +287,23 @@ class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProv
   }
 
   Widget _buttons() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Obx(() {
-          final v = c.volume.value;
-          return ControlButton(
-            icon: v <= 0
-                ? Icons.volume_off_rounded
-                : (v < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
-            onPressed: () => PlusDesktopVolume.toggleMute(c),
-            compact: true,
-          );
-        }),
-        ControlButton(
-          icon: Icons.brightness_6_rounded,
-          onPressed: () => PlusDesktopVolume.setBrightness(c, 1.0),
-          compact: true,
-        ),
-      ],
-    );
+    if (widget.brightness) {
+      return ControlButton(
+        icon: Icons.brightness_6_rounded,
+        onPressed: () => PlusDesktopVolume.setBrightness(c, 1.0),
+        compact: true,
+      );
+    }
+    return Obx(() {
+      final v = c.volume.value;
+      return ControlButton(
+        icon: v <= 0
+            ? Icons.volume_off_rounded
+            : (v < 0.5 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
+        onPressed: () => PlusDesktopVolume.toggleMute(c),
+        compact: true,
+      );
+    });
   }
 
   Widget _slider(BuildContext context, double value, double min, double max, String pct,
@@ -384,14 +388,16 @@ class _PlusVolumeGroupState extends State<PlusVolumeGroup> with SingleTickerProv
                               padding: const EdgeInsets.only(top: 6),
                               child: Obx(() => Row(
                                     children: [
-                                      _slider(context, c.volume.value, 0, PlusDesktopVolume.maxVolume,
-                                          '${(c.volume.value * 100).round()}%',
-                                          (x) => c.setVolume(PlusDesktopVolume.clampVolume(x), isDragging: true),
-                                          (x) => c.setVolume(PlusDesktopVolume.clampVolume(x))),
-                                      _slider(context, c.brightness.value, PlusDesktopVolume.minBrightness, 1.0,
-                                          '${(c.brightness.value * 100).round()}%',
-                                          (x) => PlusDesktopVolume.setBrightness(c, x, save: false),
-                                          (x) => PlusDesktopVolume.setBrightness(c, x)),
+                                      if (widget.brightness)
+                                        _slider(context, c.brightness.value, PlusDesktopVolume.minBrightness, 1.0,
+                                            '${(c.brightness.value * 100).round()}%',
+                                            (x) => PlusDesktopVolume.setBrightness(c, x, save: false),
+                                            (x) => PlusDesktopVolume.setBrightness(c, x))
+                                      else
+                                        _slider(context, c.volume.value, 0, PlusDesktopVolume.maxVolume,
+                                            '${(c.volume.value * 100).round()}%',
+                                            (x) => c.setVolume(PlusDesktopVolume.clampVolume(x), isDragging: true),
+                                            (x) => c.setVolume(PlusDesktopVolume.clampVolume(x))),
                                     ],
                                   )),
                             ),
