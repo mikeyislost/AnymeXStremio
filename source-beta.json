@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "70",
-      "versionDate": "2026-11-11T06:41:03Z",
-      "versionDescription": "Beta v1.1.3-beta+15\n\n- PC video quality: mpv draws at the window's size, high-quality scaling",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B15/AnymeX-Stremio-v1.1.3-beta.15.ipa",
-      "size": 75588608,
+      "buildVersion": "71",
+      "versionDate": "2026-11-11T06:55:47Z",
+      "versionDescription": "Beta v1.1.3-beta+16\n\n- PC volume/brightness: buttons in the shared box, slider grows from the button\n  - \"volume\" and \"brightness\" are normal buttons in the bar's button group (ids in the bottom controls layout; PC only; added at the start of the right side until the settings place or hide them).\n  - Hover: the button's own box swells 4 px on every side, then grows up 150 px with the slider inside; one timeline with per-part easing, so leaving plays the same path backwards and ends exactly as the hovered button looks (no jump).\n  - Settings \u2192 Player \u2192 Bottom controls lists Volume and Brightness (PC).",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B16/AnymeX-Stremio-v1.1.3-beta.16.ipa",
+      "size": 75597339,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "70",
-          "date": "2026-11-11T06:41:03Z",
-          "localizedDescription": "Beta v1.1.3-beta+15\n\n- PC video quality: mpv draws at the window's size, high-quality scaling",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B15/AnymeX-Stremio-v1.1.3-beta.15.ipa",
-          "size": 75588608,
+          "buildVersion": "71",
+          "date": "2026-11-11T06:55:47Z",
+          "localizedDescription": "Beta v1.1.3-beta+16\n\n- PC volume/brightness: buttons in the shared box, slider grows from the button\n  - \"volume\" and \"brightness\" are normal buttons in the bar's button group (ids in the bottom controls layout; PC only; added at the start of the right side until the settings place or hide them).\n  - Hover: the button's own box swells 4 px on every side, then grows up 150 px with the slider inside; one timeline with per-part easing, so leaving plays the same path backwards and ends exactly as the hovered button looks (no jump).\n  - Settings \u2192 Player \u2192 Bottom controls lists Volume and Brightness (PC).",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B16/AnymeX-Stremio-v1.1.3-beta.16.ipa",
+          "size": 75597339,
           "minOSVersion": "15.0"
         }
       ]
