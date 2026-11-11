@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "63",
-      "versionDate": "2026-11-11T00:08:18Z",
-      "versionDescription": "Beta v1.1.3-beta+8\n\n- TV app: anime plays through your Stremio addons, no phone needed\n  - Long seasons are shown 50 episodes at a time.\n  - The \"Phone disconnected. Still playing\u2026\" message is gone.\n  - Anime that is one season of a longer show opens on that season.",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B8/AnymeX-Stremio-v1.1.3-beta.8.ipa",
-      "size": 75576544,
+      "buildVersion": "64",
+      "versionDate": "2026-11-11T03:38:52Z",
+      "versionDescription": "Beta v1.1.3-beta+9\n\n- TV app: Stremio-style player (stage 4) and no debrid \"other\" row\n  - New controls over the video: seek bar (Left/Right move a target that grows the longer you hold, then jumps), time, clock and \"ends at\", and a button row: play/pause, Next episode, Subtitles, Audio, Streams, Episodes. Up/Down bring the buttons up, OK pauses, Back closes a menu or leaves.\n  - Subtitles menu in three columns: language | choices | settings (delay in 0.25 s steps, size, reset). Subtitles in your last language turn on by themselves (inside the video first, then subtitle files); audio language is remembered too.\n  - Streams menu: switch to another stream of the same episode at the same spot (subtitle file and delay kept), or pick one for another episode.\n  - Episodes menu: seasons | episodes; picking one lists its streams.\n  - Subtitles move up above the controls while they are showing.\n  - Play on TV from the phone keeps its Source button for the phone's servers.\n  - Home leaves out catalogs of type \"other\" (RealDebrid Downloads).",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B9/AnymeX-Stremio-v1.1.3-beta.9.ipa",
+      "size": 75576554,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "63",
-          "date": "2026-11-11T00:08:18Z",
-          "localizedDescription": "Beta v1.1.3-beta+8\n\n- TV app: anime plays through your Stremio addons, no phone needed\n  - Long seasons are shown 50 episodes at a time.\n  - The \"Phone disconnected. Still playing\u2026\" message is gone.\n  - Anime that is one season of a longer show opens on that season.",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B8/AnymeX-Stremio-v1.1.3-beta.8.ipa",
-          "size": 75576544,
+          "buildVersion": "64",
+          "date": "2026-11-11T03:38:52Z",
+          "localizedDescription": "Beta v1.1.3-beta+9\n\n- TV app: Stremio-style player (stage 4) and no debrid \"other\" row\n  - New controls over the video: seek bar (Left/Right move a target that grows the longer you hold, then jumps), time, clock and \"ends at\", and a button row: play/pause, Next episode, Subtitles, Audio, Streams, Episodes. Up/Down bring the buttons up, OK pauses, Back closes a menu or leaves.\n  - Subtitles menu in three columns: language | choices | settings (delay in 0.25 s steps, size, reset). Subtitles in your last language turn on by themselves (inside the video first, then subtitle files); audio language is remembered too.\n  - Streams menu: switch to another stream of the same episode at the same spot (subtitle file and delay kept), or pick one for another episode.\n  - Episodes menu: seasons | episodes; picking one lists its streams.\n  - Subtitles move up above the controls while they are showing.\n  - Play on TV from the phone keeps its Source button for the phone's servers.\n  - Home leaves out catalogs of type \"other\" (RealDebrid Downloads).",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B9/AnymeX-Stremio-v1.1.3-beta.9.ipa",
+          "size": 75576554,
           "minOSVersion": "15.0"
         }
       ]
