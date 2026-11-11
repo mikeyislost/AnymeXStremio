@@ -18,21 +18,21 @@
       "category": "entertainment",
       "beta": true,
       "version": "1.1.3",
-      "buildVersion": "62",
-      "versionDate": "2026-11-10T23:34:11Z",
-      "versionDescription": "Beta v1.1.3-beta+7\n\n- TV app: anime on the TV (stage 3)",
-      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B7/AnymeX-Stremio-v1.1.3-beta.7.ipa",
-      "size": 75576550,
+      "buildVersion": "63",
+      "versionDate": "2026-11-11T00:08:18Z",
+      "versionDescription": "Beta v1.1.3-beta+8\n\n- TV app: anime plays through your Stremio addons, no phone needed\n  - Long seasons are shown 50 episodes at a time.\n  - The \"Phone disconnected. Still playing\u2026\" message is gone.\n  - Anime that is one season of a longer show opens on that season.",
+      "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B8/AnymeX-Stremio-v1.1.3-beta.8.ipa",
+      "size": 75576544,
       "screenshotURLs": [],
       "appPermissions": {},
       "versions": [
         {
           "version": "1.1.3",
-          "buildVersion": "62",
-          "date": "2026-11-10T23:34:11Z",
-          "localizedDescription": "Beta v1.1.3-beta+7\n\n- TV app: anime on the TV (stage 3)",
-          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B7/AnymeX-Stremio-v1.1.3-beta.7.ipa",
-          "size": 75576550,
+          "buildVersion": "63",
+          "date": "2026-11-11T00:08:18Z",
+          "localizedDescription": "Beta v1.1.3-beta+8\n\n- TV app: anime plays through your Stremio addons, no phone needed\n  - Long seasons are shown 50 episodes at a time.\n  - The \"Phone disconnected. Still playing\u2026\" message is gone.\n  - Anime that is one season of a longer show opens on that season.",
+          "downloadURL": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.3-beta%2B8/AnymeX-Stremio-v1.1.3-beta.8.ipa",
+          "size": 75576544,
           "minOSVersion": "15.0"
         }
       ]
