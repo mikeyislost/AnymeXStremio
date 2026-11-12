@@ -423,7 +423,10 @@ class _MainAppState extends State<MainApp> {
                 ? ThemeMode.light
                 : ThemeMode.dark,
         // AnymeX+: a short fade, since the splash can now end mid-animation.
-        home: AnimatedSwitcher(
+        home: PlusWebos.isTv && PlusTvUi.enabled
+            // AnymeX+: the TV keeps the splash until Home's pictures are in.
+            ? TvStartGate(showMain: _showMainApp, splash: const AnymeXSplashScreen())
+            : AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           child: _showMainApp
               ? (PlusWebos.isTv && PlusTvUi.enabled // AnymeX+: the TV layout

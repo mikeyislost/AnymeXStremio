@@ -77,6 +77,42 @@ class PlusTvUi {
   }
 }
 
+/// Start-up on the TV: the splash stays until Home's first screen has its
+/// pictures (or 9 s at most), so the app opens complete.
+class TvStart {
+  static final ready = ValueNotifier<bool>(false);
+}
+
+class TvStartGate extends StatelessWidget {
+  final bool showMain;
+  final Widget splash;
+  const TvStartGate({super.key, required this.showMain, required this.splash});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: TvStart.ready,
+      builder: (context, ready, _) {
+        final hide = showMain && ready;
+        return Stack(children: [
+          if (showMain) const Positioned.fill(key: ValueKey('tv'), child: PlusTvShell()),
+          Positioned.fill(
+            key: const ValueKey('splash'),
+            child: IgnorePointer(
+              ignoring: hide,
+              child: AnimatedOpacity(
+                opacity: hide ? 0 : 1,
+                duration: const Duration(milliseconds: 300),
+                child: ColoredBox(color: Colors.black, child: splash),
+              ),
+            ),
+          ),
+        ]);
+      },
+    );
+  }
+}
+
 class PlusTvShell extends StatefulWidget {
   const PlusTvShell({super.key});
 

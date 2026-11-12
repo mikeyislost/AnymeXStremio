@@ -99,12 +99,36 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
       if (!mounted) return;
     }
     _parts = _split(_eps);
-    if (_progress > 0) {
-      for (var i = 0; i < _parts.length; i++) {
-        if (_parts[i].$2.any((e) => e.number == _progress + 1)) _part = i;
-      }
-    }
+    _goToCurrent();
     setState(() => _loading = false);
+  }
+
+  ScrollController _epScroll = ScrollController();
+
+  /// Opens on the season (part) and episode you're at.
+  void _goToCurrent() {
+    bool isCurrent(_Ep e) => _item.isAnime ? e.number == _progress + 1 : e.id == _resumeVideo;
+    if (_item.isAnime ? _progress <= 0 : _resumeVideo.isEmpty) return;
+    for (var i = 0; i < _parts.length; i++) {
+      final at = _parts[i].$2.indexWhere(isCurrent);
+      if (at < 0) continue;
+      _part = i;
+      // Cards are 360 wide with 24 between: the one before shows too.
+      _newScroll((at > 0 ? at - 1 : 0) * 384.0);
+      return;
+    }
+  }
+
+  void _newScroll(double offset) {
+    final old = _epScroll;
+    _epScroll = ScrollController(initialScrollOffset: offset);
+    WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+  }
+
+  @override
+  void dispose() {
+    _epScroll.dispose();
+    super.dispose();
   }
 
   /// Watched episodes and where you are, from Stremio's library as it is
@@ -218,7 +242,12 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     final meta = _meta;
     if (meta != null && mounted) {
       await _applyLibrary(meta);
-      if (mounted) setState(() => _parts = _split(_eps));
+      if (mounted) {
+        setState(() {
+          _parts = _split(_eps);
+          _goToCurrent();
+        });
+      }
     }
   }
 
@@ -338,7 +367,15 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                     child: Text('Episodes', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                   if (_parts.length > 1)
-                    for (var i = 0; i < _parts.length; i++) TvChip(label: _parts[i].$1, on: i == _part, onSelect: () => setState(() => _part = i)),
+                    for (var i = 0; i < _parts.length; i++)
+                      TvChip(
+                        label: _parts[i].$1,
+                        on: i == _part,
+                        onSelect: () => setState(() {
+                          _part = i;
+                          _newScroll(0);
+                        }),
+                      ),
                 ]),
               ),
             ),
@@ -348,6 +385,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
               child: FocusTraversalGroup(
                 child: ListView.separated(
                   key: ValueKey('part$_part'),
+                  controller: _epScroll,
                   scrollDirection: Axis.horizontal,
                   clipBehavior: Clip.none,
                   padding: const EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: 6),

@@ -212,21 +212,45 @@ class TvImage extends StatelessWidget {
   final BoxFit fit;
   const TvImage({super.key, required this.url, required this.width, required this.height, this.seed = '', this.fit = BoxFit.cover});
 
+  static const empty = Color(0xFF151515);
+
+  /// The picture as [TvImage] loads it (same size, so a warmed one is
+  /// already in memory when the card shows).
+  static ImageProvider provider(String url, double width, double dpr) =>
+      ResizeImage(NetworkImage(url), width: (width * dpr).round().clamp(1, 1920));
+
+  /// Loads pictures ahead (start-up waits for the first screen's).
+  static Future<void> warm(BuildContext context, Iterable<(String, double)> pics, {Duration limit = const Duration(seconds: 4)}) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final jobs = [
+      for (final (url, w) in pics)
+        if (url.startsWith('http')) precacheImage(provider(url, w, dpr), context, onError: (_, __) {}),
+    ];
+    return Future.wait(jobs).timeout(limit, onTimeout: () => const []);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final box = Container(width: width, height: height, color: TvStyle.placeholder(seed.isEmpty ? url : seed));
+    final box = Container(width: width, height: height, color: empty);
     if (url.isEmpty || !url.startsWith('http')) return box;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    return Image.network(
-      url,
+    return Image(
+      image: provider(url, width, dpr),
       width: width,
       height: height,
       fit: fit,
-      cacheWidth: (width * dpr).round().clamp(1, 1920),
       gaplessPlayback: true,
       filterQuality: FilterQuality.medium,
       errorBuilder: (_, __, ___) => box,
-      frameBuilder: (_, child, frame, sync) => frame == null && !sync ? box : child,
+      // Already loaded: shown at once. Otherwise a short fade from the
+      // plain dark box (no more coloured blocks while loading).
+      frameBuilder: (_, child, frame, sync) {
+        if (sync) return child;
+        return Stack(fit: StackFit.passthrough, children: [
+          box,
+          AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 220), curve: Curves.easeOut, child: child),
+        ]);
+      },
     );
   }
 }

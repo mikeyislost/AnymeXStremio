@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
+import 'package:anymex/plus/continue_watching_row.dart' show normalizeTitle;
 import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
@@ -10,6 +11,7 @@ import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
 import 'package:anymex/plus/tvui/tv_details.dart';
+import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -34,6 +36,9 @@ class _TvHomePageState extends State<TvHomePage> {
   Timer? _heroTimer;
   final _movieRows = <String, List<TvItem>>{};
   final _rowKeys = <String, GlobalKey<TvRowState>>{};
+  final _born = DateTime.now();
+  bool _warming = false;
+  final _startTimers = <Timer>[];
 
   static const _movieRowIds = [
     'trending-movies', 'trending-series', 'popular-movies', 'popular-series', 'airing', 'theaters',
@@ -43,6 +48,14 @@ class _TvHomePageState extends State<TvHomePage> {
   @override
   void initState() {
     super.initState();
+    if (!TvStart.ready.value) {
+      // Never keep the splash longer than this.
+      _startTimers.add(Timer(const Duration(seconds: 9), () => TvStart.ready.value = true));
+      // Look again once the slower rows had a moment.
+      _startTimers.add(Timer(const Duration(seconds: 3), () {
+        if (mounted) setState(() {});
+      }));
+    }
     try {
       final data = Get.find<ServiceHandler>().anilistService;
       if (data.trendingAnimes.isEmpty) unawaited(data.fetchAnilistHomepage());
@@ -57,8 +70,33 @@ class _TvHomePageState extends State<TvHomePage> {
   @override
   void dispose() {
     _heroTimer?.cancel();
+    for (final t in _startTimers) {
+      t.cancel();
+    }
     _hero.dispose();
     super.dispose();
+  }
+
+  /// Start-up: once the first rows are known, load the pictures of the
+  /// first screen, then let the splash go.
+  void _maybeWarm(List<(String, List<TvItem>, bool, bool)> specs) {
+    if (_warming || TvStart.ready.value) return;
+    final waited = DateTime.now().difference(_born) > const Duration(seconds: 3);
+    if (specs.isEmpty || (specs.length < 3 && !waited)) return;
+    _warming = true;
+    final pics = <(String, double)>[];
+    final first = specs.first.$2.first;
+    pics.add((first.backdrop.isNotEmpty ? first.backdrop : first.poster, 1240));
+    for (final r in specs.take(2)) {
+      for (final it in r.$2.take(8)) {
+        pics.add((r.$3 && it.backdrop.isNotEmpty ? it.backdrop : it.poster, r.$3 ? TvCard.wideW : TvCard.posterW));
+      }
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await TvImage.warm(context, pics);
+      TvStart.ready.value = true;
+    });
   }
 
   /// A card got the highlight: show it in the banner, and fill in what the
@@ -101,19 +139,37 @@ class _TvHomePageState extends State<TvHomePage> {
     });
   }
 
+  /// AniList anime and Stremio items, newest first, without doubles (the
+  /// same show from AniList and Stremio, or as two Stremio entries: an
+  /// anime under its Kitsu id and its IMDb id).
   List<TvItem> _continue() {
     final out = <(int, TvItem)>[];
+    final titles = <String>{};
+    final ids = <String>[];
     try {
       final auth = Get.find<AnilistAuth>();
       if (auth.isLoggedIn.value) {
         for (final t in auth.animeList) {
           final s = (t.watchingStatus ?? '').toUpperCase();
-          if (s == 'CURRENT' || s == 'REPEATING') out.add(((t.updatedAt ?? 0) * 1000, TvItem.fromTracked(t)));
+          if (s != 'CURRENT' && s != 'REPEATING') continue;
+          out.add(((t.updatedAt ?? 0) * 1000, TvItem.fromTracked(t)));
+          if (t.id != null) ids.add(t.id!);
+          for (final n in [t.title, t.romajiTitle]) {
+            final k = normalizeTitle(n);
+            if (k.isNotEmpty) titles.add(k);
+          }
         }
       }
     } catch (_) {}
     try {
-      for (final i in StremioService.to.continueWatching) {
+      final st = StremioService.to;
+      final synced = ids.isEmpty ? const <String>{} : st.stremioIdsForAnilist(ids);
+      final items = st.continueWatching.toList()
+        ..sort((a, b) => (b.lastWatched?.millisecondsSinceEpoch ?? 0).compareTo(a.lastWatched?.millisecondsSinceEpoch ?? 0));
+      for (final i in items) {
+        if (synced.contains(i.id)) continue;
+        final k = normalizeTitle(i.name);
+        if (k.isNotEmpty && !titles.add(k)) continue;
         out.add((i.lastWatched?.millisecondsSinceEpoch ?? 0, TvItem.fromLibrary(i)));
       }
     } catch (_) {}
@@ -203,6 +259,7 @@ class _TvHomePageState extends State<TvHomePage> {
                 onDown: () => move(r, 1),
               ),
           ];
+          _maybeWarm(specs);
           if (_hero.value == null) {
             final first = cw.isNotEmpty ? cw.first : (fy.isNotEmpty ? fy.first : (trending.isNotEmpty ? trending.first : null));
             if (first != null) WidgetsBinding.instance.addPostFrameCallback((_) => _focus(first));

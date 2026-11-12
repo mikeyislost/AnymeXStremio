@@ -119,9 +119,11 @@ class TvItem {
         videoId: i.videoId ?? '',
         sub: () {
           final v = i.videoId ?? '';
-          final m = RegExp(r':(\d+):(\d+)$').firstMatch(v);
+          // kitsu:<show>:<episode> has no season.
+          final k = RegExp(r'^kitsu:\d+:(\d+)$').firstMatch(v);
+          final m = k != null ? null : RegExp(r':(\d+):(\d+)$').firstMatch(v);
           final left = i.duration > 0 ? ((i.duration - i.timeOffset) / 60000).round() : 0;
-          final ep = m != null ? 'S${m[1]} E${m[2]}' : (i.type == 'movie' ? 'Movie' : 'Series');
+          final ep = k != null ? 'E${k[1]}' : (m != null ? 'S${m[1]} E${m[2]}' : (i.type == 'movie' ? 'Movie' : 'Series'));
           return left > 0 ? '$ep · $left min left' : ep;
         }(),
       );
