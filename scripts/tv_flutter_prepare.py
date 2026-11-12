@@ -48,6 +48,10 @@ lg = ["path_provider", "shared_preferences", "url_launcher",
       "device_info_plus", "video_player"]
 extra = []
 for name in lg:
+    if name == "video_player":
+        # AnymeX+ copy with audio tracks (packages/video_player_webos).
+        extra += ["    video_player_webos:", "        path: packages/video_player_webos"]
+        continue
     extra += ["    %s_webos:" % name, "        git:", "            url: %s" % LG,
               "            path: packages/%s" % name, "            ref: main"]
 i = out.index("dependencies:")

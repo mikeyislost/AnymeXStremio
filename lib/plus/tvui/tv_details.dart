@@ -1,6 +1,7 @@
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
 import 'package:anymex/plus/tvui/tv_playable.dart';
 import 'package:anymex/plus/tvui/tv_sources.dart';
@@ -40,6 +41,8 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
   bool _loading = true;
   String _error = '';
   TvPlayable? _playable;
+  StremioMeta? _meta;
+  String _resumeVideo = ''; // Stremio: the episode you're on
   bool _matching = false;
 
   @override
@@ -91,14 +94,9 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
       }
       _item = TvItem.fromStremio(meta);
       _playable = TvPlayable.stremio(_item, meta);
-      final playing = it.videoId;
-      final videos = meta.videos.toList()
-        ..sort((a, b) => ((a.season ?? 1) * 100000 + (a.episode ?? 0)).compareTo((b.season ?? 1) * 100000 + (b.episode ?? 0)));
-      _eps = [
-        for (final v in videos)
-          _Ep(v.id, v.season ?? 1, v.episode ?? 0, v.title.isEmpty ? 'Episode ${v.episode ?? ''}' : v.title,
-              thumb: v.thumbnail ?? '', progress: v.id == playing ? it.progress : 0),
-      ];
+      _meta = meta;
+      await _applyLibrary(meta);
+      if (!mounted) return;
     }
     _parts = _split(_eps);
     if (_progress > 0) {
@@ -107,6 +105,31 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
       }
     }
     setState(() => _loading = false);
+  }
+
+  /// Watched episodes and where you are, from Stremio's library as it is
+  /// now (so what you watched on the phone shows here too).
+  Future<void> _applyLibrary(StremioMeta meta) async {
+    StremioLibraryItem? lib;
+    try {
+      lib = await StremioService.to.getLibraryItem(meta.id, refresh: true).timeout(const Duration(seconds: 10));
+    } catch (_) {}
+    WatchedBitField? bits;
+    try {
+      if (lib != null) bits = WatchedBitField.construct(lib.watchedField, WatchedBitField.orderedVideoIds(meta.videos));
+    } catch (_) {}
+    final at = lib?.videoId ?? widget.item.videoId;
+    final progress = lib != null && lib.duration > 0 ? (lib.timeOffset / lib.duration).clamp(0.0, 1.0).toDouble() : widget.item.progress;
+    _resumeVideo = (lib != null && lib.timeOffset > 0) || widget.item.videoId.isNotEmpty ? at : '';
+    final videos = meta.videos.toList()
+      ..sort((a, b) => ((a.season ?? 1) * 100000 + (a.episode ?? 0)).compareTo((b.season ?? 1) * 100000 + (b.episode ?? 0)));
+    _eps = [
+      for (final v in videos)
+        _Ep(v.id, v.season ?? 1, v.episode ?? 0, v.title.isEmpty ? 'Episode ${v.episode ?? ''}' : v.title,
+            thumb: v.thumbnail ?? '',
+            progress: v.id == at ? progress : 0,
+            watched: bits?.getVideo(v.id) ?? false),
+    ];
   }
 
   static String _statusLabel(String? s) => switch ((s ?? '').toUpperCase()) {
@@ -143,6 +166,14 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     return out;
   }
 
+  String? _resumeLabel() {
+    if (_resumeVideo.isEmpty) return null;
+    for (final e in _eps) {
+      if (e.id == _resumeVideo) return '${e.progress > 0 && !e.watched ? 'Resume' : 'Play'} S${e.season} E${e.number}';
+    }
+    return null;
+  }
+
   Future<void> _play([_Ep? e]) async {
     if (_loading || _matching) return;
     final st = StremioService.to;
@@ -173,8 +204,8 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
       ep = p.isAnime ? p.epFor(number: e.number) : p.epFor(videoId: e.id);
     } else if (p.isAnime) {
       ep = p.epFor(number: _progress + 1) ?? p.epFor(number: _progress);
-    } else if (widget.item.videoId.isNotEmpty) {
-      ep = p.epFor(videoId: widget.item.videoId);
+    } else if (_resumeVideo.isNotEmpty) {
+      ep = p.epFor(videoId: _resumeVideo);
     }
     ep ??= p.eps.where((x) => x.season != 0).firstOrNull ?? p.eps.firstOrNull;
     if (ep == null) {
@@ -183,6 +214,12 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     }
     if (!mounted) return;
     await Navigator.of(context).push(tvRoute(TvSourcesPage(playable: p, ep: ep, auto: true)));
+    // Back from the player: show what's watched now.
+    final meta = _meta;
+    if (meta != null && mounted) {
+      await _applyLibrary(meta);
+      if (mounted) setState(() => _parts = _split(_eps));
+    }
   }
 
   @override
@@ -201,7 +238,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         ? 'Play'
         : it.isAnime
             ? (_progress > 0 ? 'Continue E$next' : 'Play E1')
-            : (widget.item.videoId.isNotEmpty ? 'Resume ${widget.item.sub.split('·').first.trim()}' : 'Play S1 E1');
+            : (_resumeLabel() ?? 'Play S1 E1');
     final pic = it.backdrop.isNotEmpty ? it.backdrop : it.poster;
     final part = _parts.isEmpty ? const <_Ep>[] : _parts[_part.clamp(0, _parts.length - 1).toInt()].$2;
 

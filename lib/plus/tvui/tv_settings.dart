@@ -4,6 +4,7 @@ import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/main.dart' show FilterScreen;
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/tvui/tv_player.dart' show TvPlayerDebug;
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:flutter/material.dart';
@@ -76,6 +77,9 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
               "LG doesn't pass the remote's Back button to Flutter apps yet (the TV asks to exit instead; LG plans to change this). "
               'Until then, Left at the left edge goes back: it closes a page or opens the menu.'),
           _row('Last remote keys', keys.isEmpty ? 'Press a few buttons on the remote' : keys.join('\n')),
+          if (TvPlayerDebug.lastSourceInfo.isNotEmpty)
+            _row('Last video: what the TV reported',
+                TvPlayerDebug.lastSourceInfo.length > 900 ? '${TvPlayerDebug.lastSourceInfo.substring(0, 900)}…' : TvPlayerDebug.lastSourceInfo),
         ]),
       );
 

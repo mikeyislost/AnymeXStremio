@@ -34,7 +34,13 @@ class _Sub {
   const _Sub(this.label, this.lang, this.url);
 }
 
-enum _Panel { none, subs, speed, eps }
+enum _Panel { none, subs, audio, speed, eps }
+
+/// The track list LG's player reported for the last video (Settings →
+/// About this TV shows it, to see what the TV tells us).
+class TvPlayerDebug {
+  static String lastSourceInfo = '';
+}
 
 /// AnymeX+ TV player (LG's own video player, through Flutter): Stremio-style
 /// controls, sources, subtitles, speed, episodes, skip intro and next
@@ -56,6 +62,8 @@ class TvPlayerPage extends StatefulWidget {
 
 class _TvPlayerPageState extends State<TvPlayerPage> {
   static const _kSubLang = 'plus_tv_sub_lang';
+  static const _kAudioLang = 'plus_tv_audio_lang';
+  static const _aux = MethodChannel('videoplayer_webos');
   static const _speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
 
   late TvEp _ep = widget.ep;
@@ -77,6 +85,8 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
   bool _stopSent = false;
   double _speed = 1.0;
 
+  List<(String, String)> _audios = const []; // (label, language)
+  int _audio = 0;
   List<_Sub> _subs = const [];
   int _sub = -1;
   aniskip.EpisodeSkipTimes? _skip;
@@ -137,7 +147,8 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       await c.initialize().timeout(const Duration(seconds: 45));
       if (id != _opening || !mounted) return;
       var at = startAt;
-      if (at == Duration.zero) at = _resumePoint(c.value.duration);
+      if (at == Duration.zero) at = await _resumePoint(c.value.duration);
+      if (id != _opening || !mounted) return;
       if (at > Duration.zero) await c.seekTo(at);
       if (_speed != 1.0) await c.setPlaybackSpeed(_speed);
       await c.play();
@@ -146,6 +157,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       setState(() => _status = '');
       _showControls();
       unawaited(_loadSubs(id));
+      unawaited(_loadAudio(id));
       unawaited(_loadSkip(id, c.value.duration));
       _prefetchNext();
     } catch (e) {
@@ -165,12 +177,24 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
     return "This source doesn't play on the TV.";
   }
 
-  Duration _resumePoint(Duration dur) {
+  /// Where you stopped last time, from Stremio's library as it is now (the
+  /// phone or another device may have moved it on since the TV last looked).
+  Future<Duration> _resumePoint(Duration dur) async {
     try {
+      final st = StremioService.to;
       final (media, episode) = widget.playable.reportFor(_ep);
-      final ms = StremioService.to.resumePositionMs(media, episode);
-      if (ms > 30000 && (dur.inMilliseconds == 0 || ms < dur.inMilliseconds * 0.95)) return Duration(milliseconds: ms);
-    } catch (_) {}
+      final pb = await st.playbackFor(media, episode).timeout(const Duration(seconds: 8));
+      final id = pb?.libraryId ?? widget.playable.metaId;
+      final item = await st.getLibraryItem(id, refresh: true).timeout(const Duration(seconds: 8));
+      if (item == null) return Duration.zero;
+      final vid = item.videoId;
+      if (vid != null && vid.isNotEmpty && vid != (pb?.videoId ?? _ep.videoId) && vid != _ep.videoId) return Duration.zero;
+      final ms = item.timeOffset;
+      final total = item.duration > 0 ? item.duration : dur.inMilliseconds;
+      if (ms > 30000 && (total == 0 || ms < total * StremioService.creditsThreshold)) return Duration(milliseconds: ms);
+    } catch (e) {
+      Logger.i('TV resume point: $e');
+    }
     return Duration.zero;
   }
 
@@ -244,6 +268,8 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       _marked = false;
       _sub = -1;
       _subs = const [];
+      _audios = const [];
+      _audio = 0;
     });
     await _open(Duration.zero);
   }
@@ -258,6 +284,86 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
     }
     setState(() => _stream = chosen);
     await _open(at > const Duration(seconds: 5) ? at : Duration.zero);
+  }
+
+  // ---- audio tracks -----------------------------------------------------------
+
+  Future<void> _loadAudio(int id) async {
+    final c = _c;
+    if (c == null) return;
+    var raw = '';
+    for (var i = 0; i < 10 && raw.isEmpty; i++) {
+      try {
+        raw = await _aux.invokeMethod<String>('sourceInfo', {'textureId': c.playerId}) ?? '';
+      } catch (e) {
+        Logger.i('TV audio tracks: $e');
+        return;
+      }
+      if (raw.isEmpty) await Future.delayed(const Duration(milliseconds: 500));
+    }
+    if (id != _opening || !mounted || raw.isEmpty) return;
+    TvPlayerDebug.lastSourceInfo = raw;
+    final list = _parseAudio(raw);
+    setState(() {
+      _audios = list;
+      _audio = 0;
+    });
+    final want = KvHelper.get<String>(_kAudioLang, defaultVal: '');
+    if (want.isNotEmpty && list.length > 1 && list.first.$2 != want) {
+      final i = list.indexWhere((a) => a.$2 == want);
+      if (i > 0) unawaited(_setAudio(i, remember: false));
+    }
+  }
+
+  /// Audio tracks from LG's sourceInfo event: whatever it says about each
+  /// (language, codec, channels), else just "Track n".
+  static List<(String, String)> _parseAudio(String raw) {
+    try {
+      final j = jsonDecode(raw);
+      final src = (j is Map ? j['sourceInfo'] : null) as Map? ?? const {};
+      final progs = src['programInfo'] as List? ?? const [];
+      final p0 = progs.isEmpty ? const {} : progs.first as Map;
+      final n = (p0['numAudioTracks'] as num?)?.toInt() ?? 0;
+      final info = (p0['audioTrackInfo'] ?? p0['audioTracks'] ?? src['audioTrackInfo']) as List? ?? const [];
+      final count = n > info.length ? n : info.length;
+      return [
+        for (var i = 0; i < count; i++)
+          () {
+            final t = i < info.length && info[i] is Map ? info[i] as Map : const {};
+            final lang = '${t['language'] ?? t['lang'] ?? ''}'.toLowerCase();
+            final codec = '${t['codec'] ?? t['codecName'] ?? ''}';
+            final ch = (t['channels'] as num?)?.toInt() ?? 0;
+            final parts = [
+              if (lang.isNotEmpty && lang != 'und' && lang != 'null') _langName(lang) else 'Track ${i + 1}',
+              if (codec.isNotEmpty && codec != 'null') codec.toUpperCase(),
+              if (ch > 0) ch == 6 ? '5.1' : (ch == 8 ? '7.1' : (ch == 2 ? 'Stereo' : '$ch ch')),
+            ];
+            return (parts.join(' · '), lang);
+          }(),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _setAudio(int i, {bool remember = true}) async {
+    final c = _c;
+    if (c == null) return;
+    setState(() => _panel = _Panel.none);
+    var ok = false;
+    try {
+      ok = await _aux.invokeMethod<bool>('selectTrack', {'textureId': c.playerId, 'type': 'audio', 'index': i}) ?? false;
+    } catch (e) {
+      Logger.i('TV audio switch: $e');
+    }
+    if (!mounted) return;
+    if (ok) {
+      setState(() => _audio = i);
+      if (remember && i < _audios.length) KvHelper.set(_kAudioLang, _audios[i].$2);
+    } else if (remember) {
+      tvToast(context, "The TV couldn't switch to that audio track.");
+    }
+    if (remember) _closePanel();
   }
 
   // ---- subtitles ------------------------------------------------------------
@@ -742,6 +848,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                     const SizedBox(width: 14),
                     if (_next != null) _btn('Next episode', () => unawaited(_playEp(_next!))),
                     _btn(_sub >= 0 ? 'Subtitles: ${_subs[_sub].label.split(' · ').first}' : 'Subtitles', () => _openPanel(_Panel.subs)),
+                    if (_audios.length > 1) _btn('Audio', () => _openPanel(_Panel.audio)),
                     _btn(_error.isNotEmpty ? 'Try another source' : 'Source', () => unawaited(_pickSource())),
                     if (!p.isMovie) _btn('Episodes', () => _openPanel(_Panel.eps)),
                     _btn('Speed ${_speed == 1.0 ? '1' : _speed}×', () => _openPanel(_Panel.speed)),
@@ -842,6 +949,11 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
         items.add(('Off', _sub < 0, () => unawaited(_setSub(-1))));
         for (var i = 0; i < _subs.length; i++) {
           items.add((_subs[i].label, _sub == i, () => unawaited(_setSub(i))));
+        }
+      case _Panel.audio:
+        title = 'Audio';
+        for (var i = 0; i < _audios.length; i++) {
+          items.add((_audios[i].$1, _audio == i, () => unawaited(_setAudio(i))));
         }
       case _Panel.speed:
         title = 'Speed';
