@@ -5,6 +5,7 @@ import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
 import 'package:anymex/plus/webos.dart';
+import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
@@ -425,7 +426,9 @@ class _MainAppState extends State<MainApp> {
         home: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           child: _showMainApp
-              ? const FilterScreen(key: ValueKey('home'))
+              ? (PlusWebos.isTv && PlusTvUi.enabled // AnymeX+: the TV layout
+                  ? const PlusTvShell(key: ValueKey('tv'))
+                  : const FilterScreen(key: ValueKey('home')))
               : const AnymeXSplashScreen(key: ValueKey('splash')),
         ),
         builder: (context, child) {
