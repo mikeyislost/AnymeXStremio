@@ -65,6 +65,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
   static const _kAudioLang = 'plus_tv_audio_lang';
   static const _aux = MethodChannel('videoplayer_webos');
   static const _speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
+  static const _shade = [Shadow(blurRadius: 6, color: Color(0xCC000000)), Shadow(blurRadius: 2, color: Color(0x99000000))];
 
   late TvEp _ep = widget.ep;
   late StremioStream _stream = widget.stream;
@@ -755,20 +756,6 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
           else if (ready && v!.isBuffering)
             Center(child: SizedBox(width: 64, height: 64, child: CircularProgressIndicator(strokeWidth: 5, color: accent))),
           if (showUi) ...[
-            const Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              height: 240,
-              child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xD9000000), Color(0x00000000)]))),
-            ),
-            const Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 420,
-              child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Color(0xEB000000), Color(0x00000000)]))),
-            ),
             Positioned(
               left: 80,
               right: 80,
@@ -776,21 +763,21 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(p.item.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text(p.item.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: Colors.white, shadows: _shade)),
                     const SizedBox(height: 6),
                     Text(
                       [if (!p.isMovie) '${_ep.label} · ${_ep.title}', _stream.addonName].join('   •   '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 22, color: TvStyle.text2),
+                      style: const TextStyle(fontSize: 22, color: Colors.white, shadows: _shade),
                     ),
                   ]),
                 ),
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(_clock(now), style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Text(_clock(now), style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w600, color: Colors.white, shadows: _shade)),
                   if (ready && dur > Duration.zero)
                     Text('Ends at ${_clock(now.add(Duration(milliseconds: (left.inMilliseconds / _speed).round())))}',
-                        style: const TextStyle(fontSize: 19, color: Color(0xFF9A9A9A))),
+                        style: const TextStyle(fontSize: 19, color: Colors.white, shadows: _shade)),
                 ]),
               ]),
             ),
@@ -825,7 +812,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                 if (_error.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 26),
-                    child: Text(_error, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: Colors.white)),
+                    child: Text(_error, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: Colors.white, shadows: _shade)),
                   ),
                 if (ready) _bar(pos, dur, v!, accent),
                 const SizedBox(height: 22),
@@ -898,8 +885,8 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
           ),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(_fmt(pos), style: TextStyle(fontSize: 20, color: f || _seekTo != null ? Colors.white : const Color(0xFFCFCFCF), fontWeight: _seekTo != null ? FontWeight.w700 : FontWeight.w400)),
-            Text('-${_fmt(dur - pos)}', style: const TextStyle(fontSize: 20, color: Color(0xFFCFCFCF))),
+            Text(_fmt(pos), style: TextStyle(fontSize: 20, shadows: _shade, color: f || _seekTo != null ? Colors.white : const Color(0xFFE0E0E0), fontWeight: _seekTo != null ? FontWeight.w700 : FontWeight.w400)),
+            Text('-${_fmt(dur - pos)}', style: const TextStyle(fontSize: 20, color: Color(0xFFE0E0E0), shadows: _shade)),
           ]),
         ]);
       }),
