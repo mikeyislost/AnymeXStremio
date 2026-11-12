@@ -1,11 +1,11 @@
+import 'dart:convert';
+
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/main.dart' show FilterScreen;
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 

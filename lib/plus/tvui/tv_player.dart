@@ -618,7 +618,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
             Positioned.fill(
               child: Center(
                 child: AspectRatio(
-                  aspectRatio: ready && v.aspectRatio > 0 ? v.aspectRatio : 16 / 9,
+                  aspectRatio: ready && v!.aspectRatio > 0 ? v.aspectRatio : 16 / 9,
                   child: VideoPlayer(c),
                 ),
               ),
@@ -646,7 +646,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                 Text(_status.isEmpty ? 'Loading…' : _status, style: const TextStyle(fontSize: 24, color: TvStyle.text2)),
               ]),
             )
-          else if (ready && v.isBuffering)
+          else if (ready && v!.isBuffering)
             Center(child: SizedBox(width: 64, height: 64, child: CircularProgressIndicator(strokeWidth: 5, color: accent))),
           if (showUi) ...[
             const Positioned(
@@ -721,7 +721,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                     padding: const EdgeInsets.only(bottom: 26),
                     child: Text(_error, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: Colors.white)),
                   ),
-                if (ready) _bar(pos, dur, v, accent),
+                if (ready) _bar(pos, dur, v!, accent),
                 const SizedBox(height: 22),
                 Focus(
                   canRequestFocus: false,

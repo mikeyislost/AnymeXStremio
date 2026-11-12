@@ -155,7 +155,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
       setState(() => _matching = true);
       tvToast(context, 'Matching with your Stremio addons…');
       try {
-        p = await TvPlayable.anime(_item);
+        p = await TvPlayable.forAnime(_item);
       } catch (_) {}
       if (!mounted) return;
       setState(() {

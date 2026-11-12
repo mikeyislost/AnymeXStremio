@@ -66,7 +66,7 @@ class TvPlayable {
 
   /// An anime from AniList, matched to the user's Stremio addons; null when
   /// none of them has it.
-  static Future<TvPlayable?> anime(TvItem item) async {
+  static Future<TvPlayable?> forAnime(TvItem item) async {
     final media = anymex.Media(
       id: item.id,
       idMal: item.idMal.isEmpty ? '0' : item.idMal,
