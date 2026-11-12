@@ -1,4 +1,5 @@
 import 'package:anymex/plus/airplay.dart';
+import 'package:anymex/plus/tv/flutter_tv_pair.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
 import 'package:anymex/plus/tv/tv_sync.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
@@ -112,6 +113,104 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
     link.play(url, title: 'Pasted link');
   }
 
+  /// AnymeX+ (Flutter) on the TV: send your logins with the code it shows.
+  Widget _flutterTvCard(BuildContext context) {
+    final paired = PlusFlutterTvPair.savedPairs();
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.key_rounded),
+        title: const Text('Send logins to the Flutter TV app'),
+        subtitle: Text(paired.isEmpty
+            ? 'AniList, Simkl, MyAnimeList and Stremio, for "AnymeX+ (Flutter)" on your TV. '
+                'On the TV: Settings → Accounts → Get logins from your phone.'
+            : 'Paired with ${paired.map((p) => p['host']).join(', ')}. Fresh logins go to it each time this app starts.'),
+        isThreeLine: true,
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: _sendLogins,
+      ),
+    );
+  }
+
+  Future<void> _sendLogins() async {
+    final saved = PlusFlutterTvPair.savedPairs();
+    final host = TextEditingController(
+        text: saved.isNotEmpty ? saved.last['host'] : (_tvs.isNotEmpty ? _tvs.first.host : ''));
+    final code = TextEditingController();
+    var busy = false;
+    var error = '';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) {
+          Future<void> go() async {
+            final h = host.text.trim(), c = code.text.replaceAll(' ', '');
+            if (!PlusCastSearch.isIp(h)) {
+              setD(() => error = 'The TV address should look like 192.168.1.49 (it shows on the TV).');
+              return;
+            }
+            if (c.length != 6) {
+              setD(() => error = 'Type the 6-digit code from the TV.');
+              return;
+            }
+            setD(() {
+              busy = true;
+              error = '';
+            });
+            try {
+              final took = await PlusFlutterTvPair.send(h, c);
+              if (ctx.mounted) Navigator.of(ctx).pop();
+              snackBar(took.isEmpty ? 'Sent, but the TV took none of them' : 'The TV is signed in: ${took.join(', ')}',
+                  duration: 5000);
+              if (mounted) setState(() {});
+            } catch (e) {
+              setD(() {
+                busy = false;
+                error = '$e'.replaceFirst('Exception: ', '');
+                if (error.startsWith('Wrong code')) code.clear();
+              });
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Send logins to the TV'),
+            content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('On the TV, open AnymeX+ (Flutter) → Settings → Accounts → Get logins from your phone.'),
+              const SizedBox(height: 12),
+              if (_tvs.isNotEmpty)
+                Wrap(spacing: 6, children: [
+                  for (final tv in _tvs)
+                    ActionChip(label: Text(tv.host), onPressed: () => setD(() => host.text = tv.host)),
+                ]),
+              TextField(
+                controller: host,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'TV address'),
+              ),
+              TextField(
+                controller: code,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                maxLength: 7,
+                decoration: const InputDecoration(labelText: 'Code on the TV'),
+                onSubmitted: (_) => go(),
+              ),
+              if (error.isNotEmpty) Text(error, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+            ]),
+            actions: [
+              TextButton(onPressed: busy ? null : () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: busy ? null : go,
+                child: busy
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Send'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _copyReport() async {
     await Clipboard.setData(ClipboardData(text: link.report()));
     snackBar('TV report copied');
@@ -135,6 +234,8 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 48),
             children: [
               _statusCard(context, connected),
+              const SizedBox(height: 12),
+              _flutterTvCard(context),
               const SizedBox(height: 16),
               if (connected) ..._connected(context) else ..._notConnected(context),
             ],

@@ -43,6 +43,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
   TvPlayable? _playable;
   StremioMeta? _meta;
   String _resumeVideo = ''; // Stremio: the episode you're on
+  bool _inLibrary = false; // Stremio: saved in your library
   bool _matching = false;
 
   @override
@@ -142,6 +143,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     try {
       if (lib != null) bits = WatchedBitField.construct(lib.watchedField, WatchedBitField.orderedVideoIds(meta.videos));
     } catch (_) {}
+    _inLibrary = lib?.isInLibrary ?? StremioService.to.isInLibrary(meta.id);
     final at = lib?.videoId ?? widget.item.videoId;
     final progress = lib != null && lib.duration > 0 ? (lib.timeOffset / lib.duration).clamp(0.0, 1.0).toDouble() : widget.item.progress;
     _resumeVideo = (lib != null && lib.timeOffset > 0) || widget.item.videoId.isNotEmpty ? at : '';
@@ -154,6 +156,33 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
             progress: v.id == at ? progress : 0,
             watched: bits?.getVideo(v.id) ?? false),
     ];
+  }
+
+  /// Adds to / removes from your Stremio library (like the phone's button).
+  Future<void> _toggleLibrary() async {
+    final st = StremioService.to;
+    final meta = _meta;
+    if (!st.isLoggedIn.value) {
+      tvToast(context, 'Sign in to Stremio first (Settings → Accounts).');
+      return;
+    }
+    if (meta == null) return;
+    final was = _inLibrary;
+    setState(() => _inLibrary = !was);
+    try {
+      if (was) {
+        await st.removeFromLibrary(meta.id);
+        if (mounted) tvToast(context, 'Removed from your library');
+      } else {
+        await st.addToLibrary(id: meta.id, type: meta.type, name: meta.name, poster: meta.poster);
+        if (mounted) tvToast(context, 'Added to your library');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _inLibrary = was);
+        tvToast(context, "Couldn't change your library: $e");
+      }
+    }
   }
 
   static String _statusLabel(String? s) => switch ((s ?? '').toUpperCase()) {
@@ -341,7 +370,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                     onSelect: () => tvToast(context, 'Changing your list from the TV comes with the logins from your phone.'),
                   ),
                 if (!it.isAnime)
-                  TvButton(label: 'Add to library', onSelect: () => tvToast(context, 'Library changes come with the logins from your phone.')),
+                  TvButton(label: _inLibrary ? 'In library ✓' : 'Add to library', onSelect: _toggleLibrary),
                 if (it.isAnime) TvButton(label: 'Source: Stremio addons', onSelect: () => tvToast(context, 'Anime plays from your Stremio addons for now. Extensions on the TV come next.')),
               ]),
             ),

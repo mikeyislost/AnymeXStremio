@@ -12,6 +12,7 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
+import 'package:anymex/plus/tv/flutter_tv_pair.dart' show PlusFlutterTvPair;
 import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
 import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
@@ -1292,6 +1293,41 @@ void main() {
       expect(PlusTvSync.keepsOtherSync(isComputer: true, have: '', from: '', me: 'PC'), isFalse);
       expect(PlusTvSync.keepsOtherSync(isComputer: true, have: 'h', from: 'PC', me: 'PC'), isFalse);
       expect(PlusTvSync.keepsOtherSync(isComputer: false, have: 'h', from: 'iPhone', me: 'iPad'), isFalse);
+    });
+  });
+
+  group('Flutter TV: logins from the phone', () {
+    test('both sides get the same lock key, and it opens what was locked', () {
+      final (phone, phonePub) = PlusFlutterTvPair.newKeys();
+      final (tv, tvPub) = PlusFlutterTvPair.newKeys();
+      final salt = PlusFlutterTvPair.newSalt();
+      final a = PlusFlutterTvPair.lockKey(phone, tvPub, '123456', salt);
+      final b = PlusFlutterTvPair.lockKey(tv, phonePub, '123456', salt);
+      expect(a, b);
+      expect(a.length, 64);
+      final sealed = PlusTvSync.seal(a, utf8.encode('{"anilist":"x"}'));
+      expect(utf8.decode(PlusFlutterTvPair.open(b, sealed.\$1, sealed.\$2)), '{"anilist":"x"}');
+    });
+
+    test('a wrong code cannot open it', () {
+      final (phone, phonePub) = PlusFlutterTvPair.newKeys();
+      final (tv, tvPub) = PlusFlutterTvPair.newKeys();
+      final a = PlusFlutterTvPair.lockKey(phone, tvPub, '123456', 's');
+      final wrong = PlusFlutterTvPair.lockKey(tv, phonePub, '123457', 's');
+      final sealed = PlusTvSync.seal(a, utf8.encode('secret'));
+      expect(() => PlusFlutterTvPair.open(wrong, sealed.\$1, sealed.\$2), throwsA(anything));
+    });
+
+    test('codes are 6 digits; saved-key ids show nothing of the key', () {
+      expect(RegExp(r'^\d{6}\$').hasMatch(PlusFlutterTvPair.newCode()), isTrue);
+      final key = 'ab' * 32;
+      final id = PlusFlutterTvPair.idFor(key);
+      expect(id.length, 16);
+      expect(key.contains(id), isFalse);
+    });
+
+    test('carried names what was sent', () {
+      expect(PlusFlutterTvPair.carried({'anilist': 't', 'simkl': '', 'stremio': 'k'}), ['AniList', 'Stremio']);
     });
   });
 }

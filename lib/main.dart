@@ -3,7 +3,9 @@ import 'package:anymex/plus/launch_timer.dart';
 import 'package:anymex/plus/splash_gate.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
+import 'package:anymex/plus/tv/flutter_tv_pair.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
+import 'package:anymex/plus/tvui/tv_pair.dart';
 import 'package:anymex/plus/webos.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'dart:async';
@@ -393,6 +395,11 @@ class _MainAppState extends State<MainApp> {
         WidgetsBinding.instance
             .addPostFrameCallback((_) => LaunchTimer.markHome());
         PlusTvLink.autoStart(); // AnymeX+: a PC is the TV app's anime source
+        if (PlusWebos.isTv) {
+          PlusTvPair.instance.start(); // AnymeX+: logins from the phone
+        } else {
+          PlusFlutterTvPair.autoPush(); // AnymeX+: fresh logins for paired TVs
+        }
       }
     });
   }

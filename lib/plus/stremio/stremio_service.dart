@@ -554,6 +554,12 @@ class StremioService extends GetxController {
     await _completeLogin(res.authKey, res.user);
   }
 
+  /// AnymeX+: signs in with a key another device handed over (TV pairing).
+  Future<void> loginWithAuthKey(String key) async {
+    final user = await api.getUser(key);
+    await _completeLogin(key, user);
+  }
+
   Future<StremioLinkCode> createLinkCode() => api.createLinkCode();
 
   /// Polls a link code until the user confirms it on stremio.com/link.
