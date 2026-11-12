@@ -4,6 +4,7 @@ import 'package:anymex/plus/splash_gate.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
+import 'package:anymex/plus/webos.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
@@ -172,7 +173,9 @@ void main(List<String> args) async {
     await Future.wait([
       safeCall(() => ExternalFontLoader.loadStartupFonts(),
           errorMessage: 'Failed to load app fonts'),
-      safeCall(() => Rhttp.init(), errorMessage: 'Failed to initialize Rhttp'),
+      safeCall(() => Rhttp.init(libraryPath: PlusWebos.isTv ? PlusWebos.lib('librhttp.so') : null), // AnymeX+: TV
+          errorMessage: 'Failed to initialize Rhttp'),
+      safeCall(() => PlusWebos.initNative(), errorMessage: 'Failed to load the TV libraries'),
       safeCall(() => dotenv.load(fileName: ".env"),
           errorMessage: 'Failed to load .env file'),
       safeCall(() => initializeDateFormatting(),
@@ -181,7 +184,7 @@ void main(List<String> args) async {
           errorMessage: 'Failed to initialize MediaKit'),
     ]);
 
-    if (Platform.isWindows || Platform.isLinux) {
+    if (Platform.isWindows || (Platform.isLinux && !PlusWebos.isTv)) {
       await safeCall(() {
         [
           'dar',
@@ -207,7 +210,9 @@ void main(List<String> args) async {
         errorMessage: 'Failed to initialize deep link listener');
 
     await safeCall(() async {
-      if (!Platform.isAndroid && !Platform.isIOS) {
+      if (PlusWebos.isTv) {
+        // AnymeX+: the TV has no windows to manage.
+      } else if (!Platform.isAndroid && !Platform.isIOS) {
         await windowManager.ensureInitialized();
         await AnymeXTitleBar.initialize();
       } else {

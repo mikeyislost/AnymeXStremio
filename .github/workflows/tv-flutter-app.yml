@@ -8,6 +8,9 @@ on:
   push:
     branches: ['wip/tv-flutter*']
 
+permissions:
+  contents: write
+
 concurrency:
   group: tv-flutter-app-${{ github.ref }}
   cancel-in-progress: true
@@ -28,7 +31,7 @@ jobs:
       - name: Linux packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl unzip cmake pkg-config file libgtk-3-0 libgtk-3-dev git ninja-build clang git-lfs
+          sudo apt-get install -y curl unzip cmake pkg-config file libgtk-3-0 libgtk-3-dev git ninja-build clang libclang-dev git-lfs
           git config --global user.name "AnymeX+ CI"
           git config --global user.email "ci@users.noreply.github.com"
 
@@ -49,6 +52,22 @@ jobs:
 
       - name: Engine
         run: flutter-webos --version && flutter-webos precache
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/rhttp/rust/target
+          key: webos-rust-${{ hashFiles('packages/rhttp/rust/Cargo.lock') }}
+
+      - name: Native libraries for the TV (Isar, rhttp)
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          bash scripts/tv_flutter_native.sh native > logs/native.txt 2>&1 || echo NATIVE FAILED
+          grep -nE "^error|error\[|cannot find|undefined reference|NATIVE FAILED|Rust target|^CC=|CFLAGS=" logs/native.txt | head -60
+          tail -40 logs/native.txt
 
       - name: Setup environment
         env:
@@ -82,6 +101,21 @@ jobs:
           python3 scripts/tv_flutter_prepare.py 2>&1 | tee logs/prepare.txt
           flutter-webos create --platforms webos --project-name anymex . 2>&1 | tee logs/create.txt
           git status --short | head -50 | tee -a logs/create.txt
+          # The TV's own libraries go into the app's lib folder.
+          if ls native/*.so >/dev/null 2>&1; then
+            for f in native/*.so; do
+              echo "install(FILES \"\${CMAKE_CURRENT_SOURCE_DIR}/../$f\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/lib\" COMPONENT Runtime)" >> webos/CMakeLists.txt
+            done
+          fi
+          tail -5 webos/CMakeLists.txt
+          python3 - webos/meta/appinfo.json <<'PY'
+          import json, sys
+          info = json.load(open(sys.argv[1]))
+          info.update({"id": "com.mikeyislost.anymexplus.fluttertv", "title": "AnymeX+ (Flutter)",
+                       "version": "1.0.${{ github.run_number }}", "vendor": "mikeyislost"})
+          json.dump(info, open(sys.argv[1], "w"), indent=4)
+          PY
+          cp tv/largeIcon.png webos/meta/icon.png || true
 
       - name: pub get
         run: |
@@ -106,7 +140,7 @@ jobs:
       - name: Build for webOS
         continue-on-error: true
         run: |
-          flutter-webos build webos --release -v > logs/build.txt 2>&1 || echo BUILD FAILED
+          flutter-webos build webos --release --dart-define=ANYMEX_WEBOS=true -v > logs/build.txt 2>&1 || echo BUILD FAILED
           grep -nE "error|Error|FAILED|failed|undefined reference|No such file" logs/build.txt | grep -v "^.*\[ *[0-9]*ms\] *$" | head -150
           tail -80 logs/build.txt
           find build/webos -name '*.ipk' -exec cp {} logs/ \; 2>/dev/null || true
@@ -120,6 +154,36 @@ jobs:
           for k in sorted(d): print(k, ':', ', '.join(sorted(p['name'] for p in d[k])))
           " > logs/plugins.txt || true
           cat logs/plugins.txt
+
+      - name: Publish for Homebrew Channel (tv-flutter-test pre-release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          IPK=$(find build/webos -name '*.ipk' | head -n 1)
+          test -n "$IPK"
+          unzip -l "$IPK" >/dev/null 2>&1 || true
+          ar t "$IPK" && ar p "$IPK" data.tar.gz | tar tz | grep -E "lib/|appinfo" | head -30
+          TAG=tv-flutter-test
+          BASE="https://github.com/$REPO/releases/download/$TAG"
+          NAME=AnymeX-Plus-Flutter-TV.ipk
+          cp "$IPK" "$NAME"
+          gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1 || \
+            gh api -X POST "repos/$REPO/releases" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" -f name="TV Flutter test" -F prerelease=true >/dev/null
+          REL_ID=$(gh api "repos/$REPO/releases/tags/$TAG" --jq .id)
+          curl -fsSL "$BASE/webos-flutter-test.json" -o repo.json || echo '{"packages": []}' > repo.json
+          python3 scripts/tv_flutter_repo.py repo.json "$NAME" "$BASE/$NAME" com.mikeyislost.anymexplus.fluttertv \
+            "AnymeX+ (Flutter)" "1.0.${{ github.run_number }}" "https://raw.githubusercontent.com/$REPO/main/tv/largeIcon.png" \
+            "The whole AnymeX+ app built for the TV with Flutter. Early test: things will be missing."
+          cp repo.json webos-flutter-test.json
+          for f in "$NAME" webos-flutter-test.json; do
+            OLD=$(gh api "repos/$REPO/releases/$REL_ID/assets" --jq ".[] | select(.name == \"$f\") | .id")
+            if [ -n "$OLD" ]; then gh api -X DELETE "repos/$REPO/releases/assets/$OLD"; fi
+            curl -fsS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Content-Type: application/octet-stream" \
+              --data-binary @"$f" "https://uploads.github.com/repos/$REPO/releases/$REL_ID/assets?name=$f" >/dev/null
+          done
+          echo "published $NAME ($(stat -c %s "$NAME") bytes)"
 
       - uses: actions/upload-artifact@v4
         if: always()

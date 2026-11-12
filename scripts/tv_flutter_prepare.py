@@ -42,6 +42,17 @@ for line in lines:
             line = '%s%s: ">=%s <=%s"' % (m.group(1), m.group(2), floor(v), v)
             changed.append("%s <= %s" % (m.group(2), v))
     out.append(line)
+# LG's webOS parts of the plugins the app uses (path_provider etc.).
+LG = "https://github.com/lg-flutter-webos/plugins.git"
+lg = ["path_provider", "shared_preferences", "url_launcher", "package_info_plus",
+      "device_info_plus", "connectivity_plus", "video_player"]
+extra = []
+for name in lg:
+    extra += ["    %s_webos:" % name, "        git:", "            url: %s" % LG,
+              "            path: packages/%s" % name, "            ref: main"]
+extra += ['    video_player: ">=2.9.3 <3.0.0"']
+i = out.index("dependencies:")
+out[i + 1:i + 1] = extra
 open("pubspec.yaml", "w").write("\n".join(out))
 os.remove("pubspec.lock")
 print("held to the app's versions or older (same major):")
