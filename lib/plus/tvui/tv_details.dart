@@ -2,6 +2,8 @@ import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
+import 'package:anymex/plus/tvui/tv_playable.dart';
+import 'package:anymex/plus/tvui/tv_sources.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -37,6 +39,8 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
   String _status = '';
   bool _loading = true;
   String _error = '';
+  TvPlayable? _playable;
+  bool _matching = false;
 
   @override
   void initState() {
@@ -86,6 +90,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         return;
       }
       _item = TvItem.fromStremio(meta);
+      _playable = TvPlayable.stremio(_item, meta);
       final playing = it.videoId;
       final videos = meta.videos.toList()
         ..sort((a, b) => ((a.season ?? 1) * 100000 + (a.episode ?? 0)).compareTo((b.season ?? 1) * 100000 + (b.episode ?? 0)));
@@ -138,8 +143,46 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     return out;
   }
 
-  void _play([_Ep? ep]) {
-    tvToast(context, 'Playing on the TV comes in the next test build (the player is next).');
+  Future<void> _play([_Ep? e]) async {
+    if (_loading || _matching) return;
+    final st = StremioService.to;
+    var p = _playable;
+    if (p == null && _item.isAnime) {
+      if (!st.addons.any((a) => st.isAddonUsable(a) && a.hasResource('stream'))) {
+        tvToast(context, 'Sign in to Stremio first (Settings → Accounts): anime plays from your Stremio addons for now.');
+        return;
+      }
+      setState(() => _matching = true);
+      tvToast(context, 'Matching with your Stremio addons…');
+      try {
+        p = await TvPlayable.anime(_item);
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _matching = false;
+        _playable = p;
+      });
+      if (p == null) {
+        tvToast(context, "None of your Stremio addons has this anime. (Extensions on the TV come next.)");
+        return;
+      }
+    }
+    if (p == null) return;
+    TvEp? ep;
+    if (e != null) {
+      ep = p.isAnime ? p.epFor(number: e.number) : p.epFor(videoId: e.id);
+    } else if (p.isAnime) {
+      ep = p.epFor(number: _progress + 1) ?? p.epFor(number: _progress);
+    } else if (widget.item.videoId.isNotEmpty) {
+      ep = p.epFor(videoId: widget.item.videoId);
+    }
+    ep ??= p.eps.where((x) => x.season != 0).firstOrNull ?? p.eps.firstOrNull;
+    if (ep == null) {
+      tvToast(context, "This episode isn't out on your Stremio addons yet.");
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(tvRoute(TvSourcesPage(playable: p, ep: ep, auto: true)));
   }
 
   @override
@@ -233,7 +276,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                   ),
                 if (!it.isAnime)
                   TvButton(label: 'Add to library', onSelect: () => tvToast(context, 'Library changes come with the logins from your phone.')),
-                if (it.isAnime) TvButton(label: 'Source: your extension', onSelect: () => tvToast(context, 'Extensions on the TV come after the player.')),
+                if (it.isAnime) TvButton(label: 'Source: Stremio addons', onSelect: () => tvToast(context, 'Anime plays from your Stremio addons for now. Extensions on the TV come next.')),
               ]),
             ),
           ),

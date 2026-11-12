@@ -50,7 +50,6 @@ extra = []
 for name in lg:
     extra += ["    %s_webos:" % name, "        git:", "            url: %s" % LG,
               "            path: packages/%s" % name, "            ref: main"]
-extra += ['    video_player: ">=2.9.3 <3.0.0"']
 i = out.index("dependencies:")
 out[i + 1:i + 1] = extra
 open("pubspec.yaml", "w").write("\n".join(out))

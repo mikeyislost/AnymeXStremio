@@ -26,6 +26,7 @@ class TvItem {
   final String sub; // a line under the card (progress, episode…)
   final double progress; // 0…1, for Continue Watching
   final String videoId; // Stremio: the video to resume
+  final String idMal; // anime: MyAnimeList id (skip times, matching)
 
   const TvItem({
     required this.id,
@@ -42,6 +43,7 @@ class TvItem {
     this.sub = '',
     this.progress = 0,
     this.videoId = '',
+    this.idMal = '',
   });
 
   bool get isAnime => kind == 'anime';
@@ -75,6 +77,7 @@ class TvItem {
         episodes: _ok(m.totalEpisodes),
         genres: m.genres,
         sub: sub,
+        idMal: _ok(m.idMal) == '0' ? '' : _ok(m.idMal),
       );
 
   factory TvItem.fromTracked(TrackedMedia t) => TvItem(
@@ -149,6 +152,7 @@ class TvItem {
       format: m['format'] == null ? '' : '${m['format']}'.replaceAll('_', ' '),
       episodes: m['episodes'] == null ? '' : '${m['episodes']}',
       genres: [for (final g in (m['genres'] as List?) ?? const []) '$g'],
+      idMal: m['idMal'] == null ? '' : '${m['idMal']}',
     );
   }
 }
@@ -157,7 +161,7 @@ class TvItem {
 class TvAnilist {
   static final _cache = <String, (DateTime, List<TvItem>)>{};
 
-  static const _fields = 'id title { english romaji userPreferred } coverImage { extraLarge large } bannerImage '
+  static const _fields = 'id idMal title { english romaji userPreferred } coverImage { extraLarge large } bannerImage '
       'description(asHtml: false) averageScore seasonYear format episodes genres';
 
   static const _query = '''

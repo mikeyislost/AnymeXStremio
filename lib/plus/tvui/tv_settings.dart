@@ -4,6 +4,8 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -41,7 +43,17 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _row('Get logins from your phone', 'Coming in a test build soon: your phone sends AniList, Stremio and Simkl to the TV.'),
           _row('AniList', auth.isLoggedIn.value ? 'Signed in as ${auth.profileData.value.name ?? 'you'}' : 'Not signed in'),
-          _row('Stremio', st.isLoggedIn.value ? 'Signed in · ${st.addons.length} addons' : 'Not signed in'),
+          _row('Stremio', st.isLoggedIn.value ? 'Signed in · ${st.addons.length} addons' : 'Not signed in. Sign in with a code from your phone.',
+              trailing: TvButton(
+                label: st.isLoggedIn.value ? 'Sign out' : 'Sign in',
+                onSelect: () {
+                  if (st.isLoggedIn.value) {
+                    st.logout();
+                  } else {
+                    Navigator.of(context).push(tvRoute(const TvStremioSignIn()));
+                  }
+                },
+              )),
         ]);
       });
 
@@ -119,6 +131,102 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
             ],
           ),
         ),
+      ]),
+    );
+  }
+}
+
+/// Stremio sign-in on the TV: open the link on your phone and enter the code.
+class TvStremioSignIn extends StatefulWidget {
+  const TvStremioSignIn({super.key});
+
+  @override
+  State<TvStremioSignIn> createState() => _TvStremioSignInState();
+}
+
+class _TvStremioSignInState extends State<TvStremioSignIn> {
+  String _code = '';
+  String _link = '';
+  String _qr = '';
+  String _msg = 'Getting a code…';
+  bool _gone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  @override
+  void dispose() {
+    _gone = true;
+    super.dispose();
+  }
+
+  Future<void> _start() async {
+    final st = StremioService.to;
+    try {
+      final c = await st.createLinkCode();
+      if (_gone) return;
+      setState(() {
+        _code = c.code;
+        _link = c.link;
+        _qr = c.qrcode ?? '';
+        _msg = 'Waiting for you to confirm on your phone…';
+      });
+      final ok = await st.waitForLinkCode(c.code, isCancelled: () => _gone);
+      if (_gone) return;
+      if (ok) {
+        tvToast(context, 'Signed in to Stremio');
+        Navigator.of(context).maybePop();
+      } else {
+        setState(() => _msg = 'The code ran out. Press OK to get a new one.');
+      }
+    } catch (e) {
+      if (!_gone) setState(() => _msg = "Couldn't reach Stremio. Press OK to try again.");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget? qr;
+    if (_qr.isNotEmpty) {
+      try {
+        final data = _qr.contains(',') ? _qr.split(',').last : _qr;
+        qr = Image.memory(base64Decode(data), width: 320, height: 320, filterQuality: FilterQuality.none);
+      } catch (_) {}
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(TvStyle.pad, 90, TvStyle.pad, 0),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Sign in to Stremio', style: TextStyle(fontSize: 52, fontWeight: FontWeight.w800, color: Colors.white)),
+            const SizedBox(height: 30),
+            const Text('On your phone or computer, open', style: TextStyle(fontSize: 26, color: TvStyle.text2)),
+            const SizedBox(height: 8),
+            Text(_link.isEmpty ? 'link.stremio.com' : _link.replaceFirst(RegExp(r'^https?://'), ''),
+                style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: Colors.white)),
+            const SizedBox(height: 26),
+            const Text('and enter this code:', style: TextStyle(fontSize: 26, color: TvStyle.text2)),
+            const SizedBox(height: 12),
+            Text(_code.isEmpty ? '…' : _code, style: const TextStyle(fontSize: 84, fontWeight: FontWeight.w800, letterSpacing: 10, color: Colors.white)),
+            const SizedBox(height: 30),
+            Text(_msg, style: const TextStyle(fontSize: 22, color: TvStyle.dim)),
+            const SizedBox(height: 30),
+            TvButton(
+              label: 'New code',
+              autofocus: true,
+              onSelect: () {
+                if (_msg.startsWith('Waiting')) return;
+                setState(() => _msg = 'Getting a code…');
+                _start();
+              },
+            ),
+          ]),
+        ),
+        if (qr != null)
+          Container(padding: const EdgeInsets.all(16), color: Colors.white, child: qr),
       ]),
     );
   }

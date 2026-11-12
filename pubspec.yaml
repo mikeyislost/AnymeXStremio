@@ -72,6 +72,8 @@ dependencies:
     super_sliver_list: ^0.4.1
     share_plus: ^11.0.0
     url_launcher: ^6.3.3
+    # AnymeX+ TV: the LG TV app's player (LG's webOS part is added on CI).
+    video_player: ^2.11.1
     volume_controller: ^3.4.0
     wakelock_plus: 1.3.3
     screen_brightness: ^2.1.7
