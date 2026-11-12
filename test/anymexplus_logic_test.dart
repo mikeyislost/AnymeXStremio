@@ -1306,7 +1306,7 @@ void main() {
       expect(a, b);
       expect(a.length, 64);
       final sealed = PlusTvSync.seal(a, utf8.encode('{"anilist":"x"}'));
-      expect(utf8.decode(PlusFlutterTvPair.open(b, sealed.\$1, sealed.\$2)), '{"anilist":"x"}');
+      expect(utf8.decode(PlusFlutterTvPair.open(b, sealed.$1, sealed.$2)), '{"anilist":"x"}');
     });
 
     test('a wrong code cannot open it', () {
@@ -1315,11 +1315,11 @@ void main() {
       final a = PlusFlutterTvPair.lockKey(phone, tvPub, '123456', 's');
       final wrong = PlusFlutterTvPair.lockKey(tv, phonePub, '123457', 's');
       final sealed = PlusTvSync.seal(a, utf8.encode('secret'));
-      expect(() => PlusFlutterTvPair.open(wrong, sealed.\$1, sealed.\$2), throwsA(anything));
+      expect(() => PlusFlutterTvPair.open(wrong, sealed.$1, sealed.$2), throwsA(anything));
     });
 
     test('codes are 6 digits; saved-key ids show nothing of the key', () {
-      expect(RegExp(r'^\d{6}\$').hasMatch(PlusFlutterTvPair.newCode()), isTrue);
+      expect(RegExp(r'^\d{6}$').hasMatch(PlusFlutterTvPair.newCode()), isTrue);
       final key = 'ab' * 32;
       final id = PlusFlutterTvPair.idFor(key);
       expect(id.length, 16);
