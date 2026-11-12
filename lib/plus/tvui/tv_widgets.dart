@@ -110,7 +110,9 @@ class _TvFocusableState extends State<TvFocusable> {
       },
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        onEnter: (_) {
+        // Only a real pointer move takes the highlight: a layout change
+        // (the menu opening under a resting pointer) doesn't.
+        onHover: (_) {
           if (!_node.hasFocus) {
             _byPointer = true;
             _node.requestFocus();
@@ -258,8 +260,12 @@ class TvCard extends StatelessWidget {
   }
 }
 
-/// A row: title and a line of cards that scrolls with the highlight.
-class TvRow extends StatelessWidget {
+/// A row: title and a line of cards. Left / Right move along the row and
+/// wrap from the last card to the first (Netflix style); Left on the first
+/// card goes on to the menu. Up / Down call [onUp] / [onDown] (the page
+/// moves to the next row at the card that row last had), else the usual
+/// move.
+class TvRow extends StatefulWidget {
   final String title;
   final List<TvItem> items;
   final bool wide;
@@ -267,6 +273,8 @@ class TvRow extends StatelessWidget {
   final void Function(TvItem) onOpen;
   final ValueChanged<TvItem>? onFocusItem;
   final bool autofocusFirst;
+  final bool Function()? onUp;
+  final bool Function()? onDown;
 
   const TvRow({
     super.key,
@@ -277,11 +285,97 @@ class TvRow extends StatelessWidget {
     this.showKind = false,
     this.onFocusItem,
     this.autofocusFirst = false,
+    this.onUp,
+    this.onDown,
   });
 
   @override
+  State<TvRow> createState() => TvRowState();
+}
+
+class TvRowState extends State<TvRow> {
+  final _nodes = <FocusNode>[];
+  final _scroll = ScrollController();
+  int _index = 0;
+
+  double get _step => (widget.wide ? TvCard.wideW : TvCard.posterW) + 24;
+
+  /// Highlights card [i]; a card scrolled far out of view isn't built, so the
+  /// row jumps there first.
+  void _go(int i) {
+    _index = i;
+    final node = _nodes[i];
+    if (node.context != null) {
+      node.requestFocus();
+      return;
+    }
+    if (_scroll.hasClients) {
+      final max = _scroll.position.maxScrollExtent;
+      _scroll.jumpTo((i * _step - 40).clamp(0.0, max).toDouble());
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && i < _nodes.length) _nodes[i].requestFocus();
+    });
+  }
+
+  bool get isEmpty => widget.items.isEmpty;
+
+  void _sync() {
+    while (_nodes.length < widget.items.length) {
+      _nodes.add(FocusNode());
+    }
+    while (_nodes.length > widget.items.length) {
+      _nodes.removeLast().dispose();
+    }
+    if (_index >= widget.items.length) _index = 0;
+  }
+
+  @override
+  void dispose() {
+    for (final n in _nodes) {
+      n.dispose();
+    }
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Puts the highlight on the card this row had last (the first at first).
+  bool focus() {
+    if (widget.items.isEmpty) return false;
+    _sync();
+    _go(_index.clamp(0, _nodes.length - 1).toInt());
+    return true;
+  }
+
+  KeyEventResult _key(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final n = widget.items.length;
+    if (n == 0) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    if (k == LogicalKeyboardKey.arrowRight) {
+      _go((_index + 1) % n);
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.arrowLeft) {
+      if (_index == 0) return KeyEventResult.ignored; // on to the menu
+      _go(_index - 1);
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.arrowDown && widget.onDown != null) {
+      return widget.onDown!() ? KeyEventResult.handled : KeyEventResult.ignored;
+    }
+    if (k == LogicalKeyboardKey.arrowUp && widget.onUp != null) {
+      return widget.onUp!() ? KeyEventResult.handled : KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _sync();
+    final items = widget.items;
     if (items.isEmpty) return const SizedBox.shrink();
+    final wide = widget.wide;
     final h = (wide ? TvCard.wideH : TvCard.posterH) + 78;
     return Padding(
       padding: const EdgeInsets.only(bottom: 28),
@@ -290,12 +384,16 @@ class TvRow extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(left: TvStyle.pad, bottom: 14),
-            child: Text(title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+            child: Text(widget.title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
           SizedBox(
             height: h,
-            child: FocusTraversalGroup(
+            child: Focus(
+              canRequestFocus: false,
+              skipTraversal: true,
+              onKeyEvent: _key,
               child: ListView.separated(
+                controller: _scroll,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: 6),
@@ -304,10 +402,14 @@ class TvRow extends StatelessWidget {
                 itemBuilder: (context, i) => TvCard(
                   item: items[i],
                   wide: wide,
-                  showKind: showKind,
-                  autofocus: autofocusFirst && i == 0,
-                  onSelect: () => onOpen(items[i]),
-                  onFocusItem: onFocusItem,
+                  showKind: widget.showKind,
+                  focusNode: _nodes[i],
+                  autofocus: widget.autofocusFirst && i == 0,
+                  onSelect: () => widget.onOpen(items[i]),
+                  onFocusItem: (it) {
+                    _index = i;
+                    widget.onFocusItem?.call(it);
+                  },
                 ),
               ),
             ),

@@ -24,6 +24,8 @@ class _TvSearchPageState extends State<TvSearchPage> {
   List<TvItem> _anime = const [];
   List<TvItem> _movies = const [];
   bool _busy = false;
+  final _animeRow = GlobalKey<TvRowState>();
+  final _moviesRow = GlobalKey<TvRowState>();
 
   @override
   void dispose() {
@@ -98,7 +100,8 @@ class _TvSearchPageState extends State<TvSearchPage> {
             // Down / Up leave the box (the TV's keyboard closes first).
             onKeyEvent: (n, e) {
               if (e is KeyDownEvent && (e.logicalKey == LogicalKeyboardKey.arrowDown)) {
-                return FocusScope.of(context).focusInDirection(TraversalDirection.down) ? KeyEventResult.handled : KeyEventResult.ignored;
+                final ok = (_animeRow.currentState?.focus() ?? false) || (_moviesRow.currentState?.focus() ?? false);
+                return ok ? KeyEventResult.handled : KeyEventResult.ignored;
               }
               if (e is KeyDownEvent && tvIsSelect(e.logicalKey) && e.logicalKey != LogicalKeyboardKey.space) {
                 _run(_text.text);
@@ -150,8 +153,30 @@ class _TvSearchPageState extends State<TvSearchPage> {
             padding: EdgeInsets.symmetric(horizontal: TvStyle.pad),
             child: Text('Nothing found.', style: TextStyle(fontSize: 22, color: TvStyle.dim)),
           ),
-        TvRow(title: 'Anime', items: _anime, onOpen: (i) => tvOpen(context, i)),
-        TvRow(title: 'Movies & TV', items: _movies, showKind: true, onOpen: (i) => tvOpen(context, i)),
+        TvRow(
+          key: _animeRow,
+          title: 'Anime',
+          items: _anime,
+          onOpen: (i) => tvOpen(context, i),
+          onUp: () {
+            _node.requestFocus();
+            return true;
+          },
+          onDown: () => _moviesRow.currentState?.focus() ?? true,
+        ),
+        TvRow(
+          key: _moviesRow,
+          title: 'Movies & TV',
+          items: _movies,
+          showKind: true,
+          onOpen: (i) => tvOpen(context, i),
+          onUp: () {
+            if (_animeRow.currentState?.isEmpty == false) return _animeRow.currentState!.focus();
+            _node.requestFocus();
+            return true;
+          },
+          onDown: () => true,
+        ),
       ],
     );
   }

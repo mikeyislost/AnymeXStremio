@@ -86,7 +86,8 @@ class _PlusTvShellState extends State<PlusTvShell> {
   int _tab = 0;
   bool _railOpen = false;
   final _railNodes = List.generate(_tabs.length, (_) => FocusNode());
-  final _railScope = FocusNode(skipTraversal: true, canRequestFocus: false);
+  final _railScope = FocusScopeNode(debugLabel: 'tv rail');
+  final _contentScope = FocusScopeNode(debugLabel: 'tv content');
 
   @override
   void initState() {
@@ -101,6 +102,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
       n.dispose();
     }
     _railScope.dispose();
+    _contentScope.dispose();
     super.dispose();
   }
 
@@ -112,15 +114,56 @@ class _PlusTvShellState extends State<PlusTvShell> {
     return false;
   }
 
+  /// OK on a menu item: open that tab and go into it.
   void _openTab(int i) {
-    if (_tab == i) return;
-    setState(() => _tab = i);
+    if (_tab != i) setState(() => _tab = i);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // The new page's first item takes the highlight by itself; if it has
+      // none, go to the page's first item.
+      if (mounted && _railScope.hasFocus) _toContent();
+    });
+  }
+
+  void _toRail() => _railNodes[_tab].requestFocus();
+
+  void _toContent() {
+    final had = _contentScope.focusedChild != null;
+    _contentScope.requestFocus();
+    if (!had) _contentScope.nextFocus();
+  }
+
+  int get _railIndex {
+    for (var i = 0; i < _railNodes.length; i++) {
+      if (_railNodes[i].hasFocus) return i;
+    }
+    return _tab;
+  }
+
+  /// The menu moves by itself: Up / Down along it, Right back into the page.
+  KeyEventResult _railKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    final i = _railIndex;
+    if (k == LogicalKeyboardKey.arrowUp) {
+      if (i > 0) _railNodes[i - 1].requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.arrowDown) {
+      if (i < _railNodes.length - 1) _railNodes[i + 1].requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.arrowRight) {
+      _toContent();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.arrowLeft) return KeyEventResult.handled;
+    return KeyEventResult.ignored;
   }
 
   /// Back: from a page → the menu; from the menu → Home; on Home → leave.
   void _back() {
     if (!_railScope.hasFocus) {
-      _railNodes[_tab].requestFocus();
+      _toRail();
       return;
     }
     if (_tab != 0) {
@@ -208,6 +251,15 @@ class _PlusTvShellState extends State<PlusTvShell> {
               _back();
               return KeyEventResult.handled;
             }
+            // Left in a page: the next item to the left, or the menu when
+            // there is none (rows handle Left themselves first).
+            if ((e is KeyDownEvent || e is KeyRepeatEvent) && e.logicalKey == LogicalKeyboardKey.arrowLeft && _contentScope.hasFocus) {
+              final f = FocusManager.instance.primaryFocus;
+              final typing = f?.context?.findAncestorWidgetOfExactType<EditableText>() != null;
+              if (typing) return KeyEventResult.ignored; // moves the text cursor
+              if (f == null || !f.focusInDirection(TraversalDirection.left)) _toRail();
+              return KeyEventResult.handled;
+            }
             return KeyEventResult.ignored;
           },
           child: Scaffold(
@@ -215,7 +267,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
             body: Stack(children: [
               Positioned.fill(
                 left: TvStyle.railW,
-                child: FocusTraversalGroup(child: _page()),
+                child: FocusScope(node: _contentScope, child: FocusTraversalGroup(child: _page())),
               ),
               if (_railOpen)
                 Positioned.fill(left: TvStyle.railW, child: IgnorePointer(child: Container(color: Colors.black.withValues(alpha: 0.6)))),
@@ -223,11 +275,11 @@ class _PlusTvShellState extends State<PlusTvShell> {
                 left: 0,
                 top: 0,
                 bottom: 0,
-                child: Focus(
-                  focusNode: _railScope,
+                child: FocusScope(
+                  node: _railScope,
                   onFocusChange: (f) => setState(() => _railOpen = f),
+                  onKeyEvent: _railKey,
                   child: FocusTraversalGroup(
-                    policy: OrderedTraversalPolicy(),
                     child: MouseRegion(
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 140),
@@ -272,8 +324,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
     final t = _tabs[i];
     final accent = TvStyle.accent(context);
     final current = i == _tab;
-    return FocusTraversalOrder(
-      order: NumericFocusOrder(i.toDouble()),
+    return KeyedSubtree(
       child: TvFocusable(
         focusNode: _railNodes[i],
         onSelect: () => _openTab(i),

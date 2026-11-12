@@ -33,6 +33,7 @@ class _TvHomePageState extends State<TvHomePage> {
   final _extra = <String, TvItem>{}; // details fetched for the banner
   Timer? _heroTimer;
   final _movieRows = <String, List<TvItem>>{};
+  final _rowKeys = <String, GlobalKey<TvRowState>>{};
 
   static const _movieRowIds = [
     'trending-movies', 'trending-series', 'popular-movies', 'popular-series', 'airing', 'theaters',
@@ -165,17 +166,41 @@ class _TvHomePageState extends State<TvHomePage> {
             return id;
           }
 
-          final rows = <Widget>[
-            if (cw.isNotEmpty) TvRow(title: 'Continue Watching', items: cw, wide: true, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus, autofocusFirst: true),
-            if (fy.isNotEmpty) TvRow(title: 'For you', items: fy, showKind: true, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus, autofocusFirst: cw.isEmpty),
-            TvRow(title: 'Trending Anime', items: trending, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus, autofocusFirst: cw.isEmpty && fy.isEmpty),
+          final specs = <(String, List<TvItem>, bool, bool)>[
+            // (title, items, wide, show kind)
+            ('Continue Watching', cw, true, false),
+            ('For you', fy, false, true),
+            ('Trending Anime', trending, false, false),
             for (final id in _movieRowIds.take(2))
-              if (_movieRows[id] != null) TvRow(title: rowTitle(id), items: _movieRows[id]!, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus),
-            TvRow(title: 'Popular Anime', items: popular, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus),
-            TvRow(title: 'Recently Updated', items: recent, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus),
+              if (_movieRows[id] != null) (rowTitle(id), _movieRows[id]!, false, false),
+            ('Popular Anime', popular, false, false),
+            ('Recently Updated', recent, false, false),
             for (final id in _movieRowIds.skip(2))
-              if (_movieRows[id] != null) TvRow(title: rowTitle(id), items: _movieRows[id]!, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus),
-            TvRow(title: 'Upcoming Anime', items: upcoming, onOpen: (i) => tvOpen(context, i), onFocusItem: _focus),
+              if (_movieRows[id] != null) (rowTitle(id), _movieRows[id]!, false, false),
+            ('Upcoming Anime', upcoming, false, false),
+          ].where((r) => r.$2.isNotEmpty).toList();
+          final keys = [for (final r in specs) _rowKeys.putIfAbsent(r.$1, () => GlobalKey<TvRowState>())];
+          bool move(int from, int step) {
+            for (var j = from + step; j >= 0 && j < keys.length; j += step) {
+              if (keys[j].currentState?.focus() == true) return true;
+            }
+            return true; // nothing further that way: stay put
+          }
+
+          final rows = <Widget>[
+            for (var r = 0; r < specs.length; r++)
+              TvRow(
+                key: keys[r],
+                title: specs[r].$1,
+                items: specs[r].$2,
+                wide: specs[r].$3,
+                showKind: specs[r].$4,
+                autofocusFirst: r == 0,
+                onOpen: (i) => tvOpen(context, i),
+                onFocusItem: _focus,
+                onUp: () => move(r, -1),
+                onDown: () => move(r, 1),
+              ),
           ];
           if (_hero.value == null) {
             final first = cw.isNotEmpty ? cw.first : (fy.isNotEmpty ? fy.first : (trending.isNotEmpty ? trending.first : null));
