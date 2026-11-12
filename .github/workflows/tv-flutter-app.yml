@@ -61,6 +61,26 @@ jobs:
             packages/rhttp/rust/target
           key: webos-rust-${{ hashFiles('packages/rhttp/rust/Cargo.lock') }}
 
+      - name: Peek at LG's SDK (audio tracks, Back key)
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          {
+            echo "== NDL headers"; find "$NDK_DIR" -iname "NDL*.h" | head -40
+            echo "== NDL functions about tracks / audio / language"
+            find "$NDK_DIR" -iname "NDL*.h" -exec grep -nHiE "track|audio|lang|select" {} \; | head -120
+            echo "== media client headers"; find "$NDK_DIR" \( -iname "*umedia*" -o -iname "*uMediaClient*" -o -iname "*luna-service2*" -o -iname "*webos-shell*" -o -iname "*webos_shell*" \) | head -40
+            echo "== libNDL symbols"; for f in $(find "$NDK_DIR" -iname "libNDL*.so*" | head -5); do echo "-- $f"; nm -D --defined-only "$f" 2>/dev/null | grep -iE "track|audio|lang" | head -60; done
+            C="$HOME/flutter-webos/bin/cache"
+            echo "== embedder files"; find "$C" \( -name "*.h" -o -name "*.so" \) | grep -viE "dart-sdk|/pkg/" | head -60
+            for f in $(find "$C" -name "*.so" | grep -iE "elinux|webos|embedder|flutter_" | head -6); do
+              echo "-- symbols $f"; nm -D --defined-only "$f" 2>/dev/null | grep -iE "back|key|surface|shell|wayland|window" | head -60
+              echo "-- strings $f"; strings "$f" | grep -iE "KEYS_BACK|ACCESS_POLICY|webos_shell|_WEBOS|exit|back" | head -60
+            done
+            for h in $(find "$C" -name "flutter_window.h" -o -name "flutter_elinux*.h" -o -name "*view_properties*.h" | head -8); do echo "-- $h"; cat "$h"; done
+          } > logs/peek.txt 2>&1
+          wc -l logs/peek.txt; cat logs/peek.txt | head -400
+
       - name: Native libraries for the TV (Isar, rhttp)
         continue-on-error: true
         run: |
