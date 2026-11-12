@@ -44,8 +44,8 @@ for line in lines:
     out.append(line)
 # LG's webOS parts of the plugins the app uses (path_provider etc.).
 LG = "https://github.com/lg-flutter-webos/plugins.git"
-lg = ["path_provider", "shared_preferences", "url_launcher", "package_info_plus",
-      "device_info_plus", "connectivity_plus", "video_player"]
+lg = ["path_provider", "shared_preferences", "url_launcher",
+      "device_info_plus", "video_player"]
 extra = []
 for name in lg:
     extra += ["    %s_webos:" % name, "        git:", "            url: %s" % LG,

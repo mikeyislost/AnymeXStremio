@@ -8,7 +8,8 @@ OUT=$(realpath -m "${1:-native}")
 mkdir -p "$OUT"
 
 # The NDK's settings, read in a subshell so they don't leak into host builds.
-eval "$(bash -c '. "$WEBOS_FLUTTER_NDK_ENV" >/dev/null 2>&1; declare -p CC CXX AR CFLAGS CXXFLAGS LDFLAGS SDKTARGETSYSROOT 2>/dev/null' | sed 's/^declare -x /W_/; s/^declare -- /W_/')"
+eval "$(bash -c '. "$WEBOS_FLUTTER_NDK_ENV" >/dev/null 2>&1; declare -p CC CXX AR CFLAGS CXXFLAGS LDFLAGS SDKTARGETSYSROOT PATH 2>/dev/null' | sed 's/^declare -x /W_/; s/^declare -- /W_/')"
+export PATH="$W_PATH"
 echo "CC=$W_CC"
 echo "CFLAGS=$W_CFLAGS"
 echo "sysroot=$W_SDKTARGETSYSROOT"
