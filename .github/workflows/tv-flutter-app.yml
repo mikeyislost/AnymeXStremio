@@ -79,24 +79,28 @@ jobs:
       - name: Add the webOS platform
         run: |
           mkdir -p logs
-          [ -x scripts/tv_flutter_prepare.sh ] && scripts/tv_flutter_prepare.sh 2>&1 | tee logs/prepare.txt || true
+          python3 scripts/tv_flutter_prepare.py 2>&1 | tee logs/prepare.txt
           flutter-webos create --platforms webos --project-name anymex . 2>&1 | tee logs/create.txt
           git status --short | head -50 | tee -a logs/create.txt
 
       - name: pub get
-        run: flutter-webos pub get 2>&1 | tee logs/pub.txt
+        run: |
+          flutter-webos pub get 2>&1 | tee logs/pub.txt
+          flutter-webos pub deps --style=compact 2>/dev/null | head -400 > logs/deps.txt || true
 
       - name: Analyze with the webOS Flutter (3.38)
         continue-on-error: true
         run: |
           flutter-webos analyze --no-fatal-infos --no-fatal-warnings lib > logs/analyze.txt 2>&1 || true
           grep -E "^\s*error" logs/analyze.txt | head -200 > logs/analyze-errors.txt || true
-          echo "errors: $(wc -l < logs/analyze-errors.txt)"; head -60 logs/analyze-errors.txt
+          echo "errors: $(wc -l < logs/analyze-errors.txt)"; head -150 logs/analyze-errors.txt
 
       - name: Build for webOS
         continue-on-error: true
         run: |
-          flutter-webos build webos --release 2>&1 | tee logs/build.txt
+          flutter-webos build webos --release -v > logs/build.txt 2>&1 || echo BUILD FAILED
+          grep -nE "error|Error|FAILED|failed|undefined reference|No such file" logs/build.txt | grep -v "^.*\[ *[0-9]*ms\] *$" | head -150
+          tail -80 logs/build.txt
           find build/webos -name '*.ipk' -exec cp {} logs/ \; 2>/dev/null || true
 
       - name: Which plugins have a webOS part
