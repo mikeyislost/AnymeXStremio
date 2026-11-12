@@ -88,6 +88,14 @@ jobs:
           flutter-webos pub get 2>&1 | tee logs/pub.txt
           flutter-webos pub deps --style=compact 2>/dev/null | head -400 > logs/deps.txt || true
 
+      - name: Where native parts come from
+        continue-on-error: true
+        run: |
+          P=$HOME/.pub-cache/hosted/pub.dev
+          for d in $P/isar_community-* $P/isar_community_flutter_libs-*; do echo "== $d"; grep -E "^(version|repository|homepage)" $d/pubspec.yaml; done
+          cat $P/isar_community_flutter_libs-*/linux/CMakeLists.txt | head -60
+          grep -rn "version" $P/isar_community-*/lib/src/isar.dart | head -5
+
       - name: Analyze with the webOS Flutter (3.38)
         continue-on-error: true
         run: |
