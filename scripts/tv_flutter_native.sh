@@ -21,11 +21,11 @@ TU=$(echo "$T" | tr 'a-z-' 'A-Z_'); tu=$(echo "$T" | tr '-' '_')
 
 cat > /tmp/webos-cc <<EOF
 #!/bin/sh
-exec $W_CC $W_CFLAGS "\$@" $W_LDFLAGS
+exec $W_CC $W_CFLAGS "\$@"
 EOF
 cat > /tmp/webos-cxx <<EOF
 #!/bin/sh
-exec $W_CXX $W_CXXFLAGS "\$@" $W_LDFLAGS
+exec $W_CXX $W_CXXFLAGS "\$@"
 EOF
 chmod +x /tmp/webos-cc /tmp/webos-cxx
 export "CARGO_TARGET_${TU}_LINKER=/tmp/webos-cc"

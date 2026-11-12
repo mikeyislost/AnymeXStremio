@@ -161,7 +161,7 @@ Future<void> safeCall(FutureOr<void> Function() function,
   }
 }
 
-void main(List<String> args) async {
+void main([List<String> args = const []]) async { // AnymeX+: optional (the TV's runner passes none)
   LaunchTimer.start();
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
