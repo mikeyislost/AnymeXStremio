@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/models/Media/media.dart';
+import 'package:anymex/plus/for_you/movies_for_you.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
 import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
@@ -306,6 +307,15 @@ class TvCategory {
 
 /// The built-in Movies & TV lists (TMDB), as TV items.
 class TvMovies {
+  /// The id Stremio opens a title by. Search results carry a TMDB id
+  /// (`tmdb:<movie|series>:<id>`) until they're opened.
+  static Future<String?> stremioId(TvItem it) async {
+    if (!it.id.startsWith('tmdb:')) return it.id;
+    final parts = it.id.split(':');
+    if (parts.length != 3) return null;
+    return MoviesForYou.imdbFor(parts[1], parts[2]);
+  }
+
   static Future<List<TvItem>> row(String id) async {
     PlusBuiltinRow? row;
     for (final r in PlusBuiltinRows.available) {

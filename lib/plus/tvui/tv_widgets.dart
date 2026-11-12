@@ -313,8 +313,19 @@ class TvRowState extends State<TvRow> {
       final max = _scroll.position.maxScrollExtent;
       _scroll.jumpTo((i * _step - 40).clamp(0.0, max).toDouble());
     }
+    _later(i, 4);
+  }
+
+  // The card is built a frame after the jump; try a few frames.
+  void _later(int i, int tries) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && i < _nodes.length) _nodes[i].requestFocus();
+      if (!mounted || i >= _nodes.length || _index != i) return;
+      if (_nodes[i].context != null) {
+        _nodes[i].requestFocus();
+      } else if (tries > 0) {
+        _later(i, tries - 1);
+        WidgetsBinding.instance.scheduleFrame();
+      }
     });
   }
 
@@ -399,17 +410,20 @@ class TvRowState extends State<TvRow> {
                 padding: const EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: 6),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 24),
-                itemBuilder: (context, i) => TvCard(
-                  item: items[i],
-                  wide: wide,
-                  showKind: widget.showKind,
-                  focusNode: _nodes[i],
-                  autofocus: widget.autofocusFirst && i == 0,
-                  onSelect: () => widget.onOpen(items[i]),
-                  onFocusItem: (it) {
-                    _index = i;
-                    widget.onFocusItem?.call(it);
-                  },
+                itemBuilder: (context, i) => TvKeepFocused(
+                  node: _nodes[i],
+                  child: TvCard(
+                    item: items[i],
+                    wide: wide,
+                    showKind: widget.showKind,
+                    focusNode: _nodes[i],
+                    autofocus: widget.autofocusFirst && i == 0,
+                    onSelect: () => widget.onOpen(items[i]),
+                    onFocusItem: (it) {
+                      _index = i;
+                      widget.onFocusItem?.call(it);
+                    },
+                  ),
                 ),
               ),
             ),
@@ -417,6 +431,53 @@ class TvRowState extends State<TvRow> {
         ],
       ),
     );
+  }
+}
+
+/// Keeps a card alive while it has the highlight, even when its row scrolls
+/// it out of view (a card that disappears takes the highlight with it).
+class TvKeepFocused extends StatefulWidget {
+  final FocusNode node;
+  final Widget child;
+  const TvKeepFocused({super.key, required this.node, required this.child});
+
+  @override
+  State<TvKeepFocused> createState() => _TvKeepFocusedState();
+}
+
+class _TvKeepFocusedState extends State<TvKeepFocused> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => widget.node.hasFocus;
+
+  void _changed() {
+    if (mounted) updateKeepAlive();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.node.addListener(_changed);
+  }
+
+  @override
+  void didUpdateWidget(covariant TvKeepFocused old) {
+    super.didUpdateWidget(old);
+    if (old.node != widget.node) {
+      old.node.removeListener(_changed);
+      widget.node.addListener(_changed);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.node.removeListener(_changed);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

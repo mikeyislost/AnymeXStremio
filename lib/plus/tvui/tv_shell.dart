@@ -161,7 +161,14 @@ class _PlusTvShellState extends State<PlusTvShell> {
   }
 
   /// Back: from a page → the menu; from the menu → Home; on Home → leave.
+  DateTime _lastBack = DateTime(2000);
+
   void _back() {
+    // The TV can send Back twice (a key and the system's "go back"): one
+    // press is one step.
+    final now = DateTime.now();
+    if (now.difference(_lastBack) < const Duration(milliseconds: 400)) return;
+    _lastBack = now;
     if (!_railScope.hasFocus) {
       _toRail();
       return;
@@ -255,8 +262,13 @@ class _PlusTvShellState extends State<PlusTvShell> {
             // there is none (rows handle Left themselves first).
             if ((e is KeyDownEvent || e is KeyRepeatEvent) && e.logicalKey == LogicalKeyboardKey.arrowLeft && _contentScope.hasFocus) {
               final f = FocusManager.instance.primaryFocus;
-              final typing = f?.context?.findAncestorWidgetOfExactType<EditableText>() != null;
-              if (typing) return KeyEventResult.ignored; // moves the text cursor
+              final editor = f?.context?.findAncestorWidgetOfExactType<EditableText>();
+              if (editor != null) {
+                // In a text box Left moves the cursor; at the start it leaves.
+                if (editor.controller.selection.baseOffset > 0) return KeyEventResult.ignored;
+                _toRail();
+                return KeyEventResult.handled;
+              }
               if (f == null || !f.focusInDirection(TraversalDirection.left)) _toRail();
               return KeyEventResult.handled;
             }

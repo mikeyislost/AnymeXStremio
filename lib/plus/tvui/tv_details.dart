@@ -74,7 +74,8 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     } else {
       StremioMeta? meta;
       try {
-        meta = await StremioService.to.fetchMeta(it.kind, it.id);
+        final id = await TvMovies.stremioId(it);
+        if (id != null) meta = await StremioService.to.fetchMeta(it.kind, id);
       } catch (_) {}
       if (!mounted) return;
       if (meta == null) {

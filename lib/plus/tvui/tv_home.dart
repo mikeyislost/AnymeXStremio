@@ -74,7 +74,8 @@ class _TvHomePageState extends State<TvHomePage> {
         full = (await TvAnilist.details(item.id))?.$1;
       } else {
         try {
-          final meta = await StremioService.to.fetchMeta(item.kind, item.id);
+          final id = await TvMovies.stremioId(item);
+          final meta = id == null ? null : await StremioService.to.fetchMeta(item.kind, id);
           if (meta != null) full = TvItem.fromStremio(meta);
         } catch (_) {}
       }

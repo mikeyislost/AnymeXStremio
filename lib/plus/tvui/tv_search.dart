@@ -69,15 +69,26 @@ class _TvSearchPageState extends State<TvSearchPage> {
     final data = await MoviesForYou.tmdbGet('search/multi', 'tv/search/${q.toLowerCase()}', const Duration(hours: 6),
         query: '&include_adult=false&query=${Uri.encodeQueryComponent(q)}');
     final list = data is Map ? (data['results'] as List?) ?? const [] : const [];
-    final picks = list.whereType<Map>().where((r) => r['media_type'] == 'movie' || r['media_type'] == 'tv').take(20).toList();
-    final out = await Future.wait(picks.map((r) async {
+    final out = <TvItem>[];
+    for (final r in list.whereType<Map>()) {
+      if (r['media_type'] != 'movie' && r['media_type'] != 'tv') continue;
       final kind = r['media_type'] == 'tv' ? 'series' : 'movie';
-      final imdb = await MoviesForYou.imdbFor(kind, '${r['id']}');
-      if (imdb == null) return null;
-      final p = PlusBuiltinRows.previewFrom(r, kind, imdb);
-      return p == null ? null : TvItem.fromStremio(p);
-    }));
-    return out.whereType<TvItem>().toList();
+      final p = PlusBuiltinRows.previewFrom(r, kind, 'tt0');
+      if (p == null) continue;
+      out.add(TvItem(
+        id: 'tmdb:$kind:${r['id']}',
+        kind: kind,
+        title: p.name,
+        poster: p.poster ?? '',
+        backdrop: p.background ?? '',
+        description: p.description ?? '',
+        year: p.releaseInfo ?? '',
+        rating: p.imdbRating ?? '',
+        genres: p.genres,
+      ));
+      if (out.length >= 30) break;
+    }
+    return out;
   }
 
   @override
