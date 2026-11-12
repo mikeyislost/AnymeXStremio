@@ -36,6 +36,55 @@ bool tvIsBack(LogicalKeyboardKey k) =>
     k == LogicalKeyboardKey.browserBack ||
     k == LogicalKeyboardKey.escape;
 
+/// Moving left at the edge of the screen. LG doesn't hand the remote's Back
+/// button to Flutter apps yet (the TV shows its own "exit app?" instead;
+/// LG plans to change this), so Left at the left edge does Back's job:
+/// it closes a page opened on top, or opens the menu.
+class TvNav {
+  static VoidCallback? openMenu;
+
+  static bool edgeLeft(BuildContext context) {
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isFirst) {
+      Navigator.of(context).maybePop();
+      return true;
+    }
+    if (openMenu != null) {
+      openMenu!();
+      return true;
+    }
+    return false;
+  }
+
+  /// Left from [node]: the nearest item to the left on the same line, else
+  /// the edge (see [edgeLeft]). Flutter's own move would jump to another
+  /// line when nothing is left of the highlight on this one.
+  static void left(FocusNode node, FocusScopeNode scope) {
+    final ctx = node.context;
+    if (ctx == null) return;
+    final here = node.rect;
+    FocusNode? best;
+    var bestGap = double.infinity;
+    for (final n in scope.traversalDescendants) {
+      if (n == node || !n.canRequestFocus || n.context == null) continue;
+      final r = n.rect;
+      if (r.right > here.left + 1) continue;
+      final overlap = (r.bottom < here.bottom ? r.bottom : here.bottom) - (r.top > here.top ? r.top : here.top);
+      if (overlap < 12) continue;
+      final gap = here.left - r.right;
+      if (gap < bestGap) {
+        bestGap = gap;
+        best = n;
+      }
+    }
+    if (best != null) {
+      best.requestFocus();
+    } else {
+      edgeLeft(ctx);
+    }
+  }
+}
+
 /// The Magic Remote's pointer only moves the highlight when it is really
 /// being used: not right after arrow presses (the remote shakes a little in
 /// the hand, which used to drag the highlight onto random cards).
@@ -406,7 +455,7 @@ class TvRowState extends State<TvRow> {
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.arrowLeft) {
-      if (_index == 0) return KeyEventResult.ignored; // on to the menu
+      if (_index == 0) return TvNav.edgeLeft(context) ? KeyEventResult.handled : KeyEventResult.ignored;
       _go(_index - 1);
       return KeyEventResult.handled;
     }
@@ -617,6 +666,14 @@ class TvPage extends StatelessWidget {
         if (e is KeyDownEvent && tvIsBack(e.logicalKey)) {
           Navigator.of(context).maybePop();
           return KeyEventResult.handled;
+        }
+        if ((e is KeyDownEvent || e is KeyRepeatEvent) && e.logicalKey == LogicalKeyboardKey.arrowLeft) {
+          final f = FocusManager.instance.primaryFocus;
+          final scope = f?.nearestScope;
+          if (f != null && scope != null && f.context?.findAncestorWidgetOfExactType<EditableText>() == null) {
+            TvNav.left(f, scope);
+            return KeyEventResult.handled;
+          }
         }
         return KeyEventResult.ignored;
       },

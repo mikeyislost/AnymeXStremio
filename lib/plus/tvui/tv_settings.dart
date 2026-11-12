@@ -60,6 +60,9 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
         valueListenable: PlusTvUi.keyLog,
         builder: (context, keys, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _row('AnymeX+ (Flutter, test build)', AppChannel.isBeta ? 'Beta channel' : 'Stable channel'),
+          _row('The Back button',
+              "LG doesn't pass the remote's Back button to Flutter apps yet (the TV asks to exit instead; LG plans to change this). "
+              'Until then, Left at the left edge goes back: it closes a page or opens the menu.'),
           _row('Last remote keys', keys.isEmpty ? 'Press a few buttons on the remote' : keys.join('\n')),
         ]),
       );

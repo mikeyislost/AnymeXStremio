@@ -110,6 +110,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
     super.initState();
     HardwareKeyboard.instance.addHandler(_logKey);
     FocusManager.instance.addListener(_watchFocus);
+    TvNav.openMenu = _toRail;
   }
 
   @override
@@ -310,7 +311,11 @@ class _PlusTvShellState extends State<PlusTvShell> {
                 _toRail();
                 return KeyEventResult.handled;
               }
-              if (f == null || !f.focusInDirection(TraversalDirection.left)) _toRail();
+              if (f == null) {
+                _toRail();
+              } else {
+                TvNav.left(f, _contentScope);
+              }
               return KeyEventResult.handled;
             }
             return KeyEventResult.ignored;

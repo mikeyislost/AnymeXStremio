@@ -211,7 +211,8 @@ class _TvHomePageState extends State<TvHomePage> {
             // Rows next to the highlighted one must exist for Up / Down.
             cacheExtent: 2400,
             padding: const EdgeInsets.only(top: 40, bottom: 400),
-            clipBehavior: Clip.none,
+            // Rows scrolled up must not draw over the banner.
+            clipBehavior: Clip.hardEdge,
             children: rows,
           );
         }),
