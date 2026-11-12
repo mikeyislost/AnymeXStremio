@@ -18,7 +18,8 @@ class TvSearchPage extends StatefulWidget {
 
 class _TvSearchPageState extends State<TvSearchPage> {
   final _text = TextEditingController();
-  final _node = FocusNode();
+  final _node = FocusNode(skipTraversal: true); // the text field
+  final _box = FocusNode(); // the box around it, highlighted like a button
   Timer? _debounce;
   String _query = '';
   List<TvItem> _anime = const [];
@@ -28,10 +29,38 @@ class _TvSearchPageState extends State<TvSearchPage> {
   final _moviesRow = GlobalKey<TvRowState>();
 
   @override
+  void initState() {
+    super.initState();
+    _node.addListener(() {
+      // The keyboard closed (the text field let go): back to the box.
+      if (!_node.hasFocus && mounted) {
+        final now = FocusManager.instance.primaryFocus;
+        if (now == null || now is FocusScopeNode) _box.requestFocus();
+      }
+    });
+  }
+
+  void _startTyping() => _node.requestFocus();
+
+  void _stopTyping() {
+    _box.requestFocus();
+    _run(_text.text);
+  }
+
+  void _toResults() {
+    if (_animeRow.currentState?.isEmpty == false) {
+      _animeRow.currentState!.focus();
+    } else if (_moviesRow.currentState?.isEmpty == false) {
+      _moviesRow.currentState!.focus();
+    }
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _text.dispose();
     _node.dispose();
+    _box.dispose();
     super.dispose();
   }
 
@@ -66,29 +95,32 @@ class _TvSearchPageState extends State<TvSearchPage> {
 
   static Future<List<TvItem>> _tmdb(String q) async {
     if (MoviesForYou.tmdbKey == null) return const [];
-    final data = await MoviesForYou.tmdbGet('search/multi', 'tv/search/${q.toLowerCase()}', const Duration(hours: 6),
-        query: '&include_adult=false&query=${Uri.encodeQueryComponent(q)}');
-    final list = data is Map ? (data['results'] as List?) ?? const [] : const [];
-    final out = <TvItem>[];
-    for (final r in list.whereType<Map>()) {
-      if (r['media_type'] != 'movie' && r['media_type'] != 'tv') continue;
-      final kind = r['media_type'] == 'tv' ? 'series' : 'movie';
-      final p = PlusBuiltinRows.previewFrom(r, kind, 'tt0');
-      if (p == null) continue;
-      out.add(TvItem(
-        id: 'tmdb:$kind:${r['id']}',
-        kind: kind,
-        title: p.name,
-        poster: p.poster ?? '',
-        backdrop: p.background ?? '',
-        description: p.description ?? '',
-        year: p.releaseInfo ?? '',
-        rating: p.imdbRating ?? '',
-        genres: p.genres,
-      ));
-      if (out.length >= 30) break;
+    Future<List<TvItem>> one(String kind) async {
+      final path = kind == 'movie' ? 'search/movie' : 'search/tv';
+      final data = await MoviesForYou.tmdbGet(path, 'tv/search/$kind/${q.toLowerCase()}', const Duration(hours: 6),
+          query: '&include_adult=false&query=${Uri.encodeQueryComponent(q)}');
+      final list = data is Map ? (data['results'] as List?) ?? const [] : const [];
+      final out = <TvItem>[];
+      for (final r in list.whereType<Map>()) {
+        final p = PlusBuiltinRows.previewFrom(r, kind, 'tt0');
+        if (p == null) continue;
+        out.add(TvItem(
+          id: 'tmdb:$kind:${r['id']}',
+          kind: kind,
+          title: p.name,
+          poster: p.poster ?? '',
+          backdrop: p.background ?? '',
+          description: p.description ?? '',
+          year: p.releaseInfo ?? '',
+          rating: p.imdbRating ?? '',
+          genres: p.genres,
+        ));
+      }
+      return out;
     }
-    return out;
+
+    final both = await Future.wait([one('movie'), one('series')]);
+    return TvCategory.interleave(both).take(40).toList();
   }
 
   @override
@@ -105,50 +137,71 @@ class _TvSearchPageState extends State<TvSearchPage> {
         const SizedBox(height: 24),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: TvStyle.pad),
+          // The box is highlighted like any button; OK starts typing (the
+          // TV's keyboard opens). Closing the keyboard, Back, Up or Down end
+          // typing and the highlight is on the box again.
           child: Focus(
             canRequestFocus: false,
             skipTraversal: true,
-            // Down / Up leave the box (the TV's keyboard closes first).
             onKeyEvent: (n, e) {
-              if (e is KeyDownEvent && (e.logicalKey == LogicalKeyboardKey.arrowDown)) {
-                final ok = (_animeRow.currentState?.focus() ?? false) || (_moviesRow.currentState?.focus() ?? false);
-                return ok ? KeyEventResult.handled : KeyEventResult.ignored;
+              if (e is! KeyDownEvent || !_node.hasFocus) return KeyEventResult.ignored;
+              final k = e.logicalKey;
+              if (tvIsBack(k) || k == LogicalKeyboardKey.arrowUp) {
+                _stopTyping();
+                return KeyEventResult.handled;
               }
-              if (e is KeyDownEvent && tvIsSelect(e.logicalKey) && e.logicalKey != LogicalKeyboardKey.space) {
-                _run(_text.text);
+              if (k == LogicalKeyboardKey.arrowDown) {
+                _stopTyping();
+                _toResults();
+                return KeyEventResult.handled;
               }
               return KeyEventResult.ignored;
             },
-            child: AnimatedBuilder(
-              animation: _node,
-              builder: (context, _) => Container(
-                width: 1100,
-                height: 76,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                decoration: BoxDecoration(
-                  color: TvStyle.panel,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: _node.hasFocus ? Colors.white : const Color(0xFF2A2A2A), width: 3),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.search_rounded, size: 32, color: TvStyle.dim),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _text,
-                      focusNode: _node,
-                      onChanged: _changed,
-                      onSubmitted: _run,
-                      cursorColor: accent,
-                      style: const TextStyle(fontSize: 26, color: Colors.white),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'Anime, movies and series',
-                        hintStyle: TextStyle(fontSize: 26, color: Color(0xFF6D6D6D)),
-                      ),
+            child: TvFocusable(
+              focusNode: _box,
+              autofocus: true,
+              alignment: 0.3,
+              onSelect: _startTyping,
+              builder: (context, f) => AnimatedBuilder(
+                animation: _node,
+                builder: (context, _) {
+                  final on = f || _node.hasFocus;
+                  return Container(
+                    width: 1100,
+                    height: 76,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: TvStyle.panel,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: on ? Colors.white : const Color(0xFF2A2A2A), width: 3),
                     ),
-                  ),
-                ]),
+                    child: Row(children: [
+                      const Icon(Icons.search_rounded, size: 32, color: TvStyle.dim),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ExcludeFocusTraversal(
+                          child: TextField(
+                            controller: _text,
+                            focusNode: _node,
+                            onChanged: _changed,
+                            onSubmitted: (v) {
+                              _run(v);
+                              _stopTyping();
+                            },
+                            onTapOutside: (_) {},
+                            cursorColor: accent,
+                            style: const TextStyle(fontSize: 26, color: Colors.white),
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              hintText: f && !_node.hasFocus ? 'Press OK to type' : 'Anime, movies and series',
+                              hintStyle: const TextStyle(fontSize: 26, color: Color(0xFF6D6D6D)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  );
+                },
               ),
             ),
           ),
@@ -170,7 +223,7 @@ class _TvSearchPageState extends State<TvSearchPage> {
           items: _anime,
           onOpen: (i) => tvOpen(context, i),
           onUp: () {
-            _node.requestFocus();
+            _box.requestFocus();
             return true;
           },
           onDown: () => _moviesRow.currentState?.focus() ?? true,
@@ -183,7 +236,7 @@ class _TvSearchPageState extends State<TvSearchPage> {
           onOpen: (i) => tvOpen(context, i),
           onUp: () {
             if (_animeRow.currentState?.isEmpty == false) return _animeRow.currentState!.focus();
-            _node.requestFocus();
+            _box.requestFocus();
             return true;
           },
           onDown: () => true,

@@ -32,12 +32,28 @@ class PlusTvUi {
     } catch (_) {}
   }
 
-  /// The last remote keys, for Settings → About this TV.
-  static final keyLog = ValueNotifier<List<String>>(const []);
+  /// The last remote keys, for Settings → About this TV. Kept across
+  /// restarts, so a key that closes the app still shows next time.
+  static final keyLog = ValueNotifier<List<String>>(_loadLog());
+  static const _kLog = 'plus_tv_keylog';
+
+  static List<String> _loadLog() {
+    try {
+      final raw = KvHelper.get<List<String>>(_kLog, defaultVal: const []);
+      return List<String>.from(raw);
+    } catch (_) {
+      return const [];
+    }
+  }
 
   static void logKey(String k) {
-    final l = [k, ...keyLog.value];
-    keyLog.value = l.take(8).toList();
+    final t = DateTime.now();
+    final stamp = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
+    final l = ['$stamp  $k', ...keyLog.value];
+    keyLog.value = l.take(12).toList();
+    try {
+      KvHelper.set(_kLog, keyLog.value);
+    } catch (_) {}
   }
 
   static ThemeData theme(BuildContext context) {
@@ -93,11 +109,13 @@ class _PlusTvShellState extends State<PlusTvShell> {
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_logKey);
+    FocusManager.instance.addListener(_watchFocus);
   }
 
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_logKey);
+    FocusManager.instance.removeListener(_watchFocus);
     for (final n in _railNodes) {
       n.dispose();
     }
@@ -107,11 +125,30 @@ class _PlusTvShellState extends State<PlusTvShell> {
   }
 
   bool _logKey(KeyEvent e) {
+    if (e is KeyDownEvent || e is KeyRepeatEvent) TvPointer.keyPressed();
     if (e is KeyDownEvent) {
       final k = e.logicalKey;
-      PlusTvUi.logKey('${k.keyLabel.isEmpty ? k.debugName : k.keyLabel} (0x${k.keyId.toRadixString(16)})');
+      PlusTvUi.logKey('key ${k.keyLabel.isEmpty ? k.debugName : k.keyLabel} (0x${k.keyId.toRadixString(16)}, '
+          'usb 0x${e.physicalKey.usbHidUsage.toRadixString(16)})');
     }
     return false;
+  }
+
+  /// Safety net: if the highlight ever ends up on nothing (a card vanished,
+  /// a text box closed), put it back on the page.
+  void _watchFocus() {
+    final f = FocusManager.instance.primaryFocus;
+    if (f == null || f is! FocusScopeNode) return;
+    if (f != _contentScope && f != _railScope) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final now = FocusManager.instance.primaryFocus;
+      if (!mounted || now != f) return;
+      if (f == _railScope) {
+        _toRail();
+      } else {
+        _contentScope.nextFocus();
+      }
+    });
   }
 
   /// OK on a menu item: open that tab and go into it.
@@ -167,8 +204,12 @@ class _PlusTvShellState extends State<PlusTvShell> {
     // The TV can send Back twice (a key and the system's "go back"): one
     // press is one step.
     final now = DateTime.now();
-    if (now.difference(_lastBack) < const Duration(milliseconds: 400)) return;
+    if (now.difference(_lastBack) < const Duration(milliseconds: 400)) {
+      PlusTvUi.logKey('back (second signal, ignored)');
+      return;
+    }
     _lastBack = now;
+    PlusTvUi.logKey(_railScope.hasFocus ? 'back → ${_tab == 0 ? 'leave?' : 'Home'}' : 'back → menu');
     if (!_railScope.hasFocus) {
       _toRail();
       return;

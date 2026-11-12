@@ -208,6 +208,8 @@ class _TvHomePageState extends State<TvHomePage> {
             if (first != null) WidgetsBinding.instance.addPostFrameCallback((_) => _focus(first));
           }
           return ListView(
+            // Rows next to the highlighted one must exist for Up / Down.
+            cacheExtent: 2400,
             padding: const EdgeInsets.only(top: 40, bottom: 400),
             clipBehavior: Clip.none,
             children: rows,

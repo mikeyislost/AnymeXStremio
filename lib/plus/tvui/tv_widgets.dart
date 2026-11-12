@@ -36,6 +36,25 @@ bool tvIsBack(LogicalKeyboardKey k) =>
     k == LogicalKeyboardKey.browserBack ||
     k == LogicalKeyboardKey.escape;
 
+/// The Magic Remote's pointer only moves the highlight when it is really
+/// being used: not right after arrow presses (the remote shakes a little in
+/// the hand, which used to drag the highlight onto random cards).
+class TvPointer {
+  static DateTime _lastKey = DateTime(2000);
+  static double _travel = 0;
+
+  static void keyPressed() {
+    _lastKey = DateTime.now();
+    _travel = 0;
+  }
+
+  static bool mayTakeFocus(Offset delta) {
+    if (DateTime.now().difference(_lastKey) < const Duration(milliseconds: 1500)) return false;
+    _travel += delta.distance;
+    return _travel > 12;
+  }
+}
+
 /// Anything that can be highlighted with the remote: OK (or a click with the
 /// Magic Remote) runs [onSelect]. Moving the highlight with the arrows
 /// scrolls it into view; pointing at it with the Magic Remote doesn't.
@@ -47,6 +66,9 @@ class TvFocusable extends StatefulWidget {
   final FocusNode? focusNode;
   final double alignment;
 
+  /// Scroll into view when highlighted (rows scroll their cards themselves).
+  final bool autoScroll;
+
   const TvFocusable({
     super.key,
     required this.builder,
@@ -55,6 +77,7 @@ class TvFocusable extends StatefulWidget {
     this.autofocus = false,
     this.focusNode,
     this.alignment = 0.12,
+    this.autoScroll = true,
   });
 
   @override
@@ -85,7 +108,7 @@ class _TvFocusableState extends State<TvFocusable> {
     if (!mounted) return;
     setState(() => _focused = f);
     widget.onFocus?.call(f);
-    if (f && !_byPointer) {
+    if (f && !_byPointer && widget.autoScroll) {
       Scrollable.ensureVisible(context,
           alignment: widget.alignment,
           duration: const Duration(milliseconds: 160),
@@ -112,11 +135,10 @@ class _TvFocusableState extends State<TvFocusable> {
         cursor: SystemMouseCursors.click,
         // Only a real pointer move takes the highlight: a layout change
         // (the menu opening under a resting pointer) doesn't.
-        onHover: (_) {
-          if (!_node.hasFocus) {
-            _byPointer = true;
-            _node.requestFocus();
-          }
+        onHover: (e) {
+          if (_node.hasFocus || !TvPointer.mayTakeFocus(e.delta)) return;
+          _byPointer = true;
+          _node.requestFocus();
         },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -169,6 +191,7 @@ class TvCard extends StatelessWidget {
   final ValueChanged<TvItem>? onFocusItem;
   final bool autofocus;
   final FocusNode? focusNode;
+  final bool autoScroll;
 
   const TvCard({
     super.key,
@@ -179,6 +202,7 @@ class TvCard extends StatelessWidget {
     this.onFocusItem,
     this.autofocus = false,
     this.focusNode,
+    this.autoScroll = true,
   });
 
   static const posterW = 200.0, posterH = 300.0, wideW = 380.0, wideH = 214.0;
@@ -191,6 +215,7 @@ class TvCard extends StatelessWidget {
     return TvFocusable(
       autofocus: autofocus,
       focusNode: focusNode,
+      autoScroll: autoScroll,
       onSelect: onSelect,
       onFocus: (f) {
         if (f) onFocusItem?.call(item);
@@ -313,7 +338,20 @@ class TvRowState extends State<TvRow> {
       final max = _scroll.position.maxScrollExtent;
       _scroll.jumpTo((i * _step - 40).clamp(0.0, max).toDouble());
     }
-    _later(i, 4);
+    _later(i, 10);
+  }
+
+  /// The highlighted card sits at the left edge (Netflix style), and the
+  /// page scrolls so the whole row is in view.
+  void _reveal(int i) {
+    if (_scroll.hasClients) {
+      final max = _scroll.position.maxScrollExtent;
+      final target = (i * _step).clamp(0.0, max).toDouble();
+      if ((target - _scroll.offset).abs() > 1) {
+        _scroll.animateTo(target, duration: const Duration(milliseconds: 140), curve: Curves.easeOut);
+      }
+    }
+    Scrollable.ensureVisible(context, alignment: 0.02, duration: const Duration(milliseconds: 140), curve: Curves.easeOut);
   }
 
   // The card is built a frame after the jump; try a few frames.
@@ -405,6 +443,7 @@ class TvRowState extends State<TvRow> {
               onKeyEvent: _key,
               child: ListView.separated(
                 controller: _scroll,
+                cacheExtent: 1600,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: 6),
@@ -417,10 +456,12 @@ class TvRowState extends State<TvRow> {
                     wide: wide,
                     showKind: widget.showKind,
                     focusNode: _nodes[i],
+                    autoScroll: false,
                     autofocus: widget.autofocusFirst && i == 0,
                     onSelect: () => widget.onOpen(items[i]),
                     onFocusItem: (it) {
                       _index = i;
+                      _reveal(i);
                       widget.onFocusItem?.call(it);
                     },
                   ),
