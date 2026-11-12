@@ -40,7 +40,7 @@ git clone -q --depth 1 --branch 3.3.0-dev.3 https://github.com/isar-community/is
 find /tmp/isar-src -path "*$T/release/*" -name 'libisar*.so' | head -n 1 | xargs -I{} cp {} "$OUT/libisar.so"
 
 # rhttp
-(cd packages/rhttp/rust && cargo build --release --target "$T")
+(cd packages/rhttp/rust && RUSTFLAGS="--cfg reqwest_unstable" cargo build --release --target "$T")
 cp "packages/rhttp/rust/target/$T/release/librhttp.so" "$OUT/librhttp.so"
 
 file "$OUT"/*.so
