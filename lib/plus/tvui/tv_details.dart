@@ -3,6 +3,7 @@ import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
+import 'package:anymex/plus/tvui/tv_list_editor.dart';
 import 'package:anymex/plus/tvui/tv_playable.dart';
 import 'package:anymex/plus/tvui/tv_sources.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
@@ -38,6 +39,8 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
   int _part = 0;
   int _progress = 0; // anime: episodes watched (AniList)
   String _status = '';
+  String _rawStatus = ''; // anime: AniList status ('' = not on your list)
+  double _score = 0; // anime: your AniList score, 0–100
   bool _loading = true;
   String _error = '';
   TvPlayable? _playable;
@@ -70,6 +73,8 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         if (mine != null) {
           _progress = int.tryParse(mine.episodeCount ?? '') ?? 0;
           _status = _statusLabel(mine.watchingStatus);
+          _rawStatus = (mine.watchingStatus ?? '').toUpperCase();
+          _score = double.tryParse(mine.score ?? '') ?? 0;
         }
       } catch (_) {}
       final (full, out, studio) = d;
@@ -182,6 +187,94 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         setState(() => _inLibrary = was);
         tvToast(context, "Couldn't change your library: $e");
       }
+    }
+  }
+
+  int get _total => int.tryParse(_item.episodes) ?? 0;
+
+  bool _anilistReady() {
+    try {
+      if (Get.find<AnilistAuth>().isLoggedIn.value) return true;
+    } catch (_) {}
+    tvToast(context, 'Sign in to AniList first: Settings → Accounts → Get logins from your phone.');
+    return false;
+  }
+
+  /// Shows a new AniList status / progress on the page.
+  void _showList(String status, int progress, double score) {
+    setState(() {
+      _rawStatus = status;
+      _status = _statusLabel(status);
+      _progress = progress;
+      _score = score;
+      _eps = [
+        for (final e in _eps)
+          _Ep(e.id, e.season, e.number, e.title, thumb: e.thumb, progress: e.progress, watched: status.isNotEmpty && e.number <= progress),
+      ];
+      _parts = _split(_eps);
+      _goToCurrent();
+    });
+  }
+
+  Future<void> _editList() async {
+    if (!_anilistReady()) return;
+    final change = await Navigator.of(context).push<TvListChange>(tvRoute(TvListEditor(
+      anilistId: _item.id,
+      title: _item.title,
+      status: _rawStatus,
+      progress: _progress,
+      score: _score,
+      total: _total,
+    )));
+    if (change == null || !mounted) return;
+    _showList(change.status, change.progress, change.score);
+    tvToast(context, change.removed ? 'Removed from your list' : 'Saved: ${_statusLabel(change.status)} · ${change.progress} episodes');
+  }
+
+  /// Hold OK on an episode: mark it watched or not watched.
+  Future<void> _episodeMenu(_Ep e) async {
+    if (_item.isAnime) {
+      if (!_anilistReady()) return;
+      final watched = await Navigator.of(context).push<bool>(tvRoute(TvEpisodeMenu(
+        title: 'Episode ${e.number}',
+        watched: e.watched,
+        upToLabel: e.number > 1 ? 'Watched up to E${e.number}' : 'Mark watched',
+      )));
+      if (watched == null || !mounted) return;
+      final (status, progress) = TvListRules.markEpisode(_rawStatus, _progress, _total, e.number, watched);
+      if (progress == _progress && status == _rawStatus) return;
+      try {
+        await Get.find<AnilistAuth>().updateListEntry(listId: _item.id, status: status, progress: progress, isAnime: true);
+        if (!mounted) return;
+        _showList(status, progress, _score);
+        tvToast(context, watched ? 'Watched up to E$progress' : (progress == 0 ? 'No episodes watched' : 'Watched up to E$progress'));
+      } catch (err) {
+        if (mounted) tvToast(context, "Couldn't save to AniList: $err");
+      }
+      return;
+    }
+    final meta = _meta;
+    final st = StremioService.to;
+    if (meta == null) return;
+    if (!st.isLoggedIn.value) {
+      tvToast(context, 'Sign in to Stremio first (Settings → Accounts).');
+      return;
+    }
+    final video = meta.videos.firstWhereOrNull((v) => v.id == e.id);
+    if (video == null) return;
+    final label = meta.type == 'movie' ? meta.name : 'S${e.season} E${e.number}';
+    final watched = await Navigator.of(context).push<bool>(tvRoute(TvEpisodeMenu(title: label, watched: e.watched)));
+    if (watched == null || !mounted) return;
+    try {
+      await st.setVideoWatched(meta, video, watched);
+      await _applyLibrary(meta);
+      if (!mounted) return;
+      setState(() {
+        _parts = _split(_eps);
+      });
+      tvToast(context, watched ? '$label marked watched' : '$label marked not watched');
+    } catch (err) {
+      if (mounted) tvToast(context, "Couldn't change it: $err");
     }
   }
 
@@ -367,7 +460,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                 if (it.isAnime)
                   TvButton(
                     label: _status.isEmpty ? 'Add to list' : '$_status · $_progress / ${it.episodes.isEmpty ? '?' : it.episodes}',
-                    onSelect: () => tvToast(context, 'Changing your list from the TV comes with the logins from your phone.'),
+                    onSelect: _editList,
                   ),
                 if (!it.isAnime)
                   TvButton(label: _inLibrary ? 'In library ✓' : 'Add to library', onSelect: _toggleLibrary),
@@ -393,7 +486,10 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                 child: Wrap(spacing: 12, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
                   const Padding(
                     padding: EdgeInsets.only(right: 18),
-                    child: Text('Episodes', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text.rich(TextSpan(children: [
+                      TextSpan(text: 'Episodes', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+                      TextSpan(text: '   hold OK to mark watched', style: TextStyle(fontSize: 18, color: TvStyle.dim)),
+                    ])),
                   ),
                   if (_parts.length > 1)
                     for (var i = 0; i < _parts.length; i++)
@@ -424,6 +520,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                     final e = part[i];
                     return TvFocusable(
                       onSelect: () => _play(e),
+                      onHold: () => _episodeMenu(e),
                       builder: (context, f) => AnimatedScale(
                         scale: f ? 1.06 : 1,
                         duration: const Duration(milliseconds: 120),

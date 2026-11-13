@@ -13,6 +13,7 @@ import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
 import 'package:anymex/plus/tv/flutter_tv_pair.dart' show PlusFlutterTvPair;
+import 'package:anymex/plus/tvui/tv_list_editor.dart' show TvListRules;
 import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
 import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
@@ -1328,6 +1329,44 @@ void main() {
 
     test('carried names what was sent', () {
       expect(PlusFlutterTvPair.carried({'anilist': 't', 'simkl': '', 'stremio': 'k'}), ['AniList', 'Stremio']);
+    });
+  });
+
+  group('Flutter TV: changing your AniList list', () {
+    test('episodes stay within 0…total', () {
+      expect(TvListRules.step(0, -1, 12), 0);
+      expect(TvListRules.step(11, 5, 12), 12);
+      expect(TvListRules.step(3, 1, 0), 4); // total unknown
+    });
+
+    test('status follows progress', () {
+      expect(TvListRules.statusFor('PLANNING', 1, 12), 'CURRENT');
+      expect(TvListRules.statusFor('', 1, 12), 'CURRENT');
+      expect(TvListRules.statusFor('CURRENT', 12, 12), 'COMPLETED');
+      expect(TvListRules.statusFor('COMPLETED', 5, 12), 'CURRENT');
+      expect(TvListRules.statusFor('DROPPED', 12, 12), 'DROPPED');
+      expect(TvListRules.statusFor('PAUSED', 4, 12), 'PAUSED');
+      expect(TvListRules.progressFor('COMPLETED', 3, 12), 12);
+      expect(TvListRules.progressFor('COMPLETED', 3, 0), 3);
+    });
+
+    test('marking an episode watched / not watched', () {
+      expect(TvListRules.markEpisode('CURRENT', 3, 12, 7, true), ('CURRENT', 7));
+      expect(TvListRules.markEpisode('CURRENT', 9, 12, 7, true), ('CURRENT', 9));
+      expect(TvListRules.markEpisode('CURRENT', 9, 12, 7, false), ('CURRENT', 6));
+      expect(TvListRules.markEpisode('CURRENT', 3, 12, 7, false), ('CURRENT', 3));
+      expect(TvListRules.markEpisode('', 0, 12, 1, true), ('CURRENT', 1));
+      expect(TvListRules.markEpisode('CURRENT', 11, 12, 12, true), ('COMPLETED', 12));
+      expect(TvListRules.markEpisode('COMPLETED', 12, 12, 12, false), ('CURRENT', 11));
+    });
+
+    test('score steps and labels', () {
+      expect(TvListRules.stepScore(0, -1), 0);
+      expect(TvListRules.stepScore(70, 1), 75);
+      expect(TvListRules.stepScore(100, 1), 100);
+      expect(TvListRules.scoreLabel(0), 'No score');
+      expect(TvListRules.scoreLabel(70), '7 / 10');
+      expect(TvListRules.scoreLabel(75), '7.5 / 10');
     });
   });
 }

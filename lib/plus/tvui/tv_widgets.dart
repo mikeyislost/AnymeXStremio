@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:anymex/plus/tvui/tv_data.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart' show PlusTvUi;
 import 'package:flutter/material.dart';
@@ -110,6 +111,10 @@ class TvPointer {
 class TvFocusable extends StatefulWidget {
   final Widget Function(BuildContext context, bool focused) builder;
   final VoidCallback? onSelect;
+
+  /// Holding OK (about half a second). With it, a short press selects when
+  /// OK is let go instead of when it goes down.
+  final VoidCallback? onHold;
   final ValueChanged<bool>? onFocus;
   final bool autofocus;
   final FocusNode? focusNode;
@@ -122,6 +127,7 @@ class TvFocusable extends StatefulWidget {
     super.key,
     required this.builder,
     this.onSelect,
+    this.onHold,
     this.onFocus,
     this.autofocus = false,
     this.focusNode,
@@ -137,6 +143,9 @@ class _TvFocusableState extends State<TvFocusable> {
   late FocusNode _node = widget.focusNode ?? FocusNode();
   bool _focused = false;
   bool _byPointer = false;
+  Timer? _holdTimer;
+  bool _down = false; // OK went down here (a hold can fire)
+  bool _held = false;
 
   @override
   void didUpdateWidget(covariant TvFocusable old) {
@@ -149,12 +158,17 @@ class _TvFocusableState extends State<TvFocusable> {
 
   @override
   void dispose() {
+    _holdTimer?.cancel();
     if (widget.focusNode == null) _node.dispose();
     super.dispose();
   }
 
   void _changed(bool f) {
     if (!mounted) return;
+    if (!f) {
+      _holdTimer?.cancel();
+      _down = false;
+    }
     setState(() => _focused = f);
     widget.onFocus?.call(f);
     if (f && !_byPointer && widget.autoScroll) {
@@ -174,11 +188,29 @@ class _TvFocusableState extends State<TvFocusable> {
       autofocus: widget.autofocus,
       onFocusChange: _changed,
       onKeyEvent: (node, e) {
-        if (e is KeyDownEvent && tvIsSelect(e.logicalKey) && widget.onSelect != null) {
-          widget.onSelect!();
-          return KeyEventResult.handled;
+        if (!tvIsSelect(e.logicalKey)) return KeyEventResult.ignored;
+        if (widget.onHold == null) {
+          if (e is KeyDownEvent && widget.onSelect != null) {
+            widget.onSelect!();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
         }
-        return KeyEventResult.ignored;
+        if (e is KeyDownEvent) {
+          _down = true;
+          _held = false;
+          _holdTimer?.cancel();
+          _holdTimer = Timer(const Duration(milliseconds: 550), () {
+            if (!mounted || !_down) return;
+            _held = true;
+            widget.onHold!();
+          });
+        } else if (e is KeyUpEvent) {
+          _holdTimer?.cancel();
+          if (_down && !_held) widget.onSelect?.call();
+          _down = false;
+        }
+        return KeyEventResult.handled;
       },
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -196,6 +228,13 @@ class _TvFocusableState extends State<TvFocusable> {
             _node.requestFocus();
             widget.onSelect?.call();
           },
+          onLongPress: widget.onHold == null
+              ? null
+              : () {
+                  _byPointer = true;
+                  _node.requestFocus();
+                  widget.onHold!();
+                },
           child: widget.builder(context, _focused),
         ),
       ),
