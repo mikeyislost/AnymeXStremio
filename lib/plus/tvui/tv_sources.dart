@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/tvui/tv_ext.dart';
 import 'package:anymex/plus/tvui/tv_playable.dart';
 import 'package:anymex/plus/tvui/tv_player.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
@@ -40,6 +41,9 @@ class _TvSourcesPageState extends State<TvSourcesPage> {
   final _order = <String>[];
   int _pending = 0;
   bool _started = false;
+  bool _extWaiting = false; // the phone / PC is still looking
+  String _extNote = '';
+  String _extSource = '';
   bool _gone = false;
   String? _quality;
   late final _pref = StremioService.to.streamPrefFor(widget.playable.titleKey);
@@ -53,21 +57,61 @@ class _TvSourcesPageState extends State<TvSourcesPage> {
   bool _preferred(StremioStream s) =>
       _pref.addon != null && s.addonName == _pref.addon && ((_pref.quality ?? '').isEmpty || s.quality == _pref.quality);
 
+  static const _ext = '\u0000ext'; // the extension group in _byAddon / _order
+
+  /// Anime: the servers of your extension, found by your phone or PC.
+  Future<void> _fetchExt() async {
+    final p = widget.playable;
+    if (!p.isAnime) return;
+    if (!TvExt.instance.hasDevices) {
+      if (p.metaId.startsWith('anilist:')) {
+        setState(() => _extNote = 'To play from your extensions, pair your phone or PC: Settings → Accounts → Get logins from your phone.');
+      }
+      return;
+    }
+    setState(() {
+      _extWaiting = true;
+      if (!_order.contains(_ext)) _order.insert(0, _ext);
+    });
+    try {
+      await for (final r in TvExt.instance.servers(p.item, widget.ep.number)) {
+        if (!mounted) return;
+        setState(() {
+          _byAddon[_ext] = r.streams;
+          if (r.source.isNotEmpty) _extSource = r.source;
+          if (r.done) {
+            _extWaiting = false;
+            _extNote = r.streams.isEmpty && r.error.isNotEmpty ? r.error : '';
+          }
+        });
+        _maybeAuto();
+        if (r.done) break;
+      }
+    } catch (e) {
+      if (mounted) setState(() => _extNote = '$e');
+    }
+    if (mounted) setState(() => _extWaiting = false);
+  }
+
   Future<void> _fetch() async {
     final st = StremioService.to;
+    unawaited(_fetchExt());
     await st.ensureAddons();
     if (!mounted) return;
     final type = widget.playable.type;
     final id = widget.ep.videoId;
-    final sources = st.addons
-        .where((a) => st.isAddonUsable(a) && (a.supports('stream', type, id) || a.supports('stream', 'anime', id)))
-        .toList();
+    final sources = widget.playable.metaId.startsWith('anilist:')
+        ? <StremioAddon>[]
+        : st.addons
+            .where((a) => st.isAddonUsable(a) && (a.supports('stream', type, id) || a.supports('stream', 'anime', id)))
+            .toList();
     setState(() {
       _started = true;
       _pending = sources.length;
+      final ext = _order.contains(_ext);
       _order
         ..clear()
-        ..addAll(sources.map((a) => a.name));
+        ..addAll([if (ext) _ext, ...sources.map((a) => a.name)]);
     });
     await st.fetchStreams(type, id, onAddonResult: (addon, streams) {
       if (!mounted) return;
@@ -126,7 +170,11 @@ class _TvSourcesPageState extends State<TvSourcesPage> {
     final qualities = streamQualities.where((q) => playable.any((s) => s.quality == q)).toList();
     final shown = playable.where((s) => _quality == null || s.quality == _quality).toList();
     final it = widget.playable.item;
-    final loading = !_started || _pending > 0;
+    final loading = !_started || _pending > 0 || _extWaiting;
+    final addonCount = _order.where((a) => a != _ext).length;
+    final extLine = _extWaiting
+        ? 'asking ${TvExt.instance.using.value.isEmpty ? 'your phone or PC' : TvExt.instance.using.value}${_extSource.isEmpty ? '' : ' ($_extSource)'}…'
+        : '';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(TvStyle.pad, 64, TvStyle.pad, 200),
@@ -136,7 +184,9 @@ class _TvSourcesPageState extends State<TvSourcesPage> {
         Text(
           [
             if (!widget.playable.isMovie) '${widget.ep.label} · ${widget.ep.title}',
-            loading ? 'Looking for sources… (${_order.length - _pending} of ${_order.length} addons)' : '${playable.length} sources',
+            if (loading && addonCount > 0) 'Looking for sources… (${addonCount - _pending} of $addonCount addons)',
+            if (extLine.isNotEmpty) extLine,
+            if (!loading) '${playable.length} sources',
           ].join('   •   '),
           style: const TextStyle(fontSize: 22, color: TvStyle.text2),
         ),
@@ -151,7 +201,8 @@ class _TvSourcesPageState extends State<TvSourcesPage> {
               ]),
             ),
           ),
-        if (_started && _order.isEmpty)
+        if (_extNote.isNotEmpty) _Note(_extNote),
+        if (_started && _order.isEmpty && !widget.playable.metaId.startsWith('anilist:'))
           const _Note("None of your Stremio addons give streams. Sign in to Stremio (Settings → Accounts) or add a stream addon in Stremio.")
         else if (!loading && playable.isEmpty)
           _Note(hidden > 0

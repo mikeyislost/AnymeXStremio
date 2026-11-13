@@ -14,6 +14,7 @@ import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
 import 'package:anymex/plus/tv/flutter_tv_pair.dart' show PlusFlutterTvPair;
 import 'package:anymex/plus/tvui/tv_list_editor.dart' show TvListRules;
+import 'package:anymex/plus/tvui/tv_ext.dart' show TvExt, TvExtDevice;
 import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
 import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
@@ -1367,6 +1368,36 @@ void main() {
       expect(TvListRules.scoreLabel(0), 'No score');
       expect(TvListRules.scoreLabel(70), '7 / 10');
       expect(TvListRules.scoreLabel(75), '7.5 / 10');
+    });
+  });
+
+  group('Flutter TV: extensions through the phone', () {
+    test('a server from the phone becomes a playable stream', () {
+      final s = TvExt.toStream({
+        'name': 'Vidstreaming 1080p',
+        'url': 'http://192.168.1.20:41733/x/abc/v.m3u8',
+        'kind': 'm3u8',
+        'subs': [
+          {'lang': 'English', 'url': 'http://192.168.1.20:41733/x/abc/sub.vtt?u=x'},
+          {'lang': 'x', 'url': ''},
+        ],
+      }, 'HiAnime', 'iPhone');
+      expect(s.addonName, 'Extension · HiAnime');
+      expect(s.name, 'Vidstreaming 1080p');
+      expect(s.title, 'From iPhone');
+      expect(s.bingeGroup, 'ext|Vidstreaming 1080p');
+      expect(s.filename, 'video.m3u8');
+      expect(s.subtitles.length, 1);
+      expect(s.url, startsWith('http://'));
+      expect(TvExt.toStream({'name': '', 'url': 'http://h/v.mp4', 'dead': true}, '', 'PC').title, 'From PC · may not work');
+    });
+
+    test('devices need a host, port and token', () {
+      expect(TvExtDevice.fromJson({'host': '192.168.1.20', 'port': 41733, 'token': 't', 'name': 'iPhone'})?.name, 'iPhone');
+      expect(TvExtDevice.fromJson({'host': '', 'port': 41733, 'token': 't'}), isNull);
+      expect(TvExtDevice.fromJson({'host': 'h', 'port': 0, 'token': 't'}), isNull);
+      expect(TvExtDevice.fromJson('nope'), isNull);
+      expect(TvExt.extVideoId('21', '5'), 'anilist:21:5');
     });
   });
 }

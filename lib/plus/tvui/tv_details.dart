@@ -3,6 +3,7 @@ import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/watched_bitfield.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
+import 'package:anymex/plus/tvui/tv_ext.dart';
 import 'package:anymex/plus/tvui/tv_list_editor.dart';
 import 'package:anymex/plus/tvui/tv_playable.dart';
 import 'package:anymex/plus/tvui/tv_sources.dart';
@@ -325,22 +326,33 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     final st = StremioService.to;
     var p = _playable;
     if (p == null && _item.isAnime) {
-      if (!st.addons.any((a) => st.isAddonUsable(a) && a.hasResource('stream'))) {
-        tvToast(context, 'Sign in to Stremio first (Settings → Accounts): anime plays from your Stremio addons for now.');
+      final ext = TvExt.instance.hasDevices;
+      final addons = st.addons.any((a) => st.isAddonUsable(a) && a.hasResource('stream'));
+      if (!addons && !ext) {
+        tvToast(context, 'Pair your phone (Settings → Accounts → Get logins from your phone) for your extensions and Stremio.');
         return;
       }
-      setState(() => _matching = true);
-      tvToast(context, 'Matching with your Stremio addons…');
-      try {
-        p = await TvPlayable.forAnime(_item);
-      } catch (_) {}
-      if (!mounted) return;
+      if (addons) {
+        setState(() => _matching = true);
+        tvToast(context, 'Matching with your Stremio addons…');
+        try {
+          p = await TvPlayable.forAnime(_item);
+        } catch (_) {}
+        if (!mounted) return;
+      }
+      // None of your Stremio addons has it: your extensions (phone / PC).
+      if (p == null && ext) {
+        p = TvPlayable.forExtension(_item, [
+          for (final x in _eps)
+            TvEp(videoId: TvExt.extVideoId(_item.id, '${x.number}'), season: 1, number: x.number, title: x.title, thumb: x.thumb),
+        ]);
+      }
       setState(() {
         _matching = false;
         _playable = p;
       });
       if (p == null) {
-        tvToast(context, "None of your Stremio addons has this anime. (Extensions on the TV come next.)");
+        tvToast(context, "None of your Stremio addons has this anime. Pair your phone or PC to play it from your extensions.");
         return;
       }
     }
@@ -464,7 +476,20 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                   ),
                 if (!it.isAnime)
                   TvButton(label: _inLibrary ? 'In library ✓' : 'Add to library', onSelect: _toggleLibrary),
-                if (it.isAnime) TvButton(label: 'Source: Stremio addons', onSelect: () => tvToast(context, 'Anime plays from your Stremio addons for now. Extensions on the TV come next.')),
+                if (it.isAnime)
+                  ValueListenableBuilder<String>(
+                    valueListenable: TvExt.instance.using,
+                    builder: (context, dev, _) => TvButton(
+                      label: !TvExt.instance.hasDevices
+                          ? 'Extensions: pair your phone'
+                          : 'Extensions: ${dev.isEmpty ? TvExt.instance.devices.first.name : dev}',
+                      onSelect: () => tvToast(
+                          context,
+                          TvExt.instance.hasDevices
+                              ? 'Your extension\'s servers show first in the sources, found by your phone or PC while AnymeX+ is open on it.'
+                              : 'Settings → Accounts → Get logins from your phone: then your phone or PC finds anime in your extensions for the TV.'),
+                    ),
+                  ),
               ]),
             ),
           ),

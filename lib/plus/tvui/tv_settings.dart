@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/controllers/services/mal/mal_service.dart';
 import 'package:anymex/controllers/services/simkl/simkl_service.dart';
+import 'package:anymex/plus/tvui/tv_ext.dart';
 import 'package:anymex/plus/tvui/tv_pair.dart';
 import 'package:anymex/main.dart' show FilterScreen;
 import 'package:anymex/plus/app_channel.dart';
@@ -60,6 +61,25 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
                 )),
           ),
           _row('AniList', auth.isLoggedIn.value ? 'Signed in as ${auth.profileData.value.name ?? 'you'}' : 'Not signed in'),
+          ValueListenableBuilder<String>(
+            valueListenable: TvExt.instance.using,
+            builder: (context, dev, _) {
+              final list = TvExt.instance.devices;
+              return _row(
+                  'Extensions',
+                  list.isEmpty
+                      ? 'Not paired: your phone or PC runs your extensions for the TV once you get logins from it.'
+                      : '${list.map((d) => d.name + (d.name == dev ? ' (connected)' : '')).join(', ')} · works while AnymeX+ is open there',
+                  trailing: list.isEmpty
+                      ? null
+                      : TvButton(
+                          label: 'Forget',
+                          onSelect: () {
+                            TvExt.instance.forget();
+                            setState(() {});
+                          }));
+            },
+          ),
           _row('Simkl', simkl.isLoggedIn.value ? 'Signed in as ${simkl.profileData.value.name ?? 'you'}' : 'Not signed in'),
           _row('MyAnimeList', mal.isLoggedIn.value ? 'Signed in as ${mal.profileData.value.name ?? 'you'}' : 'Not signed in'),
           _row('Stremio', st.isLoggedIn.value ? 'Signed in · ${st.addons.length} addons' : 'Not signed in. Sign in with a code from your phone.',

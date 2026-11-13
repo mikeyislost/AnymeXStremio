@@ -9,6 +9,7 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tv/flutter_tv_pair.dart';
+import 'package:anymex/plus/tvui/tv_ext.dart';
 import 'package:anymex/utils/logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -54,7 +55,8 @@ class PlusTvPair {
     _server!.listen((req) async {
       try {
         if (req.uri.path == PlusFlutterTvPair.path && WebSocketTransformer.isUpgradeRequest(req)) {
-          _onSocket(await WebSocketTransformer.upgrade(req));
+          final ip = req.connectionInfo?.remoteAddress.address ?? '';
+          _onSocket(await WebSocketTransformer.upgrade(req), ip);
         } else {
           req.response.headers.contentType = ContentType.json;
           req.response.write(jsonEncode({'app': 'anymexplus-flutter-tv', 'pairing': isOpen}));
@@ -107,7 +109,7 @@ class PlusTvPair {
     } catch (_) {}
   }
 
-  void _onSocket(WebSocket ws) {
+  void _onSocket(WebSocket ws, String ip) {
     ECPrivateKey? priv;
     String phonePub = '';
     String usedCode = '';
@@ -153,7 +155,7 @@ class PlusTvPair {
             send({'t': 'bad'});
             return;
           }
-          final what = await _apply(plain, from);
+          final what = await _apply(plain, from, ip);
           // The phone remembers this key under the same id, for `again`.
           final id = PlusFlutterTvPair.idFor(key);
           _remember(id, key);
@@ -168,7 +170,7 @@ class PlusTvPair {
           }
           try {
             final plain = PlusFlutterTvPair.open(key, '${m['iv']}', '${m['data']}');
-            send({'t': 'ok', 'what': await _apply(plain, from, quiet: true)});
+            send({'t': 'ok', 'what': await _apply(plain, from, ip, quiet: true)});
           } catch (_) {
             send({'t': 'unknown'});
           }
@@ -177,7 +179,7 @@ class PlusTvPair {
   }
 
   /// Saves and signs in with what came. Returns the names it took.
-  Future<List<String>> _apply(List<int> plain, String from, {bool quiet = false}) async {
+  Future<List<String>> _apply(List<int> plain, String from, String ip, {bool quiet = false}) async {
     Map<String, dynamic> b;
     try {
       b = Map<String, dynamic>.from(jsonDecode(utf8.decode(plain)) as Map);
@@ -227,6 +229,14 @@ class PlusTvPair {
         took.add('Stremio');
       } catch (e) {
         Logger.i('TV pair: Stremio: $e');
+      }
+    }
+    final link = b['link'];
+    if (link is Map && ip.isNotEmpty) {
+      final d = TvExtDevice.fromJson({...link, 'host': ip});
+      if (d != null) {
+        TvExt.instance.remember(d);
+        took.add('extensions (${d.name})');
       }
     }
     final now = DateTime.now();

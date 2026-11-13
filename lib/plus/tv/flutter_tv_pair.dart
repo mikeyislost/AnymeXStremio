@@ -110,6 +110,13 @@ class PlusFlutterTvPair {
       'simkl': tok(AuthKeys.simklAuthToken),
       'mal': tok(AuthKeys.malAuthToken),
       'stremio': stremio,
+      // How the TV reaches this device for anime from your extensions.
+      'link': {
+        'port': PlusTvLink.instance.port.value > 0 ? PlusTvLink.instance.port.value : PlusTvLink.defaultPort,
+        'token': PlusTvLink.token,
+        'name': PlusTvLink.deviceName,
+        'pc': PlusTvLink.isComputer,
+      },
     };
   }
 
@@ -126,6 +133,7 @@ class PlusFlutterTvPair {
   /// Sends your logins to the Flutter TV app at [host] with the [code] it
   /// shows. Returns what the TV took (e.g. ["AniList", "Stremio"]).
   static Future<List<String>> send(String host, String code) async {
+    await _startLink();
     final logins = buildLogins();
     if (carried(logins).isEmpty) throw Exception('This device is not signed in to anything yet');
     WebSocket ws;
@@ -208,6 +216,8 @@ class PlusFlutterTvPair {
   static Future<void> pushSaved() async {
     final pairs = savedPairs();
     if (pairs.isEmpty) return;
+    // While this app is open, the TV can ask it for anime from extensions.
+    await _startLink();
     final logins = buildLogins();
     if (carried(logins).isEmpty) return;
     for (final p in pairs) {
@@ -224,6 +234,12 @@ class PlusFlutterTvPair {
         } catch (_) {}
       }
     }
+  }
+
+  static Future<void> _startLink() async {
+    try {
+      await PlusTvLink.instance.start().timeout(const Duration(seconds: 8));
+    } catch (_) {}
   }
 
   /// Called once the app has started (not on the TV itself).

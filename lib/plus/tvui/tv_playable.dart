@@ -67,7 +67,18 @@ class TvPlayable {
   /// An anime from AniList, matched to the user's Stremio addons; null when
   /// none of them has it.
   static Future<TvPlayable?> forAnime(TvItem item) async {
-    final media = anymex.Media(
+    final media = _mediaFor(item);
+    final target = await StremioService.to.animeTarget(media);
+    if (target == null || target.episodes.isEmpty || target.addonNames.isEmpty) return null;
+    return _matched(item, media, target);
+  }
+
+  /// An anime played only from your extensions (through the phone or PC):
+  /// none of your Stremio addons has it. Progress goes to AniList.
+  static TvPlayable forExtension(TvItem item, List<TvEp> eps) =>
+      TvPlayable._(item: item, type: 'anime', metaId: 'anilist:${item.id}', meta: null, eps: eps, anime: _mediaFor(item));
+
+  static anymex.Media _mediaFor(TvItem item) => anymex.Media(
       id: item.id,
       idMal: item.idMal.isEmpty ? '0' : item.idMal,
       title: item.title,
@@ -82,8 +93,8 @@ class TvPlayable {
       genres: item.genres,
       serviceType: ServicesType.anilist,
     );
-    final target = await StremioService.to.animeTarget(media);
-    if (target == null || target.episodes.isEmpty || target.addonNames.isEmpty) return null;
+
+  static TvPlayable _matched(TvItem item, anymex.Media media, StremioAnimeTarget target) {
     final eps = [
       for (final e in target.episodes)
         TvEp(

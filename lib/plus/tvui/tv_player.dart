@@ -8,6 +8,7 @@ import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
 import 'package:anymex/plus/tv/tv_anime.dart';
 import 'package:anymex/plus/tvui/tv_local_proxy.dart';
+import 'package:anymex/plus/tvui/tv_ext.dart';
 import 'package:anymex/plus/tvui/tv_playable.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_sources.dart';
@@ -231,7 +232,9 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
 
   void _prefetchNext() {
     final n = _next;
-    if (n != null) StremioService.to.prefetchStreams(widget.playable.type, n.videoId);
+    if (n != null && !widget.playable.metaId.startsWith('anilist:')) {
+      StremioService.to.prefetchStreams(widget.playable.type, n.videoId);
+    }
   }
 
   /// Plays [ep] with a source like the current one (same addon, same
@@ -246,7 +249,9 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
     final old = _stream;
     List<StremioStream> found = const [];
     try {
-      found = (await StremioService.to.fetchStreams(widget.playable.type, ep.videoId)).where(tvCanPlay).toList();
+      found = old.addonName.startsWith('Extension')
+          ? await TvStreams.all(widget.playable, ep)
+          : (await StremioService.to.fetchStreams(widget.playable.type, ep.videoId)).where(tvCanPlay).toList();
     } catch (_) {}
     if (!mounted) return;
     StremioStream? pick;
