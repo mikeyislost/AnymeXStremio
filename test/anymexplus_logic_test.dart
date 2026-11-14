@@ -1425,7 +1425,7 @@ void main() {
         const [TvHomeRow('c', true), TvHomeRow('gone', true), TvHomeRow('a', false)],
         ['a', 'b', 'c', 'd'],
       );
-      expect(keys(out), ['c', 'a', 'b', 'd']);
+      expect(keys(out), ['c', 'd', 'a', 'b']); // d follows c, b follows a, as by default
       expect(out.firstWhere((r) => r.key == 'a').on, isFalse);
       expect(out.firstWhere((r) => r.key == 'b').on, isTrue);
     });
