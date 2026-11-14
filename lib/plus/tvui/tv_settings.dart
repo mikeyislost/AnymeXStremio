@@ -246,6 +246,27 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
           for (var i = 0; i < colorList.length; i++)
             swatch(colorMap.keys.elementAt(i), colorList[i], current == i, () => theme.setCustomSeedColor(i)),
         ]),
+        const SizedBox(height: 18),
+        ValueListenableBuilder<int>(
+          valueListenable: TvRing.second,
+          builder: (context, sec, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _row('Second colour',
+                sec < 0
+                    ? 'Auto: a colour next to your accent. The glints fade from your accent into it.'
+                    : 'The glints fade from your accent into ${colorMap.keys.elementAt(sec)}.'),
+            Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: SizedBox(
+                  width: 130,
+                  child: TvButton(label: 'Auto', primary: sec < 0, onSelect: () => TvRing.setSecond(-1)),
+                ),
+              ),
+              for (var i = 0; i < colorList.length; i++)
+                swatch(colorMap.keys.elementAt(i), TvStyle.strong(colorList[i]), sec == i, () => TvRing.setSecond(i)),
+            ]),
+          ]),
+        ),
       ]),
     );
   }

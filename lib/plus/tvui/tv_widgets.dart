@@ -819,6 +819,33 @@ class TvRing extends StatefulWidget {
     }
   }
 
+  /// Settings → Appearance → Second colour: -1 = auto (a hue next to the
+  /// accent), else an index into AnymeX's colours.
+  static final second = ValueNotifier<int>(_loadSecond());
+  static const _kSecond = 'plus_tv_ring_second';
+  static int _loadSecond() {
+    try {
+      return KvHelper.get<int>(_kSecond, defaultVal: -1);
+    } catch (_) {
+      return -1;
+    }
+  }
+
+  static void setSecond(int i) {
+    second.value = i;
+    try {
+      KvHelper.set(_kSecond, i);
+    } catch (_) {}
+  }
+
+  /// The glint's second colour for [accent].
+  static Color secondFor(Color accent) {
+    final i = second.value;
+    if (i >= 0 && i < colorList.length) return TvStyle.strong(colorList[i]);
+    final h = HSLColor.fromColor(accent);
+    return h.withHue((h.hue + 40) % 360).toColor();
+  }
+
   static set moving(bool on) {
     animated.value = on;
     try {
@@ -837,6 +864,7 @@ class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     TvRing.animated.addListener(_sync);
+    TvRing.second.addListener(_sync);
     _sync();
   }
 
@@ -858,6 +886,7 @@ class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
   @override
   void dispose() {
     TvRing.animated.removeListener(_sync);
+    TvRing.second.removeListener(_sync);
     _spin.dispose();
     super.dispose();
   }
@@ -873,6 +902,7 @@ class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
         gap: widget.gap,
         width: widget.width,
         moving: TvRing.animated.value,
+        second: TvRing.second.value,
       ),
       child: widget.child,
     );
@@ -884,7 +914,8 @@ class _RingPainter extends CustomPainter {
   final Color accent;
   final double radius, gap, width;
   final bool moving;
-  _RingPainter({required this.spin, required this.accent, required this.radius, required this.gap, required this.width, required this.moving})
+  final int second; // only to repaint when it changes
+  _RingPainter({required this.spin, required this.accent, required this.radius, required this.gap, required this.width, required this.moving, required this.second})
       : super(repaint: spin);
 
   /// The accent with its hue turned by [deg] (each glint's second colour).
@@ -913,16 +944,16 @@ class _RingPainter extends CustomPainter {
           ..strokeWidth = width
           ..color = Colors.white);
     if (!moving) return;
-    // Two glints going round in opposite directions (like the Switch 2):
-    // accent → a neighbouring hue, solid over the white, with a glow.
+    // Two glints (like the Switch 2): accent → your second colour, solid
+    // over the white, with a glow.
     const full = 6.283185307;
     final t = spin.value * full;
     final area = r.inflate(width * 3);
-    final second = _turn(accent, 40);
-    final third = _turn(accent, -40);
+    final second = TvRing.secondFor(accent);
+    // Two glints on opposite sides, going round the same way.
     for (final shader in [
       _glint(area, accent, second, t),
-      _glint(area, third, accent, full / 2 - t),
+      _glint(area, accent, second, t + full / 2),
     ]) {
       canvas.drawRRect(
           rr.inflate(width * 0.4),
@@ -942,5 +973,5 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RingPainter old) =>
-      old.accent != accent || old.radius != radius || old.moving != moving || old.gap != gap || old.width != width;
+      old.accent != accent || old.radius != radius || old.moving != moving || old.gap != gap || old.width != width || old.second != second;
 }
