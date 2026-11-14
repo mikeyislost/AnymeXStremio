@@ -23,7 +23,10 @@ import 'package:get/get.dart';
 class PlusLayoutEditorPage extends StatefulWidget {
   /// The page to open on (null = Home).
   final PlusLayoutPage? page;
-  const PlusLayoutEditorPage({super.key, this.page});
+
+  /// Opens this row's look straight away (⋯ on a page being edited).
+  final String? row;
+  const PlusLayoutEditorPage({super.key, this.page, this.row});
 
   @override
   State<PlusLayoutEditorPage> createState() => _PlusLayoutEditorPageState();
@@ -73,11 +76,10 @@ class _PlusLayoutEditorPageState extends State<PlusLayoutEditorPage>
       ),
       body: TabBarView(
         controller: _tabs,
-        children: const [
-          _PageEditor(page: PlusLayoutPage.home),
-          _PageEditor(page: PlusLayoutPage.movies),
-          _PageEditor(page: PlusLayoutPage.manga),
-          _LibraryEditor(),
+        children: [
+          for (final p in [PlusLayoutPage.home, PlusLayoutPage.movies, PlusLayoutPage.manga])
+            _PageEditor(page: p, openRow: p == (widget.page ?? PlusLayoutPage.home) ? widget.row : null),
+          const _LibraryEditor(),
         ],
       ),
     );
@@ -88,7 +90,8 @@ class _PlusLayoutEditorPageState extends State<PlusLayoutEditorPage>
 
 class _PageEditor extends StatefulWidget {
   final PlusLayoutPage page;
-  const _PageEditor({required this.page});
+  final String? openRow;
+  const _PageEditor({required this.page, this.openRow});
 
   @override
   State<_PageEditor> createState() => _PageEditorState();
@@ -100,6 +103,18 @@ class _PageEditorState extends State<_PageEditor>
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    final k = widget.openRow;
+    if (k != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final i = _rows.indexWhere((r) => r.key == k);
+        if (mounted && i >= 0) _editRow(i);
+      });
+    }
+  }
 
   List<PlusPlacedRow> _load() => switch (widget.page) {
         PlusLayoutPage.home =>

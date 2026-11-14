@@ -3,7 +3,7 @@ import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/for_you/for_you_row.dart';
 import 'package:anymex/plus/stremio/ui/stremio_account_page.dart';
-import 'package:anymex/plus/layout/layout_editor.dart';
+import 'package:anymex/plus/layout/layout_live.dart';
 import 'package:anymex/plus/layout/layout_model.dart';
 import 'package:anymex/plus/layout/layout_store.dart';
 import 'package:anymex/plus/layout/page_rows.dart';
@@ -92,8 +92,7 @@ class _StremioHomePageState extends State<StremioHomePage> {
     super.dispose();
   }
 
-  void _openEditor() => navigate(
-      () => const PlusLayoutEditorPage(page: PlusLayoutPage.movies));
+  void _openEditor() => PlusLayoutLive.start(PlusLayoutPage.movies);
 
   Future<void> _refresh() async {
     await _service.refreshAddons();
@@ -125,6 +124,7 @@ class _StremioHomePageState extends State<StremioHomePage> {
               final loggedIn = _service.isLoggedIn.value;
               final loading = _service.addonsLoading.value;
               PlusLayoutStore.version.value;
+              final editing = PlusLayoutLive.isEditing(PlusLayoutPage.movies);
               // AnymeX+: your layout (Edit layout). Rows from addons already
               // marked as not responding are skipped instead of asked (and
               // failing) every time.
@@ -133,7 +133,7 @@ class _StremioHomePageState extends State<StremioHomePage> {
                   'cat:${StremioService.rowKey(r.$1, r.$2)}': r,
               };
               final rows = stremioHomeRows()
-                  .where((r) => !r.config.hidden)
+                  .where((r) => editing || !r.config.hidden)
                   .toList();
               Widget? rowWidget(PlusPlacedRow r) {
                 if (r.config.added) return PlusPageRows.addedRow(r);
@@ -192,18 +192,27 @@ class _StremioHomePageState extends State<StremioHomePage> {
                     ),
                   if (addons.isEmpty && !loading && !PlusBuiltinRows.enabled)
                     SliverToBoxAdapter(child: _emptyState(context)),
+                  if (editing)
+                    SliverToBoxAdapter(
+                        child: PlusLayoutLive.bar(context, PlusLayoutPage.movies)),
                   SliverList.builder(
                     itemCount: rows.length,
                     itemBuilder: (context, i) {
                       final w = rowWidget(rows[i]);
+                      if (editing) {
+                        return PlusLayoutLive.frame(context, PlusLayoutPage.movies, rows[i],
+                            w == null ? null : PlusPageRows.scoped(rows[i], w),
+                            first: i == 0, last: i == rows.length - 1);
+                      }
                       return w == null
                           ? const SizedBox.shrink()
                           : PlusPageRows.scoped(rows[i], w);
                     },
                   ),
-                  SliverToBoxAdapter(
-                    child: PlusPageRows.editButton(context, _openEditor),
-                  ),
+                  if (!editing)
+                    SliverToBoxAdapter(
+                      child: PlusPageRows.editButton(context, _openEditor),
+                    ),
                   SliverToBoxAdapter(
                     child: SizedBox(height: bottomNavBarHeight + 150),
                   ),
