@@ -573,12 +573,12 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                         child: SizedBox(
                           width: 360,
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Container(
+                            TvRing(on: f, radius: 16, gap: 1, child: Container(
                               width: 360,
                               height: 203,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: f ? Colors.white : Colors.transparent, width: 4),
+                                border: Border.all(color: Colors.transparent, width: 4),
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
@@ -619,7 +619,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                                     ),
                                 ]),
                               ),
-                            ),
+                            )),
                             const SizedBox(height: 10),
                             Text(e.title,
                                 maxLines: 1,

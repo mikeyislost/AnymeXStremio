@@ -16,6 +16,7 @@ import 'package:anymex/plus/tv/flutter_tv_pair.dart' show PlusFlutterTvPair;
 import 'package:anymex/plus/tvui/tv_list_editor.dart' show TvListRules;
 import 'package:anymex/plus/tvui/tv_ext.dart' show TvExt, TvExtDevice;
 import 'package:anymex/plus/tvui/tv_data.dart' show TvEpisodeArt;
+import 'package:anymex/plus/tvui/tv_home_rows.dart' show TvHomeRow, TvHomeRows;
 import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
 import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
@@ -1415,5 +1416,29 @@ void main() {
     expect(art.length, 2);
     expect(TvEpisodeArt.parse({'episodes': []}), isEmpty);
     expect(TvEpisodeArt.parse(null), isEmpty);
+  });
+
+  group('Flutter TV: Home rows layout', () {
+    List<String> keys(List<TvHomeRow> l) => [for (final r in l) r.key];
+    test('saved order kept, unknown rows dropped, new rows slot in after their neighbour', () {
+      final out = TvHomeRows.merge(
+        const [TvHomeRow('c', true), TvHomeRow('gone', true), TvHomeRow('a', false)],
+        ['a', 'b', 'c', 'd'],
+      );
+      expect(keys(out), ['c', 'a', 'b', 'd']);
+      expect(out.firstWhere((r) => r.key == 'a').on, isFalse);
+      expect(out.firstWhere((r) => r.key == 'b').on, isTrue);
+    });
+
+    test('nothing saved = the defaults', () {
+      expect(keys(TvHomeRows.merge(const [], ['x', 'y'])), ['x', 'y']);
+    });
+
+    test('moving rows', () {
+      const rows = [TvHomeRow('a', true), TvHomeRow('b', true), TvHomeRow('c', true)];
+      expect(keys(TvHomeRows.move(rows, 2, -1)), ['a', 'c', 'b']);
+      expect(keys(TvHomeRows.move(rows, 0, -1)), ['a', 'b', 'c']);
+      expect(keys(TvHomeRows.move(rows, 2, 1)), ['a', 'b', 'c']);
+    });
   });
 }

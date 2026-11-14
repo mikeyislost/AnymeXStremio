@@ -7,9 +7,9 @@ import 'package:anymex/plus/for_you/anime_for_you.dart';
 import 'package:anymex/plus/for_you/movies_for_you.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
 import 'package:anymex/plus/for_you/taste.dart';
-import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
+import 'package:anymex/plus/tvui/tv_home_rows.dart';
 import 'package:anymex/plus/tvui/tv_details.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
@@ -40,10 +40,6 @@ class _TvHomePageState extends State<TvHomePage> {
   bool _warming = false;
   final _startTimers = <Timer>[];
 
-  static const _movieRowIds = [
-    'trending-movies', 'trending-series', 'popular-movies', 'popular-series', 'airing', 'theaters',
-    'top-movies', 'top-series', 'netflix', 'disney', 'prime', 'max', 'appletv', 'upcoming',
-  ];
 
   @override
   void initState() {
@@ -60,15 +56,31 @@ class _TvHomePageState extends State<TvHomePage> {
       final data = Get.find<ServiceHandler>().anilistService;
       if (data.trendingAnimes.isEmpty) unawaited(data.fetchAnilistHomepage());
     } catch (_) {}
-    for (final id in _movieRowIds) {
+    _loadMovieRows();
+    TvHomeRows.version.addListener(_layoutChanged);
+  }
+
+  /// The Movies & TV rows you show (Settings → Home rows).
+  void _loadMovieRows() {
+    for (final r in TvHomeRows.load()) {
+      if (!r.on || !r.key.startsWith('m:')) continue;
+      final id = r.key.substring(2);
+      if (_movieRows.containsKey(id)) continue;
       TvMovies.row(id).then((items) {
         if (mounted && items.isNotEmpty) setState(() => _movieRows[id] = items);
       });
     }
   }
 
+  void _layoutChanged() {
+    if (!mounted) return;
+    _loadMovieRows();
+    setState(() {});
+  }
+
   @override
   void dispose() {
+    TvHomeRows.version.removeListener(_layoutChanged);
     _heroTimer?.cancel();
     for (final t in _startTimers) {
       t.cancel();
@@ -216,25 +228,19 @@ class _TvHomePageState extends State<TvHomePage> {
           final popular = [for (final m in data.popularAnimes.take(30)) TvItem.fromMedia(m)];
           final recent = [for (final m in data.recentlyUpdatedAnimes.take(30)) TvItem.fromMedia(m)];
           final upcoming = [for (final m in data.upcomingAnimes.take(30)) TvItem.fromMedia(m)];
-          String rowTitle(String id) {
-            for (final r in PlusBuiltinRows.all) {
-              if (r.id == id) return r.title;
-            }
-            return id;
-          }
-
+          List<TvItem> itemsFor(String k) => switch (k) {
+                'continue' => cw,
+                'forYou' => fy,
+                'trending' => trending,
+                'popular' => popular,
+                'recent' => recent,
+                'upcoming' => upcoming,
+                _ => k.startsWith('m:') ? (_movieRows[k.substring(2)] ?? const <TvItem>[]) : const <TvItem>[],
+              };
+          // (title, items, wide, show kind), in your order (Settings → Home rows).
           final specs = <(String, List<TvItem>, bool, bool)>[
-            // (title, items, wide, show kind)
-            ('Continue Watching', cw, true, false),
-            ('For you', fy, false, true),
-            ('Trending Anime', trending, false, false),
-            for (final id in _movieRowIds.take(2))
-              if (_movieRows[id] != null) (rowTitle(id), _movieRows[id]!, false, false),
-            ('Popular Anime', popular, false, false),
-            ('Recently Updated', recent, false, false),
-            for (final id in _movieRowIds.skip(2))
-              if (_movieRows[id] != null) (rowTitle(id), _movieRows[id]!, false, false),
-            ('Upcoming Anime', upcoming, false, false),
+            for (final r in TvHomeRows.load())
+              if (r.on) (TvHomeRows.title(r.key), itemsFor(r.key), r.key == 'continue', r.key == 'forYou'),
           ].where((r) => r.$2.isNotEmpty).toList();
           final keys = [for (final r in specs) _rowKeys.putIfAbsent(r.$1, () => GlobalKey<TvRowState>())];
           bool move(int from, int step) {

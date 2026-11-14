@@ -728,6 +728,17 @@ class StremioService extends GetxController {
     return addon;
   }
 
+  /// AnymeX+ TV: moves [addon] up (by −1) or down (+1) in your addon
+  /// order (saved to your Stremio account like a reorder in Stremio).
+  Future<void> moveAddon(StremioAddon addon, int by) async {
+    final list = List<StremioAddon>.from(addons);
+    final i = list.indexWhere((a) => a.transportUrl == addon.transportUrl);
+    final j = i + by;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    list.insert(j, list.removeAt(i));
+    await _saveAddons(list);
+  }
+
   Future<void> uninstallAddon(StremioAddon addon) async {
     if (addon.isProtected) return;
     final list = List<StremioAddon>.from(addons)

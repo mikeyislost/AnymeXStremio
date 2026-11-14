@@ -92,6 +92,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
   List<_Sub> _subs = const [];
   int _sub = -1;
   aniskip.EpisodeSkipTimes? _skip;
+  final _autoSkipped = <String>{}; // this episode: intro / recap already skipped
 
   final _root = FocusNode(debugLabel: 'player');
   final _playNode = FocusNode(debugLabel: 'play');
@@ -137,6 +138,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       _error = '';
       _ended = false;
       _skip = null;
+      _autoSkipped.clear();
       _status = 'Opening ${_stream.addonName}…';
     });
     await old?.dispose();
@@ -221,7 +223,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
     _markWatched();
     _report(stopped: true);
     final next = _next;
-    if (next != null) {
+    if (next != null && TvPlayerPrefs.autoNext) {
       await _playEp(next);
     } else if (mounted) {
       Navigator.of(context).maybePop();
@@ -498,6 +500,13 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       _report();
       final d = c.value.duration.inMilliseconds;
       if (d > 0 && c.value.position.inMilliseconds >= d * 0.85) _markWatched();
+      // Settings → Player → Skip intros: once per intro / recap, so you
+      // can still seek back into it.
+      final skip = _skipNow;
+      if (skip != null && TvPlayerPrefs.autoSkip && (skip.$1 == 'Skip intro' || skip.$1 == 'Skip recap')) {
+        final k = '${skip.$1}@${skip.$2.inSeconds}';
+        if (_autoSkipped.add(k)) unawaited(c.seekTo(skip.$2));
+      }
     }
     setState(() {}); // clock, bar
   }
@@ -1033,4 +1042,56 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       ),
     );
   }
+}
+
+/// Settings → Player.
+class TvPlayerPrefs {
+  static const kSubLang = 'plus_tv_sub_lang';
+  static const kAudioLang = 'plus_tv_audio_lang';
+  static const _kAutoNext = 'plus_tv_auto_next';
+  static const _kAutoSkip = 'plus_tv_auto_skip';
+
+  static bool _get(String k, bool d) {
+    try {
+      return KvHelper.get<bool>(k, defaultVal: d);
+    } catch (_) {
+      return d;
+    }
+  }
+
+  static void _set(String k, Object v) {
+    try {
+      KvHelper.set(k, v);
+    } catch (_) {}
+  }
+
+  /// Play the next episode when one ends (default on).
+  static bool get autoNext => _get(_kAutoNext, true);
+  static set autoNext(bool v) => _set(_kAutoNext, v);
+
+  /// Jump past intros and recaps by themselves (default off).
+  static bool get autoSkip => _get(_kAutoSkip, false);
+  static set autoSkip(bool v) => _set(_kAutoSkip, v);
+
+  static String get subLang {
+    try {
+      return KvHelper.get<String>(kSubLang, defaultVal: '');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static String get audioLang {
+    try {
+      return KvHelper.get<String>(kAudioLang, defaultVal: '');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// 'eng' → 'English' (the player's own names).
+  static String langName(String l) => _TvPlayerPageState._langName(l);
+
+  static void forgetSubLang() => _set(kSubLang, '');
+  static void forgetAudioLang() => _set(kAudioLang, '');
 }

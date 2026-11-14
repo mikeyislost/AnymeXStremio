@@ -29,7 +29,7 @@ class TvCategoriesPage extends StatelessWidget {
               builder: (context, f) => AnimatedScale(
                 scale: f ? 1.05 : 1,
                 duration: const Duration(milliseconds: 120),
-                child: Container(
+                child: TvRing(on: f, radius: 18, gap: 1, child: Container(
                   width: small ? 300 : 316,
                   height: small ? 100 : 150,
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
@@ -37,7 +37,7 @@ class TvCategoriesPage extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: small ? const Color(0xFF141414) : TvStyle.placeholder(list[i].name),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: f ? Colors.white : Colors.transparent, width: 4),
+                    border: Border.all(color: Colors.transparent, width: 4),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -47,7 +47,7 @@ class TvCategoriesPage extends StatelessWidget {
                       if (!small) Text(list[i].sub, style: const TextStyle(fontSize: 17, color: TvStyle.text2)),
                     ],
                   ),
-                ),
+                )),
               ),
             ),
         ]),

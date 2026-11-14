@@ -8,7 +8,12 @@ import 'package:anymex/plus/tvui/tv_pair.dart';
 import 'package:anymex/main.dart' show FilterScreen;
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
-import 'package:anymex/plus/tvui/tv_player.dart' show TvPlayerDebug;
+import 'package:anymex/plus/tvui/tv_player.dart' show TvPlayerDebug, TvPlayerPrefs;
+import 'package:anymex/plus/tvui/tv_home_rows.dart';
+import 'package:anymex/controllers/theme.dart';
+import 'package:anymex/constants/contants.dart';
+import 'package:anymex/database/data_keys/keys.dart';
+import 'package:provider/provider.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +29,8 @@ class TvSettingsPage extends StatefulWidget {
 
 class _TvSettingsPageState extends State<TvSettingsPage> {
   int _cat = 0;
-  static const _cats = ['Accounts', 'Layout', 'About this TV'];
+  static const _cats = ['Accounts', 'Home rows', 'Addons', 'Player', 'Appearance', 'Layout', 'About this TV'];
+  final _removing = <String>{}; // addons waiting for a second press
 
   Widget _row(String title, String sub, {Widget? trailing}) => Container(
         margin: const EdgeInsets.only(bottom: 14),
@@ -95,6 +101,167 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
               )),
         ]);
       });
+
+  // ---- Home rows ------------------------------------------------------------
+
+  Widget _homeRows() => ValueListenableBuilder<int>(
+        valueListenable: TvHomeRows.version,
+        builder: (context, _, __) {
+          final rows = TvHomeRows.load();
+          return FocusTraversalGroup(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _row('Your Home', 'Show, hide and order the rows on Home. Changes show straight away.',
+                  trailing: TvButton(label: 'Reset', onSelect: TvHomeRows.reset)),
+              for (var i = 0; i < rows.length; i++)
+                KeyedSubtree(
+                  key: ValueKey('row-${rows[i].key}'),
+                  child: _row(
+                    '${i + 1}.  ${TvHomeRows.title(rows[i].key)}',
+                    rows[i].on ? 'Shown' : 'Hidden',
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      TvButton(label: '↑', onSelect: () => TvHomeRows.save(TvHomeRows.move(rows, i, -1))),
+                      const SizedBox(width: 12),
+                      TvButton(label: '↓', onSelect: () => TvHomeRows.save(TvHomeRows.move(rows, i, 1))),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 130,
+                        child: TvButton(
+                          label: rows[i].on ? 'Hide' : 'Show',
+                          onSelect: () => TvHomeRows.save([
+                            for (var j = 0; j < rows.length; j++) j == i ? rows[j].shown(!rows[j].on) : rows[j],
+                          ]),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+            ]),
+          );
+        },
+      );
+
+  // ---- Addons --------------------------------------------------------------
+
+  Widget _addons() => Obx(() {
+        final st = StremioService.to;
+        final list = st.addons.toList();
+        st.unreachableAddons.length; // rebuild when health changes
+        if (!st.isLoggedIn.value && list.isEmpty) {
+          return _row('No addons yet', 'Sign in to Stremio (Accounts) and your addons show here.');
+        }
+        return FocusTraversalGroup(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _row('Your Stremio addons',
+                'Sources are tried in this order. To add one, install it on your phone or at stremio.com: it comes to the TV with your Stremio account.',
+                trailing: TvButton(
+                  label: st.addonsLoading.value ? 'Refreshing…' : 'Refresh',
+                  onSelect: () async {
+                    await st.refreshAddons();
+                    await st.checkAddonHealth();
+                    if (mounted) tvToast(context, 'Addons refreshed');
+                  },
+                )),
+            for (var i = 0; i < list.length; i++)
+              KeyedSubtree(
+                key: ValueKey('addon-${list[i].transportUrl}'),
+                child: _row(
+                  '${i + 1}.  ${list[i].name}',
+                  st.unreachableAddons[list[i].transportUrl] != null
+                      ? 'Not working: ${st.unreachableAddons[list[i].transportUrl]}'
+                      : (list[i].description ?? '').replaceAll('\n', ' ').trim().isEmpty
+                          ? 'Working'
+                          : (list[i].description ?? '').replaceAll('\n', ' ').trim(),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    TvButton(label: '↑', onSelect: () => st.moveAddon(list[i], -1)),
+                    const SizedBox(width: 12),
+                    TvButton(label: '↓', onSelect: () => st.moveAddon(list[i], 1)),
+                    if (!list[i].isProtected) ...[
+                      const SizedBox(width: 12),
+                      TvButton(
+                        label: _removing.contains(list[i].transportUrl) ? 'Press again' : 'Remove',
+                        onSelect: () async {
+                          final a = list[i];
+                          if (!_removing.contains(a.transportUrl)) {
+                            setState(() => _removing.add(a.transportUrl));
+                            return;
+                          }
+                          setState(() => _removing.remove(a.transportUrl));
+                          await st.uninstallAddon(a);
+                          if (mounted) tvToast(context, 'Removed ${a.name}');
+                        },
+                      ),
+                    ],
+                  ]),
+                ),
+              ),
+          ]),
+        );
+      });
+
+  // ---- Player --------------------------------------------------------------
+
+  Widget _onOff(bool on, ValueChanged<bool> set) => SizedBox(
+        width: 130,
+        child: TvButton(label: on ? 'On' : 'Off', primary: on, onSelect: () => setState(() => set(!on))),
+      );
+
+  Widget _player() {
+    final sub = TvPlayerPrefs.subLang, audio = TvPlayerPrefs.audioLang;
+    return FocusTraversalGroup(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _row('Play the next episode', 'When an episode ends, the next one starts with a source like the one you used.',
+            trailing: _onOff(TvPlayerPrefs.autoNext, (v) => TvPlayerPrefs.autoNext = v)),
+        _row('Skip intros and recaps', 'Jumps past them by itself (once, so you can go back). Credits keep their button.',
+            trailing: _onOff(TvPlayerPrefs.autoSkip, (v) => TvPlayerPrefs.autoSkip = v)),
+        _row('Subtitles',
+            sub.isEmpty ? 'Off until you pick a language in the player; then it remembers it.' : 'Remembered: ${TvPlayerPrefs.langName(sub)}',
+            trailing: sub.isEmpty ? null : TvButton(label: 'Forget', onSelect: () => setState(TvPlayerPrefs.forgetSubLang))),
+        _row('Audio language',
+            audio.isEmpty ? 'The video\'s own until you pick one in the player.' : 'Remembered: ${TvPlayerPrefs.langName(audio)}',
+            trailing: audio.isEmpty ? null : TvButton(label: 'Forget', onSelect: () => setState(TvPlayerPrefs.forgetAudioLang))),
+      ]),
+    );
+  }
+
+  // ---- Appearance ----------------------------------------------------------
+
+  Widget _appearance() {
+    final theme = Provider.of<ThemeProvider>(context);
+    final custom = theme.currentThemeMode == 'custom';
+    final current = custom ? ThemeKeys.customColorIndex.get<int>(0) : -2; // -2: default
+    Widget swatch(String name, Color c, bool on, VoidCallback pick) => TvFocusable(
+          onSelect: pick,
+          builder: (context, f) => Padding(
+            padding: const EdgeInsets.all(10),
+            child: TvRing(
+              on: f,
+              radius: 32,
+              gap: 4,
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                child: on ? const Icon(Icons.check_rounded, color: Colors.white, size: 34) : null,
+              ),
+            ),
+          ),
+        );
+    return FocusTraversalGroup(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _row('Moving highlight', 'A coloured glint keeps travelling round the box you\'re on. Off: a plain white ring.',
+            trailing: ValueListenableBuilder<bool>(
+              valueListenable: TvRing.animated,
+              builder: (context, on, _) => _onOff(on, (v) => TvRing.moving = v),
+            )),
+        _row('Accent colour', 'Used for the highlight\'s glint, progress bars and labels. Shared with the Windows layout on this TV.'),
+        Wrap(children: [
+          swatch('Default', Colors.indigo, current == -2, theme.setDefaultTheme),
+          for (var i = 0; i < colorList.length; i++)
+            swatch(colorMap.keys.elementAt(i), colorList[i], current == i, () => theme.setCustomSeedColor(i)),
+        ]),
+      ]),
+    );
+  }
 
   Widget _layout() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _row('Windows layout', 'Switch to the full Windows layout (made for the Magic Remote pointer). Restart the app to come back.',
@@ -169,7 +336,15 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(_cats[_cat].toUpperCase(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 3, color: accent)),
               ),
-              if (_cat == 0) _accounts() else if (_cat == 1) _layout() else _about(),
+              switch (_cats[_cat]) {
+                'Accounts' => _accounts(),
+                'Home rows' => _homeRows(),
+                'Addons' => _addons(),
+                'Player' => _player(),
+                'Appearance' => _appearance(),
+                'Layout' => _layout(),
+                _ => _about(),
+              },
             ],
           ),
         ),

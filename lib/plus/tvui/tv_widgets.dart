@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart' show PlusTvUi;
 import 'package:flutter/material.dart';
@@ -343,12 +344,16 @@ class TvCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
+                TvRing(
+                  on: focused,
+                  radius: wide ? 16 : 14,
+                  gap: 1,
+                  child: Container(
                   width: w,
                   height: h,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(wide ? 16 : 14),
-                    border: Border.all(color: focused ? Colors.white : Colors.transparent, width: 4),
+                    border: Border.all(color: Colors.transparent, width: 4),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(wide ? 12 : 10),
@@ -378,6 +383,7 @@ class TvCard extends StatelessWidget {
                         ),
                     ]),
                   ),
+                ),
                 ),
                 ...[
                   const SizedBox(height: 10),
@@ -654,19 +660,24 @@ class TvButton extends StatelessWidget {
       builder: (context, f) => AnimatedScale(
         scale: f ? 1.05 : 1,
         duration: const Duration(milliseconds: 120),
-        child: Container(
+        child: TvRing(
+          on: f,
+          radius: 14,
+          gap: 4,
+          width: 3,
+          child: Container(
           height: 64,
           padding: const EdgeInsets.symmetric(horizontal: 30),
           decoration: BoxDecoration(
             color: f || primary ? Colors.white : TvStyle.button,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: f && !primary ? Colors.white : Colors.transparent, width: 3),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (icon != null) ...[Icon(icon, size: 26, color: f || primary ? Colors.black : Colors.white), const SizedBox(width: 12)],
             Text(label,
                 style: TextStyle(fontSize: 22, fontWeight: primary ? FontWeight.w700 : FontWeight.w600, color: f || primary ? Colors.black : Colors.white)),
           ]),
+        ),
         ),
       ),
     );
@@ -751,3 +762,150 @@ Route<T> tvRoute<T>(Widget page) => PageRouteBuilder<T>(
       reverseTransitionDuration: const Duration(milliseconds: 120),
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
     );
+
+/// The highlight around the focused box: a white ring a few pixels out from
+/// the box, with a glint in your accent colour that keeps travelling round
+/// it (like the Switch 2's). Off in Settings → Appearance it's a still ring.
+///
+/// Drawn as a foreground paint outside the child's own size, so the layout
+/// doesn't move when focus does. Only the focused box animates.
+class TvRing extends StatefulWidget {
+  final bool on;
+  final double radius; // the box's corner radius
+  final Widget child;
+  final double gap;
+  final double width;
+  const TvRing({super.key, required this.on, required this.radius, required this.child, this.gap = 5, this.width = 4});
+
+  /// Settings → Appearance → Moving highlight (default on).
+  static final animated = ValueNotifier<bool>(_load());
+  static const _kAnimated = 'plus_tv_ring_moving';
+  static bool _load() {
+    try {
+      return KvHelper.get<bool>(_kAnimated, defaultVal: true);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static set moving(bool on) {
+    animated.value = on;
+    try {
+      KvHelper.set(_kAnimated, on);
+    } catch (_) {}
+  }
+
+  @override
+  State<TvRing> createState() => _TvRingState();
+}
+
+class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(milliseconds: 3200));
+
+  @override
+  void initState() {
+    super.initState();
+    TvRing.animated.addListener(_sync);
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(TvRing old) {
+    super.didUpdateWidget(old);
+    if (old.on != widget.on) _sync();
+  }
+
+  void _sync() {
+    if (widget.on && TvRing.animated.value) {
+      if (!_spin.isAnimating) _spin.repeat();
+    } else {
+      _spin.stop();
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    TvRing.animated.removeListener(_sync);
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.on) return widget.child;
+    return CustomPaint(
+      foregroundPainter: _RingPainter(
+        spin: _spin,
+        accent: TvStyle.accent(context),
+        radius: widget.radius,
+        gap: widget.gap,
+        width: widget.width,
+        moving: TvRing.animated.value,
+      ),
+      child: widget.child,
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  final Animation<double> spin;
+  final Color accent;
+  final double radius, gap, width;
+  final bool moving;
+  _RingPainter({required this.spin, required this.accent, required this.radius, required this.gap, required this.width, required this.moving})
+      : super(repaint: spin);
+
+  /// The accent with its hue turned by [deg] (the glint's second colour).
+  static Color _turn(Color c, double deg) {
+    final h = HSLColor.fromColor(c);
+    return h.withHue((h.hue + deg) % 360).withLightness((h.lightness + 0.12).clamp(0.0, 0.85)).toColor();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = (Offset.zero & size).inflate(gap + width / 2);
+    final rr = RRect.fromRectAndRadius(r, Radius.circular(radius + gap + width / 2));
+    // The white ring.
+    canvas.drawRRect(
+        rr,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = width
+          ..color = Colors.white);
+    if (!moving) return;
+    // The travelling glint: accent → turned accent → gone, round the ring,
+    // on the ring's outer edge with a soft glow.
+    final second = _turn(accent, 45);
+    final shader = SweepGradient(
+      colors: [
+        accent.withValues(alpha: 0),
+        accent,
+        second,
+        Colors.white.withValues(alpha: 0.9),
+        accent.withValues(alpha: 0),
+        accent.withValues(alpha: 0),
+      ],
+      stops: const [0.0, 0.12, 0.24, 0.30, 0.42, 1.0],
+      transform: GradientRotation(spin.value * 6.283185307),
+    ).createShader(r.inflate(width * 2));
+    final outer = rr.inflate(width * 0.6);
+    canvas.drawRRect(
+        outer,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = width * 1.6
+          ..shader = shader
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+    canvas.drawRRect(
+        rr,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = width * 0.75
+          ..shader = shader);
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.accent != accent || old.radius != radius || old.moving != moving || old.gap != gap || old.width != width;
+}
