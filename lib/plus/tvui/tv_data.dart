@@ -337,3 +337,45 @@ class TvMovies {
     }
   }
 }
+
+/// Episode pictures and titles for AniList anime (ani.zip, like the phone
+/// app's episode cards). Number → (title, picture); empty when unknown.
+class TvEpisodeArt {
+  static final _cache = <String, Map<int, (String, String)>>{};
+
+  /// Pulls (title, picture) per episode out of an ani.zip mappings reply.
+  static Map<int, (String, String)> parse(Object? data) {
+    final out = <int, (String, String)>{};
+    final eps = data is Map ? data['episodes'] : null;
+    if (eps is! Map) return out;
+    eps.forEach((k, v) {
+      final n = int.tryParse('$k');
+      if (n == null || n <= 0 || v is! Map) return;
+      final t = v['title'];
+      var title = '';
+      if (t is Map) title = '${t['en'] ?? t['x-jat'] ?? ''}'.trim();
+      if (title == 'null') title = '';
+      var image = '${v['image'] ?? ''}'.trim();
+      if (image == 'null') image = '';
+      out[n] = (title, image);
+    });
+    return out;
+  }
+
+  static Future<Map<int, (String, String)>> forAnime(String anilistId) async {
+    final hit = _cache[anilistId];
+    if (hit != null) return hit;
+    try {
+      final r = await http
+          .get(Uri.parse('https://api.ani.zip/mappings?anilist_id=$anilistId'))
+          .timeout(const Duration(seconds: 12));
+      if (r.statusCode != 200) return const {};
+      final map = parse(jsonDecode(r.body));
+      _cache[anilistId] = map;
+      return map;
+    } catch (e) {
+      Logger.i('TV episode art: $e');
+      return const {};
+    }
+  }
+}

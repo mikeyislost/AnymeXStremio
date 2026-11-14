@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -85,6 +87,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         for (var n = 1; n <= out && n <= 3000; n++)
           _Ep('$n', 1, n, 'Episode $n', watched: n <= _progress),
       ];
+      unawaited(_loadArt(full.id));
     } else {
       StremioMeta? meta;
       try {
@@ -189,6 +192,23 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         tvToast(context, "Couldn't change your library: $e");
       }
     }
+  }
+
+  /// Anime: episode pictures and titles (ani.zip), filled in after opening.
+  Future<void> _loadArt(String id) async {
+    final art = await TvEpisodeArt.forAnime(id);
+    if (!mounted || art.isEmpty || !_item.isAnime || _item.id != id) return;
+    setState(() {
+      _eps = [
+        for (final e in _eps)
+          _Ep(e.id, e.season, e.number,
+              (art[e.number]?.$1 ?? '').isNotEmpty && e.title == 'Episode ${e.number}' ? art[e.number]!.$1 : e.title,
+              thumb: e.thumb.isNotEmpty ? e.thumb : (art[e.number]?.$2 ?? ''),
+              progress: e.progress,
+              watched: e.watched),
+      ];
+      _parts = _split(_eps);
+    });
   }
 
   int get _total => int.tryParse(_item.episodes) ?? 0;
@@ -563,9 +583,19 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Stack(children: [
-                                  e.thumb.isNotEmpty
-                                      ? TvImage(url: e.thumb, width: 360, height: 203, seed: '${it.key}${e.number}')
-                                      : Container(color: const Color(0xFF161616)),
+                                  if (e.thumb.isNotEmpty)
+                                    TvImage(url: e.thumb, width: 360, height: 203, seed: '${it.key}${e.number}')
+                                  else if (it.backdrop.isNotEmpty || it.poster.isNotEmpty)
+                                    Opacity(
+                                      opacity: 0.45,
+                                      child: TvImage(
+                                          url: it.backdrop.isNotEmpty ? it.backdrop : it.poster,
+                                          width: 360,
+                                          height: 203,
+                                          seed: it.key),
+                                    )
+                                  else
+                                    Container(color: const Color(0xFF161616)),
                                   Positioned(
                                     left: 12,
                                     top: 10,

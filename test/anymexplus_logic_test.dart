@@ -15,6 +15,7 @@ import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
 import 'package:anymex/plus/tv/flutter_tv_pair.dart' show PlusFlutterTvPair;
 import 'package:anymex/plus/tvui/tv_list_editor.dart' show TvListRules;
 import 'package:anymex/plus/tvui/tv_ext.dart' show TvExt, TvExtDevice;
+import 'package:anymex/plus/tvui/tv_data.dart' show TvEpisodeArt;
 import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
 import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
@@ -1399,5 +1400,20 @@ void main() {
       expect(TvExtDevice.fromJson('nope'), isNull);
       expect(TvExt.extVideoId('21', '5'), 'anilist:21:5');
     });
+  });
+
+  test('Flutter TV: anime episode pictures from ani.zip', () {
+    final art = TvEpisodeArt.parse({
+      'episodes': {
+        '1': {'title': {'en': 'The Beginning', 'x-jat': 'Hajimari'}, 'image': 'https://img/1.jpg'},
+        '2': {'title': {'x-jat': 'Futatsume'}, 'image': null},
+        'S1': {'title': {'en': 'Special'}, 'image': 'https://img/s1.jpg'},
+      }
+    });
+    expect(art[1], ('The Beginning', 'https://img/1.jpg'));
+    expect(art[2], ('Futatsume', ''));
+    expect(art.length, 2);
+    expect(TvEpisodeArt.parse({'episodes': []}), isEmpty);
+    expect(TvEpisodeArt.parse(null), isEmpty);
   });
 }
