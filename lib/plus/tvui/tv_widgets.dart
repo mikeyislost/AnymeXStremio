@@ -819,6 +819,28 @@ class TvRing extends StatefulWidget {
     }
   }
 
+  /// Settings → Appearance → Glint speed: seconds for one lap (default 6,
+  /// like the Switch 2's unhurried glints).
+  static final lap = ValueNotifier<double>(_loadLap());
+  static const _kLap = 'plus_tv_ring_lap';
+  static const lapMin = 2.0, lapMax = 14.0, lapDefault = 6.0;
+  static double _loadLap() {
+    try {
+      return KvHelper.get<double>(_kLap, defaultVal: lapDefault).clamp(lapMin, lapMax).toDouble();
+    } catch (_) {
+      return lapDefault;
+    }
+  }
+
+  static void setLap(double s) {
+    lap.value = s.clamp(lapMin, lapMax).toDouble();
+    try {
+      KvHelper.set(_kLap, lap.value);
+    } catch (_) {}
+  }
+
+  static Duration get lapDuration => Duration(milliseconds: (lap.value * 1000).round());
+
   /// Settings → Appearance → Second colour: -1 = auto (a hue next to the
   /// accent), else an index into AnymeX's colours.
   static final second = ValueNotifier<int>(_loadSecond());
@@ -858,13 +880,14 @@ class TvRing extends StatefulWidget {
 }
 
 class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
-  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(milliseconds: 3200));
+  late final AnimationController _spin = AnimationController(vsync: this, duration: TvRing.lapDuration);
 
   @override
   void initState() {
     super.initState();
     TvRing.animated.addListener(_sync);
     TvRing.second.addListener(_sync);
+    TvRing.lap.addListener(_lapChanged);
     _sync();
   }
 
@@ -872,6 +895,11 @@ class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
   void didUpdateWidget(TvRing old) {
     super.didUpdateWidget(old);
     if (old.on != widget.on) _sync();
+  }
+
+  void _lapChanged() {
+    _spin.duration = TvRing.lapDuration;
+    if (_spin.isAnimating) _spin.repeat(); // keep going at the new speed
   }
 
   void _sync() {
@@ -887,6 +915,7 @@ class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
   void dispose() {
     TvRing.animated.removeListener(_sync);
     TvRing.second.removeListener(_sync);
+    TvRing.lap.removeListener(_lapChanged);
     _spin.dispose();
     super.dispose();
   }

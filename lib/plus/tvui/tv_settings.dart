@@ -240,6 +240,37 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
               valueListenable: TvRing.animated,
               builder: (context, on, _) => _onOff(on, (v) => TvRing.moving = v),
             )),
+        ValueListenableBuilder<double>(
+          valueListenable: TvRing.lap,
+          builder: (context, lap, _) {
+            const steps = 12;
+            final pos = ((TvRing.lapMax - lap) / (TvRing.lapMax - TvRing.lapMin) * steps).round(); // 0 slow … 12 fast
+            void set(int p) => TvRing.setLap(TvRing.lapMax - p.clamp(0, steps) * (TvRing.lapMax - TvRing.lapMin) / steps);
+            return _row(
+              'Glint speed',
+              '${lap.toStringAsFixed(lap % 1 == 0 ? 0 : 1)} seconds a lap${lap == TvRing.lapDefault ? ' (default)' : ''}',
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                TvButton(label: 'Slower', onSelect: () => set(pos - 1)),
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 260,
+                  height: 10,
+                  child: Stack(children: [
+                    Container(decoration: BoxDecoration(color: TvStyle.chip, borderRadius: BorderRadius.circular(5))),
+                    FractionallySizedBox(
+                      widthFactor: (pos + 1) / (steps + 1),
+                      child: Container(decoration: BoxDecoration(color: TvStyle.accent(context), borderRadius: BorderRadius.circular(5))),
+                    ),
+                  ]),
+                ),
+                const SizedBox(width: 14),
+                TvButton(label: 'Faster', onSelect: () => set(pos + 1)),
+                const SizedBox(width: 14),
+                TvButton(label: 'Default', onSelect: () => TvRing.setLap(TvRing.lapDefault)),
+              ]),
+            );
+          },
+        ),
         _row('Accent colour', 'Used for the highlight\'s glint, progress bars and labels. Shared with the Windows layout on this TV.'),
         Wrap(children: [
           swatch('Default', Colors.indigo, current == -2, theme.setDefaultTheme),
