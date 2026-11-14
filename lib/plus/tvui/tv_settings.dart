@@ -10,6 +10,7 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tvui/tv_player.dart' show TvPlayerDebug, TvPlayerPrefs;
 import 'package:anymex/plus/tvui/tv_home_rows.dart';
+import 'package:anymex/plus/tvui/tv_home.dart' show TvHomePage;
 import 'package:anymex/controllers/theme.dart';
 import 'package:anymex/constants/contants.dart';
 import 'package:anymex/database/data_keys/keys.dart';
@@ -108,33 +109,19 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
         valueListenable: TvHomeRows.version,
         builder: (context, _, __) {
           final rows = TvHomeRows.load();
+          final shown = [for (final r in rows) if (r.on) TvHomeRows.title(r.key)];
+          final hidden = rows.length - shown.length;
           return FocusTraversalGroup(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _row('Your Home', 'Show, hide and order the rows on Home. Changes show straight away.',
+              _row('Edit rows', 'Opens Home with every row and its cards, so you can see what you move or hide.',
+                  trailing: TvButton(
+                    label: 'Edit rows',
+                    icon: Icons.edit_rounded,
+                    primary: true,
+                    onSelect: () => Navigator.of(context).push(tvRoute(const TvHomePage(editing: true))),
+                  )),
+              _row('On Home now', '${shown.join(' · ')}${hidden > 0 ? '\n$hidden hidden' : ''}',
                   trailing: TvButton(label: 'Reset', onSelect: TvHomeRows.reset)),
-              for (var i = 0; i < rows.length; i++)
-                KeyedSubtree(
-                  key: ValueKey('row-${rows[i].key}'),
-                  child: _row(
-                    '${i + 1}.  ${TvHomeRows.title(rows[i].key)}',
-                    rows[i].on ? 'Shown' : 'Hidden',
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      TvButton(label: '↑', onSelect: () => TvHomeRows.save(TvHomeRows.move(rows, i, -1))),
-                      const SizedBox(width: 12),
-                      TvButton(label: '↓', onSelect: () => TvHomeRows.save(TvHomeRows.move(rows, i, 1))),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 130,
-                        child: TvButton(
-                          label: rows[i].on ? 'Hide' : 'Show',
-                          onSelect: () => TvHomeRows.save([
-                            for (var j = 0; j < rows.length; j++) j == i ? rows[j].shown(!rows[j].on) : rows[j],
-                          ]),
-                        ),
-                      ),
-                    ]),
-                  ),
-                ),
             ]),
           );
         },

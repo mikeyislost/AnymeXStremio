@@ -14,6 +14,7 @@ import 'package:anymex/plus/tvui/tv_details.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 /// Opens a card's details page.
@@ -24,7 +25,10 @@ void tvOpen(BuildContext context, TvItem item) {
 /// The TV's Home: a banner for the highlighted card, then rows of anime and
 /// Movies & TV together (Continue Watching, For you, then the lists).
 class TvHomePage extends StatefulWidget {
-  const TvHomePage({super.key});
+  /// Edit rows: every row with its cards (hidden ones dimmed), to move or
+  /// hide right where you see them (Settings → Home rows → Edit rows).
+  final bool editing;
+  const TvHomePage({super.key, this.editing = false});
 
   @override
   State<TvHomePage> createState() => _TvHomePageState();
@@ -60,10 +64,11 @@ class _TvHomePageState extends State<TvHomePage> {
     TvHomeRows.version.addListener(_layoutChanged);
   }
 
-  /// The Movies & TV rows you show (Settings → Home rows).
+  /// The Movies & TV rows you show (Settings → Home rows); all of them
+  /// while editing.
   void _loadMovieRows() {
     for (final r in TvHomeRows.load()) {
-      if (!r.on || !r.key.startsWith('m:')) continue;
+      if ((!r.on && !widget.editing) || !r.key.startsWith('m:')) continue;
       final id = r.key.substring(2);
       if (_movieRows.containsKey(id)) continue;
       TvMovies.row(id).then((items) {
@@ -81,6 +86,9 @@ class _TvHomePageState extends State<TvHomePage> {
   @override
   void dispose() {
     TvHomeRows.version.removeListener(_layoutChanged);
+    for (final n in _moveNodes.values) {
+      n.dispose();
+    }
     _heroTimer?.cancel();
     for (final t in _startTimers) {
       t.cancel();
@@ -214,8 +222,177 @@ class _TvHomePageState extends State<TvHomePage> {
     ]);
   }
 
+  // ---- editing --------------------------------------------------------------
+
+  String? _lifted; // the row being moved
+  final _moveNodes = <String, FocusNode>{};
+  final _editKeys = <String, GlobalKey>{};
+
+  FocusNode _moveNode(String k) => _moveNodes.putIfAbsent(k, () => FocusNode(debugLabel: 'move $k'));
+
+  void _reveal(String k) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final c = _editKeys[k]?.currentContext;
+      if (c != null) Scrollable.ensureVisible(c, alignment: 0.3, duration: const Duration(milliseconds: 160));
+      _moveNodes[k]?.requestFocus();
+    });
+  }
+
+  KeyEventResult _editKey(FocusNode _, KeyEvent e) {
+    final k = _lifted;
+    if (k == null || e is KeyUpEvent) return KeyEventResult.ignored;
+    final key = e.logicalKey;
+    if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
+      final rows = TvHomeRows.load();
+      final i = rows.indexWhere((r) => r.key == k);
+      TvHomeRows.save(TvHomeRows.move(rows, i, key == LogicalKeyboardKey.arrowUp ? -1 : 1));
+      _reveal(k);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.handled; // stay on the row while moving it
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Widget _editBody(List<TvItem> Function(String) itemsFor) {
+    final rows = TvHomeRows.load();
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: _editKey,
+      child: ListView(
+        cacheExtent: 3000,
+        padding: const EdgeInsets.fromLTRB(0, 56, 0, 400),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: TvStyle.pad),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              const Text('Edit Home rows', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white)),
+              const SizedBox(width: 28),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                      _lifted == null
+                          ? 'Move: pick a row up, then Up / Down to carry it, OK to put it down. Hide keeps it off Home.'
+                          : 'Moving ${TvHomeRows.title(_lifted!)}: Up / Down, then OK to put it down.',
+                      style: const TextStyle(fontSize: 20, color: TvStyle.dim)),
+                ),
+              ),
+              TvButton(label: 'Reset', onSelect: () {
+                setState(() => _lifted = null);
+                TvHomeRows.reset();
+              }),
+              const SizedBox(width: 16),
+              TvButton(label: 'Done', primary: true, onSelect: () => Navigator.of(context).maybePop()),
+            ]),
+          ),
+          const SizedBox(height: 28),
+          for (final r in rows)
+            KeyedSubtree(
+              key: ValueKey('edit-${r.key}'),
+              child: Container(
+                key: _editKeys.putIfAbsent(r.key, () => GlobalKey()),
+                margin: const EdgeInsets.fromLTRB(TvStyle.pad - 24, 0, TvStyle.pad - 24, 26),
+                child: TvRing(
+                  on: _lifted == r.key,
+                  radius: 22,
+                  gap: 2,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(24, 18, 0, 8),
+                    decoration: BoxDecoration(
+                      color: _lifted == r.key ? const Color(0xFF151515) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Text(TvHomeRows.title(r.key),
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: r.on ? Colors.white : TvStyle.dim)),
+                        if (!r.on) ...[
+                          const SizedBox(width: 14),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(color: TvStyle.chip, borderRadius: BorderRadius.circular(8)),
+                            child: const Text('Hidden', style: TextStyle(fontSize: 17, color: TvStyle.text2)),
+                          ),
+                        ],
+                        const SizedBox(width: 28),
+                        TvButton(
+                          label: _lifted == r.key ? 'Put down' : 'Move',
+                          icon: _lifted == r.key ? Icons.check_rounded : Icons.swap_vert_rounded,
+                          primary: _lifted == r.key,
+                          focusNode: _moveNode(r.key),
+                          autofocus: r.key == rows.first.key,
+                          onSelect: () {
+                            setState(() => _lifted = _lifted == r.key ? null : r.key);
+                            _reveal(r.key);
+                          },
+                        ),
+                        const SizedBox(width: 14),
+                        if (_lifted != r.key)
+                          TvButton(
+                            label: r.on ? 'Hide' : 'Show',
+                            icon: r.on ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            onSelect: () {
+                              final all = TvHomeRows.load();
+                              TvHomeRows.save([for (final x in all) x.key == r.key ? x.shown(!x.on) : x]);
+                              _reveal(r.key);
+                            },
+                          ),
+                      ]),
+                      const SizedBox(height: 4),
+                      ExcludeFocus(
+                        child: Opacity(
+                          opacity: r.on ? 1 : 0.35,
+                          child: itemsFor(r.key).isEmpty
+                              ? const Padding(
+                                  padding: EdgeInsets.fromLTRB(0, 18, 0, 24),
+                                  child: Text('Nothing in this row right now (it shows on Home when it has something).',
+                                      style: TextStyle(fontSize: 19, color: TvStyle.dim)),
+                                )
+                              : Transform.translate(
+                                  offset: const Offset(-TvStyle.pad, 0),
+                                  child: TvRow(
+                                    title: '',
+                                    items: itemsFor(r.key),
+                                    wide: r.key == 'continue',
+                                    showKind: r.key == 'forYou',
+                                    onOpen: (_) {},
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.editing) {
+      return Obx(() {
+        final data = Get.find<ServiceHandler>().anilistService;
+        final cw = _continue();
+        final fy = _forYou();
+        List<TvItem> media(List l) => [for (final m in l.take(30)) TvItem.fromMedia(m)];
+        List<TvItem> itemsFor(String k) => switch (k) {
+              'continue' => cw,
+              'forYou' => fy,
+              'trending' => media(data.trendingAnimes),
+              'popular' => media(data.popularAnimes),
+              'recent' => media(data.recentlyUpdatedAnimes),
+              'upcoming' => media(data.upcomingAnimes),
+              _ => k.startsWith('m:') ? (_movieRows[k.substring(2)] ?? const <TvItem>[]) : const <TvItem>[],
+            };
+        return _editBody(itemsFor);
+      });
+    }
     return Stack(children: [
       Positioned(left: 0, right: 0, top: 0, height: 640, child: _Banner(hero: _hero)),
       Positioned.fill(

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:anymex/database/kv_helper.dart';
+import 'package:anymex/constants/contants.dart' show colorList;
+import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart' show PlusTvUi;
 import 'package:flutter/material.dart';
@@ -17,7 +19,36 @@ class TvStyle {
   static const railOpenW = 360.0;
   static const pad = 72.0;
 
-  static Color accent(BuildContext c) => Theme.of(c).colorScheme.primary;
+  static Color accent(BuildContext c) => vivid(c);
+
+  /// Your accent colour at full strength. The dark theme's "primary" is a
+  /// pale tint of it, which almost vanished next to white on the TV, so
+  /// the TV uses the colour you picked, kept bright and saturated.
+  static Color vivid(BuildContext c) {
+    var seed = Theme.of(c).colorScheme.primary;
+    try {
+      final mode = ThemeKeys.themeMode.get<String>('default');
+      if (mode == 'default') {
+        seed = Colors.indigo;
+      } else if (mode == 'custom') {
+        final i = ThemeKeys.customColorIndex.get<int>(0);
+        if (i == -1) {
+          final hex = ThemeKeys.customHexColor.get<String>('#FFFFFF');
+          seed = Color(int.parse(hex.replaceFirst('#', '0xff')));
+        } else if (i >= 0 && i < colorList.length) {
+          seed = colorList[i];
+        }
+      }
+    } catch (_) {}
+    return strong(seed);
+  }
+
+  /// [c] made bright and saturated enough to stand out on black and white.
+  static Color strong(Color c) {
+    final h = HSLColor.fromColor(c);
+    if (h.saturation < 0.08) return c; // a grey / white pick stays as it is
+    return h.withSaturation(h.saturation < 0.75 ? 0.85 : h.saturation).withLightness(h.lightness.clamp(0.5, 0.62)).toColor();
+  }
 
   static const placeholders = [
     Color(0xFF2A2140), Color(0xFF1D2B3A), Color(0xFF3A2228), Color(0xFF203628),
@@ -837,7 +868,7 @@ class _TvRingState extends State<TvRing> with SingleTickerProviderStateMixin {
     return CustomPaint(
       foregroundPainter: _RingPainter(
         spin: _spin,
-        accent: TvStyle.accent(context),
+        accent: TvStyle.vivid(context),
         radius: widget.radius,
         gap: widget.gap,
         width: widget.width,
@@ -856,11 +887,19 @@ class _RingPainter extends CustomPainter {
   _RingPainter({required this.spin, required this.accent, required this.radius, required this.gap, required this.width, required this.moving})
       : super(repaint: spin);
 
-  /// The accent with its hue turned by [deg] (the glint's second colour).
+  /// The accent with its hue turned by [deg] (each glint's second colour).
   static Color _turn(Color c, double deg) {
     final h = HSLColor.fromColor(c);
-    return h.withHue((h.hue + deg) % 360).withLightness((h.lightness + 0.12).clamp(0.0, 0.85)).toColor();
+    return h.withHue((h.hue + deg) % 360).toColor();
   }
+
+  /// One glint: a short arc of solid colour (it replaces the white where
+  /// it passes, so it never blends into it), fading in and out.
+  static Shader _glint(Rect r, Color a, Color b, double turn) => SweepGradient(
+        colors: [a.withValues(alpha: 0), a, b, b.withValues(alpha: 0), b.withValues(alpha: 0)],
+        stops: const [0.0, 0.07, 0.16, 0.24, 1.0],
+        transform: GradientRotation(turn),
+      ).createShader(r);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -874,35 +913,31 @@ class _RingPainter extends CustomPainter {
           ..strokeWidth = width
           ..color = Colors.white);
     if (!moving) return;
-    // The travelling glint: accent → turned accent → gone, round the ring,
-    // on the ring's outer edge with a soft glow.
-    final second = _turn(accent, 45);
-    final shader = SweepGradient(
-      colors: [
-        accent.withValues(alpha: 0),
-        accent,
-        second,
-        Colors.white.withValues(alpha: 0.9),
-        accent.withValues(alpha: 0),
-        accent.withValues(alpha: 0),
-      ],
-      stops: const [0.0, 0.12, 0.24, 0.30, 0.42, 1.0],
-      transform: GradientRotation(spin.value * 6.283185307),
-    ).createShader(r.inflate(width * 2));
-    final outer = rr.inflate(width * 0.6);
-    canvas.drawRRect(
-        outer,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = width * 1.6
-          ..shader = shader
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
-    canvas.drawRRect(
-        rr,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = width * 0.75
-          ..shader = shader);
+    // Two glints going round in opposite directions (like the Switch 2):
+    // accent → a neighbouring hue, solid over the white, with a glow.
+    const full = 6.283185307;
+    final t = spin.value * full;
+    final area = r.inflate(width * 3);
+    final second = _turn(accent, 40);
+    final third = _turn(accent, -40);
+    for (final shader in [
+      _glint(area, accent, second, t),
+      _glint(area, third, accent, full / 2 - t),
+    ]) {
+      canvas.drawRRect(
+          rr.inflate(width * 0.4),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = width * 2.6
+            ..shader = shader
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+      canvas.drawRRect(
+          rr,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = width + 0.5
+            ..shader = shader);
+    }
   }
 
   @override
