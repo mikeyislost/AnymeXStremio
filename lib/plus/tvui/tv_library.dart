@@ -1,5 +1,6 @@
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
+import 'package:anymex/plus/continue_watching_row.dart' show normalizeTitle;
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/tvui/tv_categories.dart';
@@ -28,13 +29,50 @@ class _TvLibraryPageState extends State<TvLibraryPage> {
     ('DROPPED', 'Dropped'),
   ];
 
+  /// Stremio items without the shows AniList already has (synced ids or
+  /// the same title), and without Stremio's own doubles (an anime under its
+  /// Kitsu id and its IMDb id): one entry per show.
+  static List<StremioLibraryItem> _merged(List<TrackedMedia> anime, List<StremioLibraryItem> library) {
+    final titles = <String>{};
+    for (final a in anime) {
+      for (final n in [a.title, a.romajiTitle]) {
+        final k = normalizeTitle(n);
+        if (k.isNotEmpty) titles.add(k);
+      }
+    }
+    var synced = const <String>{};
+    try {
+      final ids = [for (final a in anime) if (a.id != null) a.id!];
+      if (ids.isNotEmpty) synced = StremioService.to.stremioIdsForAnilist(ids);
+    } catch (_) {}
+    // Newest first, so the copy that stays is the one you watched last.
+    final sorted = library.toList()
+      ..sort((a, b) => (b.lastWatched?.millisecondsSinceEpoch ?? 0).compareTo(a.lastWatched?.millisecondsSinceEpoch ?? 0));
+    final out = <StremioLibraryItem>[];
+    final ids = <String>{};
+    final seen = <String>{}; // Stremio's own: title + type
+    for (final i in sorted) {
+      if (synced.contains(i.id) || !ids.add(i.id)) continue;
+      final k = normalizeTitle(i.name);
+      if (k.isNotEmpty) {
+        if (titles.contains(k)) continue; // AniList has it
+        // Kitsu ids are "series" in some addons and "anime" in others.
+        final type = i.id.startsWith('kitsu:') || i.type == 'anime' ? 'series' : i.type;
+        if (!seen.add('$k|$type')) continue;
+      }
+      out.add(i);
+    }
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final auth = Get.find<AnilistAuth>();
       final svc = StremioService.to;
       final anime = auth.isLoggedIn.value ? auth.animeList.toList() : const <TrackedMedia>[];
-      final library = svc.isLoggedIn.value ? svc.allLibraryItems.where((i) => i.isInLibrary || i.isInContinueWatching).toList() : const <StremioLibraryItem>[];
+      final library = _merged(
+          anime, svc.isLoggedIn.value ? svc.allLibraryItems.where((i) => i.isInLibrary || i.isInContinueWatching).toList() : const <StremioLibraryItem>[]);
       final signedIn = auth.isLoggedIn.value || svc.isLoggedIn.value;
 
       String animeStatus(String? s) {
@@ -81,7 +119,7 @@ class _TvLibraryPageState extends State<TvLibraryPage> {
         showKind: _kind == 'all',
         empty: signedIn
             ? 'Nothing here yet.'
-            : 'Your library shows here once you are signed in. Getting the logins from your phone comes in a coming test build.',
+            : 'Your library shows here once you are signed in: Settings → Accounts → Get logins from your phone.',
       );
     });
   }

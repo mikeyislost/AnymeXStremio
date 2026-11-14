@@ -86,12 +86,34 @@ class TvCategoryPage extends StatefulWidget {
 class _TvCategoryPageState extends State<TvCategoryPage> {
   List<TvItem>? _items;
   String _filter = 'all';
+  int _page = 1;
+  bool _more = true; // the category may have more pages
+  bool _loadingMore = false;
 
   @override
   void initState() {
     super.initState();
     widget.category.load().then((v) {
       if (mounted) setState(() => _items = v);
+    });
+  }
+
+  /// Near the end of the grid: the next page (AniList and TMDB both page).
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_more || _items == null || _page >= 25) return;
+    _loadingMore = true;
+    final next = await widget.category.load(page: _page + 1);
+    if (!mounted) return;
+    setState(() {
+      _loadingMore = false;
+      _page++;
+      final seen = {for (final i in _items!) i.key};
+      final fresh = [for (final i in next) if (seen.add(i.key)) i];
+      if (fresh.isEmpty) {
+        _more = false;
+      } else {
+        _items = [..._items!, ...fresh];
+      }
     });
   }
 
@@ -118,6 +140,8 @@ class _TvCategoryPageState extends State<TvCategoryPage> {
         items: items,
         empty: _items == null ? 'Loading…' : 'Nothing here.',
         showKind: kinds.length > 1,
+        onNearEnd: _more ? _loadMore : null,
+        footer: _loadingMore ? 'Loading more…' : '',
     );
   }
 }
@@ -128,7 +152,19 @@ class TvGrid extends StatelessWidget {
   final List<TvItem> items;
   final String empty;
   final bool showKind;
-  const TvGrid({super.key, required this.header, required this.items, this.empty = '', this.showKind = false});
+
+  /// Called when a card within the last few rows is built (load more).
+  final VoidCallback? onNearEnd;
+  final String footer;
+  const TvGrid({
+    super.key,
+    required this.header,
+    required this.items,
+    this.empty = '',
+    this.showKind = false,
+    this.onNearEnd,
+    this.footer = '',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -155,13 +191,24 @@ class TvGrid extends StatelessWidget {
                 mainAxisSpacing: 20,
               ),
               delegate: SliverChildBuilderDelegate(
-                (context, i) => Align(
-                  alignment: Alignment.topLeft,
-                  child: TvCard(item: items[i], showKind: showKind, onSelect: () => tvOpen(context, items[i])),
-                ),
+                (context, i) {
+                  // About two rows before the end: ask for more.
+                  if (onNearEnd != null && i >= items.length - 16) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) => onNearEnd!());
+                  }
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: TvCard(item: items[i], showKind: showKind, onSelect: () => tvOpen(context, items[i])),
+                  );
+                },
                 childCount: items.length,
               ),
             ),
+          ),
+        if (footer.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(TvStyle.pad, 0, TvStyle.pad, 200),
+            sliver: SliverToBoxAdapter(child: Text(footer, style: const TextStyle(fontSize: 22, color: TvStyle.dim))),
           ),
       ],
     );

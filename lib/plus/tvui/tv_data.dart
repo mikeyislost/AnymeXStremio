@@ -290,10 +290,11 @@ class TvCategory {
   }
 
   /// Everything in the category: anime, movies and series taken in turn.
-  Future<List<TvItem>> load() async {
+  /// [page] 2, 3, … loads more as you scroll (empty = the end).
+  Future<List<TvItem>> load({int page = 1}) async {
     final parts = await Future.wait<List<TvItem>>([
-      if (anilist != null) TvAnilist.list(anilist!),
-      for (final id in rows) TvMovies.row(id),
+      if (anilist != null) TvAnilist.list(page <= 1 ? anilist! : {...anilist!, 'page': page}),
+      for (final id in rows) TvMovies.row(id, page: page),
     ]);
     return interleave(parts);
   }
@@ -322,14 +323,14 @@ class TvMovies {
     return MoviesForYou.imdbFor(parts[1], parts[2]);
   }
 
-  static Future<List<TvItem>> row(String id) async {
+  static Future<List<TvItem>> row(String id, {int page = 1}) async {
     PlusBuiltinRow? row;
     for (final r in PlusBuiltinRows.available) {
       if (r.id == id) row = r;
     }
     if (row == null) return const [];
     try {
-      final items = await PlusBuiltinRows.load(row);
+      final items = page <= 1 ? await PlusBuiltinRows.load(row) : await PlusBuiltinRows.loadPage(row, page);
       return [for (final p in items) TvItem.fromStremio(p)];
     } catch (e) {
       Logger.i('TV: row $id failed: $e');
