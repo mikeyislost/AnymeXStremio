@@ -18,12 +18,17 @@ class YumoriLoader extends StatefulWidget {
   final Duration lap;
   final double trail;
 
+  /// Draw the tree. null = automatic: the tree is left out when the loader is
+  /// small (rows, buttons, list tiles), where only the fireflies are shown.
+  final bool? tree;
+
   const YumoriLoader({
     super.key,
     this.color,
     this.size,
     this.lap = const Duration(seconds: 4),
     this.trail = 0.42,
+    this.tree,
   });
 
   @override
@@ -110,17 +115,21 @@ class _YumoriLoaderState extends State<YumoriLoader>
         // Very large slots (e.g. Center on a whole page) get a sensible cap.
         size = size.clamp(16.0, 160.0);
       }
-      if (!_YumoriImages.ready) return SizedBox(width: size, height: size);
+      final withTree = widget.tree ?? size >= 64;
+      // Fireflies only: crop to the band the orbit occupies (2:1).
+      final height = withTree ? size : size * 0.5;
+      if (!_YumoriImages.ready) return SizedBox(width: size, height: height);
       return RepaintBoundary(
         child: SizedBox(
           width: size,
-          height: size,
+          height: height,
           child: CustomPaint(
             painter: _LoaderPainter(
               elapsed: _elapsed,
               lap: widget.lap.inMicroseconds / 1e6,
               trail: widget.trail,
               small: size < 120,
+              tree: withTree,
             ),
           ),
         ),
@@ -153,12 +162,14 @@ class _LoaderPainter extends CustomPainter {
   final double lap;
   final double trail;
   final bool small;
+  final bool tree;
 
   _LoaderPainter({
     required this.elapsed,
     required this.lap,
     required this.trail,
     required this.small,
+    required this.tree,
   }) : super(repaint: elapsed);
 
   static const double _cx = 346, _cy = 263, _a = 270, _b = 109;
@@ -183,10 +194,11 @@ class _LoaderPainter extends CustomPainter {
       _Fly(t0 + math.pi + base, _YumoriImages.bottom!, 28, 54),
     ];
     canvas.save();
-    canvas.scale(size.width / 660, size.height / 660);
+    canvas.scale(size.width / 660, size.width / 660);
+    if (!tree) canvas.translate(0, -98);
     final trailLen = trail * math.pi * 2;
     for (var pass = 0; pass < 2; pass++) {
-      if (pass == 1) _drawTree(canvas, e);
+      if (pass == 1 && tree) _drawTree(canvas, e);
       for (final f in flies) {
         _drawTrail(canvas, f.t, trailLen, pass);
       }
@@ -338,7 +350,10 @@ class _LoaderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LoaderPainter old) =>
-      old.lap != lap || old.trail != trail || old.small != small;
+      old.lap != lap ||
+      old.trail != trail ||
+      old.small != small ||
+      old.tree != tree;
 }
 
 /// Determinate progress: a lavender ring with a cream firefly at the tip.
