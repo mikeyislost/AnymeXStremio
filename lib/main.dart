@@ -55,6 +55,7 @@ import 'package:anymex/utils/external_font_loader.dart';
 import 'package:anymex/utils/register_protocol/register_protocol.dart';
 import 'package:anymex/widgets/common/anymex_scaffold.dart';
 import 'package:anymex/widgets/common/navbar.dart';
+import 'package:anymex/widgets/common/navbar/yumori_top_bar.dart';
 import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
@@ -698,26 +699,19 @@ class _FilterScreenState extends State<FilterScreen> {
       backgroundColor: Provider.of<ThemeProvider>(context).isOled
           ? Colors.black
           : Colors.transparent,
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Obx(() {
             final mediaModeController = Get.put(MediaModeController());
             final _ = mediaModeController.rxMode.value;
             final isSimkl = authService.serviceType.value == ServicesType.simkl;
             final navTabs = _getNavTabs(authService, settings);
-            final navRailWidth = settings.navBarStyle == 0 ? 120.0 : 120.0;
             final validIndex = _selectedIndex.clamp(0, navTabs.length);
 
-            return SizedBox(
-                width: navRailWidth,
-                child: ListView(
-                  children: [
-                    ResponsiveNavBar(
-                      isDesktop: true,
+            // Yumori: top bar (wordmark, tab pills, profile bubble).
+            return YumoriTopBar(
                       currentIndex: validIndex,
-                      margin: const EdgeInsets.fromLTRB(12, 18, 12, 10),
-                      borderRadius: BorderRadius.circular(50),
                       items: [
                         NavItem(
                             unselectedIcon: IconlyBold.profile,
@@ -788,9 +782,7 @@ class _FilterScreenState extends State<FilterScreen> {
                           _getNavItemForTab(tab, isSimkl, _onItemTapped,
                               isDesktop: true),
                       ],
-                    ),
-                  ],
-                ));
+                    );
           }),
           Expanded(
             child: Obx(() {
