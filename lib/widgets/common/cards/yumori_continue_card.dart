@@ -1,3 +1,4 @@
+import 'package:anymex/utils/function.dart';
 import 'package:anymex/models/models_convertor/carousel/carousel_data.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
