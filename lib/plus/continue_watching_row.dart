@@ -33,6 +33,7 @@ class PlusContinueWatchingRow extends StatelessWidget {
         title: title,
         variant: DataVariant.anilist,
         type: ItemType.anime,
+        landscape: true,
       );
 
   @override
@@ -54,6 +55,7 @@ class PlusContinueWatchingRow extends StatelessWidget {
         title: title,
         variant: DataVariant.offline,
         type: ItemType.anime,
+        landscape: true,
       );
     });
   }

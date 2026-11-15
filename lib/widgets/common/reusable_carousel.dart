@@ -16,6 +16,7 @@ import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/animation/slide_scale.dart';
 import 'package:anymex/widgets/common/cards/card_gate.dart';
+import 'package:anymex/widgets/common/cards/yumori_continue_card.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_progress.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/helper/platform_builder.dart';
@@ -35,6 +36,9 @@ class ReusableCarousel extends StatefulWidget {
   final bool isLoading;
   final Source? source;
 
+  /// Wide cards with a progress line (Continue Watching).
+  final bool landscape;
+
   const ReusableCarousel({
     super.key,
     required this.data,
@@ -43,6 +47,7 @@ class ReusableCarousel extends StatefulWidget {
     this.variant = DataVariant.regular,
     this.isLoading = false,
     this.source,
+    this.landscape = false,
   });
 
   @override
@@ -181,6 +186,20 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
                 processedData[index], false, index, cardStyleIndex));
       }
 
+      if (widget.landscape) {
+        return SizedBox(
+          height: 112 + 8 + 18 + 16 + 14,
+          child: ListView.builder(
+            key: PageStorageKey<String>('carousel-${widget.title}'),
+            itemCount: processedData.length,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(left: 20, top: 5, bottom: 10),
+            itemBuilder: (context, index) => _buildCarouselItem(
+                processedData[index], false, index, cardStyleIndex),
+          ),
+        );
+      }
+
       return SizedBox(
         height: getCardHeight(cardStyleIndex, getPlatform(context)) *
                 (scope?.style.size ?? 1.0) +
@@ -255,6 +274,10 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
   }
 
   Widget _buildCard(CarouselData itemData, String tag, [int? cardStyleIndex]) {
+    if (widget.landscape) {
+      return YumoriContinueCard(
+          itemData: itemData, variant: widget.variant, type: widget.type);
+    }
     final card = MediaCardGate(
         itemData: itemData,
         tag: tag,
