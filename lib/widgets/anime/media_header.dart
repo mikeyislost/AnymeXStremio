@@ -7,6 +7,7 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/studio_details_page.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_ui_details.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anime/visuals/visuals_popup.dart';
@@ -227,6 +228,44 @@ class MediaHeader extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Builder(builder: (context) {
+                        final kind = switch (data?.mediaType) {
+                          ItemType.manga => 'MANGA',
+                          ItemType.novel => 'NOVEL',
+                          _ => 'ANIME',
+                        };
+                        final fmt = (data?.format ?? '')
+                            .replaceAll('_', ' ')
+                            .trim()
+                            .toUpperCase();
+                        final label = (fmt.isEmpty || fmt == '?')
+                            ? kind
+                            : '$kind · $fmt';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: YumoriText.ui(
+                                          size: 10,
+                                          weight: FontWeight.w600,
+                                          color: context.colors.onSurface)
+                                      .copyWith(letterSpacing: 3.2),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                  width: 36,
+                                  height: 1,
+                                  color: context.colors.primary),
+                            ],
+                          ),
+                        );
+                      }),
                       GestureDetector(
                         onLongPress: () {
                           final title =
@@ -234,13 +273,13 @@ class MediaHeader extends StatelessWidget {
                           Clipboard.setData(ClipboardData(text: title));
                           snackBar('Title copied');
                         },
-                        child: AnymeXText(
+                        child: Text(
                           data?.displayTitle ?? data?.title ?? 'Loading...',
-                          variant: TextVariant.bold,
-                          size: isDesktop ? 28 : 20,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          isMarquee: false,
+                          style: YumoriText.title(
+                              size: isDesktop ? 34 : 26,
+                              color: context.colors.onSurface),
                         ),
                       ),
                       Builder(
