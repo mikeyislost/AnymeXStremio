@@ -14,6 +14,7 @@ import 'package:anymex_extension_runtime_bridge/Services/Aniyomi/Models/Source.d
 import 'package:anymex/controllers/source/source_controller.dart';
 import 'package:get/get.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_skeleton.dart';
 
 bool isBase64Image(String value) {
   if (value.isEmpty) return false;
@@ -391,7 +392,12 @@ class _AnymeXImageState extends State<AnymeXImage> {
     return Container(
       width: widget.width,
       height: widget.height,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest.opaque(0.2),
+      child: SizedBox.expand(
+        child: YumoriSkeleton(
+          radius: 0,
+          phase: (widget.imageUrl.hashCode % 100) / 40.0,
+        ),
+      ),
     );
   }
 

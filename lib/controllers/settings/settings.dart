@@ -334,27 +334,7 @@ class Settings extends GetxController {
       showWelcomeDialogg(context);
       return;
     }
-
-    if (linksFetched) {
-      _checkAndShowJoinDialog(context);
-    } else {
-      onLinksReady = () {
-        _checkAndShowJoinDialog(context);
-      };
-    }
-  }
-
-  void _checkAndShowJoinDialog(BuildContext context) {
-    final showOnline = showJoinDialog.value;
-    if (showOnline) {
-      showDiscordJoinDialog(context);
-    } else {
-      final count = General.joinDialogShowCount.get<int>(0);
-      if (count < 3) {
-        General.joinDialogShowCount.set(count + 1);
-        showDiscordJoinDialog(context);
-      }
-    }
+    // The old AnymeX "Discord taken down" notice is gone with the rebrand.
   }
 
   T _getUISetting<T>(T Function(UISettings settings) getter) {
