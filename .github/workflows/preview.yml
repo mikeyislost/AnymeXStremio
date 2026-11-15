@@ -1,0 +1,215 @@
+name: Preview build (no release)
+
+# Builds the iPhone app and/or the Windows app from any branch (pick it in
+# "Use workflow from") and saves them as downloads on the run page. Nothing
+# is published or released, so it is safe on wip/* branches.
+#   iPhone:  an unsigned .ipa to install with Feather
+#   Windows: the portable folder as a .zip (no installer)
+on:
+  workflow_dispatch:
+    inputs:
+      ios:
+        description: "Build the iPhone app"
+        type: boolean
+        default: true
+      windows:
+        description: "Build the Windows app"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.41.6"
+
+jobs:
+  ios:
+    if: ${{ inputs.ios }}
+    runs-on: macos-latest
+    env:
+      ANYMEXPLUS_CARGOKIT_DIR: ${{ github.workspace }}/.cargokit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios
+
+      - name: Cache the compiled Rust library
+        uses: actions/cache@v4
+        with:
+          path: .cargokit
+          key: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('packages/rhttp/rust/**', 'packages/rhttp/cargokit/**') }}
+          restore-keys: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup environment
+        env:
+          AL_CLIENT_ID: ${{ secrets.AL_CLIENT_ID }}
+          AL_CLIENT_SECRET: ${{ secrets.AL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
+          CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          COMMENTS_BASE_URL: ${{ secrets.COMMENTS_BASE_URL }}
+        run: |
+          cat > .env << EOF
+          AL_CLIENT_ID=$AL_CLIENT_ID
+          AL_CLIENT_SECRET=$AL_CLIENT_SECRET
+          SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID
+          SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET
+          MAL_CLIENT_ID=$MAL_CLIENT_ID
+          MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
+          CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
+          TMDB_API_KEY=$TMDB_API_KEY
+          COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
+          APP_CHANNEL=stable
+          APP_VERSION_TAG=preview
+          EOF
+
+      - name: Cache CocoaPods and Rust packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ios-deps-${{ runner.os }}-${{ hashFiles('pubspec.lock', 'ios/PodFile') }}
+          restore-keys: ios-deps-${{ runner.os }}-
+
+      - name: Build iOS (unsigned)
+        run: |
+          flutter pub get
+          flutter build ios --release --no-codesign
+          mkdir -p build/ios/iphoneos/Payload dist
+          cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          (cd build/ios/iphoneos && zip -qr "../../../dist/Yumori-preview.ipa" Payload)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-preview
+          path: dist/*.ipa
+
+  windows:
+    if: ${{ inputs.windows }}
+    runs-on: windows-latest
+    env:
+      ANYMEXPLUS_CARGOKIT_DIR: ${{ github.workspace }}\.cargokit
+    steps:
+      - name: Enable Git long paths
+        run: |
+          git config --global core.longpaths true
+          git config --system core.longpaths true
+
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache the compiled Rust library
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargokit
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('packages/rhttp/rust/**', 'packages/rhttp/cargokit/**') }}
+          restore-keys: cargokit-${{ runner.os }}-${{ steps.rust.outputs.cachekey }}-
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup environment
+        shell: bash
+        env:
+          AL_CLIENT_ID: ${{ secrets.AL_CLIENT_ID }}
+          AL_CLIENT_SECRET: ${{ secrets.AL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
+          CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          COMMENTS_BASE_URL: ${{ secrets.COMMENTS_BASE_URL }}
+        run: |
+          cat > .env << EOF
+          AL_CLIENT_ID=$AL_CLIENT_ID
+          AL_CLIENT_SECRET=$AL_CLIENT_SECRET
+          SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID
+          SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET
+          MAL_CLIENT_ID=$MAL_CLIENT_ID
+          MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
+          CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
+          TMDB_API_KEY=$TMDB_API_KEY
+          COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
+          APP_CHANNEL=stable
+          APP_VERSION_TAG=preview
+          EOF
+
+      # media_kit downloads libmpv during the CMake step without checking the
+      # download; fetch it here with retries (same as the release build).
+      - name: Pre-download libmpv
+        shell: bash
+        run: |
+          flutter pub get
+          python - <<'PY'
+          import hashlib, json, os, re, subprocess, sys, urllib.parse
+          cfg = json.load(open('.dart_tool/package_config.json'))
+          pkg = next(p for p in cfg['packages'] if p['name'] == 'media_kit_libs_windows_video')
+          root = pkg['rootUri']
+          if root.startswith('file:'):
+              root = urllib.parse.unquote(urllib.parse.urlparse(root).path).lstrip('/')
+          else:
+              root = os.path.normpath(os.path.join('.dart_tool', root))
+          cm = open(os.path.join(root, 'windows', 'CMakeLists.txt')).read()
+          name, sha = re.search(r'set\(LIBMPV "(mpv-dev-x86_64-[^"]+)"\)\s*set\(LIBMPV_SHA256 "([0-9a-f]{64})"\)', cm).groups()
+          url = re.search(r'set\(LIBMPV_URL "([^"]+)"\)', cm).group(1).replace('${LIBMPV}', name)
+          os.makedirs('build/windows/x64', exist_ok=True)
+          dest = f'build/windows/x64/{name}'
+          for attempt in range(5):
+              subprocess.run(['curl', '-fsSL', '--retry', '3', '-o', dest, url])
+              if os.path.exists(dest) and hashlib.sha256(open(dest, 'rb').read()).hexdigest() == sha:
+                  print(f'libmpv ready: {name}'); sys.exit(0)
+              print(f'attempt {attempt + 1}: bad download, retrying')
+          sys.exit('libmpv download kept failing')
+          PY
+
+      - name: Build Windows app
+        shell: pwsh
+        run: |
+          flutter build windows --release
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\Yumori-preview-Windows.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-preview
+          path: dist/*.zip
