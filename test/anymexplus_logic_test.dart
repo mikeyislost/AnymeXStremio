@@ -584,7 +584,7 @@ void main() {
       expect(m, isNot(contains('abc123')));
       expect(m, isNot(contains('eyJhbGc')));
       expect(m, isNot(contains('ABCDEFGHIJKLMNOP')));
-      expect(PlusErrorLog.report(), startsWith('AnymeX+ recent errors (50)'));
+      expect(PlusErrorLog.report(), startsWith('Yumori recent errors (50)'));
       PlusErrorLog.entries.clear();
     });
 
