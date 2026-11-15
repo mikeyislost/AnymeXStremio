@@ -1,19 +1,16 @@
-import 'package:anymex/models/logo_animation_type.dart';
 import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 
 /// Kept under its old name so every place that showed the AnymeX logo now
 /// shows Yumori instead (call sites will be renamed later). Small sizes show
 /// the still tree mark; big ones (splash) the firefly-and-tree loader.
-/// The old constructor parameters are accepted and ignored.
+/// The old size/colour parameters are accepted and ignored.
 class AnymeXAnimatedLogo extends StatefulWidget {
   final double size;
   final bool autoPlay;
   final VoidCallback? onAnimationComplete;
   final Color? color;
   final Gradient? gradient;
-  final LogoAnimationType? forceAnimationType;
-  final String? forceCustomLogoPath;
   final bool? useOriginalSize;
 
   const AnymeXAnimatedLogo({
@@ -23,8 +20,6 @@ class AnymeXAnimatedLogo extends StatefulWidget {
     this.onAnimationComplete,
     this.color,
     this.gradient,
-    this.forceAnimationType,
-    this.forceCustomLogoPath,
     this.useOriginalSize,
   });
 
