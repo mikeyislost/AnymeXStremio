@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'dart:ui';
 
 import 'package:anymex/plus/maybe_blur.dart';
@@ -11,6 +12,7 @@ import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/services/commentum_service.dart';
 import 'package:anymex/screens/profile/profile_page.dart';
 import 'package:anymex/screens/library/controller/library_controller.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_animated_logo.dart';
@@ -615,13 +617,12 @@ class HeaderTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnymeXText(
+    return AutoSizeText(
       title,
-      autoResize: true,
       maxLines: 1,
-      size: 15,
-      variant: TextVariant.bold,
-      color: color,
+      minFontSize: 12,
+      overflow: TextOverflow.ellipsis,
+      style: YumoriText.title(size: 20, color: color ?? context.colors.onSurface),
     );
   }
 }

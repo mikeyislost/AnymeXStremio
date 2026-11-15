@@ -192,17 +192,18 @@ class _PillCell extends StatelessWidget {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
         alignment: isExpanded ? Alignment.center : null,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
+          // Moonlit 4: the chosen pill is solid lavender, the rest are outlined.
           color: item.isSelected
-              ? colors.primary.opaque(0.15, iReallyMeanIt: true)
-              : colors.surfaceContainerHighest.opaque(0.3, iReallyMeanIt: true),
-          borderRadius: _activeRadius,
+              ? colors.primary
+              : colors.surface.opaque(0.4, iReallyMeanIt: true),
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: item.isSelected
-                ? colors.primary.opaque(0.4, iReallyMeanIt: true)
-                : colors.onSurface.opaque(0.08, iReallyMeanIt: true),
-            width: 0.5,
+                ? colors.primary
+                : colors.onSurface.opaque(0.3, iReallyMeanIt: true),
+            width: 1,
           ),
         ),
         child: item.child ?? _DefaultPillContent(item: item, colors: colors),
@@ -226,8 +227,9 @@ class _DefaultPillContent extends StatelessWidget {
           Icon(
             item.icon,
             size: 14,
-            color:
-                item.isSelected ? colors.primary : colors.onSurface.opaque(0.7),
+            color: item.isSelected
+                ? colors.onPrimary
+                : colors.onSurface.opaque(0.7),
           ),
           const SizedBox(width: 4),
         ] else if (item.iconUrl != null && item.iconUrl!.isNotEmpty) ...[
@@ -243,7 +245,7 @@ class _DefaultPillContent extends StatelessWidget {
         ],
         AnymeXText.semiBold(item.label,
           size: 12,
-          color: item.isSelected ? colors.primary : colors.onSurface,
+          color: item.isSelected ? colors.onPrimary : colors.onSurface,
         ),
         if (item.countText != null || item.count != null) ...[
           const SizedBox(width: 6),
@@ -251,7 +253,7 @@ class _DefaultPillContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: item.isSelected
-                  ? colors.primary.opaque(0.2, iReallyMeanIt: true)
+                  ? colors.onPrimary.opaque(0.15, iReallyMeanIt: true)
                   : colors.surfaceContainerHighest.opaque(0.6, iReallyMeanIt: true),
               borderRadius: BorderRadius.circular(10),
             ),
@@ -260,7 +262,7 @@ class _DefaultPillContent extends StatelessWidget {
               size: 10,
               variant: TextVariant.bold,
               color: item.isSelected
-                  ? colors.primary
+                  ? colors.onPrimary
                   : colors.onSurface.opaque(0.7),
             ),
           ),

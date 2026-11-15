@@ -43,8 +43,8 @@ class AnymeXTabBar extends StatelessWidget {
         decoration: BoxDecoration(
           color:
               inactiveColor ?? colors.surfaceContainerHighest.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.outline.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: colors.onSurface.withOpacity(0.3)),
         ),
         child: Stack(
           children: [
@@ -57,12 +57,12 @@ class AnymeXTabBar extends StatelessWidget {
                 heightFactor: 1,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: activeColor ?? colors.secondary,
-                    borderRadius: BorderRadius.circular(12),
+                    color: activeColor ?? colors.primary,
+                    borderRadius: BorderRadius.circular(999),
                     boxShadow: [
                       BoxShadow(
                         color:
-                            (activeColor ?? colors.secondary).withOpacity(0.3),
+                            (activeColor ?? colors.primary).withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       )
@@ -103,7 +103,7 @@ class AnymeXTabBar extends StatelessWidget {
                                   icon,
                                   size: 15,
                                   color: selected
-                                      ? (activeTextColor ?? colors.onSecondary)
+                                      ? (activeTextColor ?? colors.onPrimary)
                                       : (inactiveTextColor ??
                                           colors.onSurfaceVariant),
                                 ),
@@ -118,7 +118,7 @@ class AnymeXTabBar extends StatelessWidget {
                                       ? TextVariant.semiBold
                                       : TextVariant.regular,
                                   color: selected
-                                      ? (activeTextColor ?? colors.onSecondary)
+                                      ? (activeTextColor ?? colors.onPrimary)
                                       : (inactiveTextColor ??
                                           colors.onSurfaceVariant),
                                 ),
