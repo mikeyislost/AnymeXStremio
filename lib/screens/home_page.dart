@@ -23,6 +23,7 @@ import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/widgets/media_items/media_item.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -258,24 +259,21 @@ class _HomePageState extends State<HomePage> {
                       padding: EdgeInsets.symmetric(
                         horizontal: isDesktop ? 24.0 : 20.0,
                       ),
-                      child: AnymeXTextSpans(
-                        fontSize: 27,
-                        spans: [
-                          const AnymeXTextSpan(
-                              text: 'Hey ',
-                              size: 30,
-                              variant: TextVariant.bold),
-                          AnymeXTextSpan(
-                              text:
-                                  '${serviceHandler.isLoggedIn.value ? serviceHandler.profileData.value.name : 'Guest'}',
-                              size: 30,
-                              color: context.colors.primary,
-                              variant: TextVariant.bold),
-                          const AnymeXTextSpan(
-                              text: ', what are we doing today?',
-                              size: 30,
-                              variant: TextVariant.bold),
-                        ],
+                      child: Text.rich(
+                        TextSpan(
+                          style: YumoriText.title(size: 32),
+                          children: [
+                            const TextSpan(text: 'Hey '),
+                            TextSpan(
+                              text: serviceHandler.isLoggedIn.value
+                                  ? serviceHandler.profileData.value.name
+                                  : 'Guest',
+                              style: YumoriText.title(
+                                  size: 32, color: context.colors.primary),
+                            ),
+                            const TextSpan(text: ',\nwhat are we doing today?'),
+                          ],
+                        ),
                         textAlign: textAlignment,
                       ),
                     ),

@@ -82,11 +82,20 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
     return Padding(
       padding: const EdgeInsets.only(left: 20.0, bottom: 2.0),
       // AnymeX+: your name for the row (Edit layout).
-      child: AnymeXText(PlusRowScope.titleOf(context, widget.title),
-        variant: TextVariant.semiBold,
-        size: 17,
-        color: context.colors.primary,
-        isMarquee: true,
+      child: Row(
+        children: [
+          Flexible(
+            child: AnymeXText(PlusRowScope.titleOf(context, widget.title),
+              variant: TextVariant.bold,
+              size: 17,
+              color: context.colors.onSurface,
+              isMarquee: true,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(Icons.chevron_right_rounded,
+              size: 20, color: context.colors.onSurface),
+        ],
       ),
     );
   }
