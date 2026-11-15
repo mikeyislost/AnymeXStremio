@@ -1,4 +1,4 @@
-import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_skeleton.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -68,7 +68,7 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
           _buildHeaderTitle(),
           const SizedBox(height: 10),
           widget.isLoading
-              ? const Center(child: YumoriLoader(tree: false, size: 220))
+              ? _buildSkeletonList()
               : _buildCarouselList(),
         ],
       ),
@@ -123,6 +123,34 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
   // AnymeX+: the row's order, count, card style, size and grid view from
   // Edit layout (PlusRowScope); none = as before.
   PlusRowScope? _scope;
+
+  // Placeholder cards (night-purple, with a drifting firefly) until the data
+  // arrives; same height as the real row so nothing jumps.
+  Widget _buildSkeletonList() {
+    final scope = PlusRowScope.of(context);
+    final cardStyleIndex =
+        scope?.cardStyleOr(settingsController.cardStyle) ??
+            settingsController.cardStyle;
+    final h = getCardHeight(cardStyleIndex, getPlatform(context)) *
+        (scope?.style.size ?? 1.0);
+    return SizedBox(
+      height: h + 15,
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(left: 15, top: 5, bottom: 10),
+        itemCount: 12,
+        itemBuilder: (context, i) => Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: YumoriSkeleton(
+            width: h * 0.62,
+            height: h,
+            phase: i * 0.35,
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildCarouselList() {
     final scope = _scope = PlusRowScope.of(context);
