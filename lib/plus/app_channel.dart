@@ -28,7 +28,7 @@ class AppChannel {
   static bool get isBeta => _env('APP_CHANNEL') == 'beta';
 
   /// Name shown to the user.
-  static String get appName => isBeta ? 'AnymeX+ β' : 'AnymeX+';
+  static String get appName => isBeta ? 'Yumori β' : 'Yumori';
 
   /// The release this build came from, e.g. `1.1.2-beta+1` or `1.1.1`.
   /// Empty for local builds.

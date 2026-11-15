@@ -407,7 +407,7 @@ class _MainAppState extends State<MainApp> {
       child: GetMaterialApp(
         scrollBehavior: MyCustomScrollBehavior(),
         debugShowCheckedModeBanner: false,
-        title: AppChannel.isBeta ? 'AnymeX+ Beta' : 'AnymeX',
+        title: AppChannel.isBeta ? 'Yumori Beta' : 'Yumori',
         theme: theme.lightTheme,
         darkTheme: theme.darkTheme,
         themeMode: theme.isSystemMode

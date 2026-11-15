@@ -155,7 +155,7 @@ class PlusTvPlay with WidgetsBindingObserver {
         KvHelper.set(_kLastHost, host);
         if (!await _waitConnected(const Duration(seconds: 20))) {
           snackBar(
-            "The AnymeX+ TV app didn't connect. Check it's installed on the TV and both are on the same network.",
+            "The Yumori TV app didn't connect. Check it's installed on the TV and both are on the same network.",
             duration: 5000,
             maxLines: 3,
           );
@@ -332,7 +332,7 @@ class PlusTvPlay with WidgetsBindingObserver {
     playing.value = true;
     link.play(
       playUrl,
-      title: c.anilistData.title.isNotEmpty ? c.anilistData.title : (ep.title ?? 'AnymeX+'),
+      title: c.anilistData.title.isNotEmpty ? c.anilistData.title : (ep.title ?? 'Yumori'),
       subtitle: episodeLine(ep.number, ep.title, c.episodeList.length),
       start: start,
       kind: kind,

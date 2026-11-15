@@ -105,7 +105,7 @@ class PlusErrorLog {
 
   /// Plain text for copying, newest first.
   static String report() {
-    final b = StringBuffer('AnymeX+ recent errors (${entries.length})\n');
+    final b = StringBuffer('Yumori recent errors (${entries.length})\n');
     for (final e in entries.reversed) {
       b
         ..writeln()

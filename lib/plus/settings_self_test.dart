@@ -47,7 +47,7 @@ class _SettingsSelfTestState extends State<SettingsSelfTest> {
     try {
       await SharePlus.instance.share(ShareParams(
         files: [XFile(path)],
-        subject: 'AnymeX+ self test report',
+        subject: 'Yumori self test report',
       ));
     } catch (e) {
       snackBar('Could not share: $e');
@@ -237,8 +237,8 @@ class _SettingsSelfTestState extends State<SettingsSelfTest> {
                           if (Platform.isIOS) ...[
                             const SizedBox(height: 6),
                             AnymeXText(
-                              'Also in the Files app: On My iPhone → AnymeX+ → '
-                              'AnymeX+ Self Tests',
+                              'Also in the Files app: On My iPhone → Yumori → '
+                              'Yumori Self Tests',
                               size: 11,
                               color: colors.onSurfaceVariant,
                             ),

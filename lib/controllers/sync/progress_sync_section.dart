@@ -563,7 +563,7 @@ class _GistSyncCard extends StatelessWidget {
                       AnymeXTile(
                         icon: Icons.open_in_new_rounded,
                         title: 'View Cloud Gist',
-                        subtitle: 'Open your AnymeX sync gist on GitHub',
+                        subtitle: 'Open your Yumori sync gist on GitHub',
                         enabled: !ctrl.isSyncing.value &&
                             ctrl.hasCloudGist.value != false,
                         onTap: () => _openGistInBrowser(ctx, ctrl),
@@ -587,7 +587,7 @@ class _GistSyncCard extends StatelessWidget {
                       AnymeXTile(
                         icon: Icons.delete_forever_rounded,
                         title: 'Delete Cloud Gist',
-                        subtitle: 'Permanently remove AnymeX sync data',
+                        subtitle: 'Permanently remove Yumori sync data',
                         iconColor: ctx.colors.error,
                         enabled: !ctrl.isSyncing.value &&
                             ctrl.hasCloudGist.value != false,
@@ -604,7 +604,7 @@ class _GistSyncCard extends StatelessWidget {
                       AnymeXTile(
                         icon: IconlyLight.logout,
                         title: 'Log Out',
-                        subtitle: 'Disconnect this GitHub account from AnymeX',
+                        subtitle: 'Disconnect this GitHub account from Yumori',
                         onTap: () {
                           ctrl.logout();
                           Navigator.pop(ctx);
@@ -767,7 +767,7 @@ class _GistSyncCard extends StatelessWidget {
       builder: (ctx) => Obx(() => AnymeXDialog(
             title: 'Import Gist JSON',
             message:
-                'Choose how to apply the selected JSON file to your AnymeX cloud gist.',
+                'Choose how to apply the selected JSON file to your Yumori cloud gist.',
             confirmText: 'Import',
             onConfirm: () {},
             confirmResultGetter: () => selectedMode.value,
@@ -898,9 +898,9 @@ class _DeleteGistConfirmDialogState extends State<_DeleteGistConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     return AnymeXDialog(
-      title: 'Delete AnymeX Sync Gist?',
+      title: 'Delete Yumori Sync Gist?',
       message:
-          'This permanently deletes your AnymeX cloud progress gist from GitHub and cannot be undone.',
+          'This permanently deletes your Yumori cloud progress gist from GitHub and cannot be undone.',
       confirmText: _secondsLeft == 0
           ? 'I Understand, Delete'
           : 'I Understand ($_secondsLeft)',

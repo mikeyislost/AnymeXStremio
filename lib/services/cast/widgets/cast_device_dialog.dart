@@ -334,7 +334,7 @@ class _CastDeviceDialogState extends State<CastDeviceDialog> {
 
     final title = widget.controller.anilistData.title.isNotEmpty
         ? widget.controller.anilistData.title
-        : (widget.controller.currentEpisode.value.title ?? 'AnymeX');
+        : (widget.controller.currentEpisode.value.title ?? 'Yumori');
     final startPos = widget.controller.currentPosition.value;
 
     _connectingDeviceId.value = device.id;

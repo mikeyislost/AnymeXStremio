@@ -436,7 +436,7 @@ class DownloadController extends GetxController {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'anymex_downloads',
-        channelName: 'AnymeX Downloads',
+        channelName: 'Yumori Downloads',
         channelDescription: 'Persistent background downloading service.',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
@@ -475,7 +475,7 @@ class DownloadController extends GetxController {
     if (!Platform.isAndroid) return;
     if (!await FlutterForegroundTask.isRunningService) {
       await FlutterForegroundTask.startService(
-        notificationTitle: 'AnymeX Downloads',
+        notificationTitle: 'Yumori Downloads',
         notificationText: 'Starting background service...',
         callback: startBackgroundService,
       );
@@ -1151,7 +1151,7 @@ class DownloadController extends GetxController {
     if (downloading.isEmpty && queued == 0) {
       _sendToBackground({
         'type': 'UPDATE_NOTIFICATION',
-        'title': 'AnymeX Downloads',
+        'title': 'Yumori Downloads',
         'text': 'All downloads complete.'
       });
       return;
@@ -1159,7 +1159,7 @@ class DownloadController extends GetxController {
     final active = downloading.isNotEmpty ? downloading.first : null;
     final title = active != null
         ? '${active.mediaTitle} · Ep ${active.episode.number}'
-        : 'AnymeX Downloads';
+        : 'Yumori Downloads';
     final pct =
         active != null ? '${(active.progress * 100).toStringAsFixed(0)}%' : '';
     final text = [

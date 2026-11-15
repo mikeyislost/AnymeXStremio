@@ -397,7 +397,7 @@ class GistSyncController extends GetxController {
       final elapsed = stopwatch.elapsedMilliseconds;
       if (!deleted) {
         hasCloudGist.value = false;
-        infoSnackBar('No AnymeX sync gist found to delete.');
+        infoSnackBar('No Yumori sync gist found to delete.');
         return;
       }
 
@@ -408,7 +408,7 @@ class GistSyncController extends GetxController {
       lastSyncError.value = null;
 
       successSnackBar(
-          'Deleted AnymeX sync gist in ${_formatElapsed(elapsed)}.');
+          'Deleted Yumori sync gist in ${_formatElapsed(elapsed)}.');
     } catch (e) {
       _markSyncFailure(e, durationMs: stopwatch.elapsedMilliseconds);
       errorSnackBar(
@@ -436,7 +436,7 @@ class GistSyncController extends GetxController {
       final raw = await _service.downloadRawIfExists();
       if (raw == null) {
         hasCloudGist.value = false;
-        infoSnackBar('No AnymeX sync gist found. Initialize first.');
+        infoSnackBar('No Yumori sync gist found. Initialize first.');
         return null;
       }
       hasCloudGist.value = true;
@@ -468,7 +468,7 @@ class GistSyncController extends GetxController {
       final url = await _service.syncGistHtmlUrl(createIfMissing: false);
       if (url == null || url.isEmpty) {
         hasCloudGist.value = false;
-        infoSnackBar('No AnymeX sync gist found. Initialize first.');
+        infoSnackBar('No Yumori sync gist found. Initialize first.');
         return null;
       }
       hasCloudGist.value = true;

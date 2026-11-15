@@ -381,7 +381,7 @@ class GistSyncService {
 
     final gistId = await _ensureGistId();
     if (gistId == null) {
-      throw Exception('Unable to create or locate the AnymeX sync gist.');
+      throw Exception('Unable to create or locate the Yumori sync gist.');
     }
 
     final resp = await _resilientGet(

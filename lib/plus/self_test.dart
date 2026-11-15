@@ -199,7 +199,7 @@ class SelfTestRunner extends GetxController {
 
   Future<Directory> reportDirectory() async {
     final base = await getApplicationDocumentsDirectory();
-    final dir = Directory('${base.path}${Platform.pathSeparator}AnymeX+ Self Tests');
+    final dir = Directory('${base.path}${Platform.pathSeparator}Yumori Self Tests');
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
   }
@@ -208,7 +208,7 @@ class SelfTestRunner extends GetxController {
     final b = StringBuffer();
     final info = await PackageInfo.fromPlatform();
     final now = DateTime.now();
-    b.writeln('AnymeX+ self test report');
+    b.writeln('Yumori self test report');
     b.writeln('=' * 60);
     b.writeln('Mode:      ${_comprehensive ? 'Full (comprehensive)' : 'Quick'}');
     b.writeln('Date:      ${now.toIso8601String()}');

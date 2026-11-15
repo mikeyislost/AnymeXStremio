@@ -253,7 +253,7 @@ class PlusAirPlayRemote {
     final wasPlaying = c.isPlaying.value;
     final title = c.anilistData.title.isNotEmpty
         ? c.anilistData.title
-        : (c.currentEpisode.value.title ?? 'AnymeX+');
+        : (c.currentEpisode.value.title ?? 'Yumori');
     final headers = video?.headers;
     final isLocal = url.startsWith('/') || url.startsWith('file:');
 

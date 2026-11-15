@@ -325,7 +325,7 @@ class CastService extends GetxController {
       final mediaUrl = proxyUrl ?? videoUrl;
       final subUrl = CastProxyServer.currentSubtitleUrl ?? subtitleUrl;
       final isHls = videoUrl.contains('.m3u8');
-      final mediaTitle = title ?? 'AnymeX Video';
+      final mediaTitle = title ?? 'Yumori Video';
 
       connectedDevice.value = device;
       isCasting.value = true;
