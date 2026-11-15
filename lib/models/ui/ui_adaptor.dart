@@ -68,7 +68,7 @@ class UISettings {
     this.liquidBackgroundPath = '',
     this.usePosterColor = true,
     this.enablePosterKenBurns = true,
-    this.carouselStyle = 0,
+    this.carouselStyle = 2,
     this.useLegacyHeader = false,
     this.useGrainTexture = false,
     this.grainIntensity = 0.05,

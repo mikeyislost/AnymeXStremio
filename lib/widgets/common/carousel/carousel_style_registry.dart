@@ -1,6 +1,7 @@
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/widgets/common/carousel/themes/big_carousel_classic.dart';
 import 'package:anymex/widgets/common/carousel/themes/big_carousel_portrait.dart';
+import 'package:anymex/widgets/common/carousel/themes/big_carousel_yumori.dart';
 import 'package:anymex/widgets/common/carousel/carousel_types.dart';
 import 'package:flutter/widgets.dart';
 
@@ -38,6 +39,12 @@ class CarouselStyleRegistry {
       description: 'Classic carousel card layout featuring vertical poster cards.',
       builder: _buildPortrait,
     ),
+    CarouselStyleDefinition(
+      id: 'yumori',
+      name: 'Yumori Featured',
+      description: 'Full-width show art with a serif title, short synopsis and a lavender button.',
+      builder: _buildYumori,
+    ),
   ];
 
   static int normalizeIndex(int index) {
@@ -74,5 +81,13 @@ class CarouselStyleRegistry {
     required CarouselType carouselType,
   }) {
     return BigCarouselPortrait(key: key, data: data, carouselType: carouselType);
+  }
+
+  static Widget _buildYumori({
+    Key? key,
+    required List<Media> data,
+    required CarouselType carouselType,
+  }) {
+    return BigCarouselYumori(key: key, data: data, carouselType: carouselType);
   }
 }
