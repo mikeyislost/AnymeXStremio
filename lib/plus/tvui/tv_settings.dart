@@ -240,6 +240,19 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
               valueListenable: TvRing.animated,
               builder: (context, on, _) => _onOff(on, (v) => TvRing.moving = v),
             )),
+        ValueListenableBuilder<String>(
+          valueListenable: TvStyle.palette,
+          builder: (context, p, _) => _row(
+              'Palette',
+              p == 'yumori'
+                  ? 'Yumori (test): lavender accent, cream glints, from the Yumori sheet. Accent colour below is ignored.'
+                  : 'Default: your accent colour below.',
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(width: 150, child: TvButton(label: 'Default', primary: p != 'yumori', onSelect: () => TvStyle.setPalette('default'))),
+                const SizedBox(width: 14),
+                SizedBox(width: 190, child: TvButton(label: 'Yumori (test)', primary: p == 'yumori', onSelect: () => TvStyle.setPalette('yumori'))),
+              ])),
+        ),
         ValueListenableBuilder<double>(
           valueListenable: TvRing.lap,
           builder: (context, lap, _) {

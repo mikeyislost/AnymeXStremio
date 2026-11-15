@@ -58,7 +58,7 @@ class PlusTvUi {
 
   static ThemeData theme(BuildContext context) {
     final base = Theme.of(context);
-    final accent = base.colorScheme.primary;
+    final accent = TvStyle.yumori ? TvStyle.yLavender : base.colorScheme.primary;
     return base.copyWith(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: TvStyle.bg,
@@ -127,6 +127,10 @@ class _Tab {
 }
 
 class _PlusTvShellState extends State<PlusTvShell> {
+  void _paletteChanged() {
+    if (mounted) setState(() {});
+  }
+
   static const _tabs = [
     _Tab('Home', Icons.home_rounded),
     _Tab('Categories', Icons.grid_view_rounded),
@@ -144,6 +148,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
   @override
   void initState() {
     super.initState();
+    TvStyle.palette.addListener(_paletteChanged);
     HardwareKeyboard.instance.addHandler(_logKey);
     FocusManager.instance.addListener(_watchFocus);
     TvNav.openMenu = _toRail;
@@ -151,6 +156,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
 
   @override
   void dispose() {
+    TvStyle.palette.removeListener(_paletteChanged);
     HardwareKeyboard.instance.removeHandler(_logKey);
     FocusManager.instance.removeListener(_watchFocus);
     for (final n in _railNodes) {

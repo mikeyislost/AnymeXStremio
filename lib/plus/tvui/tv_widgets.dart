@@ -24,8 +24,37 @@ class TvStyle {
   /// Your accent colour at full strength. The dark theme's "primary" is a
   /// pale tint of it, which almost vanished next to white on the TV, so
   /// the TV uses the colour you picked, kept bright and saturated.
+  /// Settings → Appearance → Palette: 'default' (your accent colour) or
+  /// 'yumori' (test: the Yumori sheet's lavender + cream).
+  static final palette = ValueNotifier<String>(_loadPalette());
+  static const _kPalette = 'plus_tv_palette';
+  static String _loadPalette() {
+    try {
+      return KvHelper.get<String>(_kPalette, defaultVal: 'default');
+    } catch (_) {
+      return 'default';
+    }
+  }
+
+  static void setPalette(String p) {
+    palette.value = p;
+    try {
+      KvHelper.set(_kPalette, p);
+    } catch (_) {}
+  }
+
+  static bool get yumori => palette.value == 'yumori';
+
+  // The Yumori sheet's colours.
+  static const yNight = Color(0xFF18122C);
+  static const yPurple = Color(0xFF3D296D);
+  static const yLavender = Color(0xFFA786E2);
+  static const yCream = Color(0xFFFDE4CA);
+  static const ySage = Color(0xFF48625C);
+
   static Color vivid(BuildContext c) {
     var seed = Theme.of(c).colorScheme.primary;
+    if (yumori) return yLavender;
     try {
       final mode = ThemeKeys.themeMode.get<String>('default');
       if (mode == 'default') {
@@ -864,6 +893,7 @@ class TvRing extends StatefulWidget {
   static Color secondFor(Color accent) {
     final i = second.value;
     if (i >= 0 && i < colorList.length) return TvStyle.strong(colorList[i]);
+    if (TvStyle.yumori) return TvStyle.yCream;
     final h = HSLColor.fromColor(accent);
     return h.withHue((h.hue + 40) % 360).toColor();
   }
