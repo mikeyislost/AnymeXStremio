@@ -46,8 +46,10 @@ String getBadgeText(CarouselData itemData, DataVariant variant, ItemType type) {
 /// Watched fraction from a badge like "4 | 12" or "9%"; null when there isn't one.
 double? badgeProgress(String text) {
   final t = text.trim();
-  final pct = RegExp(r'^(\d+(?:\.\d+)?)\s*%').firstMatch(t);
-  if (pct != null) return (double.parse(pct.group(1)!) / 100).clamp(0.0, 1.0);
+  final pcts = RegExp(r'(\d+(?:\.\d+)?)\s*%').allMatches(t);
+  if (pcts.isNotEmpty) {
+    return (double.parse(pcts.last.group(1)!) / 100).clamp(0.0, 1.0);
+  }
   final frac = RegExp(r'^(\d+)\s*\|\s*(\d+)').firstMatch(t);
   if (frac != null) {
     final total = double.parse(frac.group(2)!);

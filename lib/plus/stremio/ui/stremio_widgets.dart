@@ -95,8 +95,11 @@ Media stremioMediaFromPreview(StremioMetaPreview m) {
 /// A Stremio Continue Watching entry in the shape AnymeX uses for its own
 /// continue-watching cards (play badge + episode).
 OfflineMedia stremioContinueItem(StremioLibraryItem item) {
-  final label = stremioEpisodeLabel(item.videoId) ??
-      (item.progress > 0 ? '${(item.progress * 100).round()}%' : '');
+  // Always carry the percentage so the card can draw its progress line
+  // (finished = full, not started = empty).
+  final pct = '${(item.progress.clamp(0.0, 1.0) * 100).round()}%';
+  final ep = stremioEpisodeLabel(item.videoId);
+  final label = ep != null ? '$ep · $pct' : pct;
   return OfflineMedia(
     mediaId: StremioIds.mediaId(item.type, item.id),
     name: item.name,
