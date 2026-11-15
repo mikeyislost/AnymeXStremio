@@ -293,7 +293,7 @@
 //                           ? const SizedBox(
 //                               width: 18,
 //                               height: 18,
-//                               child: ExpressiveLoadingIndicator(),
+//                               child: YumoriLoader(),
 //                             )
 //                           : const AnymeXText(
 //                               'Post',
@@ -506,7 +506,7 @@
 //           child: Center(
 //             child: Column(
 //               children: [
-//                 ExpressiveLoadingIndicator(
+//                 YumoriLoader(
 //                   color: colorScheme.primary,
 //                 ),
 //                 const SizedBox(height: 20),

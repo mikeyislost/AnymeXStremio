@@ -12,7 +12,7 @@ import 'package:anymex/screens/other_features.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_container.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_decorated_avatar.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:get/get.dart';
@@ -810,7 +810,7 @@ class _ReportsQueuePageState extends State<ReportsQueuePage> {
           Expanded(
             child: Obx(() {
               if (isLoading.value) {
-                return const Center(child: ExpressiveLoadingIndicator());
+                return const Center(child: YumoriLoader());
               }
 
               if (reports.isEmpty) {
@@ -1452,7 +1452,7 @@ class _UserListPageState extends State<UserListPage> {
           Expanded(
             child: Obx(() {
               if (isLoading.value) {
-                return const Center(child: ExpressiveLoadingIndicator());
+                return const Center(child: YumoriLoader());
               }
 
               if (users.isEmpty) {
@@ -1490,7 +1490,7 @@ class _UserListPageState extends State<UserListPage> {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16.0),
-                        child: ExpressiveLoadingIndicator(),
+                        child: YumoriLoader(),
                       ),
                     );
                   }
@@ -1842,7 +1842,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
           const NestedHeader(title: 'User Management'),
           Expanded(
             child: isLoading
-                ? const Center(child: ExpressiveLoadingIndicator())
+                ? const Center(child: YumoriLoader())
                 : userInfo == null
                     ? Center(
                         child: Text(

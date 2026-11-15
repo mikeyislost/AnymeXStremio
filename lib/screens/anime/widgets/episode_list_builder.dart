@@ -38,7 +38,7 @@ import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex/database/isar_models/offline_media.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -1889,7 +1889,7 @@ class _ServerSheetContentState extends State<ServerSheetContent> {
       child: const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ExpressiveLoadingIndicator(),
+          YumoriLoader(),
           SizedBox(height: 16),
           AnymeXText(
             'Scanning for video streams...',
@@ -2070,7 +2070,7 @@ class _ServerSheetContentState extends State<ServerSheetContent> {
                     const SizedBox(
                       width: 16,
                       height: 16,
-                      child: ExpressiveLoadingIndicator(),
+                      child: YumoriLoader(),
                     ),
                     const SizedBox(width: 8),
                     AnymeXText(

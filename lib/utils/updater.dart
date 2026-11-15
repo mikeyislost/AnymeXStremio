@@ -11,7 +11,7 @@ import 'package:anymex/widgets/anymex_widgets/anymex_button.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:dio/dio.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
@@ -716,7 +716,7 @@ class _UpdateBottomSheetState extends State<UpdateBottomSheet>
                     SizedBox(
                       width: 18,
                       height: 18,
-                      child: ExpressiveLoadingIndicator(
+                      child: YumoriLoader(
                         color: colorScheme.primary,
                       ),
                     ),

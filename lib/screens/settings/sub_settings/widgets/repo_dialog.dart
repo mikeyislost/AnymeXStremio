@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:anymex/utils/extensions.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
@@ -327,7 +327,7 @@ class _GitHubRepoDialogState extends State<GitHubRepoDialog> {
                               ? SizedBox(
                                   height: 16,
                                   width: 16,
-                                  child: ExpressiveLoadingIndicator(
+                                  child: YumoriLoader(
                                     color: colorScheme.onPrimary,
                                   ),
                                 )

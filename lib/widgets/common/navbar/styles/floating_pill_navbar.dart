@@ -4,6 +4,7 @@ import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_orbit.dart';
 import 'package:anymex/widgets/common/navbar.dart';
 import 'package:anymex/widgets/common/navbar/navbar_registry.dart';
 import 'package:flutter/material.dart';
@@ -494,7 +495,8 @@ class _FloatingPillNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final double horizontalPadding = isVertical ? 4.0 : (isSelected ? 18.0 : 12.0);
     final double verticalPadding = isVertical ? 6.0 : 10.0;
-    return AnimatedContainer(
+    final radius = isVertical ? 16.0 : 30.0;
+    final pill = AnimatedContainer(
       duration: const Duration(milliseconds: 450),
       curve: const Cubic(0.34, 1.56, 0.64, 1.0),
       width: isVertical ? 76 : null,
@@ -502,9 +504,9 @@ class _FloatingPillNavItem extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
       decoration: BoxDecoration(
         color: isSelected
-            ? theme.colorScheme.primary
+            ? theme.colorScheme.primary.withValues(alpha: 0.14)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(isVertical ? 16 : 30),
+        borderRadius: BorderRadius.circular(radius),
       ),
       child: isVertical
           ? Column(
@@ -519,11 +521,18 @@ class _FloatingPillNavItem extends StatelessWidget {
               children: _buildContent(),
             ),
     );
+    if (!isSelected) return pill;
+    return YumoriOrbit(
+      radius: radius,
+      outline: theme.colorScheme.primary.withValues(alpha: 0.35),
+      tail: theme.colorScheme.primary,
+      child: pill,
+    );
   }
 
   List<Widget> _buildContent() {
     final iconColor = isSelected
-        ? theme.colorScheme.onPrimary
+        ? theme.colorScheme.primary
         : theme.colorScheme.onSurface.opaque(0.6, iReallyMeanIt: true);
 
     return [
@@ -548,7 +557,7 @@ class _FloatingPillNavItem extends StatelessWidget {
                         AnymeXText(item.label,
                           size: 10,
                           variant: TextVariant.semiBold,
-                          color: theme.colorScheme.onPrimary,
+                          color: theme.colorScheme.primary,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -561,7 +570,7 @@ class _FloatingPillNavItem extends StatelessWidget {
                         AnymeXText(item.label,
                           size: 12,
                           variant: TextVariant.semiBold,
-                          color: theme.colorScheme.onPrimary,
+                          color: theme.colorScheme.primary,
                         ),
                       ],
                     ))

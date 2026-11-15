@@ -15,7 +15,7 @@ import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -408,7 +408,7 @@ class _WatchOfflineState extends State<WatchOffline> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ExpressiveLoadingIndicator(
+            YumoriLoader(
               color: theme.colorScheme.primary,
             ),
             const SizedBox(height: 16),
@@ -432,7 +432,7 @@ class _WatchOfflineState extends State<WatchOffline> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ExpressiveLoadingIndicator(
+            YumoriLoader(
               color: theme.colorScheme.primary,
             ),
             const SizedBox(height: 16),
@@ -797,7 +797,7 @@ class _WatchOfflineState extends State<WatchOffline> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ExpressiveLoadingIndicator(
+            YumoriLoader(
               color: theme.colorScheme.primary,
             ),
             const SizedBox(height: 24),

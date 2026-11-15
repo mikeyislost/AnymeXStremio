@@ -14,7 +14,7 @@ import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/anymex_widgets/discord_badge_widget.dart';
 import 'package:anymex/widgets/anymex_widgets/linked_accounts_badges.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -136,7 +136,7 @@ class _UserCommentsSheetContentState extends State<_UserCommentsSheetContent> {
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16),
                           child: Center(
-                            child: ExpressiveLoadingIndicator(),
+                            child: YumoriLoader(),
                           ),
                         )
                       else if (points != null)

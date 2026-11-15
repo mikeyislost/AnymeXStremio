@@ -25,7 +25,7 @@ import 'package:anymex/screens/anime/widgets/comments/widgets/expandable_comment
 import 'package:anymex/screens/anime/widgets/comments/widgets/user_comments_sheet.dart';
 import 'package:anymex/screens/anime/widgets/comments/widgets/leaderboard_sheet.dart';
 import 'package:anymex/services/commentum_service.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -867,7 +867,7 @@ class _CommentSectionState extends State<CommentSection>
           child: Center(
             child: Column(
               children: [
-                ExpressiveLoadingIndicator(
+                YumoriLoader(
                   color: colorScheme.primary,
                 ),
                 const SizedBox(height: 20),
@@ -1800,7 +1800,7 @@ class _CommentSectionState extends State<CommentSection>
                                   ? const SizedBox(
                                       width: 16,
                                       height: 16,
-                                      child: ExpressiveLoadingIndicator(),
+                                      child: YumoriLoader(),
                                     )
                                   : const AnymeXText(
                                       'Reply',
@@ -3226,7 +3226,7 @@ class _CommentSectionState extends State<CommentSection>
               return const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
-                  child: ExpressiveLoadingIndicator(),
+                  child: YumoriLoader(),
                 ),
               );
             }
@@ -3423,7 +3423,7 @@ class _CommentSectionState extends State<CommentSection>
                           return const Center(
                             child: Padding(
                               padding: EdgeInsets.all(24),
-                              child: ExpressiveLoadingIndicator(),
+                              child: YumoriLoader(),
                             ),
                           );
                         }
@@ -3634,7 +3634,7 @@ class _CommentSectionState extends State<CommentSection>
                 return const Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
-                    child: ExpressiveLoadingIndicator(),
+                    child: YumoriLoader(),
                   ),
                 );
               }

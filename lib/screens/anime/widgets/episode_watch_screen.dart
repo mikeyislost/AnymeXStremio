@@ -19,7 +19,7 @@ import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart'
     as d;
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -255,7 +255,7 @@ class _EpisodeWatchScreenState extends State<EpisodeWatchScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: const [
-          ExpressiveLoadingIndicator(),
+          YumoriLoader(),
           SizedBox(height: 16),
           AnymeXText(
             'Scanning for video streams...',

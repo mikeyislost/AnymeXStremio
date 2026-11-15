@@ -1,3 +1,4 @@
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/constants/contants.dart';
 import 'package:anymex/constants/themes.dart';
 import 'package:anymex/database/data_keys/keys.dart';
@@ -18,7 +19,7 @@ class ThemeProvider extends ChangeNotifier {
   List<String> availThemeModes = ["default", "material", "custom"];
 
   ThemeProvider()
-      : _seedColor = Colors.indigo,
+      : _seedColor = YumoriColors.accent,
         isLightMode = ThemeKeys.isLightMode.get<bool>(false),
         isSystemMode = ThemeKeys.isSystemMode.get<bool>(false),
         isOled = ThemeKeys.isOled.get<bool>(false),
@@ -33,7 +34,7 @@ class ThemeProvider extends ChangeNotifier {
 
   void _determineSeedColor() {
     if (currentThemeMode == "default") {
-      _seedColor = Colors.indigo;
+      _seedColor = YumoriColors.accent;
     } else if (currentThemeMode == "material") {
       loadDynamicTheme();
     } else {
@@ -53,7 +54,7 @@ class ThemeProvider extends ChangeNotifier {
     final corePalette = await DynamicColorPlugin.getCorePalette();
     _seedColor = corePalette != null
         ? Color(corePalette.primary.get(40))
-        : Colors.indigo;
+        : YumoriColors.accent;
     _updateTheme();
   }
 
@@ -94,7 +95,7 @@ class ThemeProvider extends ChangeNotifier {
   void setDefaultTheme() {
     currentThemeMode = "default";
     ThemeKeys.themeMode.set("default");
-    _seedColor = Colors.indigo;
+    _seedColor = YumoriColors.accent;
     _updateTheme();
   }
 
@@ -152,7 +153,7 @@ class ThemeProvider extends ChangeNotifier {
     isOled = false;
     selectedVariantIndex = 0;
     currentThemeMode = "default";
-    _seedColor = Colors.indigo;
+    _seedColor = YumoriColors.accent;
 
     _updateTheme();
     notifyListeners();

@@ -10,7 +10,7 @@ import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex/database/isar_models/offline_media.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:anymex/screens/downloads/widgets/download_permission_dialog.dart';
@@ -282,7 +282,7 @@ class _DownloadServerSelectorState extends State<DownloadServerSelector> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ExpressiveLoadingIndicator(),
+              YumoriLoader(),
               SizedBox(height: 16),
               AnymeXText('Fetching available servers...',
                   style: TextStyle(fontSize: 14, color: Colors.grey)),
@@ -366,7 +366,7 @@ class _DownloadServerSelectorState extends State<DownloadServerSelector> {
                     const SizedBox(
                         width: 16,
                         height: 16,
-                        child: ExpressiveLoadingIndicator()),
+                        child: YumoriLoader()),
                     const SizedBox(width: 8),
                     AnymeXText('Scanning for more servers...',
                         size: 12,

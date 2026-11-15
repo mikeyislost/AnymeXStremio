@@ -1,5 +1,5 @@
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -23,7 +23,7 @@ class BufferingOverlay extends StatelessWidget {
           child: SizedBox(
             width: 32,
             height: 32,
-            child: ExpressiveLoadingIndicator(),
+            child: YumoriLoader(),
           ),
         ),
       );

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:anymex/screens/novel/reader/controller/reader_controller.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -115,7 +115,7 @@ class _NovelContentWidgetState extends State<NovelContentWidget> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ExpressiveLoadingIndicator(color: context.colors.primary),
+          YumoriLoader(color: context.colors.primary),
           const SizedBox(height: 16),
           AnymeXText('Loading chapter...',
               style: TextStyle(

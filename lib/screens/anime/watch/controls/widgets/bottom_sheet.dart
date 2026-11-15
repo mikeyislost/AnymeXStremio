@@ -6,7 +6,7 @@ import 'package:anymex/utils/language.dart';
 import 'package:anymex/utils/string_extensions.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -641,7 +641,7 @@ class PlayerBottomSheets {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(height: 32),
-                ExpressiveLoadingIndicator(),
+                YumoriLoader(),
                 SizedBox(height: 24),
                 _LoaderContent(),
                 SizedBox(height: 24),

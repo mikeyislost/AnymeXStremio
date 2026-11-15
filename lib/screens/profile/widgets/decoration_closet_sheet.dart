@@ -11,7 +11,7 @@ import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/anymex_widgets/linked_accounts_badges.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -400,7 +400,7 @@ class _DecorationClosetSheetState extends State<DecorationClosetSheet>
           // Tab views
           Expanded(
             child: _loadingCatalog
-                ? const Center(child: ExpressiveLoadingIndicator())
+                ? const Center(child: YumoriLoader())
                 : TabBarView(
                     controller: _tabController,
                     children: [

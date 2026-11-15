@@ -11,7 +11,7 @@ import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/anymex_widgets/discord_badge_widget.dart';
 import 'package:anymex/widgets/non_widgets/snackbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -159,7 +159,7 @@ class _LeaderboardSheetState extends State<LeaderboardSheet> {
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: ExpressiveLoadingIndicator(),
+                    child: YumoriLoader(),
                   )
                 : _entries.isEmpty
                     ? Center(

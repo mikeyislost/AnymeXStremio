@@ -14,7 +14,7 @@ import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/helper/platform_builder.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:intl/intl.dart';
@@ -179,7 +179,7 @@ class _MangaStatsState extends State<MangaStats> {
                 return Container(
                   padding: const EdgeInsets.all(40),
                   alignment: Alignment.center,
-                  child: const ExpressiveLoadingIndicator(),
+                  child: const YumoriLoader(),
                 );
               }
               if (snapshot.hasError || !snapshot.hasData) {

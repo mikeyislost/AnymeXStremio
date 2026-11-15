@@ -8,7 +8,7 @@ import 'package:anymex/utils/sauce_finder.dart';
 import 'package:anymex/widgets/common/anymex_scaffold.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:anymex/widgets/helper/platform_builder.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:file_picker/file_picker.dart';
@@ -350,7 +350,7 @@ class _SauceFinderViewState extends State<SauceFinderView> {
                     ? const SizedBox(
                         width: 24,
                         height: 24,
-                        child: ExpressiveLoadingIndicator(),
+                        child: YumoriLoader(),
                       )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -457,7 +457,7 @@ class _SauceFinderViewState extends State<SauceFinderView> {
           const SizedBox(
             width: 48,
             height: 48,
-            child: ExpressiveLoadingIndicator(),
+            child: YumoriLoader(),
           ),
           const SizedBox(height: 24),
           AnymeXText(

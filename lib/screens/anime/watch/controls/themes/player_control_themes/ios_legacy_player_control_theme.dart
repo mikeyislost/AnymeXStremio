@@ -11,7 +11,7 @@ import 'package:anymex/screens/anime/watch/controls/widgets/decoder_quick_button
 import 'package:anymex/screens/anime/watch/controls/widgets/progress_slider.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_player.dart';
 import 'package:anymex/services/cast/widgets/cast_device_dialog.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -695,7 +695,7 @@ class _IosLegacyGlassPlayButton extends StatelessWidget {
                     ? const SizedBox(
                         width: 28,
                         height: 28,
-                        child: ExpressiveLoadingIndicator(
+                        child: YumoriLoader(
                           color: Colors.white,
                         ),
                       )

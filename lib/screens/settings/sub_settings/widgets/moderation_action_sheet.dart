@@ -3,7 +3,7 @@ import 'package:anymex/widgets/anymex_widgets/anymex_container.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_decorated_avatar.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_expansion_tile.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 
 enum ModerationActionType {
@@ -544,7 +544,7 @@ class _AnymeXModerationActionSheetState
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: ExpressiveLoadingIndicator(),
+                      child: YumoriLoader(),
                     )
                   : AnymeXText(
                       'Confirm ${_getActionTitle()}',

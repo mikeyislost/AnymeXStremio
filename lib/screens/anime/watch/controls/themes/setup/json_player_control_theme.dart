@@ -7,7 +7,7 @@ import 'package:anymex/screens/anime/watch/controls/themes/setup/player_control_
 import 'package:anymex/screens/anime/watch/controls/widgets/bottom_sheet.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/progress_slider.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_player.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:anymex/widgets/common/marquee_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -789,7 +789,7 @@ class ThemeRenderer {
             ? SizedBox(
                 width: style.iconSize,
                 height: style.iconSize,
-                child: const ExpressiveLoadingIndicator(),
+                child: const YumoriLoader(),
               )
             : Icon(
                 controller.isPlaying.value

@@ -25,7 +25,7 @@ import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/media_items/media_item.dart';
 import 'package:anymex/widgets/media_items/media_peek_popup.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:anymex/widgets/common/cards/card_gate.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -1347,7 +1347,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
               color: context.colors.primary.opaque(0.1, iReallyMeanIt: true),
               shape: BoxShape.circle,
             ),
-            child: const ExpressiveLoadingIndicator(),
+            child: const YumoriLoader(),
           ),
           const SizedBox(height: 24),
           AnymeXText(
@@ -1486,7 +1486,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
       itemCount: itemCount,
       itemBuilder: (context, index) {
         if (_isLoadingMore && index == _searchResults!.length) {
-          return const Center(child: ExpressiveLoadingIndicator());
+          return const Center(child: YumoriLoader());
         }
 
         final media = _searchResults![index];

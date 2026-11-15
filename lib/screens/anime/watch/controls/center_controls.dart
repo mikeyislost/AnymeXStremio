@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:anymex/screens/anime/watch/controller/player_controller.dart';
 import 'package:anymex/screens/anime/watch/controls/widgets/control_button.dart';
 import 'package:anymex/controllers/watchium/watchium_service.dart';
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -84,7 +84,7 @@ class CenterControls extends StatelessWidget {
                     );
                   },
                   child: controller.isBuffering.value
-                      ? const ExpressiveLoadingIndicator()
+                      ? const YumoriLoader()
                       : Icon(
                           controller.isPlaying.value
                               ? Icons.pause_rounded
@@ -160,7 +160,7 @@ class CenterControls extends StatelessWidget {
                       );
                     },
                     child: controller.isBuffering.value
-                        ? const ExpressiveLoadingIndicator()
+                        ? const YumoriLoader()
                         : Icon(
                             controller.isPlaying.value
                                 ? Icons.pause_rounded

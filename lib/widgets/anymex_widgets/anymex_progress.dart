@@ -1,6 +1,9 @@
-import 'package:expressive_loading_indicator/expressive_loading_indicator.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 
+/// Single entry point for progress UI.
+/// Indeterminate: the Yumori firefly-and-tree loader.
+/// Determinate: a lavender ring with a cream firefly at the tip.
 class AnymeXProgressIndicator extends StatelessWidget {
   final double? value;
   final double? strokeWidth;
@@ -16,12 +19,11 @@ class AnymeXProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return value != null
-        ? CircularProgressIndicator(
-            value: value,
-            year2023: false,
+        ? YumoriRing(
+            value: value!,
             strokeWidth: strokeWidth ?? 4,
             backgroundColor: backgroundColor,
           )
-        : const ExpressiveLoadingIndicator();
+        : const YumoriLoader();
   }
 }
