@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -115,7 +116,7 @@ class MalService extends GetxController implements BaseService, OnlineService {
   Widget buildSectionIfNotEmpty(String title, RxList<Media> list,
       {bool isManga = false}) {
     return Obx(() {
-      if (list.isEmpty) return const Center(child: AnymeXProgressIndicator());
+      if (list.isEmpty) return const Center(child: YumoriLoader(tree: false, size: 220));
       return buildSection(title, list,
           type: isManga ? ItemType.manga : ItemType.anime);
     });
@@ -124,7 +125,7 @@ class MalService extends GetxController implements BaseService, OnlineService {
   @override
   RxList<Widget> animeWidgets(BuildContext context) => [
         Obx(() => trendingAnimes.isEmpty
-            ? const Center(child: AnymeXProgressIndicator())
+            ? const Center(child: YumoriLoader(tree: false, size: 220))
             : Column(
                 children: [
                   buildBigCarousel(trendingAnimes, false),
@@ -153,7 +154,7 @@ class MalService extends GetxController implements BaseService, OnlineService {
   @override
   RxList<Widget> mangaWidgets(BuildContext context) => [
         Obx(() => trendingManga.isEmpty
-            ? const Center(child: AnymeXProgressIndicator())
+            ? const Center(child: YumoriLoader(tree: false, size: 220))
             : Column(
                 children: [
                   buildBigCarousel(trendingManga, true),

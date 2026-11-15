@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -187,7 +188,7 @@ class _StremioHomePageState extends State<StremioHomePage> {
                     const SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.all(48),
-                        child: Center(child: AnymeXProgressIndicator()),
+                        child: Center(child: YumoriLoader(tree: false, size: 220)),
                       ),
                     ),
                   if (addons.isEmpty && !loading && !PlusBuiltinRows.enabled)

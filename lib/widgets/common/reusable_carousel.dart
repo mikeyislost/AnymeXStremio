@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -67,7 +68,7 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
           _buildHeaderTitle(),
           const SizedBox(height: 10),
           widget.isLoading
-              ? const Center(child: AnymeXProgressIndicator())
+              ? const Center(child: YumoriLoader(tree: false, size: 220))
               : _buildCarouselList(),
         ],
       ),

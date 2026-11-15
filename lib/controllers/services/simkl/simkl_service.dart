@@ -1,5 +1,6 @@
 // ignore_for_file: invalid_use_of_protected_member
 
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:anymex/utils/oauth_helper.dart';
@@ -440,7 +441,7 @@ class SimklService extends GetxController
   RxList<Widget> animeWidgets(BuildContext context) => [
         if (trendingMovies.isEmpty)
           const Center(
-            child: AnymeXProgressIndicator(),
+            child: YumoriLoader(tree: false, size: 220),
           )
         else ...[
           // TappableSearchBar(
@@ -485,7 +486,7 @@ class SimklService extends GetxController
   RxList<Widget> mangaWidgets(BuildContext context) => [
         if (trendingSeries.isEmpty)
           const Center(
-            child: AnymeXProgressIndicator(),
+            child: YumoriLoader(tree: false, size: 220),
           )
         else ...[
           // CustomSearchBar(
