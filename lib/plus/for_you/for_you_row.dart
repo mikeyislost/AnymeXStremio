@@ -4,7 +4,6 @@
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
-import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/models/models_convertor/carousel/carousel_data.dart';
 import 'package:anymex/models/models_convertor/carousel_mapper.dart';
@@ -20,8 +19,8 @@ import 'package:anymex/screens/anime/details_page.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
-import 'package:anymex/widgets/common/cards/card_gate.dart';
-import 'package:anymex/widgets/helper/platform_builder.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
+import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:flutter/material.dart';
@@ -168,73 +167,100 @@ class PlusForYouRow extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 20.0, bottom: 2.0),
-            child: AnymeXText(title,
-                variant: TextVariant.semiBold,
-                size: 17,
-                color: colors.primary),
+            child: Row(
+              children: [
+                Flexible(
+                  child: AnymeXText(title,
+                      variant: TextVariant.bold,
+                      size: 17,
+                      color: colors.onSurface),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right_rounded,
+                    size: 20, color: colors.onSurface),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
-          Obx(() {
-            final style = settingsController.cardStyle;
-            final desktop = getPlatform(context);
-            final cardHeight = getCardHeight(style, desktop);
-            final captionWidth = settingsController.customCardStyle
-                .cardWidth(desktop, style)
-                .clamp(100.0, 240.0);
-            return SizedBox(
-              height: cardHeight + 15 + 34,
-              child: ListView.builder(
-                key: PageStorageKey<String>('foryou-$title-${picks.first.kind}'),
-                itemCount: picks.length,
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(left: 15, top: 5, bottom: 10),
-                itemBuilder: (context, i) {
-                  final p = picks[i];
-                  final tag = 'foryou-${p.key}-$i';
-                  return KeyedSubtree(
-                    key: ValueKey(tag),
-                    child: AnymexOnTap(
-                      onTap: () => open(p, tag),
-                      child: GestureDetector(
-                        onLongPress: () => _actions(context, p, tag),
-                        onSecondaryTap: () => _actions(context, p, tag),
+          SizedBox(
+            height: 90 + 8 + 18 + 32 + 14,
+            child: ListView.builder(
+              key: PageStorageKey<String>('foryou-$title-${picks.first.kind}'),
+              itemCount: picks.length,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(left: 20, top: 5, bottom: 10),
+              itemBuilder: (context, i) {
+                final p = picks[i];
+                final tag = 'foryou-${p.key}-$i';
+                return KeyedSubtree(
+                  key: ValueKey(tag),
+                  child: AnymexOnTap(
+                    onTap: () => open(p, tag),
+                    child: GestureDetector(
+                      onLongPress: () => _actions(context, p, tag),
+                      onSecondaryTap: () => _actions(context, p, tag),
+                      child: Container(
+                        width: 150,
+                        margin: const EdgeInsets.only(right: 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Cards fill the height they're given; in a
-                            // Column that's none, so give the card height.
                             SizedBox(
-                              height: cardHeight,
-                              child: MediaCardGate(
-                                itemData: cardData(p),
-                                tag: tag,
-                                variant: DataVariant.regular,
-                                type: ItemType.anime,
+                              width: 150,
+                              height: 90,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: AnymeXImage(
+                                      imageUrl: p.poster,
+                                      radius: 0,
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.topCenter,
+                                    ),
+                                  ),
+                                  DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: const Color(0x2EFFFFFF)),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            SizedBox(
-                              width: captionWidth,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(4, 2, 10, 0),
-                                child: AnymeXText(
-                                  p.reason,
-                                  size: 11,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  color: colors.onSurfaceVariant,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+                              child: Text(
+                                p.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: YumoriText.ui(
+                                    size: 12, weight: FontWeight.w600),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+                              child: Text(
+                                p.reason,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: YumoriText.ui(
+                                    size: 11,
+                                    color: YumoriColors.text
+                                        .withOpacity(0.65)),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
-            );
-          }),
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
