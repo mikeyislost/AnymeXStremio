@@ -383,7 +383,7 @@ class _HomePageState extends State<HomePage> {
                 scrollController: _scrollController,
                 headerContent: Header(
                   leading: const HeaderLogoButton(),
-                  title: 'AnymeX',
+                  title: 'Yumori',
                   titleColor: Theme.of(context).colorScheme.primary,
                   subtitleWidget: const HeaderGreetingSubtitle(),
                   actions: const [HeaderProfileAvatar()],
