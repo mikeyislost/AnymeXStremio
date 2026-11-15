@@ -17,7 +17,11 @@ import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 
 class SettingsExtensions extends StatefulWidget {
   final Function()? onSave;
-  const SettingsExtensions({super.key, this.onSave});
+
+  /// Show only the repositories content (no page chrome) so it can sit inside
+  /// the Extensions screen as its "Repositories" tab.
+  final bool embedded;
+  const SettingsExtensions({super.key, this.onSave, this.embedded = false});
 
   @override
   State<SettingsExtensions> createState() => _SettingsExtensionsState();
@@ -165,8 +169,48 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
   }
 
 
+  Widget _reposContent(double headerHeight) {
+    return Obx(() {
+      final displayList = _displayManagers;
+      if (displayList.isEmpty) {
+        return Center(
+          child: AnymeXText('No extension managers found.',
+              style: TextStyle(color: context.colors.onSurfaceVariant)),
+        );
+      }
+      if (_managerIndex >= displayList.length) {
+        _managerIndex = 0;
+      }
+      return Column(children: [
+        SizedBox(height: headerHeight),
+        if (displayList.length > 1) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildManagerBar(),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildTypeBar(),
+        ),
+        const SizedBox(height: 4),
+        Expanded(child: _buildBody()),
+      ]);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      final fab = _buildFab();
+      return Stack(
+        children: [
+          _reposContent(0),
+          if (fab != null) Positioned(right: 16, bottom: 16, child: fab),
+        ],
+      );
+    }
     return AnymeXScaffold(
       showHeader: true,
       headerTitle: 'Extensions',
@@ -177,34 +221,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
       ),
       floatingActionButton: _buildFab(),
       body: Builder(
-        builder: (ctx) => Obx(() {
-                  final displayList = _displayManagers;
-                  if (displayList.isEmpty) {
-                    return Center(
-                      child: AnymeXText('No extension managers found.',
-                          style: TextStyle(color: context.colors.onSurfaceVariant)),
-                    );
-                  }
-                  if (_managerIndex >= displayList.length) {
-                    _managerIndex = 0;
-                  }
-                  return Column(children: [
-                    SizedBox(height: AnymeXHeaderScope.of(ctx)),
-                    if (displayList.length > 1) ...[
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _buildManagerBar(),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _buildTypeBar(),
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(child: _buildBody()),
-                  ]);
-                })
+        builder: (ctx) => _reposContent(AnymeXHeaderScope.of(ctx)),
       ),
     );
   }

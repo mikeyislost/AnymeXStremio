@@ -44,6 +44,7 @@ class _ExtensionScreenState extends State<ExtensionScreen>
   final _selectedSourceType = 'all'.obs;
   final _selectedContentType = ItemType.anime.obs;
   final _showInstalled = true.obs;
+  final _showRepos = false.obs;
 
   Timer? _searchDebounce;
   late final ScrollController _appBarScrollController;
@@ -159,19 +160,26 @@ class _ExtensionScreenState extends State<ExtensionScreen>
           ),
         ],
         const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildContentTypeBar(),
-        ),
-        const SizedBox(height: 8),
+        // Repositories has its own Anime/Manga/Novel bar.
+        Obx(() => _showRepos.value
+            ? const SizedBox.shrink()
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _buildContentTypeBar(),
+              )),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildStatusBar(),
         ),
         const SizedBox(height: 10),
-        _buildSearchRow(),
-        _buildSourceTypeChips(),
-        Expanded(child: _buildView()),
+        Obx(() => _showRepos.value
+            ? const SizedBox.shrink()
+            : Column(children: [_buildSearchRow(), _buildSourceTypeChips()])),
+        Expanded(
+          child: Obx(() => _showRepos.value
+              ? const SettingsExtensions(embedded: true)
+              : _buildView()),
+        ),
       ],
     );
 
@@ -256,9 +264,10 @@ class _ExtensionScreenState extends State<ExtensionScreen>
 
   Widget _buildStatusBar() {
     return Obx(() {
-      final isInstalled = _showInstalled.value;
-      const tabs = ['Installed', 'Available'];
-      final currentIndex = isInstalled ? 0 : 1;
+      const tabs = ['Installed', 'Available', 'Repositories'];
+      final currentIndex = _showRepos.value
+          ? 2
+          : (_showInstalled.value ? 0 : 1);
 
       return AnymeXTabBar(
         selectTabs: tabs,
@@ -268,7 +277,8 @@ class _ExtensionScreenState extends State<ExtensionScreen>
         activeTextColor: context.colors.onSecondary,
         inactiveTextColor: context.colors.onSurfaceVariant,
         onTabSelected: (index) {
-          _showInstalled.value = index == 0;
+          _showRepos.value = index == 2;
+          if (index != 2) _showInstalled.value = index == 0;
           _textEditingController.clear();
           _searchQuery.value = '';
         },
