@@ -164,10 +164,25 @@ class ThemeProvider extends ChangeNotifier {
         seedColor: _seedColor,
         brightness: Brightness.light,
         dynamicSchemeVariant: dynamicSchemeVariantList[selectedVariantIndex]);
-    final darkSeed = ColorScheme.fromSeed(
+    var darkSeed = ColorScheme.fromSeed(
         seedColor: _seedColor,
         brightness: Brightness.dark,
         dynamicSchemeVariant: dynamicSchemeVariantList[selectedVariantIndex]);
+    final isYumoriDefault = _seedColor == YumoriColors.accent;
+    if (isYumoriDefault) {
+      // The default look: Moonlit night-purple surfaces with a lavender primary.
+      darkSeed = darkSeed.copyWith(
+        primary: YumoriColors.lavender,
+        onPrimary: YumoriColors.onLavender,
+        surface: YumoriColors.background,
+        onSurface: YumoriColors.text,
+        surfaceContainerLowest: YumoriColors.background,
+        surfaceContainerLow: YumoriColors.surface,
+        surfaceContainer: YumoriColors.surface,
+        surfaceContainerHigh: YumoriColors.card,
+        surfaceContainerHighest: const Color(0xFF241C38),
+      );
+    }
 
     _lightTheme = lightMode.copyWith(
       scaffoldBackgroundColor: isOled ? Colors.white : Colors.transparent,
@@ -178,8 +193,23 @@ class ThemeProvider extends ChangeNotifier {
       scaffoldBackgroundColor: isOled ? Colors.black : Colors.transparent,
       canvasColor: isOled ? Colors.black : darkSeed.surface,
       colorScheme: darkSeed,
+      textTheme: isYumoriDefault ? _yumoriTextTheme(darkMode.textTheme) : null,
     );
     syncStatusBar();
     notifyListeners();
+  }
+
+  // Big titles in Playfair Display italic; everything else keeps its font.
+  TextTheme _yumoriTextTheme(TextTheme base) {
+    TextStyle? t(TextStyle? s) => s == null
+        ? null
+        : YumoriText.title(size: s.fontSize ?? 24, color: s.color);
+    return base.copyWith(
+      displayLarge: t(base.displayLarge),
+      displayMedium: t(base.displayMedium),
+      displaySmall: t(base.displaySmall),
+      headlineLarge: t(base.headlineLarge),
+      headlineMedium: t(base.headlineMedium),
+    );
   }
 }
