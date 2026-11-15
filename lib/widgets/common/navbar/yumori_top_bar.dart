@@ -111,17 +111,10 @@ class _Wordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset('assets/images/yumori/tree.png',
-            width: 30, height: 30, filterQuality: FilterQuality.medium),
-        const SizedBox(width: 8),
-        Text(
-          'yumori',
-          style: YumoriText.title(size: 24, color: color),
-        ),
-      ],
+    return Image.asset(
+      'assets/images/yumori/wordmark.png',
+      height: 40,
+      filterQuality: FilterQuality.high,
     );
   }
 }
