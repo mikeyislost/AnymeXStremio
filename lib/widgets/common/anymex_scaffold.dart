@@ -8,7 +8,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:anymex/widgets/common/grain_texture.dart';
 
 enum GradientVariant {
@@ -522,18 +521,6 @@ BoxShadow lightGlowingShadow(BuildContext context) {
       offset: const Offset(-1.0, 0),
     );
   }
-}
-
-Shimmer placeHolderWidget(BuildContext context) {
-  return Shimmer.fromColors(
-    baseColor: context.colors.surfaceContainer,
-    highlightColor: context.colors.primary,
-    child: Container(
-      width: 80,
-      height: 80,
-      color: context.colors.secondaryContainer,
-    ),
-  );
 }
 
 class AnymeXHeaderScope extends InheritedWidget {

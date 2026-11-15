@@ -22,7 +22,7 @@ import 'package:anymex/screens/anime/widgets/voice_actor.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/ui_extensions/sizing.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_skeleton.dart';
 import 'package:anymex/screens/anime/widgets/episode_list_builder.dart';
 import 'package:anymex/plus/for_you/taste_buttons.dart';
 import 'package:anymex/plus/movie_watch_card.dart';
@@ -547,94 +547,52 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
   }
 
   Widget _buildShimmerCarousel(BuildContext context) {
-    final colors = context.colors;
-    return Shimmer.fromColors(
-      baseColor:
-          colors.surfaceContainerHighest.opaque(0.2, iReallyMeanIt: true),
-      highlightColor:
-          colors.surfaceContainerHighest.opaque(0.4, iReallyMeanIt: true),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                width: 120,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: YumoriSkeleton(width: 120, height: 16, radius: 4),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 180,
+            child: ListView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              scrollDirection: Axis.horizontal,
+              itemCount: 5,
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: YumoriSkeleton(
+                    width: 110,
+                    height: 160,
+                    radius: 12,
+                    phase: index * 0.35,
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 180,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 5,
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: Container(
-                      width: 110,
-                      height: 160,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatsShimmer(BuildContext context) {
-    final colors = context.colors;
-    return Shimmer.fromColors(
-      baseColor:
-          colors.surfaceContainerHighest.opaque(0.2, iReallyMeanIt: true),
-      highlightColor:
-          colors.surfaceContainerHighest.opaque(0.4, iReallyMeanIt: true),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ).bottomSpacing(12),
-            Container(
-              width: double.infinity,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ).bottomSpacing(12),
-            Container(
-              width: double.infinity,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const YumoriSkeleton(height: 50, radius: 14).bottomSpacing(12),
+          const YumoriSkeleton(height: 120, radius: 14, phase: 0.6)
+              .bottomSpacing(12),
+          const YumoriSkeleton(height: 100, radius: 14, phase: 1.2),
+        ],
       ),
     );
   }
