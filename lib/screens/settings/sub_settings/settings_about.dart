@@ -2,7 +2,6 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/screens/other_features.dart';
 import 'package:anymex/screens/settings/sub_settings/contributors/contributors.dart';
-import 'package:anymex/screens/settings/sub_settings/settings_donation.dart';
 import 'package:anymex/screens/settings/sub_settings/widgets/about_deps.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
@@ -247,16 +246,6 @@ class _AboutPageState extends State<AboutPage> {
                             leading: const Icon(Icons.group_rounded),
                             title: "Contributors",
                             subtitle: "See people who contributed to AnymeX",
-                          ),
-                          CustomListTile(
-                            onTap: () {
-                              navigate(() => const SettingsDonation());
-                            },
-                            leading: const Icon(Icons.favorite_rounded,
-                                color: Colors.pinkAccent),
-                            title: "Support AnymeX",
-                            subtitle:
-                                "Donate via UPI or PayPal to support development",
                           ),
                           CustomListTile(
                             onTap: () async {

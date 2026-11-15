@@ -96,7 +96,7 @@ void showWelcomeDialogg(BuildContext context) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
-    barrierLabel: "Welcome To AnymeX",
+    barrierLabel: "Welcome To Yumori",
     pageBuilder: (context, animation1, animation2) {
       final RxBool storagePermissionGranted = false.obs;
       final RxBool installPermissionGranted = false.obs;
@@ -175,7 +175,7 @@ void showWelcomeDialogg(BuildContext context) {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               AnymeXText(
-                                'Welcome to AnymeX',
+                                'Welcome to Yumori',
                                 style: TextStyle(
                                   fontFamily: 'Linotte',
                                   fontSize: 18,
@@ -279,7 +279,7 @@ void showWelcomeDialogg(BuildContext context) {
                               icon: Icons.link_rounded,
                               title: 'Open Supported Links',
                               subtitle:
-                                  'Allow AnymeX to automatically open anime & manga web links',
+                                  'Allow Yumori to automatically open anime & manga web links',
                               onTap: () async {
                                 bool opened = false;
                                 try {

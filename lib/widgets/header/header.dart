@@ -277,7 +277,7 @@ Header _buildHeaderFromType({
       return Header(
         key: key,
         leading: const HeaderLogoButton(),
-        title: 'AnymeX',
+        title: 'Yumori',
         titleColor: Get.theme.colorScheme.primary,
         subtitleWidget: const HeaderGreetingSubtitle(),
         actions: const [HeaderProfileAvatar()],

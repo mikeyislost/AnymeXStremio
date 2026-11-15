@@ -7,7 +7,6 @@ import 'package:anymex/screens/settings/sub_settings/settings_backup.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_comments.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_common.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_discord.dart';
-import 'package:anymex/screens/settings/sub_settings/settings_donation.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_downloads.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_extensions.dart';
 import 'package:anymex/screens/settings/sub_settings/settings_logs.dart';
@@ -1398,34 +1397,6 @@ abstract final class SettingsRegistry {
           category: 'Self Test',
           icon: Icons.fact_check_rounded,
           searchTags: ['diagnostics', 'debug', 'comprehensive', 'report'],
-        ),
-      ],
-    ),
-    SettingsCategory(
-      id: 'donation',
-      groupTitle: 'About',
-      title: 'Support AnymeX',
-      description: 'Donate via UPI, PayPal & support development',
-      icon: Icons.favorite_rounded,
-      destination: () => const SettingsDonation(),
-      items: [
-        SettingItem(
-          title: 'UPI Donation',
-          category: 'Support AnymeX',
-          icon: Icons.currency_rupee_rounded,
-          searchTags: ['donate', 'india', 'gpay', 'phonepe'],
-        ),
-        SettingItem(
-          title: 'PayPal Donation',
-          category: 'Support AnymeX',
-          icon: Icons.payment_rounded,
-          searchTags: ['donate', 'international', 'support'],
-        ),
-        SettingItem(
-          title: 'Ko-fi Support',
-          category: 'Support AnymeX',
-          icon: HugeIcons.strokeRoundedCoffee01,
-          searchTags: ['support', 'coffee', 'sponsor'],
         ),
       ],
     ),

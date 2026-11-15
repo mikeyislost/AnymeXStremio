@@ -183,15 +183,8 @@ class _TitleBarWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            AnymeXText(
-              'AnymeX',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: defaultColor,
-                letterSpacing: 0.5,
-              ),
-            ),
+            Image.asset('assets/images/yumori/wordmark.png',
+                height: 22, filterQuality: FilterQuality.high),
             Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,

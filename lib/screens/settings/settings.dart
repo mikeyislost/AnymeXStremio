@@ -9,7 +9,6 @@ import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_tile.dart';
 import 'package:anymex/widgets/common/anymex_scaffold.dart';
 import 'package:anymex/widgets/common/custom_tiles.dart';
-import 'package:anymex/widgets/dialogs/donation_dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -31,16 +30,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _search.textController.addListener(_onSearchUiStateChanged);
     _search.resultsNotifier.addListener(_onSearchUiStateChanged);
     assert(_search.validateRegistry());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showDonationDialogIfNeeded();
-    });
-  }
-
-  void _showDonationDialogIfNeeded() {
-    if (!mounted) return;
-    final dontShow = General.dontShowDonationDialog.get<bool>(false);
-    if (dontShow) return;
-    DonationDialog.show(context);
   }
 
   @override
