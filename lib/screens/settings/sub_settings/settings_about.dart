@@ -48,6 +48,10 @@ class _ForkInfo {
   });
 }
 
+// The project's home. After the repo is renamed to Yumori, GitHub redirects
+// the old address, so this can be switched to .../Yumori at any time.
+const String _yumoriRepo = 'https://github.com/mikeyislost/AnymeXStremio';
+
 const List<_ForkInfo> _forks = [
   _ForkInfo(
     name: 'NyanTV',
@@ -116,7 +120,7 @@ class _AboutPageState extends State<AboutPage> {
                                                   ? snapshot.data!.version
                                                   : '';
                                       return ProfileInfo(
-                                        username: "AnymeX",
+                                        username: "Yumori",
                                         version: "v$version",
                                         subtitle: "",
                                       );
@@ -125,18 +129,18 @@ class _AboutPageState extends State<AboutPage> {
                                   InfoCard(
                                     onTap: () async {
                                       await launchUrlHelper(
-                                          'https://github.com/RyanYuuki');
+                                          'https://github.com/mikeyislost');
                                     },
                                     leading: const CircleAvatar(
                                       backgroundImage: NetworkImage(
-                                          'https://avatars.githubusercontent.com/u/108048963?s=400&u=7f67531c27c5ebbbcde943f9576a0bfdb98909c8&v=4'),
+                                          'https://github.com/mikeyislost.png'),
                                     ),
                                     title: "Developer",
-                                    subtitle: "RyanYuuki",
+                                    subtitle: "mikeyislost",
                                     trailing: IconButton(
                                       onPressed: () async {
                                         await launchUrlHelper(
-                                            'https://github.com/RyanYuuki');
+                                            'https://github.com/mikeyislost');
                                       },
                                       icon: const Icon(Iconsax.code5),
                                       color: theme.colorScheme.primary,
@@ -182,38 +186,40 @@ class _AboutPageState extends State<AboutPage> {
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                          color: context.colors.surfaceContainer.opaque(0.5),
-                          borderRadius: BorderRadius.circular(12)),
+                        color: theme.colorScheme.surfaceContainer.opaque(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: CustomSection(
-                        icon: Iconsax.link_circle,
-                        title: "Social",
-                        subtitle:
-                            "Join us for dropping feedback or feature requests",
+                        icon: Iconsax.code_circle,
+                        title: "Development",
+                        subtitle: "Explore the project and contribute",
                         items: [
                           CustomListTile(
                             onTap: () async {
                               await launchUrlHelper(
-                                  Get.find<Settings>().telegramUrl.value);
+                                  _yumoriRepo);
                             },
-                            leading:
-                                const Icon(HugeIcons.strokeRoundedTelegram),
-                            title: "Telegram",
+                            leading: const Icon(HugeIcons.strokeRoundedGithub),
+                            title: "GitHub",
+                            subtitle: 'View Source code on github.',
+                          ),
+                          CustomListTile(
+                            onTap: () {
+                              navigate(() => const ContributorsPage());
+                            },
+                            leading: const Icon(Icons.group_rounded),
+                            title: "Contributors",
+                            subtitle: "See people who contributed",
                           ),
                           CustomListTile(
                             onTap: () async {
                               await launchUrlHelper(
-                                  Get.find<Settings>().discordUrl.value);
+                                  '$_yumoriRepo/issues');
                             },
-                            leading: const Icon(HugeIcons.strokeRoundedDiscord),
-                            title: "Discord",
-                          ),
-                          CustomListTile(
-                            onTap: () async {
-                              await launchUrlHelper(
-                                  'https://www.reddit.com/r/AnymeX_/');
-                            },
-                            leading: const Icon(HugeIcons.strokeRoundedReddit),
-                            title: "Reddit",
+                            leading: const Icon(Icons.bug_report),
+                            title: "Features/Issues",
+                            subtitle:
+                                'if you have an issue or any suggestion please make an issue at github.',
                           ),
                         ],
                       ),
@@ -226,9 +232,9 @@ class _AboutPageState extends State<AboutPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: CustomSection(
-                        icon: Iconsax.code_circle,
-                        title: "Development",
-                        subtitle: "Explore the project and contribute",
+                        icon: Iconsax.heart,
+                        title: "Credits",
+                        subtitle: "Yumori is built on the work of others",
                         items: [
                           CustomListTile(
                             onTap: () async {
@@ -236,34 +242,16 @@ class _AboutPageState extends State<AboutPage> {
                                   'https://github.com/RyanYuuki/AnymeX');
                             },
                             leading: const Icon(HugeIcons.strokeRoundedGithub),
-                            title: "GitHub",
-                            subtitle: 'View Source code on github.',
-                          ),
-                          CustomListTile(
-                            onTap: () {
-                              navigate(() => const ContributorsPage());
-                            },
-                            leading: const Icon(Icons.group_rounded),
-                            title: "Contributors",
-                            subtitle: "See people who contributed to AnymeX",
+                            title: "AnymeX",
+                            subtitle: "Created by RyanYuuki and contributors",
                           ),
                           CustomListTile(
                             onTap: () async {
-                              await launchUrlHelper(
-                                  'https://github.com/RyanYuuki/AnymeX/issues');
+                              await launchUrlHelper('https://www.stremio.com');
                             },
-                            leading: const Icon(Icons.bug_report),
-                            title: "Features/Issues",
-                            subtitle:
-                                'if you have an issue or any suggestion please make an issue at github.',
-                          ),
-                          CustomListTile(
-                            onTap: () {
-                              navigate(() => const _ForksPage());
-                            },
-                            leading: const Icon(Icons.call_split_rounded),
-                            title: "Forks",
-                            subtitle: "Community forks of AnymeX",
+                            leading: const Icon(Icons.live_tv_rounded),
+                            title: "Stremio",
+                            subtitle: "Add-on catalogue and account sync",
                           ),
                         ],
                       ),
