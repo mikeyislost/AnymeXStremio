@@ -5,6 +5,7 @@ import 'package:anymex/utils/function.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -40,6 +41,49 @@ String getBadgeText(CarouselData itemData, DataVariant variant, ItemType type) {
     }
   }
   return text.replaceAll('_', ' ');
+}
+
+/// Watched fraction from a badge like "4 | 12" or "9%"; null when there isn't one.
+double? badgeProgress(String text) {
+  final t = text.trim();
+  final pct = RegExp(r'^(\d+(?:\.\d+)?)\s*%').firstMatch(t);
+  if (pct != null) return (double.parse(pct.group(1)!) / 100).clamp(0.0, 1.0);
+  final frac = RegExp(r'^(\d+)\s*\|\s*(\d+)').firstMatch(t);
+  if (frac != null) {
+    final total = double.parse(frac.group(2)!);
+    if (total > 0) return (double.parse(frac.group(1)!) / total).clamp(0.0, 1.0);
+  }
+  return null;
+}
+
+/// Chip lead: a small firefly ring when the badge carries progress, else the icon.
+class BadgeLeading extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  final double size;
+  final Color color;
+  final Color? ringDot;
+  const BadgeLeading({
+    super.key,
+    required this.text,
+    required this.icon,
+    required this.size,
+    required this.color,
+    this.ringDot,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = badgeProgress(text);
+    if (p == null) return Icon(icon, size: size, color: color);
+    return YumoriRing(
+      value: p,
+      size: size,
+      strokeWidth: 2,
+      color: color,
+      backgroundColor: color.withOpacity(0.25),
+    );
+  }
 }
 
 class MediaPoster extends StatelessWidget {
@@ -141,7 +185,7 @@ class MediaBadge extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(badgeIcon, size: 16, color: theme.colorScheme.onPrimary),
+              BadgeLeading(text: badgeText, icon: badgeIcon, size: 16, color: theme.colorScheme.onPrimary),
               const SizedBox(width: 4),
               AnymeXText(badgeText,
                 color: theme.colorScheme.onPrimary,
@@ -167,8 +211,9 @@ class MediaBadge extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                badgeIcon,
+              BadgeLeading(
+                text: badgeText,
+                icon: badgeIcon,
                 size: 15,
                 color: isBlurred ? theme.colorScheme.primary : theme.colorScheme.onPrimary,
               ),

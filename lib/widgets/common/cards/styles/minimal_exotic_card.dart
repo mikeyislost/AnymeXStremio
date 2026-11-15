@@ -151,8 +151,9 @@ class MinimalExoticCard extends CarouselCard {
               variant: TextVariant.bold,
             ),
           ] else ...[
-            Icon(
-              getIconForVariant(
+            BadgeLeading(
+              text: itemData.extraData ?? '',
+              icon: getIconForVariant(
                   variant == DataVariant.relation
                       ? itemData.args ?? ''
                       : itemData.extraData ?? '',

@@ -131,8 +131,9 @@ class DefaultCard extends CarouselCard {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        badgeIcon,
+                      BadgeLeading(
+                        text: badgeText,
+                        icon: badgeIcon,
                         size: 15,
                         color: theme.primary,
                       ),

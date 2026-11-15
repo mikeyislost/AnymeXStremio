@@ -146,8 +146,9 @@ class ExoticCard extends CarouselCard {
               variant: TextVariant.bold,
             ),
           ] else ...[
-            Icon(
-              getIconForVariant(itemData.extraData ?? '', variant, type),
+            BadgeLeading(
+              text: itemData.extraData ?? '',
+              icon: getIconForVariant(itemData.extraData ?? '', variant, type),
               size: 16,
               color: context.colors.onPrimary,
             ),

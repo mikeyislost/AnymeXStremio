@@ -21,7 +21,12 @@ class SettingsExtensions extends StatefulWidget {
   /// Show only the repositories content (no page chrome) so it can sit inside
   /// the Extensions screen as its "Repositories" tab.
   final bool embedded;
-  const SettingsExtensions({super.key, this.onSave, this.embedded = false});
+
+  /// When embedded, the Extensions screen's own Anime/Manga/Novel bar picks
+  /// the type, so this page doesn't show a second one.
+  final ItemType? externalType;
+  const SettingsExtensions(
+      {super.key, this.onSave, this.embedded = false, this.externalType});
 
   @override
   State<SettingsExtensions> createState() => _SettingsExtensionsState();
@@ -170,6 +175,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
 
 
   Widget _reposContent(double headerHeight) {
+    if (widget.externalType != null) _tab = widget.externalType!;
     return Obx(() {
       final displayList = _displayManagers;
       if (displayList.isEmpty) {
@@ -190,11 +196,13 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
           ),
           const SizedBox(height: 8),
         ],
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildTypeBar(),
-        ),
-        const SizedBox(height: 4),
+        if (widget.externalType == null) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildTypeBar(),
+          ),
+          const SizedBox(height: 4),
+        ],
         Expanded(child: _buildBody()),
       ]);
     });

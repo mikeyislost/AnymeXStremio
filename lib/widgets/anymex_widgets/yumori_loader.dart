@@ -362,6 +362,7 @@ class YumoriRing extends StatelessWidget {
   final double strokeWidth;
   final Color? backgroundColor;
   final double? size;
+  final Color? color;
 
   const YumoriRing({
     super.key,
@@ -369,6 +370,7 @@ class YumoriRing extends StatelessWidget {
     this.strokeWidth = 4,
     this.backgroundColor,
     this.size,
+    this.color,
   });
 
   @override
@@ -389,6 +391,7 @@ class YumoriRing extends StatelessWidget {
             value.clamp(0.0, 1.0),
             strokeWidth,
             backgroundColor ?? const Color(0x1FFFFFFF),
+            color ?? const Color(0xFFCDB8F7),
           ),
         ),
       );
@@ -400,7 +403,8 @@ class _RingPainter extends CustomPainter {
   final double value;
   final double stroke;
   final Color track;
-  _RingPainter(this.value, this.stroke, this.track);
+  final Color arc;
+  _RingPainter(this.value, this.stroke, this.track, this.arc);
 
   static const _lavender = Color(0xFFCDB8F7);
   static const _firefly = Color(0xFFFDE4CA);
@@ -431,7 +435,7 @@ class _RingPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round
-        ..color = _lavender,
+        ..color = arc,
     );
     final ang = -math.pi / 2 + sweep;
     final tip = center + Offset(math.cos(ang), math.sin(ang)) * r;
@@ -447,5 +451,5 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RingPainter old) =>
-      old.value != value || old.stroke != stroke || old.track != track;
+      old.value != value || old.stroke != stroke || old.track != track || old.arc != arc;
 }
