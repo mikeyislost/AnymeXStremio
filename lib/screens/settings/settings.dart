@@ -152,6 +152,31 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // The ten tabs, in order. Each tab holds one or more registry categories
+  // (see `groupTitle` in the registry); tabs with several open a hub page.
+  static const _tabs = <_SettingsTab>[
+    _SettingsTab('Accounts & Sync', Icons.manage_accounts_rounded,
+        'AniList, MyAnimeList, Simkl, Discord, TV remote'),
+    _SettingsTab('General', Icons.tune_rounded,
+        'Common, network, performance'),
+    _SettingsTab('Appearance', Icons.palette_rounded,
+        'Theme, interface, cards, blur'),
+    _SettingsTab('Player', HugeIcons.strokeRoundedPlayCircle,
+        'Playback, subtitles, skips, mpv'),
+    _SettingsTab('Reader', HugeIcons.strokeRoundedBook02,
+        'Manga, novel, text-to-speech'),
+    _SettingsTab('Downloads & Storage', HugeIcons.strokeRoundedDownload04,
+        'Downloads, storage, backup & restore'),
+    _SettingsTab('Extensions', Icons.extension_rounded,
+        'Sources, repositories, add-ons'),
+    _SettingsTab('Comments', HugeIcons.strokeRoundedComment01,
+        'Privacy, profile, replies, mentions'),
+    _SettingsTab('Diagnostics', HugeIcons.strokeRoundedBug01,
+        'Logs and self test'),
+    _SettingsTab('About', Icons.info_outline_rounded,
+        'Updates, links, legal, credits'),
+  ];
+
   Widget _buildCategoryList(double headerHeight) {
     final groups = SettingsRegistry.groupedCategories;
 
@@ -159,26 +184,19 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
         SizedBox(height: headerHeight),
-        for (final entry in groups.entries)
-          AnymeXSectionBuilder(
-            title: entry.key,
-            children: [
-              for (final cat in entry.value)
-                _buildTile(
-                  icon: cat.icon,
-                  title: cat.title,
-                  description: cat.description,
-                  destination: cat.destination,
-                ),
-              if (entry.key == 'About' && kDebugMode)
-                _buildTile(
-                  icon: HugeIcons.strokeRoundedBug01,
-                  title: 'Test',
-                  description: 'Debug stuffs',
-                  customTap: () async {},
-                ),
-            ],
-          ),
+        for (final tab in _tabs)
+          if (groups[tab.title] != null && groups[tab.title]!.isNotEmpty)
+            _buildTile(
+              icon: tab.icon,
+              title: tab.title,
+              description: tab.description,
+              destination: groups[tab.title]!.length == 1
+                  ? groups[tab.title]!.first.destination
+                  : () => _SettingsHubPage(
+                        title: tab.title,
+                        categories: groups[tab.title]!,
+                      ),
+            ),
         const SizedBox(height: 30),
       ],
     );
@@ -199,6 +217,48 @@ class _SettingsPageState extends State<SettingsPage> {
       title: title,
       subtitle: description,
       onTap: customTap ?? () => navigate(destination),
+    );
+  }
+}
+
+class _SettingsTab {
+  final String title;
+  final IconData icon;
+  final String description;
+  const _SettingsTab(this.title, this.icon, this.description);
+}
+
+/// Lists the categories that share one settings tab; each opens its page.
+class _SettingsHubPage extends StatelessWidget {
+  final String title;
+  final List<SettingsCategory> categories;
+
+  const _SettingsHubPage({required this.title, required this.categories});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AnymeXScaffold(
+      showHeader: true,
+      headerTitle: title,
+      body: Builder(
+        builder: (ctx) => ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            SizedBox(height: AnymeXHeaderScope.of(ctx)),
+            for (final cat in categories)
+              AnymeXTile(
+                icon: cat.icon,
+                iconColor: colors.primary,
+                iconBackgroundColor:
+                    colors.primary.opaque(0.12, iReallyMeanIt: true),
+                title: cat.title,
+                subtitle: cat.description,
+                onTap: () => navigate(cat.destination),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

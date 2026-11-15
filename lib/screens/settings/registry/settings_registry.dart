@@ -142,7 +142,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'common',
-      groupTitle: 'Preferences & System',
+      groupTitle: 'General',
       title: 'Common',
       description: 'Tweak general app settings',
       icon: HugeIcons.strokeRoundedBulb,
@@ -182,7 +182,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'backup',
-      groupTitle: 'Preferences & System',
+      groupTitle: 'Downloads & Storage',
       title: 'Backup & Restore',
       description: 'Backup and restore your library',
       icon: HugeIcons.strokeRoundedLibraries,
@@ -204,7 +204,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'network',
-      groupTitle: 'Preferences & System',
+      groupTitle: 'General',
       title: 'Network',
       description: 'Configure DNS-over-HTTPS, proxy & TLS settings',
       icon: Icons.wifi_tethering_rounded,
@@ -249,7 +249,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'storage',
-      groupTitle: 'Preferences & System',
+      groupTitle: 'Downloads & Storage',
       title: 'Storage Manager',
       description: 'Manage cached images, thresholds, and reset app data',
       icon: Icons.storage_rounded,
@@ -278,7 +278,7 @@ abstract final class SettingsRegistry {
     if (!Platform.isLinux && !Platform.isMacOS && !Platform.isWindows)
       SettingsCategory(
         id: 'performance',
-        groupTitle: 'Preferences & System',
+        groupTitle: 'General',
         title: 'Performance',
         description: 'Display refresh rate, resolution and frame tuning',
         icon: HugeIcons.strokeRoundedDashboardSpeed01,
@@ -311,7 +311,7 @@ abstract final class SettingsRegistry {
       ),
     SettingsCategory(
       id: 'ui',
-      groupTitle: 'Appearance & Interface',
+      groupTitle: 'Appearance',
       title: 'UI',
       description: 'Customize the interface to your liking',
       icon: HugeIcons.strokeRoundedPaintBoard,
@@ -454,7 +454,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'theme',
-      groupTitle: 'Appearance & Interface',
+      groupTitle: 'Appearance',
       title: 'Theme',
       description: 'Personalize the look and make it yours',
       icon: HugeIcons.strokeRoundedPaintBrush01,
@@ -548,7 +548,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'player',
-      groupTitle: 'Media & Playback',
+      groupTitle: 'Player',
       title: 'Player',
       description: 'Play around with the video player',
       icon: HugeIcons.strokeRoundedPlay,
@@ -873,7 +873,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'reader',
-      groupTitle: 'Media & Playback',
+      groupTitle: 'Reader',
       title: 'Reader',
       description: 'Configure manga and novel reader defaults',
       icon: Icons.menu_book_rounded,
@@ -1153,7 +1153,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'downloads',
-      groupTitle: 'Media & Playback',
+      groupTitle: 'Downloads & Storage',
       title: 'Downloads',
       description: 'Configure parallel downloads and directory',
       icon: Icons.settings_suggest_rounded,
@@ -1198,7 +1198,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'comments',
-      groupTitle: 'Extensions & Diagnostics',
+      groupTitle: 'Comments',
       title: 'Comment System',
       description: 'Commentum v2 settings, moderation & preferences',
       icon: Icons.chat_bubble_outline_rounded,
@@ -1285,7 +1285,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'extensions',
-      groupTitle: 'Extensions & Diagnostics',
+      groupTitle: 'Extensions',
       title: 'Extensions',
       description: 'Extensions tailored to your needs',
       icon: Icons.extension_rounded,
@@ -1313,7 +1313,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'addons',
-      groupTitle: 'Extensions & Diagnostics',
+      groupTitle: 'Extensions',
       title: 'Add-ons',
       description: 'TorrServer & streaming add-ons',
       icon: HugeIcons.strokeRoundedPlug01,
@@ -1335,7 +1335,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'logs',
-      groupTitle: 'Extensions & Diagnostics',
+      groupTitle: 'Diagnostics',
       title: 'Logs',
       description: 'Manage log capture and share saved logs',
       icon: HugeIcons.strokeRoundedFile01,
@@ -1364,7 +1364,7 @@ abstract final class SettingsRegistry {
     // AnymeX+: remote for the AnymeX+ TV app (LG webOS).
     SettingsCategory(
       id: 'tv_remote',
-      groupTitle: 'Extensions & Diagnostics',
+      groupTitle: 'Accounts & Sync',
       title: 'TV Remote',
       description: 'Connect to AnymeX+ TV on an LG TV and use this device as its remote',
       icon: Icons.settings_remote_rounded,
@@ -1380,7 +1380,7 @@ abstract final class SettingsRegistry {
     ),
     SettingsCategory(
       id: 'self_test',
-      groupTitle: 'Extensions & Diagnostics',
+      groupTitle: 'Diagnostics',
       title: 'Self Test',
       description: 'Run a quick or full check of the app and save a report',
       icon: Icons.fact_check_rounded,
