@@ -5,7 +5,13 @@ name: Preview build (no release)
 # is published or released, so it is safe on wip/* branches.
 #   iPhone:  an unsigned .ipa to install with Feather
 #   Windows: the portable folder as a .zip (no installer)
+#
+# From a wip/* branch: push a commit whose message contains [preview] (add
+# [ios] or [win] to build only one). The Run workflow button only appears
+# once this file is on main.
 on:
+  push:
+    branches: ["wip/**"]
   workflow_dispatch:
     inputs:
       ios:
@@ -29,7 +35,7 @@ env:
 
 jobs:
   ios:
-    if: ${{ inputs.ios }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.ios) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[preview]') && (contains(github.event.head_commit.message, '[ios]') || !contains(github.event.head_commit.message, '[win]'))) }}
     runs-on: macos-latest
     env:
       ANYMEXPLUS_CARGOKIT_DIR: ${{ github.workspace }}/.cargokit
@@ -108,7 +114,7 @@ jobs:
           path: dist/*.ipa
 
   windows:
-    if: ${{ inputs.windows }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.windows) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[preview]') && (contains(github.event.head_commit.message, '[win]') || !contains(github.event.head_commit.message, '[ios]'))) }}
     runs-on: windows-latest
     env:
       ANYMEXPLUS_CARGOKIT_DIR: ${{ github.workspace }}\.cargokit
