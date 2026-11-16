@@ -2,12 +2,56 @@
 // AniList trending anime with trending Movies & TV (TMDB / Stremio).
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:anymex/plus/categories/categories_data.dart';
 import 'package:anymex/plus/categories/categories_page.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+
+/// Anime art from TMDB (same source as the Movies & TV cards), by title.
+/// Falls back to AniList's own art when TMDB has no match.
+class YumoriHeroArt {
+  static final _poster = <String, String>{};
+  static final _backdrop = <String, String>{};
+
+  static String poster(CatItem it) =>
+      _poster[it.key] ?? (it.poster.isNotEmpty ? it.poster : it.backdrop);
+  static String backdrop(CatItem it) =>
+      _backdrop[it.key] ?? (it.backdrop.isNotEmpty ? it.backdrop : it.poster);
+
+  static Future<void> resolve(CatItem it) async {
+    if (!it.isAnime || _poster.containsKey(it.key)) return;
+    final key = (dotenv.maybeGet('TMDB_API_KEY') ?? '').trim();
+    if (key.isEmpty) return;
+    for (final kind in const ['tv', 'movie']) {
+      try {
+        final r = await http
+            .get(Uri.https('api.themoviedb.org', '/3/search/$kind',
+                {'api_key': key, 'query': it.title}))
+            .timeout(const Duration(seconds: 8));
+        if (r.statusCode != 200) continue;
+        final res = (jsonDecode(r.body)['results'] as List?) ?? const [];
+        for (final m in res) {
+          if (m is! Map) continue;
+          final p = '${m['poster_path'] ?? ''}';
+          final b = '${m['backdrop_path'] ?? ''}';
+          if (p.isEmpty && b.isEmpty) continue;
+          _poster[it.key] = p.isNotEmpty
+              ? 'https://image.tmdb.org/t/p/w780$p'
+              : 'https://image.tmdb.org/t/p/w1280$b';
+          _backdrop[it.key] = b.isNotEmpty
+              ? 'https://image.tmdb.org/t/p/original$b'
+              : 'https://image.tmdb.org/t/p/w780$p';
+          return;
+        }
+      } catch (_) {}
+    }
+  }
+}
 
 /// The item the hero is showing, shared with the full-screen backdrop.
 class YumoriHeroBus {
@@ -26,8 +70,7 @@ class YumoriHeroBackdrop extends StatelessWidget {
       valueListenable: YumoriHeroBus.current,
       builder: (context, it, _) {
         if (it == null) return const SizedBox.expand();
-        final art = _YumoriHomeHeroState._sharp(
-            it.backdrop.isNotEmpty ? it.backdrop : it.poster);
+        final art = _YumoriHomeHeroState._sharp(YumoriHeroArt.backdrop(it));
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -156,6 +199,7 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       parts[2].where(ok).take(3).toList(),
     ]);
     final complete = parts.every((p) => p.isNotEmpty);
+    await Future.wait(mixed.map(YumoriHeroArt.resolve));
     if (mixed.isNotEmpty) {
       _set(mixed);
       // Only remember a result that has every source in it.
@@ -348,9 +392,7 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
                         child: Opacity(
                           opacity: on ? 1 : 0.6,
                           child: AnymeXImage(
-                              imageUrl: t.poster.isNotEmpty
-                                  ? t.poster
-                                  : t.backdrop,
+                              imageUrl: YumoriHeroArt.poster(t),
                               radius: 0,
                               fit: BoxFit.cover),
                         ),
@@ -378,9 +420,8 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
   Widget _slide(BuildContext context, CatItem it, int i) {
     // Wide screens use the wide art, phones the poster (sharper there).
     final wide = MediaQuery.of(context).size.width > widget.height * 1.15;
-    final art = _sharp(wide
-        ? (it.backdrop.isNotEmpty ? it.backdrop : it.poster)
-        : (it.poster.isNotEmpty ? it.poster : it.backdrop));
+    final art = _sharp(
+        wide ? YumoriHeroArt.backdrop(it) : YumoriHeroArt.poster(it));
     final meta = [
       it.kindLabel[0] + it.kindLabel.substring(1).toLowerCase(),
       if (it.genre.isNotEmpty) it.genre,
