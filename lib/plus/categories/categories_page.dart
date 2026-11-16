@@ -113,16 +113,16 @@ class CategoriesPage extends StatelessWidget {
 /// First poster of each category, fetched one after another (cached) so the
 /// tiles don't hammer AniList / TMDB all at once.
 class _TilePosters {
-  static final _cache = <String, Future<String?>>{};
+  static final _cache = <String, Future<CatItem?>>{};
   static Future<void> _tail = Future.value();
 
-  static Future<String?> of(CatCategory c) {
+  static Future<CatItem?> of(CatCategory c) {
     return _cache.putIfAbsent(c.name, () {
       final next = _tail.then((_) async {
         try {
           final items = await c.load(page: 1);
           for (final i in items) {
-            if (i.poster.isNotEmpty) return i.poster;
+            if (i.poster.isNotEmpty) return i;
           }
         } catch (_) {}
         return null;
@@ -159,13 +159,13 @@ class _CategoryTile extends StatelessWidget {
                 ),
               ),
             ),
-            FutureBuilder<String?>(
+            FutureBuilder<CatItem?>(
               future: _TilePosters.of(category),
               builder: (context, snap) {
-                final url = snap.data;
-                if (url == null) return const SizedBox.shrink();
+                final first = snap.data;
+                if (first == null) return const SizedBox.shrink();
                 return AnymeXImage(
-                  imageUrl: url,
+                  imageUrl: first.poster,
                   radius: 0,
                   fit: BoxFit.cover,
                   alignment: Alignment.topCenter,
@@ -186,6 +186,35 @@ class _CategoryTile extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0x1FF3F0FA)),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              left: 10,
+              right: 10,
+              child: FutureBuilder<CatItem?>(
+                future: _TilePosters.of(category),
+                builder: (context, snap) {
+                  final first = snap.data;
+                  if (first == null) return const SizedBox.shrink();
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 150),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xB30D0A16),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('#1 ${first.title}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: YumoriText.ui(
+                              size: 10, color: YumoriColors.lavender)),
+                    ),
+                  );
+                },
               ),
             ),
             Padding(
