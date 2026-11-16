@@ -76,7 +76,44 @@ class YumoriContinueCard extends StatelessWidget {
                     left: 9,
                     right: 9,
                     bottom: 9,
-                    child: LayoutBuilder(builder: (context, c) {
+                    child: YumoriProgressLine(progress: progress),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+            child: Text(
+              itemData.title ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: YumoriText.ui(size: 13, weight: FontWeight.w600),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 0),
+            child: Text(
+              sub,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: YumoriText.ui(
+                  size: 11, color: YumoriColors.text.withOpacity(0.65)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Lavender progress line with a cream firefly at its tip.
+class YumoriProgressLine extends StatelessWidget {
+  final double progress;
+  const YumoriProgressLine({super.key, required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
                       final x = c.maxWidth * progress;
                       return SizedBox(
                         height: 7,
@@ -129,32 +166,6 @@ class YumoriContinueCard extends StatelessWidget {
                           ],
                         ),
                       );
-                    }),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-            child: Text(
-              itemData.title ?? '',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: YumoriText.ui(size: 13, weight: FontWeight.w600),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 2, 8, 0),
-            child: Text(
-              sub,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: YumoriText.ui(
-                  size: 11, color: YumoriColors.text.withOpacity(0.65)),
-            ),
-          ),
-        ],
-      ),
-    );
+                    });
   }
 }

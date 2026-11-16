@@ -73,7 +73,7 @@ Widget buildMediaQuickActions(
               }),
             ),
           ],
-          const SizedBox(width: 4),
+          const SizedBox(width: 9),
           Expanded(
             child: Obx(() {
               final inList = controller.isInCustomList.value;
@@ -112,47 +112,42 @@ Widget _buildQuickActionButton({
   required BorderRadius radius,
   bool isPrimary = false,
 }) {
+  // Moonlit 4: pill buttons — filled lavender when active, outlined otherwise.
   final colors = context.colors;
-  final borderClr = isPrimary
-      ? colors.primary.opaque(0.25, iReallyMeanIt: true)
-      : colors.onSurface.opaque(0.08, iReallyMeanIt: true);
-  final bgClr = isPrimary
-      ? colors.primary.opaque(0.12, iReallyMeanIt: true)
-      : colors.surfaceContainerHighest.opaque(0.4, iReallyMeanIt: true);
-  final textClr = isPrimary ? colors.primary : colors.onSurface;
+  const pill = BorderRadius.all(Radius.circular(999));
+  final bgClr = isPrimary ? colors.primary : colors.surface.withOpacity(0.3);
+  final textClr = isPrimary ? colors.onPrimary : colors.onSurface;
 
   return Material(
     color: bgClr,
-    borderRadius: radius,
+    borderRadius: pill,
     child: InkWell(
-      borderRadius: radius,
+      borderRadius: pill,
       onTap: onTap,
       child: Container(
-        height: 50,
+        height: 40,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          borderRadius: radius,
-          border: Border.all(color: borderClr, width: 1.2),
+          borderRadius: pill,
+          border: isPrimary
+              ? null
+              : Border.all(
+                  color: colors.onSurface.withOpacity(0.45), width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 18,
-              color: textClr,
-            ),
-            const SizedBox(width: 8),
+            Icon(icon, size: 16, color: textClr),
+            const SizedBox(width: 7),
             Flexible(
               child: AnymeXText(
-                label.toUpperCase(),
+                label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: textClr,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12.5,
-                  letterSpacing: 0.6,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
                 ),
               ),
             ),

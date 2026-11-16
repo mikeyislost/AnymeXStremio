@@ -23,6 +23,7 @@ import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex/widgets/helper/tv_wrapper.dart';
 import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
 import 'package:flutter/material.dart';
+import 'package:anymex/widgets/common/cards/yumori_library_row.dart';
 import 'package:get/get.dart';
 
 import 'package:anymex/widgets/common/scroll_aware_app_bar.dart';
@@ -242,6 +243,35 @@ class _LibraryContent extends StatelessWidget {
   }
 
   Widget _buildGridView(BuildContext context, List<OfflineMedia> items) {
+    // Moonlit 4: anime and manga shelves are wide rows with a progress line.
+    if (controller.type.value != ItemType.novel) {
+      final width = MediaQuery.sizeOf(context).width;
+      final cols = math.max(1, ((width - 32) / 380).floor());
+      return SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
+        sliver: SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            crossAxisSpacing: 20,
+            mainAxisSpacing: 14,
+            mainAxisExtent: 74,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, i) {
+              final item = items[i];
+              final tag =
+                  '${item.mediaId ?? item.id}-library-grid-${controller.type.value.name}';
+              return YumoriLibraryRow(
+                item: item,
+                type: controller.type.value,
+                onTap: () => _handleItemTap(context, item, items, i, tag),
+              );
+            },
+            childCount: items.length,
+          ),
+        ),
+      );
+    }
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
       sliver: SliverGrid(

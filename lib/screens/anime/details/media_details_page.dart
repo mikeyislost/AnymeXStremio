@@ -496,7 +496,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
       NavItem(
         selectedIcon: isAnime ? Iconsax.play5 : Icons.menu_book_rounded,
         unselectedIcon: isAnime ? Iconsax.play : Icons.menu_book_outlined,
-        label: isAnime ? 'Watch' : 'Read',
+        label: isAnime ? 'Episodes' : 'Chapters',
         onTap: (index) => _onTabSelected(index),
       ),
       NavItem(
