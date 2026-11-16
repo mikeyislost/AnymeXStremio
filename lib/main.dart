@@ -2,6 +2,7 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/launch_timer.dart';
 import 'package:anymex/plus/splash_gate.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
+import 'package:anymex/plus/categories/categories_page.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
 import 'dart:async';
 import 'dart:io';
@@ -520,6 +521,8 @@ class _FilterScreenState extends State<FilterScreen> {
         return const NovelHomePage();
       case 'Extensions':
         return const ExtensionScreen(isTabScreen: true);
+      case 'Categories':
+        return const CategoriesPage();
       case 'Stremio':
         return const StremioHomePage();
       default:
@@ -644,6 +647,14 @@ class _FilterScreenState extends State<FilterScreen> {
           selectedIcon: Icons.extension_rounded,
           onTap: onTap,
           label: 'Extensions',
+          subWidget: subWidget,
+        );
+      case 'Categories':
+        return NavItem(
+          unselectedIcon: Icons.explore_outlined,
+          selectedIcon: Icons.explore_rounded,
+          onTap: onTap,
+          label: 'Categories',
           subWidget: subWidget,
         );
       case 'Stremio':

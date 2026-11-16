@@ -280,7 +280,7 @@ class _SettingsUiState extends State<SettingsUi> {
             'Anime',
             'Manga',
             'Novel',
-            'Stremio',
+            'Categories',
             'Library',
             'Stats',
             'Extensions'
@@ -288,7 +288,7 @@ class _SettingsUiState extends State<SettingsUi> {
         : [
             'Home',
             'Discover',
-            'Stremio',
+            'Categories',
             'Library',
             'History',
             'Stats',
@@ -311,6 +311,7 @@ class _SettingsUiState extends State<SettingsUi> {
       'History': Iconsax.clock,
       'Stats': IconlyBold.chart,
       'Extensions': Icons.extension_rounded,
+      'Categories': Icons.explore_rounded,
       'Stremio': Icons.live_tv_rounded,
     };
 

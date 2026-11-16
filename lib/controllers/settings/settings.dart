@@ -546,20 +546,20 @@ class Settings extends GetxController {
                 'Home',
                 'Anime',
                 'Manga',
-                'Stremio',
+                'Categories',
                 'Library',
                 'Stats',
                 if (isDesktop) 'Extensions'
               ]
             // AnymeX+: anime discover is part of Home (see HomePage).
             : (isDesktop
-                ? ['Home', 'Manga', 'Stremio', 'Library', 'Stats', 'Extensions']
-                : ['Home', 'Manga', 'Stremio', 'Library', 'Stats']))
+                ? ['Home', 'Manga', 'Categories', 'Library', 'Stats', 'Extensions']
+                : ['Home', 'Manga', 'Categories', 'Library', 'Stats']))
         : (isExtensionsService
             ? [
                 'Home',
                 'Discover',
-                'Stremio',
+                'Categories',
                 'Library',
                 'History',
                 'Stats',
@@ -569,13 +569,13 @@ class Settings extends GetxController {
                 ? [
                     'Home',
                     'Discover',
-                    'Stremio',
+                    'Categories',
                     'Library',
                     'History',
                     'Stats',
                     'Extensions'
                   ]
-                : ['Home', 'Discover', 'Stremio', 'Library', 'History', 'Stats']));
+                : ['Home', 'Discover', 'Categories', 'Library', 'History', 'Stats']));
 
     if (raw.isEmpty) {
       return defaultTabs;
@@ -584,16 +584,22 @@ class Settings extends GetxController {
       final List<dynamic> list = jsonDecode(raw);
       final strings = list.map((e) => e.toString()).toList();
       if (strings.isNotEmpty) {
-        // One-time: add the Movies & TV (Stremio) tab to saved layouts.
-        final stremioFlag = '${_currentTabOrderKey}_stremio_added';
-        if (!strings.contains('Stremio') &&
-            !KvHelper.get<bool>(stremioFlag, defaultVal: false)) {
-          final anchor = strings.indexOf(
-              strings.contains('Discover') ? 'Discover' : 'Manga');
-          strings.insert(anchor == -1 ? strings.length.clamp(0, 1) : anchor + 1,
-              'Stremio');
+        // Yumori: Movies & TV lives on Home now and the Categories tab
+        // takes its place, once, in saved layouts.
+        final catFlag = '${_currentTabOrderKey}_categories_swap';
+        if (!KvHelper.get<bool>(catFlag, defaultVal: false)) {
+          final at = strings.indexOf('Stremio');
+          if (at != -1) {
+            strings[at] = 'Categories';
+          } else if (!strings.contains('Categories')) {
+            final anchor = strings.indexOf(
+                strings.contains('Discover') ? 'Discover' : 'Manga');
+            strings.insert(
+                anchor == -1 ? strings.length.clamp(0, 1) : anchor + 1,
+                'Categories');
+          }
           KvHelper.set(_currentTabOrderKey, jsonEncode(strings));
-          KvHelper.set(stremioFlag, true);
+          KvHelper.set(catFlag, true);
         }
         // One-time: anime discover moved onto Home, so drop the Anime tab
         // (it can be added back in the tab settings).

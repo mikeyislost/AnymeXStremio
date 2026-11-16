@@ -212,6 +212,36 @@ class PlusBuiltinRows {
         .toList();
   }
 
+  /// AnymeX+ TV: page [page] (2, 3, …) of [row], for grids that keep
+  /// loading as you scroll. Page 1 is [load].
+  static Future<List<StremioMetaPreview>> loadPage(PlusBuiltinRow row, int page) async {
+    if (page <= 1) return load(row);
+    try {
+      final base = queryFor(row, region);
+      final q = base.isEmpty ? 'page=$page' : '$base&page=$page';
+      final data = await MoviesForYou.tmdbGet(row.path, 'builtin-tmdb/${row.id}/$q', refreshAfter, query: q);
+      final results = data is Map && data['results'] is List
+          ? (data['results'] as List).whereType<Map>().toList()
+          : const <Map>[];
+      final out = <StremioMetaPreview>[];
+      for (var i = 0; i < results.length; i += 10) {
+        final part = results.skip(i).take(10).toList();
+        final imdbs = await Future.wait(part.map((r) =>
+            MoviesForYou.imdbFor(row.tmdbKind, '${r['id']}').catchError((_) => null)));
+        for (var j = 0; j < part.length; j++) {
+          final imdb = imdbs[j];
+          if (imdb == null) continue;
+          final p = previewFrom(part[j], row.type, imdb);
+          if (p != null) out.add(p);
+        }
+      }
+      return out;
+    } catch (e) {
+      Logger.i('Built-in row ${row.id} page $page failed: $e');
+      return const [];
+    }
+  }
+
   /// Loads [row] from TMDB (kept 6 hours unless [force]) and saves it.
   static Future<List<StremioMetaPreview>> load(PlusBuiltinRow row,
       {bool force = false}) async {
