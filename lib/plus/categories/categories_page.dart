@@ -17,6 +17,7 @@ import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:anymex/widgets/common/anymex_pills.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:flutter/material.dart';
+import 'package:anymex/widgets/common/title_bar_inset.dart';
 
 void openCatItem(CatItem it, String tag) {
   if (it.isAnime) {
@@ -276,7 +277,7 @@ class _CategoryPageState extends State<CategoryPage> {
     final width = MediaQuery.sizeOf(context).width;
     final cols = math.max(2, (width / 170).floor());
     final shown = _shown;
-    return Scaffold(
+    return TitleBarInset(child: Scaffold(
       backgroundColor: YumoriColors.background,
       body: CustomScrollView(
         controller: _scroll,
@@ -352,7 +353,7 @@ class _CategoryPageState extends State<CategoryPage> {
           const SliverToBoxAdapter(child: SizedBox(height: 120)),
         ],
       ),
-    );
+    ));
   }
 }
 

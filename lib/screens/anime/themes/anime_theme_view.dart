@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:anymex/widgets/common/title_bar_inset.dart';
 import 'package:anymex/models/animethemes/anime_theme.dart';
 import 'package:anymex/utils/anime_themes_api.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
@@ -155,7 +156,7 @@ class _AnimeThemePlayerPageState extends State<AnimeThemePlayerPage> {
     final colorScheme = context.colors;
     final surfaceColor = colorScheme.surface;
 
-    return Scaffold(
+    return TitleBarInset(child: Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -385,7 +386,7 @@ class _AnimeThemePlayerPageState extends State<AnimeThemePlayerPage> {
             ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildControlsHeader(BuildContext context) {

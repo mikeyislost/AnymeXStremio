@@ -1,4 +1,5 @@
 import 'package:anymex/controllers/services/community_service.dart';
+import 'package:anymex/widgets/common/title_bar_inset.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/details_page.dart';
 import 'package:anymex/screens/manga/details_page.dart';
@@ -112,7 +113,7 @@ class _UserRecommendationsPageState extends State<UserRecommendationsPage>
     final isAdmin = widget.user.isAdmin;
 
     if (_isLoading) {
-      return Scaffold(
+      return TitleBarInset(child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           leading: IconButton(
@@ -152,12 +153,12 @@ class _UserRecommendationsPageState extends State<UserRecommendationsPage>
           ),
         ),
         body: const Center(child: CircularProgressIndicator()),
-      );
+      ));
     }
 
     final allItems = _getRecommendations();
 
-    return Scaffold(
+    return TitleBarInset(child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         leading: IconButton(
@@ -227,7 +228,7 @@ class _UserRecommendationsPageState extends State<UserRecommendationsPage>
           _buildGrid(context, _filterByCategory('movies', allItems)),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildGrid(BuildContext context, List<_UserRecItem> items) {

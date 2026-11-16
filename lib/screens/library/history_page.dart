@@ -1,4 +1,5 @@
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
+import 'package:anymex/widgets/common/title_bar_inset.dart';
 import 'package:anymex/database/isar_models/offline_media.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_dialog.dart';
@@ -102,7 +103,7 @@ class _AnymeXHistoryPageState extends State<AnymeXHistoryPage> {
         isDesktop ? 20.0 : (MediaQuery.paddingOf(context).bottom + 120.0);
     final settingsController = Get.find<Settings>();
 
-    return Scaffold(
+    return TitleBarInset(child: Scaffold(
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
@@ -235,6 +236,6 @@ class _AnymeXHistoryPageState extends State<AnymeXHistoryPage> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

@@ -1,4 +1,5 @@
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
+import 'package:anymex/widgets/common/title_bar_inset.dart';
 import 'package:anymex/database/isar_models/custom_list.dart';
 import 'package:anymex/database/isar_models/offline_media.dart';
 import 'package:anymex_extension_runtime_bridge/Models/Source.dart';
@@ -14,7 +15,7 @@ class StatisticsPage extends StatelessWidget {
     final OfflineStorageController controller =
         Get.find<OfflineStorageController>();
 
-    return Scaffold(
+    return TitleBarInset(child: Scaffold(
       appBar: AppBar(
         title: const AnymeXText('Library Statistics'),
         backgroundColor: Theme.of(context).primaryColor,
@@ -136,7 +137,7 @@ class StatisticsPage extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildLibrarySection(

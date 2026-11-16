@@ -3,6 +3,7 @@
 // style and size, row or grid, how many items and their order. Library:
 // default sort, order and columns per list type. Changes apply right away.
 
+import 'package:anymex/widgets/common/title_bar_inset.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/plus/layout/layout_model.dart';
@@ -49,7 +50,7 @@ class _PlusLayoutEditorPageState extends State<PlusLayoutEditorPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return TitleBarInset(child: Scaffold(
       appBar: AppBar(
         title: const Text('Edit layout'),
         actions: [
@@ -80,7 +81,7 @@ class _PlusLayoutEditorPageState extends State<PlusLayoutEditorPage>
           _LibraryEditor(),
         ],
       ),
-    );
+    ));
   }
 }
 
