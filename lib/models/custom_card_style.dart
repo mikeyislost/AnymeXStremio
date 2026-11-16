@@ -59,7 +59,7 @@ class CardCustomization {
     }
     if (styleIndex == 0) {
       if (aspectRatio == '2:3') {
-        final basePosterH = isDesktop ? 215.0 : 162.0;
+        final basePosterH = isDesktop ? 215.0 : 200.0; // phone: true 2:3 (140 x 200)
         return basePosterH * scale;
       }
       return w / ratioValue;
