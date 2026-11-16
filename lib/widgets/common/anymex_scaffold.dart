@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
@@ -667,33 +668,65 @@ class _HeaderBodyShellState extends State<_HeaderBodyShell> {
 }
 
 
-/// A soft blurred mesh gradient (drawn, so it is sharp at any size).
-class YumoriMeshBackground extends StatelessWidget {
+/// A soft blurred mesh gradient. Painted once into a small image and then
+/// just stretched (smooth gradients scale cleanly), so it costs almost
+/// nothing per frame.
+class YumoriMeshBackground extends StatefulWidget {
   const YumoriMeshBackground({super.key});
 
   @override
+  State<YumoriMeshBackground> createState() => _YumoriMeshBackgroundState();
+}
+
+class _YumoriMeshBackgroundState extends State<YumoriMeshBackground> {
+  static ui.Image? _image;
+  static Future<ui.Image>? _building;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_image == null) {
+      _building ??= _build();
+      _building!.then((img) {
+        _image = img;
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  static Future<ui.Image> _build() async {
+    const w = 160.0, h = 320.0;
+    final rec = ui.PictureRecorder();
+    final c = Canvas(rec);
+    final rect = const Rect.fromLTWH(0, 0, w, h);
+    c.drawRect(rect, Paint()..color = const Color(0xFF0D0A16));
+    void blob(Alignment at, Color col, double radius) {
+      c.drawRect(
+          rect,
+          Paint()
+            ..shader = RadialGradient(
+              center: at,
+              radius: radius,
+              colors: [col, col.withOpacity(0)],
+            ).createShader(rect));
+    }
+
+    blob(const Alignment(-0.9, -0.9), const Color(0x886C4FC2), 1.1);
+    blob(const Alignment(1.0, -0.4), const Color(0x665C6BD6), 0.9);
+    blob(const Alignment(-0.3, 0.6), const Color(0x558F5FC9), 1.0);
+    blob(const Alignment(1.0, 1.0), const Color(0x663B4FB0), 1.0);
+    return rec.endRecording().toImage(w.toInt(), h.toInt());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    Widget blob(Alignment at, Color c, double radius) => Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: at,
-                radius: radius,
-                colors: [c, c.withOpacity(0)],
-              ),
-            ),
-          ),
-        );
+    final img = _image;
+    if (img == null) return const ColoredBox(color: Color(0xFF0D0A16));
     return RepaintBoundary(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const ColoredBox(color: Color(0xFF0D0A16)),
-          blob(const Alignment(-0.9, -0.9), const Color(0x886C4FC2), 1.1),
-          blob(const Alignment(1.0, -0.4), const Color(0x665C6BD6), 0.9),
-          blob(const Alignment(-0.3, 0.6), const Color(0x558F5FC9), 1.0),
-          blob(const Alignment(1.0, 1.0), const Color(0x663B4FB0), 1.0),
-        ],
+      child: RawImage(
+        image: img,
+        fit: BoxFit.fill,
+        filterQuality: FilterQuality.medium,
       ),
     );
   }
