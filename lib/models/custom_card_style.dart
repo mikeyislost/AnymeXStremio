@@ -45,7 +45,7 @@ class CardCustomization {
       return baseWidth * scale;
     }
     final baseWidth = switch (styleIndex) {
-      0 => (isDesktop ? 175.0 : 140.0),
+      0 => (isDesktop ? 175.0 : 160.0),
       2 => (isDesktop ? 165.0 : 125.0),
       _ => (isDesktop ? 155.0 : 120.0),
     };
@@ -59,7 +59,7 @@ class CardCustomization {
     }
     if (styleIndex == 0) {
       if (aspectRatio == '2:3') {
-        final basePosterH = isDesktop ? 215.0 : 200.0; // phone: true 2:3 (140 x 200)
+        final basePosterH = isDesktop ? 215.0 : 232.0; // phone: 160 x 232
         return basePosterH * scale;
       }
       return w / ratioValue;

@@ -463,6 +463,23 @@ class HeaderProfileAvatar extends StatelessWidget {
   }
 }
 
+/// The Yumori title icon (same wordmark as the Windows top bar).
+class HeaderWordmarkButton extends StatelessWidget {
+  const HeaderWordmarkButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnymexOnTap(
+      onTap: () => SettingsSheet().showServiceSelector(context),
+      child: Image.asset(
+        'assets/images/yumori/wordmark.png',
+        height: 34,
+        filterQuality: FilterQuality.high,
+      ),
+    );
+  }
+}
+
 class HeaderLogoButton extends StatelessWidget {
   final double size;
 

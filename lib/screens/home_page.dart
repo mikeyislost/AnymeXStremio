@@ -335,10 +335,7 @@ class _HomePageState extends State<HomePage> {
                 scrollController: _scrollController,
                 headerContent: Header(
                   plain: true,
-                  leading: const HeaderLogoButton(),
-                  title: 'Yumori',
-                  titleColor: Theme.of(context).colorScheme.primary,
-                  subtitleWidget: const HeaderGreetingSubtitle(),
+                  leading: const HeaderWordmarkButton(),
                   actions: [
                     HeaderActionButton(
                       icon: IconlyLight.search,

@@ -420,8 +420,9 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
   Widget _slide(BuildContext context, CatItem it, int i) {
     // Wide screens use the wide art, phones the poster (sharper there).
     final wide = MediaQuery.of(context).size.width > widget.height * 1.15;
-    final art = _sharp(
-        wide ? YumoriHeroArt.backdrop(it) : YumoriHeroArt.poster(it));
+    final art = wide
+        ? _sharp(YumoriHeroArt.backdrop(it))
+        : YumoriHeroArt.poster(it); // phone: no oversized originals
     final meta = [
       it.kindLabel[0] + it.kindLabel.substring(1).toLowerCase(),
       if (it.genre.isNotEmpty) it.genre,
@@ -433,26 +434,41 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          AnymeXImage(
-            imageUrl: art,
-            radius: 0,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-          ),
-          // Dark at the top (so the header reads) and at the bottom (text).
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: [0.0, 0.22, 0.5, 1.0],
-                colors: [
-                  Color(0xCC0D0A16),
-                  Color(0x330D0A16),
-                  Color(0x660D0A16),
-                  Color(0xFF0D0A16),
-                ],
-              ),
+          // The art fades out at the bottom so it blends into the page.
+          ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (r) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.55, 1.0],
+              colors: [Colors.black, Colors.black, Colors.transparent],
+            ).createShader(r),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                AnymeXImage(
+                  imageUrl: art,
+                  radius: 0,
+                  width: MediaQuery.sizeOf(context).width,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.0, 0.22, 0.5, 1.0],
+                      colors: [
+                        Color(0xCC0D0A16),
+                        Color(0x330D0A16),
+                        Color(0x660D0A16),
+                        Color(0xB30D0A16),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Positioned(
