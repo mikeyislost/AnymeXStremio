@@ -54,7 +54,6 @@ const plusMangaRows = <(String, String)>[
 /// anything: For you and the two Trending rows.
 const plusHomeMoviesPrefix = 'mv:';
 const plusHomeMoviesShown = {
-  'mv:forYou',
   'mv:tmdb:trending-movies',
   'mv:tmdb:trending-series',
 };
@@ -105,9 +104,14 @@ class PlusPageRows {
           styled: false),
       const PlusRowSpec('newEpisodes', 'New episodes', styled: false),
       for (final e in cards.entries)
-        if (!e.key.startsWith('Recommended'))
+        if (!e.key.startsWith('Recommended')) ...[
           PlusRowSpec('list:${e.key}', e.key, shownByDefault: e.value),
-      const PlusRowSpec('forYou', 'For you', styled: false),
+          // "For you" sits right under Continue Watching by default.
+          if (e.key.contains('Continue'))
+            const PlusRowSpec('forYou', 'For you', styled: false),
+        ],
+      if (!cards.keys.any((k) => k.contains('Continue')))
+        const PlusRowSpec('forYou', 'For you', styled: false),
       for (final (name, _) in PlusCustomLists.lists)
         PlusRowSpec('custom:$name', name),
       const PlusRowSpec('missedSequels', 'Missed sequels'),
@@ -129,11 +133,6 @@ class PlusPageRows {
   static List<PlusRowSpec> homeMoviesSpecs() {
     final hasStremio = Get.isRegistered<StremioService>();
     return [
-      if (hasStremio && PlusBuiltinRows.enabled)
-        PlusRowSpec('${plusHomeMoviesPrefix}forYou', 'For you · Movies & TV',
-            shownByDefault:
-                plusHomeMoviesShown.contains('${plusHomeMoviesPrefix}forYou'),
-            styled: false),
       for (final b in PlusBuiltinRows.available)
         PlusRowSpec('$plusHomeMoviesPrefix${b.layoutKey}', b.title,
             shownByDefault: plusHomeMoviesShown
@@ -145,10 +144,9 @@ class PlusPageRows {
   static Widget? homeMoviesRow(String key) {
     if (!key.startsWith(plusHomeMoviesPrefix)) return null;
     final k = key.substring(plusHomeMoviesPrefix.length);
-    if (k == 'forYou') {
-      if (!Get.isRegistered<StremioService>()) return null;
-      return const PlusForYouMoviesRow(title: 'For you · Movies & TV');
-    }
+    // "For you" is one merged row now (anime + Movies & TV); an old saved
+    // 'mv:forYou' entry shows nothing.
+    if (k == 'forYou') return null;
     final b = PlusBuiltinRows.byLayoutKey(k);
     if (b == null || !PlusBuiltinRows.enabled) return null;
     return PlusBuiltinCarousel(key: ValueKey('home-$k'), row: b, title: b.title);

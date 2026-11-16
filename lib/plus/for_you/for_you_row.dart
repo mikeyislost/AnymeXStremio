@@ -57,6 +57,67 @@ class PlusForYouAnimeRow extends StatelessWidget {
   }
 }
 
+/// "For you" on Home: anime picks (from your AniList) and Movies & TV picks
+/// (from your Stremio library) together in ONE row, interleaved.
+class PlusForYouMergedRow extends StatelessWidget {
+  final String title;
+  const PlusForYouMergedRow({super.key, this.title = 'For you'});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAnilist = Get.isRegistered<AnilistAuth>();
+    final hasMovies =
+        MoviesForYou.tmdbKey != null && Get.isRegistered<StremioService>();
+    if (!hasAnilist && !hasMovies) return const SizedBox.shrink();
+    return Obx(() {
+      PlusTaste.version.value; // recompute after "Not interested"
+
+      if (hasAnilist) {
+        final auth = Get.find<AnilistAuth>();
+        final list = auth.animeList.toList();
+        if (auth.isLoggedIn.value && list.isNotEmpty) {
+          final favourites = <AnimeFavourite>[
+            for (final f in auth.profileData.value.favourites?.anime ?? const [])
+              if (f.id != null)
+                (id: f.id!, title: f.title ?? '?', genres: f.genres),
+          ];
+          Future.microtask(() => AnimeForYou.ensure(list, favourites));
+        }
+      }
+      final anime = hasAnilist ? AnimeForYou.picks.toList() : <ForYouPick>[];
+
+      var movies = <ForYouPick>[];
+      if (hasMovies) {
+        final service = StremioService.to;
+        service.libraryRevision.value;
+        PlusTaste.ensureLoaded();
+        final marks = Map<String, TasteMark>.of(PlusTaste.marks);
+        if (!service.libraryLoading.value) {
+          final items = service.allLibraryItems.toList();
+          Future.microtask(() => MoviesForYou.ensure(items, marks));
+        }
+        movies = MoviesForYou.picks.toList();
+      }
+
+      // One after the other so neither kind pushes the other off the row.
+      final picks = <ForYouPick>[];
+      for (var i = 0; i < anime.length || i < movies.length; i++) {
+        if (i < anime.length) picks.add(anime[i]);
+        if (i < movies.length) picks.add(movies[i]);
+      }
+      if (picks.isEmpty) return const SizedBox.shrink();
+      return PlusForYouRow(
+        picks: picks,
+        title: title,
+        onHidden: (p) {
+          AnimeForYou.picks.removeWhere((x) => x.key == p.key);
+          MoviesForYou.picks.removeWhere((x) => x.key == p.key);
+        },
+      );
+    });
+  }
+}
+
 /// "For you" on Movies & TV, from your Stremio library and history plus
 /// what you Liked / Loved.
 class PlusForYouMoviesRow extends StatelessWidget {
@@ -183,7 +244,7 @@ class PlusForYouRow extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 90 + 8 + 18 + 32 + 14,
+            height: 190 + 8 + 20 + 34 + 16,
             child: ListView.builder(
               key: PageStorageKey<String>('foryou-$title-${picks.first.kind}'),
               itemCount: picks.length,
@@ -200,19 +261,19 @@ class PlusForYouRow extends StatelessWidget {
                       onLongPress: () => _actions(context, p, tag),
                       onSecondaryTap: () => _actions(context, p, tag),
                       child: Container(
-                        width: 150,
-                        margin: const EdgeInsets.only(right: 12),
+                        width: 190,
+                        margin: const EdgeInsets.only(right: 14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             SizedBox(
-                              width: 150,
-                              height: 90,
+                              width: 190,
+                              height: 190,
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
                                   ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(20),
                                     child: AnymeXImage(
                                       imageUrl: p.poster,
                                       radius: 0,
@@ -222,22 +283,47 @@ class PlusForYouRow extends StatelessWidget {
                                   ),
                                   DecoratedBox(
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                           color: const Color(0x2EFFFFFF)),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: 10,
+                                    top: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 9, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xB313101C),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        p.kind == 'anime'
+                                            ? 'ANIME'
+                                            : (p.kind == 'movie'
+                                                ? 'MOVIE'
+                                                : 'SERIES'),
+                                        style: YumoriText.ui(
+                                                size: 9,
+                                                weight: FontWeight.w700,
+                                                color: YumoriColors.firefly)
+                                            .copyWith(letterSpacing: 1.4),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+                              padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
                               child: Text(
                                 p.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: YumoriText.ui(
-                                    size: 12, weight: FontWeight.w600),
+                                    size: 14, weight: FontWeight.w600),
                               ),
                             ),
                             Padding(
@@ -247,7 +333,7 @@ class PlusForYouRow extends StatelessWidget {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: YumoriText.ui(
-                                    size: 11,
+                                    size: 12,
                                     color: YumoriColors.text
                                         .withOpacity(0.65)),
                               ),

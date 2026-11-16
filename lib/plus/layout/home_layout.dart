@@ -71,7 +71,7 @@ class PlusHomeLayoutSliver extends StatelessWidget {
         } else if (k.startsWith('list:')) {
           w = PlusPageRows.listRow(plusListLabel(k), home: true);
         } else if (k == 'forYou') {
-          w = const PlusForYouAnimeRow();
+          w = const PlusForYouMergedRow();
         } else if (k.startsWith('custom:')) {
           w = PlusPageRows.customListRow(k.substring('custom:'.length));
         } else if (k == 'missedSequels') {

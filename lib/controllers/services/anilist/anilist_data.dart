@@ -243,7 +243,7 @@ class AnilistData extends GetxController implements BaseService, OnlineService {
         }),
         // AnymeX+: picks for you, your AniList custom lists, then sequels
         // of finished anime that aren't on your list.
-        const PlusForYouAnimeRow(),
+        const PlusForYouMergedRow(),
         const PlusCustomListRows(),
         const PlusMissedSequelsRow(),
       ],
