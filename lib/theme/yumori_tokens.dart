@@ -7,22 +7,21 @@ abstract final class YumoriColors {
   static const Color background = Color(0xFF0D0A16);
   static const Color surface = Color(0xFF13101C);
   static const Color card = Color(0xFF1B152A);
-  static const Color lavender = Color(0xFFCDB8F7);
+  static const Color lavender = Color(0xFFBFB0E4);
   static const Color onLavender = Color(0xFF1A1426);
-  static const Color accent = Color(0xFFA786E2);
-  static const Color firefly = Color(0xFFFDE4CA);
+  static const Color accent = Color(0xFF8F7CC4);
+  static const Color firefly = Color(0xFFE4E0EE);
   static const Color text = Color(0xFFF3F0FA);
 }
 
 abstract final class YumoriText {
-  /// Titles: Playfair Display, italic, bold. Falls back to the system serif
-  /// while the font downloads (google_fonts caches it after first use).
+  /// Titles: Urbanist, semi-bold, straight (clean and professional).
   static TextStyle title({double size = 32, Color? color}) {
-    return GoogleFonts.playfairDisplay(
+    return GoogleFonts.urbanist(
       fontSize: size,
-      fontStyle: FontStyle.italic,
       fontWeight: FontWeight.w700,
-      height: 1.04,
+      letterSpacing: -size * 0.012,
+      height: 1.1,
       color: color ?? YumoriColors.text,
     );
   }

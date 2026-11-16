@@ -153,13 +153,6 @@ class YumoriProgressLine extends StatelessWidget {
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: YumoriColors.firefly,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0xB3FDE4CA),
-                                      blurRadius: 9,
-                                      spreadRadius: 3,
-                                    ),
-                                  ],
                                 ),
                               ),
                             ),

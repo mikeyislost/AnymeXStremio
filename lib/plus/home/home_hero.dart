@@ -478,14 +478,6 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
                   decoration: BoxDecoration(
                     color: YumoriColors.lavender,
                     borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: YumoriColors.lavender.withOpacity(0.5),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                        spreadRadius: -6,
-                      ),
-                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
