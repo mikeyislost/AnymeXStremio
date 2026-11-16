@@ -78,6 +78,8 @@ class UpdateManager {
     bool isBeta = false,
     bool manualCheck = false,
   }) async {
+    // Preview builds (from a test branch) never offer a release update.
+    if (AppChannel.versionTag == 'preview' && !manualCheck) return;
     if (canShowUpdate.value) {
       canShowUpdate.value = false;
 

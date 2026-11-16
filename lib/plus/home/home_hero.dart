@@ -27,6 +27,8 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
   List<CatItem> _items = const [];
   int _index = 0;
   Timer? _timer;
+  Timer? _retry;
+  int _tries = 0;
 
   @override
   void initState() {
@@ -37,6 +39,7 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
   @override
   void dispose() {
     _timer?.cancel();
+    _retry?.cancel();
     _page.dispose();
     super.dispose();
   }
@@ -48,13 +51,15 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       _set(_cache!);
       return;
     }
+    Future<List<CatItem>> safe(Future<List<CatItem>> f) =>
+        f.catchError((_) => <CatItem>[]);
     final parts = await Future.wait<List<CatItem>>([
-      CatAnilist.list({
+      safe(CatAnilist.list({
         'sort': ['TRENDING_DESC'],
         'page': 1
-      }),
-      CatMovies.row('trending-movies'),
-      CatMovies.row('trending-series'),
+      })),
+      safe(CatMovies.row('trending-movies')),
+      safe(CatMovies.row('trending-series')),
     ]);
     bool ok(CatItem i) => i.backdrop.isNotEmpty || i.poster.isNotEmpty;
     final mixed = CatCategory.interleave([
@@ -62,15 +67,29 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       parts[1].where(ok).take(3).toList(),
       parts[2].where(ok).take(3).toList(),
     ]);
-    if (mixed.isEmpty) return;
-    _cache = mixed;
-    _at = DateTime.now();
-    _set(mixed);
+    final complete = parts.every((p) => p.isNotEmpty);
+    if (mixed.isNotEmpty) {
+      _set(mixed);
+      // Only remember a result that has every source in it.
+      if (complete) {
+        _cache = mixed;
+        _at = DateTime.now();
+      }
+    }
+    // A source that was not ready yet (network, Stremio setup): try again.
+    if (!complete && _tries < 5 && mounted) {
+      _tries++;
+      _retry?.cancel();
+      _retry = Timer(const Duration(seconds: 8), _load);
+    }
   }
 
   void _set(List<CatItem> items) {
     if (!mounted) return;
-    setState(() => _items = items);
+    setState(() {
+      _items = items;
+      if (_index >= items.length) _index = 0;
+    });
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (!mounted || !_page.hasClients || _items.length < 2) return;
@@ -125,8 +144,21 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
     );
   }
 
+  /// The biggest copy of an image where the host offers one.
+  static String _sharp(String url) {
+    final tmdb = RegExp(r'(image\.tmdb\.org/t/p/)(w\d+|original)/');
+    if (tmdb.hasMatch(url)) {
+      return url.replaceFirstMapped(tmdb, (m) => '${m[1]}original/');
+    }
+    return url.replaceFirst('/poster/medium/', '/poster/large/');
+  }
+
   Widget _slide(BuildContext context, CatItem it, int i) {
-    final art = it.backdrop.isNotEmpty ? it.backdrop : it.poster;
+    // Wide screens use the wide art, phones the poster (sharper there).
+    final wide = MediaQuery.of(context).size.width > widget.height * 1.15;
+    final art = _sharp(wide
+        ? (it.backdrop.isNotEmpty ? it.backdrop : it.poster)
+        : (it.poster.isNotEmpty ? it.poster : it.backdrop));
     final meta = [
       it.kindLabel[0] + it.kindLabel.substring(1).toLowerCase(),
       if (it.genre.isNotEmpty) it.genre,
