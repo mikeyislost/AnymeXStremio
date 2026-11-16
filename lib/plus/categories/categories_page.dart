@@ -2,6 +2,7 @@
 // category opens one grid of anime + movies + series with All / Anime /
 // Movies / Series filters, loading more as you scroll.
 
+import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'dart:math' as math;
 
 import 'package:anymex/models/Media/media.dart';
