@@ -240,11 +240,7 @@ class AnymeXScaffold extends StatelessWidget {
             ),
             if (!settings.disableGradient && !isOled)
               Positioned.fill(
-                child: _buildLightweightGlow(
-                  theme: theme,
-                  begin: begin,
-                  end: end,
-                ),
+                child: const YumoriMeshBackground(),
               ),
             themedCh,
           ],
@@ -299,19 +295,16 @@ class AnymeXScaffold extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _buildCachedColorFilteredImage(
-                    context: context,
-                    imagePath: imagePath,
-                    color: tintColor,
-                  ),
+                  if (hasCustomBg)
+                    _buildCachedColorFilteredImage(
+                      context: context,
+                      imagePath: imagePath,
+                      color: tintColor,
+                    )
+                  else if (!isOled)
+                    const YumoriMeshBackground(),
                   if (!hasCustomBg) ...[
-                    if (isOled)
-                      Container(color: Colors.black)
-                    else
-                      _buildGradientOverlay(
-                        gradientVariant: GradientVariant.subtle,
-                        theme: theme,
-                      ),
+                    if (isOled) Container(color: Colors.black),
                   ],
                 ],
               ),
@@ -668,6 +661,39 @@ class _HeaderBodyShellState extends State<_HeaderBodyShell> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+
+/// A soft blurred mesh gradient (drawn, so it is sharp at any size).
+class YumoriMeshBackground extends StatelessWidget {
+  const YumoriMeshBackground({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget blob(Alignment at, Color c, double radius) => Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: at,
+                radius: radius,
+                colors: [c, c.withOpacity(0)],
+              ),
+            ),
+          ),
+        );
+    return RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: Color(0xFF0D0A16)),
+          blob(const Alignment(-0.9, -0.9), const Color(0x886C4FC2), 1.1),
+          blob(const Alignment(1.0, -0.4), const Color(0x665C6BD6), 0.9),
+          blob(const Alignment(-0.3, 0.6), const Color(0x558F5FC9), 1.0),
+          blob(const Alignment(1.0, 1.0), const Color(0x663B4FB0), 1.0),
+        ],
       ),
     );
   }
