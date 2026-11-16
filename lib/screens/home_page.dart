@@ -240,6 +240,10 @@ class _HomePageState extends State<HomePage> {
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
+            // PC: the Featured art sits fixed behind the whole page.
+            if (isDesktop)
+              Positioned.fill(
+                  child: YumoriHeroBackdrop(scroll: _scrollController)),
             CustomScrollView(
               controller: _scrollController,
               cacheExtent: 1200.0, // AnymeX+: nearby rows stay built
@@ -255,7 +259,11 @@ class _HomePageState extends State<HomePage> {
                         )
                       : YumoriHomeHero(
                           topInset: statusBarHeight + appBarHeight,
-                          height: isDesktop ? 480 : 560),
+                          fullScreen: isDesktop,
+                          height: isDesktop
+                              ? (MediaQuery.sizeOf(context).height - 250)
+                                  .clamp(420.0, 900.0)
+                              : 560),
                 ),
                 // AnymeX+: with AniList, Home is your layout (Edit layout):
                 // your rows and the Anime tab's, in your order.

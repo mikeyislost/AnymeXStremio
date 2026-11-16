@@ -9,11 +9,99 @@ import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:flutter/material.dart';
 
+/// The item the hero is showing, shared with the full-screen backdrop.
+class YumoriHeroBus {
+  static final current = ValueNotifier<CatItem?>(null);
+}
+
+/// PC / TV style: the art of the current Featured item fixed behind the
+/// whole Home page; it darkens as the page scrolls.
+class YumoriHeroBackdrop extends StatelessWidget {
+  final ScrollController scroll;
+  const YumoriHeroBackdrop({super.key, required this.scroll});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<CatItem?>(
+      valueListenable: YumoriHeroBus.current,
+      builder: (context, it, _) {
+        if (it == null) return const SizedBox.expand();
+        final art = _YumoriHomeHeroState._sharp(
+            it.backdrop.isNotEmpty ? it.backdrop : it.poster);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 700),
+              child: SizedBox.expand(
+                key: ValueKey(it.key),
+                child: AnymeXImage(
+                  imageUrl: art,
+                  radius: 0,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                ),
+              ),
+            ),
+            // Dark on the left (text) and at the bottom (rows).
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  stops: [0.0, 0.4, 0.8],
+                  colors: [
+                    Color(0xF20D0A16),
+                    Color(0x990D0A16),
+                    Color(0x000D0A16),
+                  ],
+                ),
+              ),
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.18, 0.6, 1.0],
+                  colors: [
+                    Color(0xAA0D0A16),
+                    Color(0x000D0A16),
+                    Color(0x330D0A16),
+                    Color(0xF20D0A16),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedBuilder(
+              animation: scroll,
+              builder: (context, _) {
+                final off = scroll.hasClients ? scroll.offset : 0.0;
+                final t = (off / 380).clamp(0.0, 1.0);
+                return ColoredBox(
+                    color: const Color(0xFF0D0A16).withOpacity(0.78 * t));
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class YumoriHomeHero extends StatefulWidget {
   /// Space the header takes at the top (status bar + bar), kept clear of text.
   final double topInset;
   final double height;
-  const YumoriHomeHero({super.key, required this.topInset, this.height = 560});
+
+  /// PC / TV: no art here (the backdrop behind the page shows it); big
+  /// title on the left and a strip of small posters to pick from.
+  final bool fullScreen;
+  const YumoriHomeHero(
+      {super.key,
+      required this.topInset,
+      this.height = 560,
+      this.fullScreen = false});
 
   @override
   State<YumoriHomeHero> createState() => _YumoriHomeHeroState();
@@ -90,9 +178,16 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       _items = items;
       if (_index >= items.length) _index = 0;
     });
+    YumoriHeroBus.current.value = items[_index];
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted || !_page.hasClients || _items.length < 2) return;
+      if (!mounted || _items.length < 2) return;
+      if (widget.fullScreen) {
+        setState(() => _index = (_index + 1) % _items.length);
+        YumoriHeroBus.current.value = _items[_index];
+        return;
+      }
+      if (!_page.hasClients) return;
       _page.animateToPage((_index + 1) % _items.length,
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeInOutCubic);
@@ -104,6 +199,7 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
     if (_items.isEmpty) {
       return SizedBox(height: widget.topInset + 20);
     }
+    if (widget.fullScreen) return _fullScreen(context);
     final h = widget.height;
     return SizedBox(
       height: h,
@@ -113,7 +209,10 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
           PageView.builder(
             controller: _page,
             itemCount: _items.length,
-            onPageChanged: (i) => setState(() => _index = i),
+            onPageChanged: (i) {
+              setState(() => _index = i);
+              YumoriHeroBus.current.value = _items[i];
+            },
             itemBuilder: (context, i) => _slide(context, _items[i], i),
           ),
           Positioned(
@@ -140,6 +239,129 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _fullScreen(BuildContext context) {
+    final it = _items[_index.clamp(0, _items.length - 1)];
+    final meta = [
+      it.kindLabel[0] + it.kindLabel.substring(1).toLowerCase(),
+      if (it.genre.isNotEmpty) it.genre,
+      if (it.year.isNotEmpty) it.year,
+    ].join(' · ');
+    final tag = 'hero-${it.key}-$_index';
+    return SizedBox(
+      height: widget.height,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(40, widget.topInset, 40, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Spacer(),
+            Row(children: [
+              Text(meta,
+                  style: YumoriText.ui(
+                      size: 13, color: YumoriColors.text.withOpacity(0.8))),
+              if (it.rating.isNotEmpty) ...[
+                const SizedBox(width: 14),
+                const Icon(Icons.star_rounded,
+                    size: 16, color: YumoriColors.firefly),
+                const SizedBox(width: 4),
+                Text(it.rating,
+                    style: YumoriText.ui(
+                        size: 13, color: YumoriColors.firefly)),
+              ],
+            ]),
+            const SizedBox(height: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: Text(it.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: YumoriText.title(size: 56).copyWith(height: 1.05)),
+            ),
+            if (it.overview.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Text(it.overview,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: YumoriText.ui(
+                            size: 14,
+                            color: YumoriColors.text.withOpacity(0.85))
+                        .copyWith(height: 1.5)),
+              ),
+            ],
+            const SizedBox(height: 18),
+            GestureDetector(
+              onTap: () => openCatItem(it, tag),
+              child: Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 26),
+                decoration: BoxDecoration(
+                  color: YumoriColors.lavender,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.play_arrow_rounded,
+                      size: 20, color: YumoriColors.onLavender),
+                  const SizedBox(width: 6),
+                  Text('View details',
+                      style: YumoriText.ui(
+                          size: 14,
+                          weight: FontWeight.w700,
+                          color: YumoriColors.onLavender)),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              height: 84,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _items.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, i) {
+                  final t = _items[i];
+                  final on = i == _index;
+                  return GestureDetector(
+                    onTap: () {
+                      _timer?.cancel();
+                      setState(() => _index = i);
+                      YumoriHeroBus.current.value = t;
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: on
+                                ? YumoriColors.lavender
+                                : Colors.transparent,
+                            width: 2),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Opacity(
+                          opacity: on ? 1 : 0.6,
+                          child: AnymeXImage(
+                              imageUrl: t.poster.isNotEmpty
+                                  ? t.poster
+                                  : t.backdrop,
+                              radius: 0,
+                              fit: BoxFit.cover),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

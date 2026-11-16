@@ -130,7 +130,13 @@ class PlusHomeHero extends StatelessWidget {
       if (hero.isNotEmpty && hero.first.config.hidden) {
         return SizedBox(height: topInset + 10);
       }
-      return YumoriHomeHero(topInset: topInset, height: isDesktop ? 480 : 560);
+      return YumoriHomeHero(
+        topInset: topInset,
+        fullScreen: isDesktop,
+        height: isDesktop
+            ? (MediaQuery.sizeOf(context).height - 250).clamp(420.0, 900.0)
+            : 560,
+      );
     });
   }
 }
