@@ -25,8 +25,27 @@ import 'package:anymex/widgets/media_items/media_item.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_iconly/flutter_iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+
+void openAnimeSearch(ServiceHandler handler) {
+  switch (handler.serviceType.value) {
+    case ServicesType.simkl:
+      navigate(() => const SearchPage(
+            searchTerm: '',
+            isManga: false,
+            type: ItemType.anime,
+          ));
+    case ServicesType.extensions:
+      navigateWithAnimation(() => const SourceSearchPage(
+            initialTerm: '',
+            type: ItemType.anime,
+          ));
+    default:
+      navigate(() => const SearchPage(searchTerm: '', isManga: false));
+  }
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -176,24 +195,6 @@ class _HomePageState extends State<HomePage> {
   ScrollController get scrollController => _scrollController;
 
   /// Exactly what the Anime tab's search button opened.
-  void _openAnimeSearch(ServiceHandler handler) {
-    switch (handler.serviceType.value) {
-      case ServicesType.simkl:
-        navigate(() => const SearchPage(
-              searchTerm: '',
-              isManga: false,
-              type: ItemType.anime,
-            ));
-      case ServicesType.extensions:
-        navigateWithAnimation(() => const SourceSearchPage(
-              initialTerm: '',
-              type: ItemType.anime,
-            ));
-      default:
-        navigate(() => const SearchPage(searchTerm: '', isManga: false));
-    }
-  }
-
   bool _showDiscoverOnHome(Settings settings, ServiceHandler handler) {
     if (handler.serviceType.value == ServicesType.extensions) return false;
     final tabs = settings.navigationTabOrder;
@@ -285,29 +286,7 @@ class _HomePageState extends State<HomePage> {
                         ? CrossAxisAlignment.center
                         : CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 10),
-                      // AnymeX+: the Anime tab's search, now on Home.
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isDesktop ? 8.0 : 4.0,
-                        ),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 640),
-                          child: Obx(() {
-                            final isSimkl = serviceHandler.serviceType.value ==
-                                ServicesType.simkl;
-                            return TappableSearchBar(
-                              chipLabel: isSimkl ? 'MOVIES' : 'ANIME',
-                              hintText: isSimkl
-                                  ? 'Search movies...'
-                                  : 'Search anime...',
-                              onSubmitted: () =>
-                                  _openAnimeSearch(serviceHandler),
-                            );
-                          }),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 14),
                     ],
                   ),
                 ),
@@ -384,7 +363,15 @@ class _HomePageState extends State<HomePage> {
                   title: 'Yumori',
                   titleColor: Theme.of(context).colorScheme.primary,
                   subtitleWidget: const HeaderGreetingSubtitle(),
-                  actions: const [HeaderProfileAvatar()],
+                  actions: [
+                    HeaderActionButton(
+                      icon: IconlyLight.search,
+                      onTap: () =>
+                          openAnimeSearch(Get.find<ServiceHandler>()),
+                    ),
+                    const SizedBox(width: 8),
+                    const HeaderProfileAvatar(),
+                  ],
                 ),
                 visibleStatusBarStyle: SystemUiOverlayStyle(
                   statusBarIconBrightness:

@@ -97,9 +97,6 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
               isMarquee: true,
             ),
           ),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded,
-              size: 20, color: context.colors.onSurface),
         ],
       ),
     );

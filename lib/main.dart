@@ -723,6 +723,7 @@ class _FilterScreenState extends State<FilterScreen> {
             // Yumori: top bar (wordmark, tab pills, profile bubble).
             return YumoriTopBar(
                       currentIndex: validIndex,
+                      onSearch: () => openAnimeSearch(authService),
                       items: [
                         NavItem(
                             unselectedIcon: IconlyBold.profile,

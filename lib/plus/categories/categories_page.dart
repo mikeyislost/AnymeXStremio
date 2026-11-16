@@ -109,43 +109,104 @@ class CategoriesPage extends StatelessWidget {
   }
 }
 
+/// First poster of each category, fetched one after another (cached) so the
+/// tiles don't hammer AniList / TMDB all at once.
+class _TilePosters {
+  static final _cache = <String, Future<String?>>{};
+  static Future<void> _tail = Future.value();
+
+  static Future<String?> of(CatCategory c) {
+    return _cache.putIfAbsent(c.name, () {
+      final next = _tail.then((_) async {
+        try {
+          final items = await c.load(page: 1);
+          for (final i in items) {
+            if (i.poster.isNotEmpty) return i.poster;
+          }
+        } catch (_) {}
+        return null;
+      });
+      _tail = next.then((_) {}, onError: (_) {});
+      return next;
+    });
+  }
+}
+
 class _CategoryTile extends StatelessWidget {
   final CatCategory category;
   const _CategoryTile({required this.category});
 
   @override
   Widget build(BuildContext context) {
-    // A steady tint per category, from its name.
+    // A steady tint per category, from its name (shows until the poster loads).
     final hue = (category.name.hashCode.abs() % 60) + 250.0; // purples → pinks
     final tint = HSLColor.fromAHSL(1, hue % 360, 0.45, 0.22).toColor();
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => CategoryPage(category: category))),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [tint, YumoriColors.card],
-          ),
-          border: Border.all(color: const Color(0x1FF3F0FA)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Text(category.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: YumoriText.title(size: 18)),
-            const SizedBox(height: 2),
-            Text(category.sub,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: YumoriText.ui(
-                    size: 11, color: YumoriColors.text.withOpacity(0.65))),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [tint, YumoriColors.card],
+                ),
+              ),
+            ),
+            FutureBuilder<String?>(
+              future: _TilePosters.of(category),
+              builder: (context, snap) {
+                final url = snap.data;
+                if (url == null) return const SizedBox.shrink();
+                return AnymeXImage(
+                  imageUrl: url,
+                  radius: 0,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                );
+              },
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x00000000), Color(0xE60D0A16)],
+                  stops: [0.35, 1],
+                ),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0x1FF3F0FA)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: YumoriText.title(size: 18)),
+                  const SizedBox(height: 2),
+                  Text(category.sub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: YumoriText.ui(
+                          size: 11,
+                          color: YumoriColors.text.withOpacity(0.75))),
+                ],
+              ),
+            ),
           ],
         ),
       ),

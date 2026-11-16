@@ -13,11 +13,13 @@ import 'package:flutter/material.dart';
 class YumoriTopBar extends StatelessWidget {
   final List<NavItem> items;
   final int currentIndex;
+  final VoidCallback? onSearch;
 
   const YumoriTopBar({
     super.key,
     required this.items,
     required this.currentIndex,
+    this.onSearch,
   });
 
   @override
@@ -41,7 +43,7 @@ class YumoriTopBar extends StatelessWidget {
               child: Row(
                 children: [
                   _Wordmark(color: primary),
-                  const SizedBox(width: 32),
+                  const SizedBox(width: 72),
                   Expanded(
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -61,6 +63,30 @@ class YumoriTopBar extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (onSearch != null) ...[
+                    Tooltip(
+                      message: 'Search',
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: onSearch,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: YumoriColors.card.withValues(alpha: 0.7),
+                            border: Border.all(
+                              color: primary.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Icon(Icons.search_rounded,
+                              size: 22, color: primary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   if (profile != null)
                     Tooltip(
                       message: 'Profile & settings',

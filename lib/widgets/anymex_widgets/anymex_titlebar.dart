@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:anymex/widgets/anymex_widgets/anymex_animated_logo.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -170,21 +169,6 @@ class _TitleBarWidget extends StatelessWidget {
             child: Row(
           children: [
             const SizedBox(width: 16),
-            Container(
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: defaultColor.opaque(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: AnymeXAnimatedLogo(
-                size: 18,
-                autoPlay: true,
-                color: defaultColor,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Image.asset('assets/images/yumori/wordmark.png',
-                height: 22, filterQuality: FilterQuality.high),
             Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,

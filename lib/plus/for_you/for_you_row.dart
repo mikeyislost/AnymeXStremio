@@ -22,6 +22,10 @@ import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:anymex/widgets/helper/tv_wrapper.dart';
+import 'package:anymex/widgets/common/cards/card_gate.dart';
+import 'package:anymex/controllers/settings/methods.dart';
+import 'package:anymex/controllers/settings/settings.dart';
+import 'package:anymex/widgets/helper/platform_builder.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -221,6 +225,8 @@ class PlusForYouRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final cardStyle = settingsController.cardStyle;
+    final h = getCardHeight(cardStyle, getPlatform(context));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5.0),
       child: Column(
@@ -228,28 +234,17 @@ class PlusForYouRow extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 20.0, bottom: 2.0),
-            child: Row(
-              children: [
-                Flexible(
-                  child: AnymeXText(title,
-                      variant: TextVariant.bold,
-                      size: 17,
-                      color: colors.onSurface),
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded,
-                    size: 20, color: colors.onSurface),
-              ],
-            ),
+            child: AnymeXText(title,
+                variant: TextVariant.bold, size: 17, color: colors.onSurface),
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 190 + 8 + 20 + 34 + 16,
+            height: h + 15,
             child: ListView.builder(
               key: PageStorageKey<String>('foryou-$title-${picks.first.kind}'),
               itemCount: picks.length,
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 20, top: 5, bottom: 10),
+              padding: const EdgeInsets.only(left: 15, top: 5, bottom: 10),
               itemBuilder: (context, i) {
                 final p = picks[i];
                 final tag = 'foryou-${p.key}-$i';
@@ -260,86 +255,12 @@ class PlusForYouRow extends StatelessWidget {
                     child: GestureDetector(
                       onLongPress: () => _actions(context, p, tag),
                       onSecondaryTap: () => _actions(context, p, tag),
-                      child: Container(
-                        width: 190,
-                        margin: const EdgeInsets.only(right: 14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 190,
-                              height: 190,
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: AnymeXImage(
-                                      imageUrl: p.poster,
-                                      radius: 0,
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.topCenter,
-                                    ),
-                                  ),
-                                  DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                          color: const Color(0x2EFFFFFF)),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    left: 10,
-                                    top: 10,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 9, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xB313101C),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        p.kind == 'anime'
-                                            ? 'ANIME'
-                                            : (p.kind == 'movie'
-                                                ? 'MOVIE'
-                                                : 'SERIES'),
-                                        style: YumoriText.ui(
-                                                size: 9,
-                                                weight: FontWeight.w700,
-                                                color: YumoriColors.firefly)
-                                            .copyWith(letterSpacing: 1.4),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
-                              child: Text(
-                                p.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: YumoriText.ui(
-                                    size: 14, weight: FontWeight.w600),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
-                              child: Text(
-                                p.reason,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: YumoriText.ui(
-                                    size: 12,
-                                    color: YumoriColors.text
-                                        .withOpacity(0.65)),
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: MediaCardGate(
+                        itemData: cardData(p),
+                        tag: tag,
+                        variant: DataVariant.regular,
+                        type: ItemType.anime,
+                        cardStyleIndex: cardStyle,
                       ),
                     ),
                   ),
