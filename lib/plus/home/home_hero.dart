@@ -224,7 +224,7 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
     });
     YumoriHeroBus.current.value = items[_index];
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
       if (!mounted || _items.length < 2) return;
       if (widget.fullScreen) {
         setState(() => _index = (_index + 1) % _items.length);
@@ -257,7 +257,8 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
               setState(() => _index = i);
               YumoriHeroBus.current.value = _items[i];
             },
-            itemBuilder: (context, i) => _slide(context, _items[i], i),
+            itemBuilder: (context, i) =>
+                RepaintBoundary(child: _slide(context, _items[i], i)),
           ),
           Positioned(
             left: 0,

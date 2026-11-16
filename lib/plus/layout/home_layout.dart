@@ -125,11 +125,8 @@ class PlusHomeHero extends StatelessWidget {
     return Obx(() {
       PlusLayoutStore.version.value;
       settings.uiSettings.value;
-      final rows = PlusPageRows.homeRows(discoverByDefault: discoverByDefault);
-      final hero = rows.where((r) => r.key == 'disc:carousel').toList();
-      if (hero.isNotEmpty && hero.first.config.hidden) {
-        return SizedBox(height: topInset + 10);
-      }
+      // The Featured hero always shows (it replaces the old Trending banner
+      // row, so that row's hide setting no longer applies).
       return YumoriHomeHero(
         topInset: topInset,
         fullScreen: isDesktop,
