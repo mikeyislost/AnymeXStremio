@@ -254,6 +254,13 @@ class _HomePageState extends State<HomePage> {
                     height: isDesktop ? 24.0 : statusBarHeight + appBarHeight + 10,
                   ),
                 ),
+                if (PlusPageRows.appliesTo(serviceHandler))
+                  SliverToBoxAdapter(
+                    child: PlusHomeHero(
+                      discoverByDefault:
+                          _showDiscoverOnHome(settings, serviceHandler),
+                    ),
+                  ),
                 SliverToBoxAdapter(
                   child: Obx(
                     () => Padding(

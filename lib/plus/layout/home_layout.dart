@@ -39,8 +39,9 @@ class PlusHomeLayoutSliver extends StatelessWidget {
       settings.uiSettings.value;
       PlusCustomLists.lists.length;
       final loggedIn = Get.find<AnilistAuth>().isLoggedIn.value;
+      // The trending banner is the hero above the greeting (PlusHomeHero).
       final rows = PlusPageRows.homeRows(discoverByDefault: discoverByDefault)
-          .where((r) => !r.config.hidden)
+          .where((r) => !r.config.hidden && r.key != 'disc:carousel')
           .toList();
       final anilist = handler.anilistService;
       List<Widget>? base, discover;
@@ -97,6 +98,30 @@ class PlusHomeLayoutSliver extends StatelessWidget {
                     page: PlusLayoutPage.home)))
             : rowWidget(rows[i]),
       );
+    });
+  }
+}
+
+/// The trending banner, shown above the greeting (follows its row's
+/// show/hide setting in Edit layout).
+class PlusHomeHero extends StatelessWidget {
+  final bool discoverByDefault;
+  const PlusHomeHero({super.key, required this.discoverByDefault});
+
+  @override
+  Widget build(BuildContext context) {
+    final handler = Get.find<ServiceHandler>();
+    final settings = Get.find<Settings>();
+    return Obx(() {
+      PlusLayoutStore.version.value;
+      settings.uiSettings.value;
+      final rows = PlusPageRows.homeRows(discoverByDefault: discoverByDefault);
+      final hero = rows.where((r) => r.key == 'disc:carousel').toList();
+      if (hero.isEmpty || hero.first.config.hidden) {
+        return const SizedBox.shrink();
+      }
+      final all = handler.anilistService.animeWidgets(context);
+      return all.isEmpty ? const SizedBox.shrink() : all.first;
     });
   }
 }
