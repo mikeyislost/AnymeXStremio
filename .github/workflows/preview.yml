@@ -108,10 +108,11 @@ jobs:
           cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
           (cd build/ios/iphoneos && zip -qr "../../../dist/Yumori-preview.ipa" Payload)
 
-      - uses: actions/upload-artifact@v4
+      # archive: false uploads the .ipa as-is (no zip wrapper)
+      - uses: actions/upload-artifact@v7
         with:
-          name: ios-preview
-          path: dist/*.ipa
+          path: dist/Yumori-preview.ipa
+          archive: false
 
   windows:
     if: ${{ (github.event_name == 'workflow_dispatch' && inputs.windows) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[preview]') && (contains(github.event.head_commit.message, '[win]') || !contains(github.event.head_commit.message, '[ios]'))) }}
@@ -212,10 +213,9 @@ jobs:
         shell: pwsh
         run: |
           flutter build windows --release
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\Yumori-preview-Windows.zip"
 
+      # GitHub zips the upload itself, so send the folder (not a zip of it)
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-preview
-          path: dist/*.zip
+          name: Yumori-preview-Windows
+          path: build/windows/x64/runner/Release/
