@@ -100,9 +100,6 @@ class PlusPageRows {
   static List<PlusRowSpec> homeSpecs({required bool discoverByDefault}) {
     final cards = _homeCards;
     return [
-      const PlusRowSpec('buttons', 'Anime list · Manga list · Other',
-          styled: false),
-      const PlusRowSpec('newEpisodes', 'New episodes', styled: false),
       for (final e in cards.entries)
         if (!e.key.startsWith('Recommended')) ...[
           PlusRowSpec('list:${e.key}', e.key, shownByDefault: e.value),

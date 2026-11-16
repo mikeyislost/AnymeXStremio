@@ -19,6 +19,9 @@ class CatItem {
   final String poster;
   final String rating;
   final String year;
+  final String backdrop; // wide art, for the Home hero
+  final String overview;
+  final String genre;
 
   const CatItem({
     required this.id,
@@ -27,6 +30,9 @@ class CatItem {
     this.poster = '',
     this.rating = '',
     this.year = '',
+    this.backdrop = '',
+    this.overview = '',
+    this.genre = '',
   });
 
   bool get isAnime => kind == 'anime';
@@ -41,6 +47,9 @@ class CatItem {
         poster: p.poster ?? '',
         rating: p.imdbRating ?? '',
         year: p.releaseInfo ?? '',
+        backdrop: p.background ?? '',
+        overview: p.description ?? '',
+        genre: p.genres.isEmpty ? '' : p.genres.first,
       );
 
   factory CatItem.fromAnilistJson(Map m) {
@@ -54,6 +63,14 @@ class CatItem {
       poster: '${cover['extraLarge'] ?? cover['large'] ?? ''}',
       rating: score == null || score == 0 ? '' : (score / 10).toStringAsFixed(1),
       year: m['seasonYear'] == null ? '' : '${m['seasonYear']}',
+      backdrop: '${m['bannerImage'] ?? ''}',
+      overview: '${m['description'] ?? ''}'
+          .replaceAll(RegExp(r'<[^>]*>'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim(),
+      genre: (m['genres'] is List && (m['genres'] as List).isNotEmpty)
+          ? '${(m['genres'] as List).first}'
+          : '',
     );
   }
 }

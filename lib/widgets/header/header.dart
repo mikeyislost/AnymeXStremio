@@ -44,6 +44,9 @@ class Header extends StatelessWidget {
   final bool isSearchActive;
   final Widget? searchBar;
 
+  /// No pill behind it (Home, over the hero).
+  final bool plain;
+
   const Header({
     super.key,
     this.leading,
@@ -56,6 +59,7 @@ class Header extends StatelessWidget {
     this.bottom,
     this.isSearchActive = false,
     this.searchBar,
+    this.plain = false,
   });
 
   factory Header.fromType({
@@ -77,7 +81,7 @@ class Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final isLegacy = settingsController.useLegacyHeader;
+      final isLegacy = plain || settingsController.useLegacyHeader;
       final isDesktop = MediaQuery.sizeOf(context).width > 600;
 
       if (isSearchActive && searchBar != null) {

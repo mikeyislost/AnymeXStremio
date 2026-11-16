@@ -25,6 +25,7 @@ import 'package:anymex/widgets/media_items/media_item.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:anymex/plus/home/home_hero.dart';
 import 'package:flutter_iconly/flutter_iconly.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -224,12 +225,6 @@ class _HomePageState extends State<HomePage> {
     final double bottomNavBarHeight =
         isDesktop ? 20.0 : (MediaQuery.paddingOf(context).bottom + 65.0);
 
-    bool isMobile =
-        getResponsiveValue(context, desktopValue: false, mobileValue: true);
-
-    final TextAlign textAlignment =
-        isMobile ? TextAlign.center : TextAlign.left;
-
     final List<dynamic> novelData = [];
 
     return RefreshIndicator(
@@ -249,53 +244,18 @@ class _HomePageState extends State<HomePage> {
               controller: _scrollController,
               cacheExtent: 1200.0, // AnymeX+: nearby rows stay built
               slivers: [
+                // Moonlit 4: the Featured hero fills the top, behind the header.
                 SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: isDesktop ? 24.0 : statusBarHeight + appBarHeight + 10,
-                  ),
-                ),
-                if (PlusPageRows.appliesTo(serviceHandler))
-                  SliverToBoxAdapter(
-                    child: PlusHomeHero(
-                      discoverByDefault:
-                          _showDiscoverOnHome(settings, serviceHandler),
-                    ),
-                  ),
-                SliverToBoxAdapter(
-                  child: Obx(
-                    () => Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isDesktop ? 24.0 : 20.0,
-                      ),
-                      child: Text.rich(
-                        TextSpan(
-                          style: YumoriText.title(size: 32),
-                          children: [
-                            const TextSpan(text: 'Hey '),
-                            TextSpan(
-                              text: serviceHandler.isLoggedIn.value
-                                  ? serviceHandler.profileData.value.name
-                                  : 'Guest',
-                              style: YumoriText.title(
-                                  size: 32, color: context.colors.primary),
-                            ),
-                            const TextSpan(text: ',\nwhat are we doing today?'),
-                          ],
-                        ),
-                        textAlign: textAlignment,
-                      ),
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: isMobile
-                        ? CrossAxisAlignment.center
-                        : CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 14),
-                    ],
-                  ),
+                  child: PlusPageRows.appliesTo(serviceHandler)
+                      ? PlusHomeHero(
+                          topInset: statusBarHeight + appBarHeight,
+                          isDesktop: isDesktop,
+                          discoverByDefault:
+                              _showDiscoverOnHome(settings, serviceHandler),
+                        )
+                      : YumoriHomeHero(
+                          topInset: statusBarHeight + appBarHeight,
+                          height: isDesktop ? 480 : 560),
                 ),
                 // AnymeX+: with AniList, Home is your layout (Edit layout):
                 // your rows and the Anime tab's, in your order.
@@ -342,7 +302,7 @@ class _HomePageState extends State<HomePage> {
                               color: context.colors.primary,
                             ),
                           ),
-                          ...widgets.map((w) => RepaintBoundary(child: w)),
+                          ...widgets.skip(1).map((w) => RepaintBoundary(child: w)),
                         ],
                       );
                     }),
@@ -366,6 +326,7 @@ class _HomePageState extends State<HomePage> {
                 isVisible: _isAppBarVisibleExternally,
                 scrollController: _scrollController,
                 headerContent: Header(
+                  plain: true,
                   leading: const HeaderLogoButton(),
                   title: 'Yumori',
                   titleColor: Theme.of(context).colorScheme.primary,

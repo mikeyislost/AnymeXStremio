@@ -13,6 +13,7 @@ import 'package:anymex/plus/layout/page_rows.dart';
 import 'package:anymex/plus/missed_sequels.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:flutter/material.dart';
+import 'package:anymex/plus/home/home_hero.dart';
 import 'package:get/get.dart';
 
 /// Home's rows, in your order, as a sliver.
@@ -41,7 +42,10 @@ class PlusHomeLayoutSliver extends StatelessWidget {
       final loggedIn = Get.find<AnilistAuth>().isLoggedIn.value;
       // The trending banner is the hero above the greeting (PlusHomeHero).
       final rows = PlusPageRows.homeRows(discoverByDefault: discoverByDefault)
-          .where((r) => !r.config.hidden && r.key != 'disc:carousel')
+          .where((r) => !r.config.hidden &&
+              r.key != 'disc:carousel' &&
+              r.key != 'buttons' &&
+              r.key != 'newEpisodes')
           .toList();
       final anilist = handler.anilistService;
       List<Widget>? base, discover;
@@ -106,22 +110,27 @@ class PlusHomeLayoutSliver extends StatelessWidget {
 /// show/hide setting in Edit layout).
 class PlusHomeHero extends StatelessWidget {
   final bool discoverByDefault;
-  const PlusHomeHero({super.key, required this.discoverByDefault});
+  final double topInset;
+  final bool isDesktop;
+  const PlusHomeHero({
+    super.key,
+    required this.discoverByDefault,
+    required this.topInset,
+    required this.isDesktop,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final handler = Get.find<ServiceHandler>();
     final settings = Get.find<Settings>();
     return Obx(() {
       PlusLayoutStore.version.value;
       settings.uiSettings.value;
       final rows = PlusPageRows.homeRows(discoverByDefault: discoverByDefault);
       final hero = rows.where((r) => r.key == 'disc:carousel').toList();
-      if (hero.isEmpty || hero.first.config.hidden) {
-        return const SizedBox.shrink();
+      if (hero.isNotEmpty && hero.first.config.hidden) {
+        return SizedBox(height: topInset + 10);
       }
-      final all = handler.anilistService.animeWidgets(context);
-      return all.isEmpty ? const SizedBox.shrink() : all.first;
+      return YumoriHomeHero(topInset: topInset, height: isDesktop ? 480 : 560);
     });
   }
 }

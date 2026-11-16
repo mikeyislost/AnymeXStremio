@@ -1,4 +1,5 @@
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
+import 'package:anymex/screens/anime/misc/list_exporter.dart';
 import 'package:anymex/models/Anilist/anilist_activity.dart';
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
@@ -879,6 +880,33 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             ),
           ],
+          const SizedBox(height: 14),
+          Padding(
+            padding: needsPadding
+                ? EdgeInsets.symmetric(horizontal: isDesktop ? 20.0 : 26.0)
+                : EdgeInsets.zero,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => navigate(
+                        () => const ListExporterPage(isManga: false)),
+                    icon: const Icon(Icons.file_upload_rounded, size: 18),
+                    label: const Text('Export anime list'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => navigate(
+                        () => const ListExporterPage(isManga: true)),
+                    icon: const Icon(Icons.file_upload_rounded, size: 18),
+                    label: const Text('Export manga list'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       );
     }

@@ -654,7 +654,7 @@ class _FilterScreenState extends State<FilterScreen> {
           unselectedIcon: Icons.explore_outlined,
           selectedIcon: Icons.explore_rounded,
           onTap: onTap,
-          label: 'Categories',
+          label: 'Browse',
           subWidget: subWidget,
         );
       case 'Stremio':

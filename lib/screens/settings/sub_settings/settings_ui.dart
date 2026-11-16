@@ -429,7 +429,9 @@ class _SettingsUiState extends State<SettingsUi> {
                                               : (tab == 'Manga'
                                                   ? 'Series'
                                                   : tab))
-                                          : tab,
+                                          : (tab == 'Categories'
+                                              ? 'Browse'
+                                              : tab),
                                       variant: TextVariant.semiBold,
                                     ),
                                   ],
@@ -528,7 +530,9 @@ class _SettingsUiState extends State<SettingsUi> {
                                               : (tab == 'Manga'
                                                   ? 'Series'
                                                   : tab))
-                                          : tab,
+                                          : (tab == 'Categories'
+                                              ? 'Browse'
+                                              : tab),
                                       variant: TextVariant.semiBold,
                                       color: theme.colorScheme.onSurface
                                           .withOpacity(0.6),

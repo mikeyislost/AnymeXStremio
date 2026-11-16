@@ -17,6 +17,8 @@ import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:anymex/widgets/common/anymex_pills.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:flutter/material.dart';
+import 'package:anymex/screens/anime/misc/calendar.dart';
+import 'package:anymex/screens/anime/misc/recommendation.dart';
 import 'package:anymex/widgets/common/title_bar_inset.dart';
 
 void openCatItem(CatItem it, String tag) {
@@ -66,7 +68,7 @@ class CategoriesPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Text('BROWSE',
+                  Text('DISCOVER',
                       style: YumoriText.ui(
                               size: 10,
                               weight: FontWeight.w600,
@@ -76,7 +78,34 @@ class CategoriesPage extends StatelessWidget {
                   Container(width: 36, height: 1, color: YumoriColors.lavender),
                 ]),
                 const SizedBox(height: 8),
-                Text('Categories', style: YumoriText.title(size: 34)),
+                Text('Browse', style: YumoriText.title(size: 34)),
+              ],
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _FeatureTile(
+                    icon: Icons.calendar_month_rounded,
+                    title: 'Calendar',
+                    sub: 'Airing schedule',
+                    onTap: () => navigate(() => const Calendar()),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _FeatureTile(
+                    icon: Icons.auto_awesome,
+                    title: 'AI Picks',
+                    sub: 'Made for you',
+                    onTap: () => navigate(
+                        () => const AIRecommendation(isManga: false)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -106,6 +135,54 @@ class CategoriesPage extends StatelessWidget {
           ],
         const SliverToBoxAdapter(child: SizedBox(height: 140)),
       ],
+    );
+  }
+}
+
+class _FeatureTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String sub;
+  final VoidCallback onTap;
+  const _FeatureTile(
+      {required this.icon,
+      required this.title,
+      required this.sub,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: YumoriColors.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0x1FF3F0FA)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: YumoriColors.lavender),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: YumoriText.ui(size: 14, weight: FontWeight.w700)),
+                  Text(sub,
+                      style: YumoriText.ui(
+                          size: 11,
+                          color: YumoriColors.text.withOpacity(0.65))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
