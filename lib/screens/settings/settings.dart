@@ -191,26 +191,17 @@ class _SettingsPageState extends State<SettingsPage> {
           onTap: () => navigate(cat.destination),
         );
 
-    // Every page is one tap away. Tabs that hold several pages get a heading;
-    // a tab with a single page is just that page's tile.
+    // Every page is one tap away, and every tab is a headed group.
     return SuperListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
         SizedBox(height: headerHeight),
         for (final tab in _tabs)
           if (groups[tab.title] != null && groups[tab.title]!.isNotEmpty)
-            if (groups[tab.title]!.length == 1)
-              _buildTile(
-                icon: tab.icon,
-                title: tab.title,
-                description: tab.description,
-                destination: groups[tab.title]!.first.destination,
-              )
-            else
-              AnymeXSectionBuilder(
-                title: tab.title,
-                children: [for (final c in groups[tab.title]!) catTile(c)],
-              ),
+            AnymeXSectionBuilder(
+              title: tab.title,
+              children: [for (final c in groups[tab.title]!) catTile(c)],
+            ),
         const SizedBox(height: 30),
       ],
     );

@@ -1,3 +1,4 @@
+import 'dart:ui' show PointerDeviceKind;
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/widgets/anymex_widgets/yumori_orbit.dart';
 import 'package:anymex/widgets/common/navbar.dart';
@@ -45,7 +46,14 @@ class YumoriTopBar extends StatelessWidget {
                   _Wordmark(color: primary),
                   const SizedBox(width: 72),
                   Expanded(
-                    child: SingleChildScrollView(
+                    // Fixed in place: no drag-to-scroll (the mouse wheel still
+                    // works if the window is too narrow for every tab).
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context).copyWith(
+                        dragDevices: const <PointerDeviceKind>{},
+                        scrollbars: false,
+                      ),
+                      child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
@@ -61,6 +69,7 @@ class YumoriTopBar extends StatelessWidget {
                             ),
                         ],
                       ),
+                    ),
                     ),
                   ),
                   if (onSearch != null) ...[

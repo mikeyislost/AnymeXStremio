@@ -208,7 +208,10 @@ class _TitleBarWidgetState extends State<_TitleBarWidget> {
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onPanStart: (_) {
-                  windowManager.startDragging();
+                  // Fixed while fullscreen (dragging would pull it out).
+                  if (!AnymeXTitleBar.isFullScreen.value) {
+                    windowManager.startDragging();
+                  }
                 },
                 onDoubleTap: _toggleMaximize,
               ),

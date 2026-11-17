@@ -1,4 +1,7 @@
-import 'package:anymex/plus/search_tabs.dart';
+import 'package:anymex/plus/categories/categories_data.dart';
+import 'package:anymex/plus/categories/categories_page.dart' show openCatItem;
+import 'package:anymex/plus/search/cinemeta_search.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -87,6 +90,24 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   List<ExtensionSearchItem> _extensionSearchItems = [];
 
   List<Media>? _searchResults;
+
+  // Unified search: Movies & Series (Cinemeta) mixed in with the anime hits,
+  // narrowed by the All / Anime / Movies / Series filter.
+  List<CatItem> _plusItems = [];
+  String _plusFilter = 'all'; // all | anime | movie | series
+  String _plusQuery = '';
+  bool get _mixed =>
+      !isExtensionMode &&
+      effectiveType == ItemType.anime &&
+      serviceHandler.serviceType.value != ServicesType.simkl;
+
+  Future<void> _searchPlus(String q) async {
+    _plusQuery = q;
+    if (_plusItems.isNotEmpty) setState(() => _plusItems = []);
+    final items = await CinemetaSearch.search(q);
+    if (!mounted || _plusQuery != q) return;
+    setState(() => _plusItems = items);
+  }
   ViewMode _currentViewMode = ViewMode.grid;
   SearchState _searchState = SearchState.initial;
   String? _errorMessage;
@@ -259,6 +280,8 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
       setState(() {
         _searchState = SearchState.initial;
         _searchResults = null;
+        _plusItems = [];
+        _plusQuery = '';
         _activeFilters = {};
         _errorMessage = null;
         _currentPage = 1;
@@ -306,6 +329,10 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
 
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
+
+    if (_mixed && searchQuery.isNotEmpty) {
+      _searchPlus(searchQuery);
+    }
 
     try {
       final apiFilters = _buildApiFilters(searchQuery);
@@ -749,19 +776,264 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
               _buildControlsSection(),
               _buildActiveFilters(),
               const SizedBox(height: 6),
-              // AnymeX+: a Movies & TV tab next to the anime results.
-              Expanded(
-                child: PlusSearchTabs(
-                  controller: _searchController,
-                  enabled: !isExtensionMode &&
-                      effectiveType == ItemType.anime &&
-                      serviceHandler.serviceType.value != ServicesType.simkl,
-                  anime: _buildMainContent(),
-                ),
-              ),
+              if (_mixed) _buildMixFilter(),
+              Expanded(child: _buildMainContent()),
             ],
           ),
         ));
+  }
+
+  Widget _buildMixFilter() {
+    final colors = context.colors;
+    const tabs = [
+      ('all', 'All'),
+      ('anime', 'Anime'),
+      ('movie', 'Movies'),
+      ('series', 'Series'),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final (key, label) in tabs)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _plusFilter = key),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: _plusFilter == key
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: _plusFilter == key
+                              ? colors.onSurface
+                              : colors.onSurface.withOpacity(0.55),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        height: 2.5,
+                        width: _plusFilter == key ? 22 : 0,
+                        decoration: BoxDecoration(
+                          color: colors.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _norm(String t) =>
+      t.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+  /// Anime hits and Cinemeta hits, mixed one for one, narrowed by the filter.
+  List<_SearchHit> _mixedHits() {
+    final anime = <_SearchHit>[];
+    if (_plusFilter == 'all' || _plusFilter == 'anime') {
+      for (final m in _searchResults ?? const <Media>[]) {
+        anime.add(_SearchHit(
+          title: m.title,
+          poster: m.poster,
+          rating: m.rating == '??' ? '' : m.rating,
+          year: '',
+          kind: 'anime',
+          onTap: () => _navigateToDetails(m, '${m.id}-search-mix'),
+        ));
+      }
+    }
+    final seen = {for (final h in anime) _norm(h.title)};
+    final others = <_SearchHit>[];
+    if (_plusFilter != 'anime') {
+      for (final it in _plusItems) {
+        if (_plusFilter != 'all' && it.kind != _plusFilter) continue;
+        // The same show can be in both catalogs; keep the anime entry.
+        if (_plusFilter == 'all' && seen.contains(_norm(it.title))) continue;
+        others.add(_SearchHit(
+          title: it.title,
+          poster: it.poster,
+          rating: it.rating,
+          year: it.year,
+          kind: it.kind,
+          onTap: () => openCatItem(it, 'search-${it.key}'),
+        ));
+      }
+    }
+    final out = <_SearchHit>[];
+    final n = anime.length > others.length ? anime.length : others.length;
+    for (var i = 0; i < n; i++) {
+      if (i < anime.length) out.add(anime[i]);
+      if (i < others.length) out.add(others[i]);
+    }
+    return out;
+  }
+
+  Widget _buildMixedResults() {
+    final hits = _mixedHits();
+    if (hits.isEmpty) {
+      return _plusFilter == 'all' && _searchState == SearchState.loading
+          ? _buildLoadingState()
+          : _buildEmptyState();
+    }
+    final crossAxisCount = getResponsiveValue(context,
+        mobileValue: 3,
+        desktopValue: getResponsiveCrossAxisVal(
+            MediaQuery.sizeOf(context).width,
+            itemWidth: 125));
+    final bottomPadding = MediaQuery.paddingOf(context).bottom + 32.0;
+    final list = _currentViewMode == ViewMode.list;
+    return GridView.builder(
+      controller: _resultsScrollController,
+      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+      physics: const BouncingScrollPhysics(),
+      gridDelegate: list
+          ? const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 1, mainAxisExtent: 110, mainAxisSpacing: 0)
+          : SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 14,
+              childAspectRatio: 0.56,
+            ),
+      itemCount: hits.length + (_isLoadingMore ? 1 : 0),
+      itemBuilder: (context, i) {
+        if (i == hits.length) return const Center(child: YumoriLoader());
+        return list ? _hitRow(hits[i]) : _hitCard(hits[i]);
+      },
+    );
+  }
+
+  Widget _kindChip(String kind) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xB313101C),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          switch (kind) { 'anime' => 'ANIME', 'movie' => 'MOVIE', _ => 'SERIES' },
+          style: YumoriText.ui(
+                  size: 9,
+                  weight: FontWeight.w700,
+                  color: YumoriColors.firefly)
+              .copyWith(letterSpacing: 1.4),
+        ),
+      );
+
+  String _hitSub(_SearchHit h) => [
+        if (h.rating.isNotEmpty) '★ ${h.rating}',
+        if (h.year.isNotEmpty) h.year,
+      ].join(' · ');
+
+  Widget _hitCard(_SearchHit h) {
+    return GestureDetector(
+      onTap: h.onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: AnymeXImage(
+                      imageUrl: h.poster, radius: 0, fit: BoxFit.cover),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0x2EFFFFFF)),
+                  ),
+                ),
+                Positioned(left: 8, top: 8, child: _kindChip(h.kind)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
+            child: Text(h.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: YumoriText.ui(size: 13, weight: FontWeight.w600)),
+          ),
+          if (_hitSub(h).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 1, 2, 0),
+              child: Text(_hitSub(h),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: YumoriText.ui(
+                      size: 11, color: YumoriColors.text.withOpacity(0.65))),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _hitRow(_SearchHit h) {
+    return GestureDetector(
+      onTap: h.onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: context.colors.surfaceContainerHighest.opaque(0.3),
+          border: Border.all(
+              color: context.colors.outline.opaque(0.1, iReallyMeanIt: true)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AnymeXImage(
+                  width: 56,
+                  height: 86,
+                  imageUrl: h.poster,
+                  radius: 0,
+                  fit: BoxFit.cover),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _kindChip(h.kind),
+                  const SizedBox(height: 6),
+                  Text(h.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: YumoriText.ui(size: 15, weight: FontWeight.w600)),
+                  if (_hitSub(h).isNotEmpty)
+                    Text(_hitSub(h),
+                        style: YumoriText.ui(
+                            size: 12,
+                            color: YumoriColors.text.withOpacity(0.65))),
+                ],
+              ),
+            ),
+            Icon(Iconsax.arrow_right_3,
+                color: context.colors.onSurface.opaque(0.5, iReallyMeanIt: true)),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildModernSearchBar() {
@@ -780,6 +1052,8 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         setState(() {
           _searchState = SearchState.initial;
           _searchResults = null;
+          _plusItems = [];
+          _plusQuery = '';
           _currentPage = 1;
           _isLoadingMore = false;
           _hasMoreResults = false;
@@ -1273,6 +1547,14 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   Widget _buildMainContent() {
     if (isExtensionMode && _selectedSource == null) {
       return _buildAllSourcesContent();
+    }
+
+    if (_mixed &&
+        (_searchState == SearchState.success ||
+            _searchState == SearchState.empty ||
+            _searchState == SearchState.loading) &&
+        (_plusItems.isNotEmpty || (_searchResults?.isNotEmpty ?? false))) {
+      return _buildMixedResults();
     }
 
     switch (_searchState) {
@@ -1804,4 +2086,21 @@ class _MoreOptionsPillContent extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SearchHit {
+  final String title;
+  final String poster;
+  final String rating;
+  final String year;
+  final String kind; // anime | movie | series
+  final VoidCallback onTap;
+  const _SearchHit({
+    required this.title,
+    required this.poster,
+    required this.rating,
+    required this.year,
+    required this.kind,
+    required this.onTap,
+  });
 }
