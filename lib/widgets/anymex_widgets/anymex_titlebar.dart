@@ -14,6 +14,7 @@ import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.
     hide isar;
 import 'package:get/get.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
+import 'package:anymex/plus/home/home_hero.dart';
 
 class AnymeXTitleBar {
   static final ValueNotifier<bool> isFullScreen = ValueNotifier(false);
@@ -125,8 +126,15 @@ class _WindowListener extends WindowListener {
   }
 }
 
-class _TitleBarWidget extends StatelessWidget {
+class _TitleBarWidget extends StatefulWidget {
   const _TitleBarWidget();
+
+  @override
+  State<_TitleBarWidget> createState() => _TitleBarWidgetState();
+}
+
+class _TitleBarWidgetState extends State<_TitleBarWidget> {
+  bool _hover = false;
 
   Future<void> _toggleMaximize() async {
     final maximized = await windowManager.isMaximized();
@@ -145,9 +153,16 @@ class _TitleBarWidget extends StatelessWidget {
     final defaultColor = context.colors.onSurface;
 
     return ValueListenableBuilder<bool>(
+      valueListenable: YumoriHeroBus.active,
+      builder: (context, heroOn, _) => ValueListenableBuilder<bool>(
       valueListenable: AnymeXTitleBar.isTransparent,
-      builder: (context, transparent, _) {
-        return Material(
+      builder: (context, transparentFlag, _) {
+        // Home's Featured picture runs behind the bar: no bar colour there.
+        final transparent = transparentFlag || heroOn;
+        return MouseRegion(
+          onEnter: (_) => setState(() => _hover = true),
+          onExit: (_) => setState(() => _hover = false),
+          child: Material(
           color: Colors.transparent,
           child: Container(
             height: 40,
@@ -178,6 +193,10 @@ class _TitleBarWidget extends StatelessWidget {
                 onDoubleTap: _toggleMaximize,
               ),
             ),
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: _hover ? 1 : 0, // buttons only show on hover
+              child: Row(children: [
             _WindowButton(
               icon: Icons.remove,
               onPressed: () => windowManager.minimize(),
@@ -201,12 +220,15 @@ class _TitleBarWidget extends StatelessWidget {
               isClose: true,
               buttonColor: defaultColor,
             ),
+              ]),
+            ),
           ],
         ),
       ),
-    );
+    ),
+        );
       },
-    );
+    ));
   }
 }
 

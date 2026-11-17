@@ -711,9 +711,11 @@ class _FilterScreenState extends State<FilterScreen> {
       backgroundColor: Provider.of<ThemeProvider>(context).isOled
           ? Colors.black
           : Colors.transparent,
-      body: Stack(children: [
-        // Home's Featured picture runs behind the top bar too.
-        const Positioned.fill(child: YumoriHeroBackdrop()),
+      body: Stack(clipBehavior: Clip.none, children: [
+        // Home's Featured picture runs behind the top bar and the Windows
+        // title bar too (the page sits 40 px below the window's top edge).
+        const Positioned(
+            top: -40, left: 0, right: 0, bottom: 0, child: YumoriHeroBackdrop()),
         Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
