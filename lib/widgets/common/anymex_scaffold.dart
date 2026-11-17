@@ -695,11 +695,19 @@ class _YumoriMeshBackgroundState extends State<YumoriMeshBackground> {
   }
 
   static Future<ui.Image> _build() async {
-    const w = 160.0, h = 320.0;
+    const w = 540.0, h = 1080.0;
     final rec = ui.PictureRecorder();
     final c = Canvas(rec);
     final rect = const Rect.fromLTWH(0, 0, w, h);
-    c.drawRect(rect, Paint()..color = const Color(0xFF0D0A16));
+    // Smooth diagonal base, then a few big soft glows on top.
+    c.drawRect(
+        rect,
+        Paint()
+          ..shader = const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF241B4D), Color(0xFF1A1740), Color(0xFF14102E)],
+          ).createShader(rect));
     void blob(Alignment at, Color col, double radius) {
       c.drawRect(
           rect,
@@ -711,10 +719,9 @@ class _YumoriMeshBackgroundState extends State<YumoriMeshBackground> {
             ).createShader(rect));
     }
 
-    blob(const Alignment(-0.9, -0.9), const Color(0x886C4FC2), 1.1);
-    blob(const Alignment(1.0, -0.4), const Color(0x665C6BD6), 0.9);
-    blob(const Alignment(-0.3, 0.6), const Color(0x558F5FC9), 1.0);
-    blob(const Alignment(1.0, 1.0), const Color(0x663B4FB0), 1.0);
+    blob(const Alignment(-1.0, -1.0), const Color(0x556C4FC2), 1.3);
+    blob(const Alignment(1.0, 0.1), const Color(0x445C6BD6), 1.1);
+    blob(const Alignment(-0.6, 1.0), const Color(0x44A064C8), 1.2);
     return rec.endRecording().toImage(w.toInt(), h.toInt());
   }
 
@@ -726,7 +733,7 @@ class _YumoriMeshBackgroundState extends State<YumoriMeshBackground> {
       child: RawImage(
         image: img,
         fit: BoxFit.fill,
-        filterQuality: FilterQuality.medium,
+        filterQuality: FilterQuality.high,
       ),
     );
   }
