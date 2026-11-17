@@ -21,6 +21,10 @@ class AnymeXTitleBar {
   static final ValueNotifier<bool> isMaximized = ValueNotifier(false);
   static final ValueNotifier<bool> isTransparent = ValueNotifier(false);
 
+  /// True when the window is "maximized" as borderless fullscreen (the
+  /// maximize button): the taskbar is hidden but the hover title bar stays.
+  static final ValueNotifier<bool> borderless = ValueNotifier(false);
+
   static Future<void> initialize() async {
     if (kDebugMode && !Platform.isWindows) return;
     if (!Platform.isWindows) {
@@ -59,32 +63,55 @@ class AnymeXTitleBar {
     GetWindowPlacement(hwnd, placement);
 
     final isMaximized = placement.ref.showCmd == SW_SHOWMAXIMIZED;
-    AnymeXTitleBar.isMaximized.value = isMaximized;
+    AnymeXTitleBar.isMaximized.value = isMaximized ||
+        (AnymeXTitleBar.isFullScreen.value && AnymeXTitleBar.borderless.value);
 
     calloc.free(placement);
   }
 
   static Widget titleBar() => ValueListenableBuilder<bool>(
         valueListenable: isFullScreen,
-        builder: (_, fullscreen, __) {
-          return fullscreen ? const SizedBox.shrink() : const _TitleBarWidget();
-        },
+        builder: (_, fullscreen, __) => ValueListenableBuilder<bool>(
+          valueListenable: borderless,
+          builder: (_, bl, __) => (fullscreen && !bl)
+              ? const SizedBox.shrink()
+              : const _TitleBarWidget(),
+        ),
       );
 
   static Future<void> setFullScreen(bool enable) async {
     await windowManager.setFullScreen(enable);
     isFullScreen.value = enable;
+    if (!enable) {
+      borderless.value = false;
+      isMaximized.value = await windowManager.isMaximized();
+    }
   }
 
   static Future<void> toggleFullScreen() async {
-    await windowManager.setFullScreen(!isFullScreen.value);
-    isFullScreen.value = !isFullScreen.value;
+    await setFullScreen(!isFullScreen.value);
+  }
+
+  /// The maximize button: borderless fullscreen, and back to the window.
+  static Future<void> toggleBorderless() async {
+    if (isFullScreen.value) {
+      await setFullScreen(false);
+      return;
+    }
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    }
+    await windowManager.setFullScreen(true);
+    isFullScreen.value = true;
+    borderless.value = true;
+    isMaximized.value = true;
   }
 }
 
 class _WindowListener extends WindowListener {
   Future<void> _sync() async {
-    AnymeXTitleBar.isMaximized.value = await windowManager.isMaximized();
+    AnymeXTitleBar.isMaximized.value = await windowManager.isMaximized() ||
+        (AnymeXTitleBar.isFullScreen.value && AnymeXTitleBar.borderless.value);
   }
 
   @override
@@ -137,14 +164,7 @@ class _TitleBarWidgetState extends State<_TitleBarWidget> {
   bool _hover = false;
 
   Future<void> _toggleMaximize() async {
-    final maximized = await windowManager.isMaximized();
-    if (maximized) {
-      await windowManager.unmaximize();
-    } else {
-      await windowManager.maximize();
-    }
-
-    AnymeXTitleBar.isMaximized.value = await windowManager.isMaximized();
+    await AnymeXTitleBar.toggleBorderless();
   }
 
   @override

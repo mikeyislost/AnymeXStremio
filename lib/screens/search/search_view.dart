@@ -994,11 +994,11 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           color: isActive
               ? context.colors.primary.opaque(0.1)
               : context.colors.surfaceContainer.opaque(0.3),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: isActive
                 ? context.colors.primary
-                : context.colors.outline.opaque(0.3),
+                : context.colors.onSurface.opaque(0.25),
           ),
         ),
         child: Row(
@@ -1060,11 +1060,11 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           color: isActive
               ? context.colors.primary.opaque(0.1)
               : context.colors.surfaceContainer.opaque(0.3),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: isActive
                 ? context.colors.primary
-                : context.colors.outline.opaque(0.3),
+                : context.colors.onSurface.opaque(0.25),
           ),
         ),
         child: Row(
@@ -1095,10 +1095,10 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   Widget _buildViewModeToggle() {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.surface.opaque(0.5),
-        borderRadius: BorderRadius.circular(12),
+        color: context.colors.surface.opaque(0.3),
+        borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: context.colors.outline.opaque(0.3),
+          color: context.colors.onSurface.opaque(0.25),
         ),
       ),
       child: Row(
@@ -1120,7 +1120,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isActive ? context.colors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Icon(
           icon,
@@ -1511,10 +1511,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
 
   Widget _buildListItem(Media media, bool isFirst, bool isLast) {
     final heroTag = '${media.id}-search-list';
-    final radius = BorderRadius.vertical(
-      top: isFirst ? const Radius.circular(30) : const Radius.circular(5),
-      bottom: isLast ? const Radius.circular(30) : const Radius.circular(5),
-    );
+    final radius = BorderRadius.circular(20);
     return GestureDetector(
       onTap: () => _navigateToDetails(media, heroTag),
       onLongPress: () {
@@ -1523,7 +1520,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 1),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           borderRadius: radius,
           color:
@@ -1533,7 +1530,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Hero(

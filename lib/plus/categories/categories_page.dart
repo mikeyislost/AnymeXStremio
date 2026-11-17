@@ -3,7 +3,11 @@
 // Movies / Series filters, loading more as you scroll.
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
+import 'package:path_provider/path_provider.dart';
 
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/models/models_convertor/carousel/carousel_data.dart';
@@ -187,25 +191,105 @@ class _FeatureTile extends StatelessWidget {
   }
 }
 
-/// First poster of each category, fetched one after another (cached) so the
-/// tiles don't hammer AniList / TMDB all at once.
+/// First poster of each category. Fetched a few at a time (so AniList / TMDB
+/// aren't hammered) and remembered on disk for a day, so the tiles are there
+/// instantly the next time Browse opens.
 class _TilePosters {
-  static final _cache = <String, Future<CatItem?>>{};
-  static Future<void> _tail = Future.value();
+  static const _maxParallel = 4;
+  static const _ttl = Duration(hours: 24);
 
-  static Future<CatItem?> of(CatCategory c) {
-    return _cache.putIfAbsent(c.name, () {
-      final next = _tail.then((_) async {
+  static final _cache = <String, Future<CatItem?>>{};
+  static int _running = 0;
+  static final _waiting = <Completer<void>>[];
+
+  static Map<String, dynamic>? _disk;
+  static Future<void>? _loading;
+  static Timer? _saveTimer;
+
+  static Future<File> _file() async {
+    final dir = await getApplicationSupportDirectory();
+    return File('${dir.path}${Platform.pathSeparator}browse_tiles.json');
+  }
+
+  static Future<void> _ensureDisk() => _loading ??= () async {
         try {
-          final items = await c.load(page: 1);
-          for (final i in items) {
-            if (i.poster.isNotEmpty) return i;
+          final f = await _file();
+          if (await f.exists()) {
+            _disk = (jsonDecode(await f.readAsString()) as Map)
+                .cast<String, dynamic>();
           }
         } catch (_) {}
-        return null;
-      });
-      _tail = next.then((_) {}, onError: (_) {});
-      return next;
+        _disk ??= {};
+      }();
+
+  static CatItem? _fromDisk(String name) {
+    final e = _disk?[name];
+    if (e is! Map) return null;
+    final t = DateTime.fromMillisecondsSinceEpoch((e['t'] as int?) ?? 0);
+    if (DateTime.now().difference(t) > _ttl) return null;
+    final poster = (e['poster'] as String?) ?? '';
+    if (poster.isEmpty) return null;
+    return CatItem(
+      id: (e['id'] as String?) ?? '',
+      kind: (e['kind'] as String?) ?? 'anime',
+      title: (e['title'] as String?) ?? '',
+      poster: poster,
+    );
+  }
+
+  static void _remember(String name, CatItem it) {
+    _disk?[name] = {
+      'id': it.id,
+      'kind': it.kind,
+      'title': it.title,
+      'poster': it.poster,
+      't': DateTime.now().millisecondsSinceEpoch,
+    };
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 2), () async {
+      try {
+        await (await _file()).writeAsString(jsonEncode(_disk));
+      } catch (_) {}
+    });
+  }
+
+  static Future<void> _acquire() async {
+    if (_running < _maxParallel) {
+      _running++;
+      return;
+    }
+    final c = Completer<void>();
+    _waiting.add(c);
+    await c.future;
+  }
+
+  static void _release() {
+    if (_waiting.isNotEmpty) {
+      _waiting.removeAt(0).complete();
+    } else {
+      _running--;
+    }
+  }
+
+  static Future<CatItem?> of(CatCategory c) {
+    return _cache.putIfAbsent(c.name, () async {
+      await _ensureDisk();
+      final saved = _fromDisk(c.name);
+      if (saved != null) return saved;
+      await _acquire();
+      try {
+        final items = await c.load(page: 1);
+        for (final i in items) {
+          if (i.poster.isNotEmpty) {
+            _remember(c.name, i);
+            return i;
+          }
+        }
+      } catch (_) {
+      } finally {
+        _release();
+      }
+      return null;
     });
   }
 }

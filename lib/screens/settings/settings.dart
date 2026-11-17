@@ -179,24 +179,38 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildCategoryList(double headerHeight) {
     final groups = SettingsRegistry.groupedCategories;
+    final colors = Theme.of(context).colorScheme;
 
+    Widget catTile(SettingsCategory cat) => AnymeXTile(
+          icon: cat.icon,
+          iconColor: colors.primary,
+          iconBackgroundColor:
+              colors.primary.opaque(0.12, iReallyMeanIt: true),
+          title: cat.title,
+          subtitle: cat.description,
+          onTap: () => navigate(cat.destination),
+        );
+
+    // Every page is one tap away. Tabs that hold several pages get a heading;
+    // a tab with a single page is just that page's tile.
     return SuperListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
         SizedBox(height: headerHeight),
         for (final tab in _tabs)
           if (groups[tab.title] != null && groups[tab.title]!.isNotEmpty)
-            _buildTile(
-              icon: tab.icon,
-              title: tab.title,
-              description: tab.description,
-              destination: groups[tab.title]!.length == 1
-                  ? groups[tab.title]!.first.destination
-                  : () => _SettingsHubPage(
-                        title: tab.title,
-                        categories: groups[tab.title]!,
-                      ),
-            ),
+            if (groups[tab.title]!.length == 1)
+              _buildTile(
+                icon: tab.icon,
+                title: tab.title,
+                description: tab.description,
+                destination: groups[tab.title]!.first.destination,
+              )
+            else
+              AnymeXSectionBuilder(
+                title: tab.title,
+                children: [for (final c in groups[tab.title]!) catTile(c)],
+              ),
         const SizedBox(height: 30),
       ],
     );
@@ -226,39 +240,4 @@ class _SettingsTab {
   final IconData icon;
   final String description;
   const _SettingsTab(this.title, this.icon, this.description);
-}
-
-/// Lists the categories that share one settings tab; each opens its page.
-class _SettingsHubPage extends StatelessWidget {
-  final String title;
-  final List<SettingsCategory> categories;
-
-  const _SettingsHubPage({required this.title, required this.categories});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return AnymeXScaffold(
-      showHeader: true,
-      headerTitle: title,
-      body: Builder(
-        builder: (ctx) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          children: [
-            SizedBox(height: AnymeXHeaderScope.of(ctx)),
-            for (final cat in categories)
-              AnymeXTile(
-                icon: cat.icon,
-                iconColor: colors.primary,
-                iconBackgroundColor:
-                    colors.primary.opaque(0.12, iReallyMeanIt: true),
-                title: cat.title,
-                subtitle: cat.description,
-                onTap: () => navigate(cat.destination),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }

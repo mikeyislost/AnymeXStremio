@@ -54,21 +54,47 @@ class _PlusSearchTabsState extends State<PlusSearchTabs> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-          child: SegmentedButton<int>(
-            showSelectedIcon: false,
-            style: SegmentedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              selectedBackgroundColor: colors.primaryContainer,
-            ),
-            segments: const [
-              ButtonSegment(value: 0, label: Text('Anime')),
-              ButtonSegment(value: 1, label: Text('Movies & TV')),
+          child: Row(
+            children: [
+              for (final (i, label) in const [(0, 'Anime'), (1, 'Movies & TV')])
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() {
+                    _tab = i;
+                    _query = widget.controller.text.trim();
+                  }),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 22),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 6),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                                _tab == i ? FontWeight.w700 : FontWeight.w500,
+                            color: _tab == i
+                                ? colors.onSurface
+                                : colors.onSurface.withOpacity(0.55),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 2.5,
+                          width: _tab == i ? 22 : 0,
+                          decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
-            selected: {_tab},
-            onSelectionChanged: (v) => setState(() {
-              _tab = v.first;
-              _query = widget.controller.text.trim();
-            }),
           ),
         ),
         Expanded(
