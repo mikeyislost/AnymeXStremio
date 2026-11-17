@@ -11,40 +11,32 @@ import 'package:http/http.dart' as http;
 class CinemetaSearch {
   static const _base = 'https://v3-cinemeta.strem.io/catalog';
 
-  static Future<List<CatItem>> search(String query) async {
+  /// One page of one type. [raw] is how many entries the catalog returned
+  /// (that is the next `skip`); 0 means there is nothing more.
+  static Future<({List<CatItem> items, int raw})> fetch(
+      String type, String query,
+      {int skip = 0}) async {
     final q = Uri.encodeComponent(query.trim());
-    if (q.isEmpty) return const [];
-
-    Future<List<CatItem>> one(String type) async {
-      try {
-        final r = await http
-            .get(Uri.parse('$_base/$type/top/search=$q.json'))
-            .timeout(const Duration(seconds: 10));
-        if (r.statusCode != 200) return const [];
-        final metas = (jsonDecode(r.body) as Map)['metas'];
-        if (metas is! List) return const [];
-        return [
-          for (final m in metas)
-            if (m is Map)
-              () {
-                final j = m.cast<String, dynamic>();
-                j['type'] ??= type;
-                return CatItem.fromStremio(StremioMetaPreview.fromJson(j));
-              }()
-        ].where((i) => i.id.isNotEmpty && i.poster.isNotEmpty).toList();
-      } catch (_) {
-        return const [];
+    if (q.isEmpty) return (items: <CatItem>[], raw: 0);
+    try {
+      final extra = skip > 0 ? 'search=$q&skip=$skip' : 'search=$q';
+      final r = await http
+          .get(Uri.parse('$_base/$type/top/$extra.json'))
+          .timeout(const Duration(seconds: 10));
+      if (r.statusCode != 200) return (items: <CatItem>[], raw: 0);
+      final metas = (jsonDecode(r.body) as Map)['metas'];
+      if (metas is! List) return (items: <CatItem>[], raw: 0);
+      final items = <CatItem>[];
+      for (final m in metas) {
+        if (m is! Map) continue;
+        final j = m.cast<String, dynamic>();
+        j['type'] ??= type;
+        final it = CatItem.fromStremio(StremioMetaPreview.fromJson(j));
+        if (it.id.isNotEmpty && it.poster.isNotEmpty) items.add(it);
       }
+      return (items: items, raw: metas.length);
+    } catch (_) {
+      return (items: <CatItem>[], raw: 0);
     }
-
-    final both = await Future.wait([one('movie'), one('series')]);
-    // Movies and series alternate, best matches first.
-    final out = <CatItem>[];
-    final n = both[0].length > both[1].length ? both[0].length : both[1].length;
-    for (var i = 0; i < n; i++) {
-      if (i < both[0].length) out.add(both[0][i]);
-      if (i < both[1].length) out.add(both[1][i]);
-    }
-    return out;
   }
 }

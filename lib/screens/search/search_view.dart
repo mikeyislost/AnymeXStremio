@@ -101,12 +101,106 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
       effectiveType == ItemType.anime &&
       serviceHandler.serviceType.value != ServicesType.simkl;
 
+  int _movieSkip = 0, _seriesSkip = 0;
+  bool _movieMore = true, _seriesMore = true;
+  bool _plusLoadingMore = false;
+
+  void _resetPlus() {
+    _plusItems = [];
+    _plusQuery = '';
+    _movieSkip = _seriesSkip = 0;
+    _movieMore = _seriesMore = true;
+    _plusLoadingMore = false;
+  }
+
   Future<void> _searchPlus(String q) async {
-    _plusQuery = q;
-    if (_plusItems.isNotEmpty) setState(() => _plusItems = []);
-    final items = await CinemetaSearch.search(q);
+    setState(() {
+      _resetPlus();
+      _plusQuery = q;
+    });
+    final res = await Future.wait([
+      CinemetaSearch.fetch('movie', q),
+      CinemetaSearch.fetch('series', q),
+    ]);
     if (!mounted || _plusQuery != q) return;
-    setState(() => _plusItems = items);
+    setState(() {
+      _movieSkip = res[0].raw;
+      _seriesSkip = res[1].raw;
+      _movieMore = res[0].raw > 0;
+      _seriesMore = res[1].raw > 0;
+      _plusItems = _interleave(res[0].items, res[1].items);
+    });
+  }
+
+  List<CatItem> _interleave(List<CatItem> a, List<CatItem> b) {
+    final out = <CatItem>[];
+    final n = a.length > b.length ? a.length : b.length;
+    for (var i = 0; i < n; i++) {
+      if (i < a.length) out.add(a[i]);
+      if (i < b.length) out.add(b[i]);
+    }
+    return out;
+  }
+
+  bool get _wantAnime => _plusFilter == 'all' || _plusFilter == 'anime';
+  bool get _wantMovie => _plusFilter == 'all' || _plusFilter == 'movie';
+  bool get _wantSeries => _plusFilter == 'all' || _plusFilter == 'series';
+
+  bool get _mixedHasMore =>
+      (_wantAnime && _hasMoreResults) ||
+      (_wantMovie && _movieMore) ||
+      (_wantSeries && _seriesMore);
+
+  /// Loads the next page of whatever the current filter shows.
+  Future<void> _loadMoreMixed() async {
+    if (_plusQuery.isEmpty || _searchState == SearchState.loading) return;
+    if (_wantAnime && _hasMoreResults && !_isLoadingMore) {
+      _loadMoreResults();
+    }
+    final movie = _wantMovie && _movieMore;
+    final series = _wantSeries && _seriesMore;
+    if ((!movie && !series) || _plusLoadingMore) return;
+    final q = _plusQuery;
+    setState(() => _plusLoadingMore = true);
+    final res = await Future.wait([
+      movie
+          ? CinemetaSearch.fetch('movie', q, skip: _movieSkip)
+          : Future.value((items: <CatItem>[], raw: 0)),
+      series
+          ? CinemetaSearch.fetch('series', q, skip: _seriesSkip)
+          : Future.value((items: <CatItem>[], raw: 0)),
+    ]);
+    if (!mounted || _plusQuery != q) return;
+    final have = _plusItems.map((e) => e.key).toSet();
+    final freshMovies = res[0].items.where((e) => have.add(e.key)).toList();
+    final freshSeries = res[1].items.where((e) => have.add(e.key)).toList();
+    setState(() {
+      _plusLoadingMore = false;
+      if (movie) {
+        _movieSkip += res[0].raw;
+        _movieMore = res[0].raw > 0 && freshMovies.isNotEmpty;
+      }
+      if (series) {
+        _seriesSkip += res[1].raw;
+        _seriesMore = res[1].raw > 0 && freshSeries.isNotEmpty;
+      }
+      _plusItems = [..._plusItems, ..._interleave(freshMovies, freshSeries)];
+    });
+  }
+
+  /// If the list is too short to scroll, keep loading until it can, or until
+  /// there is nothing more.
+  void _fillCheck() {
+    if (!mounted || !_mixed || !_resultsScrollController.hasClients) return;
+    if (_searchState == SearchState.loading ||
+        _isLoadingMore ||
+        _plusLoadingMore ||
+        !_mixedHasMore) {
+      return;
+    }
+    if (_resultsScrollController.position.extentAfter < 900) {
+      _loadMoreMixed();
+    }
   }
   ViewMode _currentViewMode = ViewMode.grid;
   SearchState _searchState = SearchState.initial;
@@ -218,6 +312,12 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   }
 
   void _onResultsScroll() {
+    if (_mixed && _resultsScrollController.hasClients) {
+      if (_resultsScrollController.position.extentAfter < 900) {
+        _loadMoreMixed();
+      }
+      return;
+    }
     if (!_resultsScrollController.hasClients ||
         _searchState != SearchState.success ||
         _searchResults == null ||
@@ -280,8 +380,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
       setState(() {
         _searchState = SearchState.initial;
         _searchResults = null;
-        _plusItems = [];
-        _plusQuery = '';
+        _resetPlus();
         _activeFilters = {};
         _errorMessage = null;
         _currentPage = 1;
@@ -800,7 +899,11 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
             for (final (key, label) in tabs)
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() => _plusFilter = key),
+                onTap: () {
+                  setState(() => _plusFilter = key);
+                  WidgetsBinding.instance
+                      .addPostFrameCallback((_) => _fillCheck());
+                },
                 child: Padding(
                   padding: const EdgeInsets.only(right: 22),
                   child: Column(
@@ -897,6 +1000,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
             itemWidth: 125));
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 32.0;
     final list = _currentViewMode == ViewMode.list;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fillCheck());
     return GridView.builder(
       controller: _resultsScrollController,
       padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
@@ -910,7 +1014,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
               mainAxisSpacing: 14,
               childAspectRatio: 0.56,
             ),
-      itemCount: hits.length + (_isLoadingMore ? 1 : 0),
+      itemCount: hits.length + ((_isLoadingMore || _plusLoadingMore) ? 1 : 0),
       itemBuilder: (context, i) {
         if (i == hits.length) return const Center(child: YumoriLoader());
         return list ? _hitRow(hits[i]) : _hitCard(hits[i]);
@@ -1052,8 +1156,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         setState(() {
           _searchState = SearchState.initial;
           _searchResults = null;
-          _plusItems = [];
-          _plusQuery = '';
+          _resetPlus();
           _currentPage = 1;
           _isLoadingMore = false;
           _hasMoreResults = false;
