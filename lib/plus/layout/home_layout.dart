@@ -106,8 +106,8 @@ class PlusHomeLayoutSliver extends StatelessWidget {
   }
 }
 
-/// The trending banner, shown above the greeting (follows its row's
-/// show/hide setting in Edit layout).
+/// The Featured hero at the top of Home (follows its row's show/hide
+/// setting in Edit layout).
 class PlusHomeHero extends StatelessWidget {
   final bool discoverByDefault;
   final double topInset;
@@ -125,8 +125,14 @@ class PlusHomeHero extends StatelessWidget {
     return Obx(() {
       PlusLayoutStore.version.value;
       settings.uiSettings.value;
-      // The Featured hero always shows (it replaces the old Trending banner
-      // row, so that row's hide setting no longer applies).
+      // The Featured row (Edit layout → Featured) turns the hero on or off.
+      final hidden = PlusPageRows.homeRows(discoverByDefault: discoverByDefault)
+          .any((r) => r.key == 'disc:carousel' && r.config.hidden);
+      if (hidden) {
+        WidgetsBinding.instance.addPostFrameCallback(
+            (_) => YumoriHeroBus.current.value = null);
+        return const SizedBox.shrink();
+      }
       return YumoriHomeHero(
         topInset: topInset,
         fullScreen: isDesktop,

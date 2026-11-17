@@ -29,7 +29,7 @@ import 'package:http/http.dart' as http;
 
 /// Row keys of the Anime tab's rows, in AniList's `animeWidgets` order.
 const plusDiscoverRows = <(String, String)>[
-  ('disc:carousel', 'Trending banner'),
+  ('disc:carousel', 'Featured'),
   ('disc:recent', 'Recently Updated'),
   ('disc:trending', 'Trending Anime'),
   ('disc:popular', 'Popular Anime'),
@@ -118,7 +118,8 @@ class PlusPageRows {
           shownByDefault: cards['Recommended Mangas'] ?? false),
       for (final (key, title) in plusDiscoverRows)
         PlusRowSpec(key, title,
-            shownByDefault: discoverByDefault,
+            // Featured is on unless you turn it off.
+            shownByDefault: key == 'disc:carousel' || discoverByDefault,
             styled: key != 'disc:carousel' && key != 'disc:community'),
       // AnymeX+: Movies & TV on Home too (all-in-one Home).
       ...homeMoviesSpecs(),
