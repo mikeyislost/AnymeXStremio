@@ -56,7 +56,16 @@ for name in lg:
               "            path: packages/%s" % name, "            ref: main"]
 i = out.index("dependencies:")
 out[i + 1:i + 1] = extra
-open("pubspec.yaml", "w").write("\n".join(out))
+text = "\n".join(out)
+# Git dependencies on a moving branch (the extension bridge) stay on the
+# commit the app is locked to, so a newer upstream can't break the build.
+lock_text = open("pubspec.lock").read()
+m = re.search(r"anymex_extension_runtime_bridge:.*?resolved-ref: \"?([0-9a-f]{40})", lock_text, re.S)
+if m:
+    text = re.sub(r"(AnymeXExtensionRuntimeBridge\.git\s*\n\s*ref:\s*)main",
+                  lambda k: k.group(1) + m.group(1), text)
+    print("bridge pinned to", m.group(1))
+open("pubspec.yaml", "w").write(text)
 os.remove("pubspec.lock")
 print("held to the app's versions or older (same major):")
 print("\n".join(changed))
