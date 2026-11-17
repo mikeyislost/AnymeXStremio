@@ -26,7 +26,14 @@ class AppChannel {
   }
 
   /// Short commit id of a test build (empty otherwise).
-  static String get buildId => _env('APP_BUILD');
+  static String get buildId {
+    try {
+      if (dotenv.env.isEmpty) return 'no .env loaded';
+    } catch (_) {
+      return 'no .env loaded';
+    }
+    return _env('APP_BUILD');
+  }
 
   static bool get isBeta => _env('APP_CHANNEL') == 'beta';
 
