@@ -160,7 +160,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     _resolveDynamicColor(widget.media, allowExtract: false);
     final initialPage = widget.scrollToCommentId != null
         ? 2
-        : widget.initialTabIndex;
+        : (widget.initialTabIndex == 0 ? 1 : widget.initialTabIndex);
     controller = Get.put(
       MediaDetailsController(
         initialMedia: widget.media,
@@ -249,7 +249,6 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
           color: _posterColor.value,
           extendBody: true,
           resizeToAvoidBottomInset: false,
-          bottomNavigationBar: buildBottomNavBar(themedContext),
           body: Obx(() {
             final blurScope = settingsController.detailsBlurScope;
             final isMesh = settingsController.detailsBlurStyle == 1;
@@ -312,7 +311,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                             buildMediaQuickActions(themedContext, controller)
                                 .animateSpring(
                                     delay: const Duration(milliseconds: 100)),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
+                            _buildContinueButton(themedContext),
+                            _buildTabRow(themedContext),
                           ],
                         ),
                       ),
@@ -335,6 +336,11 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                             visible: selected == 2,
                             maintainState: true,
                             sliver: _buildCommentsTab(themedContext),
+                          ),
+                          SliverVisibility(
+                            visible: selected == 3,
+                            maintainState: true,
+                            sliver: _buildRelatedTab(themedContext),
                           ),
                         ],
                       );
@@ -484,65 +490,61 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     });
   }
 
-  Widget buildBottomNavBar(BuildContext context) {
+  Widget _buildTabRow(BuildContext context) {
     final isAnime = controller.isAnime;
-    final navItems = [
-      NavItem(
-        selectedIcon: Iconsax.info_circle5,
-        unselectedIcon: Iconsax.info_circle,
-        label: 'Info',
-        onTap: (index) => _onTabSelected(index),
-      ),
-      NavItem(
-        selectedIcon: isAnime ? Iconsax.play5 : Icons.menu_book_rounded,
-        unselectedIcon: isAnime ? Iconsax.play : Icons.menu_book_outlined,
-        label: isAnime ? 'Episodes' : 'Chapters',
-        onTap: (index) => _onTabSelected(index),
-      ),
-      NavItem(
-        selectedIcon: HugeIcons.strokeRoundedComment01,
-        unselectedIcon: HugeIcons.strokeRoundedComment02,
-        label: 'Comments',
-        onTap: (index) => _onTabSelected(index),
-      ),
+    final tabs = <MapEntry<int, String>>[
+      MapEntry(1, isAnime ? 'Episodes' : 'Chapters'),
+      const MapEntry(3, 'Related'),
+      const MapEntry(0, 'About'),
+      const MapEntry(2, 'Comments'),
     ];
-
+    final scheme = Theme.of(context).colorScheme;
     return Obx(() {
       final selected = controller.selectedPage.value;
-      final isDesktop =
-          getResponsiveValue(context, mobileValue: false, desktopValue: true);
-
-      final child = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: selected == 1
-                ? _buildContinueButton(context)
-                : const SizedBox.shrink(),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final t in tabs)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _onTabSelected(t.key),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 22),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 8),
+                        AnymeXText(
+                          t.value,
+                          size: 14,
+                          variant: selected == t.key
+                              ? TextVariant.semiBold
+                              : TextVariant.regular,
+                          color: selected == t.key
+                              ? scheme.onSurface
+                              : scheme.onSurface.withOpacity(0.55),
+                        ),
+                        const SizedBox(height: 6),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 2.5,
+                          width: selected == t.key ? 22 : 0,
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
-          SafeArea(
-            child: ResponsiveNavBar(
-              isDesktop: false,
-              currentIndex: selected,
-              margin: EdgeInsets.fromLTRB(
-                  32, 0, 32, settingsController.bottomNavBarMargin),
-              items: navItems,
-            ),
-          ),
-        ],
+        ),
       );
-      if (isDesktop) {
-        return Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: child,
-          ),
-        );
-      }
-      return child;
     });
   }
 
@@ -601,8 +603,6 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     return Obx(() {
       final mediaData = controller.media.value;
 
-      final rels = (mediaData.relations ?? []);
-
       return SliverMainAxisGroup(
         slivers: [
           SliverToBoxAdapter(
@@ -633,6 +633,42 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                     );
                   }),
                   Obx(() {
+                    if (controller.isSecondaryLoading.value) {
+                      return _buildShimmerCarousel(context);
+                    }
+                    if (mediaData.staff == null || mediaData.staff!.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return KeyedSubtree(
+                      key: const ValueKey('media_staff'),
+                      child: StaffCarousel(staff: mediaData.staff!)
+                          .bottomSpacing(16),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 250)),
+        ],
+      );
+    });
+  }
+
+  Widget _buildRelatedTab(BuildContext context) {
+    return Obx(() {
+      final mediaData = controller.media.value;
+
+      final rels = (mediaData.relations ?? []);
+
+      return SliverMainAxisGroup(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Center(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Obx(() {
                     if (controller.isAnilistLoading.value) {
                       return _buildShimmerCarousel(context);
                     }
@@ -644,19 +680,6 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
                         title: 'Relations',
                         variant: DataVariant.relation,
                       ).bottomSpacing(16),
-                    );
-                  }),
-                  Obx(() {
-                    if (controller.isSecondaryLoading.value) {
-                      return _buildShimmerCarousel(context);
-                    }
-                    if (mediaData.staff == null || mediaData.staff!.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-                    return KeyedSubtree(
-                      key: const ValueKey('media_staff'),
-                      child: StaffCarousel(staff: mediaData.staff!)
-                          .bottomSpacing(16),
                     );
                   }),
                   Obx(() {
@@ -992,7 +1015,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     );
   }
 
-  Widget _buildContinueButton(BuildContext context) {
+  Widget _buildContinueButton(BuildContext context, {bool pill = true}) {
     return Obx(() {
       final selectedPage = controller.selectedPage.value;
       final isLoading = controller.isLoading.value;
@@ -1002,7 +1025,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
           : controller.chapterList.length;
 
       final bool hasContent = count > 0 && !isLoading;
-      final bool showButton = selectedPage == 1 && hasContent;
+      final bool showButton = (pill || selectedPage == 1) && hasContent;
 
       if (!showButton) return const SizedBox.shrink();
       // AnymeX+: the Stremio-addon episode list has its own buttons.
@@ -1013,6 +1036,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
       }
 
       String titleText = '';
+      String shortLabel = '';
       String imageUrl = '';
       double progressVal = 0.0;
       VoidCallback? onTap;
@@ -1037,6 +1061,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
             ? ep.thumbnail!
             : controller.media.value.poster;
         progressVal = controller.getEpisodeProgress(ep);
+        shortLabel = isMovieMedia(controller.media.value, controller.episodeList)
+            ? ''
+            : 'EP $episodeNumber';
         // AnymeX+: movies say "Play/Resume <title>", not "EP 1 - …".
         if (isMovieMedia(controller.media.value, controller.episodeList)) {
           final name = controller.media.value.title;
@@ -1074,6 +1101,7 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
             : 'Chapter ${ch.number}';
         imageUrl = controller.media.value.poster;
         progressVal = controller.getChapterProgress(ch);
+        shortLabel = 'CH ${ch.number}';
         onTap = () async {
           HapticFeedback.lightImpact();
           final activeSource = controller.activeSource.value;
@@ -1135,6 +1163,57 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
       final clampedProgress = progressVal.clamp(0.0, 1.0);
       final theme = Theme.of(context);
+
+      if (pill) {
+        final resuming = clampedProgress > 0.01 && clampedProgress < 0.97;
+        final label = (resuming ? 'Resume' : 'Play') +
+            (shortLabel.isEmpty ? '' : ' $shortLabel');
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+          child: GestureDetector(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 46,
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                borderRadius: BorderRadius.circular(23),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.play_arrow_rounded,
+                      size: 22, color: theme.colorScheme.onPrimary),
+                  const SizedBox(width: 6),
+                  AnymeXText(
+                    label,
+                    size: 14,
+                    variant: TextVariant.semiBold,
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                  if (resuming) ...[
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 44,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(50),
+                        child: AnymeXLinearIndicator(
+                          value: clampedProgress,
+                          minHeight: 4,
+                          color: theme.colorScheme.onPrimary,
+                          backgroundColor:
+                              theme.colorScheme.onPrimary.withOpacity(0.25),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      }
 
       return TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1.0),
