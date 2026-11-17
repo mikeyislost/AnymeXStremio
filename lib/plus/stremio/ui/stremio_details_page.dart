@@ -431,41 +431,46 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     required VoidCallback onTap,
     bool highlighted = false,
   }) {
+    // Same pill buttons as the AnymeX details page.
     final colors = context.colors;
-    return AnymexOnTap(
-      onTap: onTap,
-      child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: highlighted
-              ? colors.primary.opaque(0.18, iReallyMeanIt: true)
-              : colors.surfaceContainerHighest.opaque(0.3, iReallyMeanIt: true),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: highlighted
-                ? colors.primary.opaque(0.4, iReallyMeanIt: true)
-                : colors.onSurface.opaque(0.08, iReallyMeanIt: true),
+    const pill = BorderRadius.all(Radius.circular(999));
+    final textClr = highlighted ? colors.onPrimary : colors.onSurface;
+    return Material(
+      color: highlighted ? colors.primary : colors.surface.withOpacity(0.3),
+      borderRadius: pill,
+      child: InkWell(
+        borderRadius: pill,
+        onTap: onTap,
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: pill,
+            border: highlighted
+                ? null
+                : Border.all(
+                    color: colors.onSurface.withOpacity(0.45), width: 1),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 18,
-                color: highlighted ? colors.primary : colors.onSurface),
-            const SizedBox(width: 8),
-            Flexible(
-              child: AnymeXText(
-                label,
-                size: 12.5,
-                variant: TextVariant.semiBold,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                color: highlighted ? colors.primary : null,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: textClr),
+              const SizedBox(width: 7),
+              Flexible(
+                child: AnymeXText(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textClr,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -683,7 +688,7 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       NavItem(
         selectedIcon: Iconsax.play5,
         unselectedIcon: Iconsax.play,
-        label: 'Watch',
+        label: _meta?.type == 'movie' ? 'Watch' : 'Episodes',
         onTap: (i) => setState(() => _page = i),
       ),
       NavItem(
