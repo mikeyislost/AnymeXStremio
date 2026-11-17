@@ -102,8 +102,12 @@ class _DetailsShellState extends State<DetailsShell> {
     super.didUpdateWidget(old);
     if (!_isRouteAnimating &&
         (old.media.poster != widget.media.poster ||
-            old.media.cover != widget.media.cover)) {
-      _resolveDynamicColor(widget.media, allowExtract: true);
+            old.media.cover != widget.media.cover ||
+            old.media.color != widget.media.color)) {
+      // Not inside the build phase: it changes an Rx the tree listens to.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _resolveDynamicColor(widget.media, allowExtract: true);
+      });
     }
   }
 
