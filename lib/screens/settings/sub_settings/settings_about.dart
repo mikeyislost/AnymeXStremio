@@ -121,7 +121,9 @@ class _AboutPageState extends State<AboutPage> {
                                                   : '';
                                       return ProfileInfo(
                                         username: "Yumori",
-                                        version: "v$version",
+                                        version: AppChannel.buildId.isEmpty
+                                            ? "v$version"
+                                            : "v$version · ${AppChannel.buildId}",
                                         subtitle: "",
                                       );
                                     },

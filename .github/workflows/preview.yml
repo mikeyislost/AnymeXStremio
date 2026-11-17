@@ -86,6 +86,7 @@ jobs:
           COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
           APP_CHANNEL=stable
           APP_VERSION_TAG=preview
+          APP_BUILD=${GITHUB_SHA::7}
           EOF
 
       - name: Cache CocoaPods and Rust packages
@@ -179,6 +180,7 @@ jobs:
           COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
           APP_CHANNEL=stable
           APP_VERSION_TAG=preview
+          APP_BUILD=${GITHUB_SHA::7}
           EOF
 
       # media_kit downloads libmpv during the CMake step without checking the
