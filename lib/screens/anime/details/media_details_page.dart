@@ -36,6 +36,7 @@ import 'package:anymex/controllers/track/track_binding_controller.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/widgets/anime/media_header.dart';
+import 'package:anymex/widgets/details/details_shell.dart';
 import 'package:anymex/widgets/common/anymex_scaffold.dart';
 import 'package:anymex/widgets/common/baked_blur_image.dart';
 import 'package:anymex/widgets/common/reusable_carousel.dart';
@@ -74,19 +75,6 @@ class MediaDetailsPage extends StatefulWidget {
 
 class _MediaDetailsPageState extends State<MediaDetailsPage> {
   late final MediaDetailsController controller;
-  late final RxString _posterColor;
-  bool _isRouteAnimating = true;
-
-  static final Map<String, ColorScheme> _posterSchemeCache = {};
-  static ColorScheme? _getPosterScheme(Color? seed, Brightness brightness) {
-    if (seed == null) return null;
-    final key = '${seed.value}_${brightness.name}';
-    return _posterSchemeCache.putIfAbsent(
-      key,
-      () => ColorScheme.fromSeed(brightness: brightness, seedColor: seed),
-    );
-  }
-
   CommentSectionController get _commentController {
     final media = widget.media;
     final tag = media.uniqueId;
@@ -107,57 +95,9 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
     );
   }
 
-  String? _lastExtractedUrl;
-  Worker? _mediaColorWorker;
-
-  void _resolveDynamicColor(Media media, {bool allowExtract = false}) {
-    final usePoster = settingsController.usePosterForBlur;
-    final effectiveCover =
-        (media.cover?.isNotEmpty == true ? media.cover! : media.poster);
-    final targetUrl = usePoster ? media.poster : effectiveCover;
-
-    if (_posterColor.value.isEmpty && media.color.isNotEmpty) {
-      _posterColor.value = media.color;
-    }
-
-    if (targetUrl.isEmpty) {
-      if (!usePoster && _posterColor.value.isNotEmpty) {
-        _posterColor.value = '';
-      }
-      return;
-    }
-
-    final cached = ImageColorExtractor.getCachedColor(targetUrl);
-    if (cached != null) {
-      final hex = '#${cached.value.toRadixString(16).padLeft(8, '0')}';
-      if (_posterColor.value != hex) {
-        _posterColor.value = hex;
-      }
-      _lastExtractedUrl = targetUrl;
-      return;
-    }
-
-    if (!allowExtract || _isRouteAnimating || _lastExtractedUrl == targetUrl) {
-      return;
-    }
-
-    _lastExtractedUrl = targetUrl;
-    ImageColorExtractor.extractColor(targetUrl).then((c) {
-      if (c != null && mounted) {
-        _posterColor.value = '#${c.value.toRadixString(16).padLeft(8, '0')}';
-      }
-    });
-  }
-
   @override
   void initState() {
     super.initState();
-    final usePoster = settingsController.usePosterForBlur;
-    _posterColor = (usePoster && widget.media.color.isNotEmpty
-            ? widget.media.color
-            : '')
-        .obs;
-    _resolveDynamicColor(widget.media, allowExtract: false);
     final initialPage = widget.scrollToCommentId != null
         ? 2
         : widget.initialTabIndex;
@@ -170,51 +110,16 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
       ),
       tag: widget.tag,
     );
-    _mediaColorWorker = ever(controller.media, (m) {
-      if (!_isRouteAnimating) {
-        _resolveDynamicColor(m, allowExtract: true);
-      }
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (Platform.isWindows && mounted) {
-        AnymeXTitleBar.isTransparent.value = true;
-      }
-      final route = ModalRoute.of(context);
-      if (route != null && route.animation != null) {
-        if (route.animation!.isCompleted) {
-          _isRouteAnimating = false;
-          _resolveDynamicColor(controller.media.value, allowExtract: true);
-          if (mounted) setState(() {});
-        } else {
-          route.animation!.addStatusListener((status) {
-            if (status == AnimationStatus.completed && mounted) {
-              setState(() => _isRouteAnimating = false);
-              _resolveDynamicColor(controller.media.value, allowExtract: true);
-            }
-          });
-        }
-      } else {
-        _isRouteAnimating = false;
-        _resolveDynamicColor(controller.media.value, allowExtract: true);
-        if (mounted) setState(() {});
-      }
-    });
   }
 
   @override
   void dispose() {
-    _mediaColorWorker?.dispose();
     Get.delete<MediaDetailsController>(tag: widget.tag);
     final isPreloaded = CommentPreloader.to.isPreloaded(widget.media.uniqueId);
     if (!isPreloaded &&
         Get.isRegistered<CommentSectionController>(
             tag: widget.media.uniqueId)) {
       Get.delete<CommentSectionController>(tag: widget.media.uniqueId);
-    }
-    if (Platform.isWindows) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        AnymeXTitleBar.isTransparent.value = false;
-      });
     }
     super.dispose();
   }
@@ -227,260 +132,60 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final currentMedia = controller.media.value;
-      if (!_isRouteAnimating && _lastExtractedUrl == null) {
-        _resolveDynamicColor(currentMedia, allowExtract: true);
-      }
-
-      final activeColor = _posterColor.value.isNotEmpty
-          ? _posterColor.value
-          : (settingsController.usePosterForBlur ? currentMedia.color : '');
-      final posterSeed =
-          (activeColor.isNotEmpty && settingsController.usePosterColor)
-              ? AnymeXScaffold.parseColor(activeColor)
-              : null;
-      final posterScheme = posterSeed != null
-          ? _getPosterScheme(posterSeed, Theme.of(context).brightness)
-          : null;
-
-      Widget buildScaffold(BuildContext themedContext) {
-        return AnymeXScaffold(
-          extendBehindTitleBar: true,
-          color: _posterColor.value,
-          extendBody: true,
-          resizeToAvoidBottomInset: false,
-          bottomNavigationBar: buildBottomNavBar(themedContext),
-          body: Obx(() {
-            final blurScope = settingsController.detailsBlurScope;
-            final isMesh = settingsController.detailsBlurStyle == 1;
-            final isBaked = isMesh || settingsController.useComputedBlur;
-            final blurAmount =
-                UISettingsKeys.detailsBlurAmount.get<double>(20.0);
-            final brightness =
-                UISettingsKeys.detailsBackdropBrightness.get<double>(1.0);
-            final media = controller.media.value;
-            final posterUrl = media.poster;
-            final effectiveCover =
-                (media.cover?.isNotEmpty == true ? media.cover! : posterUrl);
-            final usePoster = settingsController.usePosterForBlur;
-            final blurSourceUrl = usePoster ? posterUrl : effectiveCover;
-            final blurFallbackUrl = usePoster ? effectiveCover : posterUrl;
-            final tintBlur = settingsController.tintBlur;
-            final colors = themedContext.colors;
-            final blurColor = tintBlur ? colors.primary.opaque(0.4) : null;
-            final isDark =
-                Theme.of(themedContext).brightness == Brightness.dark;
-            final baseArtworkColor = tintBlur
-                ? colors.primary
-                : (AnymeXScaffold.parseColor(_posterColor.value) ??
-                    colors.primary);
-            final gradientBgColor = Color.alphaBlend(
-              baseArtworkColor.withValues(alpha: isDark ? 0.20 : 0.12),
-              colors.surface,
-            );
-
-            final scrollView = ScrollConfiguration(
-              behavior: ScrollConfiguration.of(themedContext)
-                  .copyWith(scrollbars: false),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Obx(() => MediaHeader(
-                            tag: widget.tag,
-                            data: controller.media.value,
-                            posterUrl: controller.media.value.poster,
-                            userStatus: controller.mediaStatus.value,
-                            userProgress: '${controller.mediaProgress.value}',
-                            extendBehindTitleBar: Platform.isWindows,
-                            onShare: () => MediaShare.showOptions(
-                              context: themedContext,
-                              baseMedia: controller.media.value,
-                              hydratedMedia: controller.media.value,
-                              isManga: controller.isManga || controller.isNovel,
-                            ),
-                          )),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Center(
-                        child: Column(
-                          children: [
-                            buildMediaQuickActions(themedContext, controller)
-                                .animateSpring(
-                                    delay: const Duration(milliseconds: 100)),
-                            const SizedBox(height: 12),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Obx(() {
-                      final selected = controller.selectedPage.value;
-                      return SliverMainAxisGroup(
-                        slivers: [
-                          SliverVisibility(
-                            visible: selected == 0,
-                            maintainState: true,
-                            sliver: _buildOverviewTab(themedContext),
-                          ),
-                          SliverVisibility(
-                            visible: selected == 1,
-                            maintainState: true,
-                            sliver: _buildContentTab(themedContext),
-                          ),
-                          SliverVisibility(
-                            visible: selected == 2,
-                            maintainState: true,
-                            sliver: _buildCommentsTab(themedContext),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
+      final media = controller.media.value;
+      return DetailsShell(
+        media: media,
+        header: Obx(() => MediaHeader(
+              tag: widget.tag,
+              data: controller.media.value,
+              posterUrl: controller.media.value.poster,
+              userStatus: controller.mediaStatus.value,
+              userProgress: '${controller.mediaProgress.value}',
+              extendBehindTitleBar: Platform.isWindows,
+              onShare: () => MediaShare.showOptions(
+                context: context,
+                baseMedia: controller.media.value,
+                hydratedMedia: controller.media.value,
+                isManga: controller.isManga || controller.isNovel,
               ),
-            );
-
-            Widget buildBlurredImage({double? height}) {
-              if (blurSourceUrl.isEmpty || _isRouteAnimating) {
-                return Container(
-                  height: height ?? double.infinity,
-                  width: double.infinity,
-                  color: gradientBgColor,
-                );
-              }
-              return isBaked
-                  ? BakedBlurImage(
-                      url: blurSourceUrl,
-                      fallback: blurFallbackUrl,
-                      saturation: 1.0,
-                      blurAmount: blurAmount,
-                      brightness: brightness,
-                      color: blurColor,
-                      fit: BoxFit.cover,
-                      height: height,
-                      width: double.infinity,
-                      fadeBottom: true,
-                      isMesh: isMesh,
-                    )
-                  : ColorFiltered(
-                      colorFilter: ColorFilter.matrix([
-                        brightness, 0, 0, 0, 0,
-                        0, brightness, 0, 0, 0,
-                        0, 0, brightness, 0, 0,
-                        0, 0, 0, 1, 0,
-                      ]),
-                      child: ImageFiltered(
-                        imageFilter: ImageFilter.blur(
-                            sigmaX: blurAmount, sigmaY: blurAmount),
-                        child: AnymeXImage(
-                          imageUrl: blurSourceUrl,
-                          errorImage: blurFallbackUrl,
-                          radius: 0,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: height ?? double.infinity,
-                          color: blurColor,
-                        ),
-                      ),
-                    );
-            }
-
-            if (blurScope == 0) {
-              return scrollView;
-            }
-
-            if (blurScope == 2) {
-              final washHeight = (MediaQuery.sizeOf(themedContext).height * 0.48)
-                  .clamp(320.0, 520.0);
-              return Stack(
-                fit: StackFit.expand,
+            )),
+        bottomBar: buildBottomNavBar(context),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Center(
+              child: Column(
                 children: [
-                  Positioned.fill(
-                    child: Container(
-                      color: gradientBgColor,
-                    ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: washHeight,
-                    child: RepaintBoundary(
-                      child: buildBlurredImage(height: washHeight),
-                    ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: washHeight + 1.0,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: const [0.0, 0.30, 0.60, 0.85, 1.0],
-                          colors: [
-                            gradientBgColor.withValues(
-                                alpha: isDark ? 0.30 : 0.10),
-                            gradientBgColor.withValues(
-                                alpha: isDark ? 0.55 : 0.25),
-                            gradientBgColor.withValues(
-                                alpha: isDark ? 0.85 : 0.65),
-                            gradientBgColor,
-                            gradientBgColor,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  scrollView,
+                  buildMediaQuickActions(context, controller).animateSpring(
+                      delay: const Duration(milliseconds: 100)),
+                  const SizedBox(height: 12),
                 ],
-              );
-            }
-
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned.fill(
-                  child: RepaintBoundary(
-                    child: buildBlurredImage(),
-                  ),
+              ),
+            ),
+          ),
+          Obx(() {
+            final selected = controller.selectedPage.value;
+            return SliverMainAxisGroup(
+              slivers: [
+                SliverVisibility(
+                  visible: selected == 0,
+                  maintainState: true,
+                  sliver: _buildOverviewTab(context),
                 ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          colors.surface.withValues(alpha: 0.40),
-                          colors.surface.withValues(alpha: 0.65),
-                          colors.surface.withValues(alpha: 0.90),
-                        ],
-                        stops: const [0.0, 0.45, 1.0],
-                      ),
-                    ),
-                  ),
+                SliverVisibility(
+                  visible: selected == 1,
+                  maintainState: true,
+                  sliver: _buildContentTab(context),
                 ),
-                scrollView,
+                SliverVisibility(
+                  visible: selected == 2,
+                  maintainState: true,
+                  sliver: _buildCommentsTab(context),
+                ),
               ],
             );
           }),
-        );
-      }
-
-      if (posterScheme != null) {
-        return Theme(
-          data: Theme.of(context).copyWith(colorScheme: posterScheme),
-          child: Builder(builder: (ctx) => buildScaffold(ctx)),
-        );
-      }
-      return buildScaffold(context);
+        ],
+      );
     });
   }
 
@@ -509,40 +214,11 @@ class _MediaDetailsPageState extends State<MediaDetailsPage> {
 
     return Obx(() {
       final selected = controller.selectedPage.value;
-      final isDesktop =
-          getResponsiveValue(context, mobileValue: false, desktopValue: true);
-
-      final child = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: selected == 1
-                ? _buildContinueButton(context)
-                : const SizedBox.shrink(),
-          ),
-          SafeArea(
-            child: ResponsiveNavBar(
-              isDesktop: false,
-              currentIndex: selected,
-              margin: EdgeInsets.fromLTRB(
-                  32, 0, 32, settingsController.bottomNavBarMargin),
-              items: navItems,
-            ),
-          ),
-        ],
+      return DetailsBottomBar(
+        items: navItems,
+        currentIndex: selected,
+        above: selected == 1 ? _buildContinueButton(context) : null,
       );
-      if (isDesktop) {
-        return Align(
-          alignment: Alignment.bottomCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: child,
-          ),
-        );
-      }
-      return child;
     });
   }
 

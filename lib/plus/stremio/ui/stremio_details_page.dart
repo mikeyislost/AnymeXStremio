@@ -2,6 +2,9 @@
 // page: MediaHeader, the Info/Watch bottom bar, the continue button, the
 // user's episode card style and AnymeX's section panels.
 
+import 'dart:io';
+
+import 'package:anymex/widgets/details/details_shell.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/watched_bitfield.dart';
@@ -242,54 +245,44 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     final media = _headerMedia;
     final poster = _meta?.poster ?? widget.initialPoster ?? '';
 
-    return AnymeXScaffold(
-      extendBody: true,
-      resizeToAvoidBottomInset: false,
-      bottomNavigationBar: _bottomBar(context),
-      body: ScrollConfiguration(
-        behavior:
-            ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics()),
-          slivers: [
-            SliverToBoxAdapter(
-              child: MediaHeader(
-                tag: widget.tag,
-                data: media,
-                posterUrl: poster,
-                enableVisuals: false,
-              ),
-            ),
-            if (_loading)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Center(child: AnymeXProgressIndicator()),
-                ),
-              )
-            else if (_error != null)
-              SliverToBoxAdapter(child: _errorView(context))
-            else if (_meta != null) ...[
-              SliverToBoxAdapter(child: _quickActions(context, _meta!)),
-              if (_page == 0)
-                SliverToBoxAdapter(
-                  child: StremioInfoTab(
-                    meta: _meta!,
-                    season: _meta!.isSingleVideo
-                        ? null
-                        : (_season == 0 ? null : _season),
-                  ),
-                )
-              else if (_page == 1)
-                ..._watchTab(context, _meta!)
-              else
-                ..._commentsTab(context, _meta!),
-            ],
-            const SliverToBoxAdapter(child: SizedBox(height: 180)),
-          ],
-        ),
+    return DetailsShell(
+      media: media,
+      header: MediaHeader(
+        tag: widget.tag,
+        data: media,
+        posterUrl: poster,
+        enableVisuals: false,
+        extendBehindTitleBar: Platform.isWindows,
       ),
+      bottomBar: _bottomBar(context),
+      slivers: [
+        if (_loading)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: AnymeXProgressIndicator()),
+            ),
+          )
+        else if (_error != null)
+          SliverToBoxAdapter(child: _errorView(context))
+        else if (_meta != null) ...[
+          SliverToBoxAdapter(child: _quickActions(context, _meta!)),
+          if (_page == 0)
+            SliverToBoxAdapter(
+              child: StremioInfoTab(
+                meta: _meta!,
+                season: _meta!.isSingleVideo
+                    ? null
+                    : (_season == 0 ? null : _season),
+              ),
+            )
+          else if (_page == 1)
+            ..._watchTab(context, _meta!)
+          else
+            ..._commentsTab(context, _meta!),
+        ],
+        const SliverToBoxAdapter(child: SizedBox(height: 180)),
+      ],
     );
   }
 
@@ -430,51 +423,9 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
     required String label,
     required VoidCallback onTap,
     bool highlighted = false,
-  }) {
-    // Same pill buttons as the AnymeX details page.
-    final colors = context.colors;
-    const pill = BorderRadius.all(Radius.circular(999));
-    final textClr = highlighted ? colors.onPrimary : colors.onSurface;
-    return Material(
-      color: highlighted ? colors.primary : colors.surface.withOpacity(0.3),
-      borderRadius: pill,
-      child: InkWell(
-        borderRadius: pill,
-        onTap: onTap,
-        child: Container(
-          height: 40,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: pill,
-            border: highlighted
-                ? null
-                : Border.all(
-                    color: colors.onSurface.withOpacity(0.45), width: 1),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: textClr),
-              const SizedBox(width: 7),
-              Flexible(
-                child: AnymeXText(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: textClr,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  }) =>
+      DetailsPillButton(
+          icon: icon, label: label, onTap: onTap, active: highlighted);
 
   // Comments tab ---------------------------------------------------------------
 
@@ -676,8 +627,6 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
   // Bottom bar (same as AnymeX details) ---------------------------------------
 
   Widget _bottomBar(BuildContext context) {
-    final isDesktop =
-        getResponsiveValue(context, mobileValue: false, desktopValue: true);
     final items = [
       NavItem(
         selectedIcon: Iconsax.info_circle5,
@@ -701,37 +650,13 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         },
       ),
     ];
-    final child = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          child: (_page == 1 && !_loading && _meta != null)
-              ? _continueButton(context)
-              : const SizedBox.shrink(),
-        ),
-        SafeArea(
-          child: ResponsiveNavBar(
-            isDesktop: false,
-            currentIndex: _page,
-            margin: EdgeInsets.fromLTRB(
-                32, 0, 32, settingsController.bottomNavBarMargin),
-            items: items,
-          ),
-        ),
-      ],
+    return DetailsBottomBar(
+      items: items,
+      currentIndex: _page,
+      above: (_page == 1 && !_loading && _meta != null)
+          ? _continueButton(context)
+          : null,
     );
-    if (isDesktop == true) {
-      return Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: child,
-        ),
-      );
-    }
-    return child;
   }
 
   Widget _continueButton(BuildContext context) {

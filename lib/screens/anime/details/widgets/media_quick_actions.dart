@@ -2,6 +2,7 @@ import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/screens/anime/details/controller/media_details_controller.dart';
 import 'package:anymex/screens/anime/widgets/custom_list_dialog.dart';
 import 'package:anymex/screens/anime/widgets/list_editor.dart';
+import 'package:anymex/widgets/details/details_shell.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
 import 'package:flutter/material.dart';
@@ -112,48 +113,10 @@ Widget _buildQuickActionButton({
   required BorderRadius radius,
   bool isPrimary = false,
 }) {
-  // Moonlit 4: pill buttons — filled lavender when active, outlined otherwise.
-  final colors = context.colors;
-  const pill = BorderRadius.all(Radius.circular(999));
-  final bgClr = isPrimary ? colors.primary : colors.surface.withOpacity(0.3);
-  final textClr = isPrimary ? colors.onPrimary : colors.onSurface;
-
-  return Material(
-    color: bgClr,
-    borderRadius: pill,
-    child: InkWell(
-      borderRadius: pill,
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: pill,
-          border: isPrimary
-              ? null
-              : Border.all(
-                  color: colors.onSurface.withOpacity(0.45), width: 1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: textClr),
-            const SizedBox(width: 7),
-            Flexible(
-              child: AnymeXText(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: textClr,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
+  return DetailsPillButton(
+    icon: icon,
+    label: label,
+    onTap: onTap,
+    active: isPrimary,
   );
 }
