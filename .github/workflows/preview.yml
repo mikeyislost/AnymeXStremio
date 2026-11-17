@@ -221,3 +221,5 @@ jobs:
         with:
           name: Yumori-preview-Windows
           path: build/windows/x64/runner/Release/
+          # the app's settings file (.env) starts with a dot: keep it
+          include-hidden-files: true
