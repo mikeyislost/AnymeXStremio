@@ -5,7 +5,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:anymex/plus/categories/categories_data.dart';
+import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/plus/categories/categories_page.dart';
+import 'package:get/get.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:flutter/material.dart';
@@ -192,6 +194,28 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       safe(CatMovies.row('trending-movies')),
       safe(CatMovies.row('trending-series')),
     ]);
+    // If the direct AniList request got nowhere, use the trending list the
+    // app already loaded for Home.
+    if (parts[0].isEmpty) {
+      try {
+        final t = Get.find<ServiceHandler>().anilistService.trendingAnimes;
+        parts[0] = [
+          for (final m in t.take(12))
+            CatItem(
+              id: m.id,
+              kind: 'anime',
+              title: m.title,
+              poster: m.poster,
+              backdrop: m.cover ?? '',
+              overview: m.description
+                  .replaceAll(RegExp(r'<[^>]*>'), ' ')
+                  .replaceAll(RegExp(r'\s+'), ' ')
+                  .trim(),
+              rating: m.rating == '?' || m.rating == '??' ? '' : m.rating,
+            )
+        ];
+      } catch (_) {}
+    }
     bool ok(CatItem i) => i.backdrop.isNotEmpty || i.poster.isNotEmpty;
     final mixed = CatCategory.interleave([
       parts[0].where(ok).take(6).toList(),
