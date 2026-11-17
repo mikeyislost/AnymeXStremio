@@ -378,7 +378,7 @@ class TvCard extends StatelessWidget {
     this.autoScroll = true,
   });
 
-  static const posterW = 200.0, posterH = 300.0, wideW = 380.0, wideH = 214.0;
+  static const posterW = 168.0, posterH = 252.0, wideW = 320.0, wideH = 180.0;
 
   @override
   Widget build(BuildContext context) {

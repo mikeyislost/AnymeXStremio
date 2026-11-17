@@ -106,7 +106,7 @@ class _TvHomePageState extends State<TvHomePage> {
     _warming = true;
     final pics = <(String, double)>[];
     final first = specs.first.$2.first;
-    pics.add((first.backdrop.isNotEmpty ? first.backdrop : first.poster, 1240));
+    pics.add((first.backdrop.isNotEmpty ? first.backdrop : first.poster, 1920));
     for (final r in specs.take(2)) {
       for (final it in r.$2.take(8)) {
         pics.add((r.$3 && it.backdrop.isNotEmpty ? it.backdrop : it.poster, r.$3 ? TvCard.wideW : TvCard.posterW));
@@ -394,9 +394,9 @@ class _TvHomePageState extends State<TvHomePage> {
       });
     }
     return Stack(children: [
-      Positioned(left: 0, right: 0, top: 0, height: 640, child: _Banner(hero: _hero)),
+      Positioned.fill(child: _Banner(hero: _hero)),
       Positioned.fill(
-        top: 548,
+        top: 600,
         child: Obx(() {
           final data = Get.find<ServiceHandler>().anilistService;
           final cw = _continue();
@@ -481,34 +481,34 @@ class _Banner extends StatelessWidget {
           if (item.genres.isNotEmpty) item.genres.take(3).join(', '),
         ];
         return Stack(children: [
-          Positioned(
-            right: 0,
-            top: 0,
-            width: 1240,
-            height: 640,
+          // The picture fills the whole screen behind everything.
+          Positioned.fill(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: TvImage(key: ValueKey(pic), url: pic, width: 1240, height: 640, seed: item.key),
+              duration: const Duration(milliseconds: 350),
+              child: TvImage(key: ValueKey(pic), url: pic, width: 1920, height: 1080, seed: item.key),
             ),
           ),
+          // Dark on the left (text) ...
           const Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.black, Color(0xD9000000), Color(0x00000000)],
-                  stops: [0.0, 0.42, 0.75],
+                  colors: [Color(0xF2000000), Color(0xB3000000), Color(0x00000000)],
+                  stops: [0.0, 0.36, 0.72],
                 ),
               ),
             ),
           ),
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 240,
+          // ... and at the bottom (rows), so the picture melts into black.
+          const Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black, Color(0x00000000)]),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x00000000), Color(0x00000000), Color(0xCC000000), Color(0xFF000000)],
+                  stops: [0.0, 0.42, 0.72, 1.0],
+                ),
               ),
             ),
           ),
