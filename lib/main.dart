@@ -1,4 +1,5 @@
 import 'package:anymex/plus/app_channel.dart';
+import 'package:anymex/plus/home/home_hero.dart';
 import 'package:anymex/plus/launch_timer.dart';
 import 'package:anymex/plus/splash_gate.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -710,7 +711,10 @@ class _FilterScreenState extends State<FilterScreen> {
       backgroundColor: Provider.of<ThemeProvider>(context).isOled
           ? Colors.black
           : Colors.transparent,
-      body: Column(
+      body: Stack(children: [
+        // Home's Featured picture runs behind the top bar too.
+        const Positioned.fill(child: YumoriHeroBackdrop()),
+        Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Obx(() {
@@ -805,6 +809,10 @@ class _FilterScreenState extends State<FilterScreen> {
               ];
               final validIndex =
                   _selectedIndex.clamp(0, desktopRoutes.length - 1);
+              final onHome = validIndex > 0 &&
+                  navTabs[validIndex - 1].toString().toLowerCase() == 'home';
+              WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => YumoriHeroBus.active.value = onHome);
               return LazyIndexedStack(
                 index: validIndex,
                 children: desktopRoutes,
@@ -813,6 +821,7 @@ class _FilterScreenState extends State<FilterScreen> {
           ),
         ],
       ),
+      ]),
     );
   }
 

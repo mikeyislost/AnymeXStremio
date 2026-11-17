@@ -184,6 +184,12 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _scrollController.addListener(() {
+      if (_scrollController.hasClients) {
+        YumoriHeroBus.offset.value = _scrollController.offset;
+      }
+    });
+    YumoriHeroBus.offset.value = 0;
     final serviceHandler = Get.find<ServiceHandler>();
     _workers.add(ever(serviceHandler.serviceType, (_) {
       if (mounted) setState(() {});
@@ -208,6 +214,7 @@ class _HomePageState extends State<HomePage> {
       w.dispose();
     }
     _workers.clear();
+    YumoriHeroBus.active.value = false;
     _scrollController.dispose();
     _isAppBarVisibleExternally.dispose();
     super.dispose();
@@ -240,10 +247,6 @@ class _HomePageState extends State<HomePage> {
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
-            // PC: the Featured art sits fixed behind the whole page.
-            if (isDesktop)
-              Positioned.fill(
-                  child: YumoriHeroBackdrop(scroll: _scrollController)),
             CustomScrollView(
               controller: _scrollController,
               cacheExtent: 1200.0, // AnymeX+: nearby rows stay built

@@ -58,22 +58,39 @@ class YumoriHeroArt {
 /// The item the hero is showing, shared with the full-screen backdrop.
 class YumoriHeroBus {
   static final current = ValueNotifier<CatItem?>(null);
+
+  /// Home's scroll position, and whether Home is the page on screen.
+  static final offset = ValueNotifier<double>(0);
+  static final active = ValueNotifier<bool>(false);
 }
 
 /// PC / TV style: the art of the current Featured item fixed behind the
 /// whole Home page; it darkens as the page scrolls.
 class YumoriHeroBackdrop extends StatelessWidget {
-  final ScrollController scroll;
-  const YumoriHeroBackdrop({super.key, required this.scroll});
+  const YumoriHeroBackdrop({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: YumoriHeroBus.active,
+      builder: (context, on, _) => on ? _body() : const SizedBox.shrink(),
+    );
+  }
+
+  Widget _body() {
     return ValueListenableBuilder<CatItem?>(
       valueListenable: YumoriHeroBus.current,
       builder: (context, it, _) {
         if (it == null) return const SizedBox.expand();
         final art = _YumoriHomeHeroState._sharp(YumoriHeroArt.backdrop(it));
-        return Stack(
+        return ValueListenableBuilder<double>(
+          valueListenable: YumoriHeroBus.offset,
+          builder: (context, off, child) => Opacity(
+            // Fades out as the page scrolls, leaving the background.
+            opacity: (1 - off / 420).clamp(0.0, 1.0),
+            child: child,
+          ),
+          child: Stack(
           fit: StackFit.expand,
           children: [
             AnimatedSwitcher(
@@ -118,16 +135,8 @@ class YumoriHeroBackdrop extends StatelessWidget {
                 ),
               ),
             ),
-            AnimatedBuilder(
-              animation: scroll,
-              builder: (context, _) {
-                final off = scroll.hasClients ? scroll.offset : 0.0;
-                final t = (off / 380).clamp(0.0, 1.0);
-                return ColoredBox(
-                    color: const Color(0xFF0D0A16).withOpacity(0.78 * t));
-              },
-            ),
           ],
+        ),
         );
       },
     );
