@@ -254,6 +254,7 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         data: media,
         posterUrl: poster,
         enableVisuals: false,
+        kindLabel: (_meta?.type ?? widget.type) == 'movie' ? 'MOVIE' : 'SERIES',
         extendBehindTitleBar: Platform.isWindows,
       ),
       bottomBar: _bottomBar(context),

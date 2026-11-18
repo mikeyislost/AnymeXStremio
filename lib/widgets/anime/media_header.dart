@@ -33,8 +33,11 @@ class MediaHeader extends StatelessWidget {
     this.userProgress,
     this.enableVisuals = true,
     this.extendBehindTitleBar = false,
+    this.kindLabel,
   });
 
+  /// Overrides the ANIME eyebrow (Movies & TV pages pass MOVIE / SERIES).
+  final String? kindLabel;
   final Media? data;
   /// Tapping the poster opens the anime artwork viewer (AniList/MAL only).
   final bool enableVisuals;
@@ -229,7 +232,7 @@ class MediaHeader extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Builder(builder: (context) {
-                        final kind = switch (data?.mediaType) {
+                        final kind = kindLabel ?? switch (data?.mediaType) {
                           ItemType.manga => 'MANGA',
                           ItemType.novel => 'NOVEL',
                           _ => (data?.type == 'movie')
