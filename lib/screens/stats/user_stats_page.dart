@@ -248,6 +248,11 @@ class _UserStatsPageState extends State<UserStatsPage> {
     );
   }
 
+  ShapeBorder _cardShape(BuildContext context) => RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: context.colors.outline.withOpacity(0.10)),
+      );
+
   Widget _buildStatsModeChips(BuildContext context) {
     const options = [
       ('All', Icons.grid_view_rounded),
@@ -327,6 +332,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
     final int points = rankInfo.points;
 
     return AnymeXCard(
+      shape: _cardShape(context),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,8 +370,8 @@ class _UserStatsPageState extends State<UserStatsPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: context.colors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: context.colors.primary.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(99),
                 ),
                 child: AnymeXText(
                   '$points XP',
@@ -396,10 +402,10 @@ class _UserStatsPageState extends State<UserStatsPage> {
           ),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 8,
+              minHeight: 10,
               backgroundColor: context.colors.primary.withOpacity(0.08),
               valueColor: AlwaysStoppedAnimation<Color>(context.colors.primary),
             ),
@@ -514,30 +520,31 @@ class _UserStatsPageState extends State<UserStatsPage> {
     required IconData icon,
   }) {
     return AnymeXCard(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      shape: _cardShape(context),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(icon,
-                  size: 10,
+                  size: 13,
                   color: context.colors.onSurfaceVariant.withOpacity(0.5)),
               const SizedBox(width: 4),
               Expanded(
                 child: AnymeXText(
                   title,
-                  size: 9,
-                  color: context.colors.onSurfaceVariant.withOpacity(0.5),
+                  size: 10,
+                  color: context.colors.onSurfaceVariant.withOpacity(0.6),
                   maxLines: 1,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           AnymeXText(
             value,
-            size: 14,
+            size: 20,
             variant: TextVariant.bold,
             color: context.colors.onSurface,
           ),
@@ -644,6 +651,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
     final gridWidth = totalWeeks * cellStep;
 
     return AnymeXCard(
+      shape: _cardShape(context),
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -908,6 +916,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
         const SizedBox(height: 12),
         if (list.isEmpty)
           AnymeXCard(
+      shape: _cardShape(context),
             padding: const EdgeInsets.all(24),
             child: Center(
               child: Column(
@@ -1048,7 +1057,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
           padding: EdgeInsets.only(left: 4.0),
           child: AnymeXText(
             'Detailed Insights',
-            size: 16,
+            size: 18,
             variant: TextVariant.bold,
           ),
         ),
@@ -1057,6 +1066,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
             formats.isEmpty &&
             (!showStudios || studios.isEmpty))
           AnymeXCard(
+      shape: _cardShape(context),
             padding: const EdgeInsets.all(24),
             child: Center(
               child: AnymeXText(
@@ -1109,6 +1119,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
     final maxVal = data.first.value;
 
     return AnymeXCard(
+      shape: _cardShape(context),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1149,10 +1160,10 @@ class _UserStatsPageState extends State<UserStatsPage> {
                   ),
                   const SizedBox(height: 6),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(99),
                     child: LinearProgressIndicator(
                       value: percent,
-                      minHeight: 6,
+                      minHeight: 8,
                       backgroundColor: context.colors.primary.withOpacity(0.08),
                       valueColor:
                           AlwaysStoppedAnimation<Color>(context.colors.primary),
