@@ -187,7 +187,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                   child: SizedBox(
                       height: statusBarHeight +
                           appBarHeight +
-                          (isLegacy ? 60 : 10)),
+                          (isLegacy ? 76 : 10)),
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -195,14 +195,14 @@ class _UserStatsPageState extends State<UserStatsPage> {
                     delegate: SliverChildListDelegate([
                       _buildRankProgressCard(
                           context, totalWatchTime + totalReadTime),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       _buildPrimaryStatsRow(
                           context, totalHrs, totalMins, displayedUnits),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       _buildDailyAveragesRow(context),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       _buildFavoriteTitleShowcase(context, favorite),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       _buildHeatmapSection(context),
                       const SizedBox(height: 24),
                       _buildDetailedInsightsSection(context),
@@ -272,7 +272,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
       }).toList();
 
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.only(top: 10, bottom: 6),
         child: AnymeXPills(
           scrollPadding: EdgeInsets.zero,
           expandEqually: true,
@@ -314,9 +314,9 @@ class _UserStatsPageState extends State<UserStatsPage> {
     return Row(
       children: [
         Expanded(child: timeReadCard),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(child: pagesCard),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(child: daysCard),
       ],
     );
@@ -333,7 +333,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
 
     return AnymeXCard(
       shape: _cardShape(context),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -428,7 +428,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
             icon: Icons.play_circle_outline_rounded,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(
           child: _buildSmallInfoCard(
             title: 'Avg Chapters',
@@ -436,7 +436,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
             icon: Icons.chrome_reader_mode_outlined,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(
           child: _buildSmallInfoCard(
             title: 'Streak (Cur/Long)',
@@ -521,7 +521,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
   }) {
     return AnymeXCard(
       shape: _cardShape(context),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1120,7 +1120,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
 
     return AnymeXCard(
       shape: _cardShape(context),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
