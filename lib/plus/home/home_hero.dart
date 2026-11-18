@@ -3,6 +3,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show ImageFilter;
 
 import 'package:anymex/plus/categories/categories_data.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
@@ -19,6 +20,9 @@ import 'package:http/http.dart' as http;
 class YumoriHeroArt {
   static final _poster = <String, String>{};
   static final _backdrop = <String, String>{};
+
+  static bool hasBackdrop(CatItem it) =>
+      _backdrop.containsKey(it.key) || it.backdrop.isNotEmpty;
 
   static String poster(CatItem it) =>
       _poster[it.key] ?? (it.poster.isNotEmpty ? it.poster : it.backdrop);
@@ -85,6 +89,9 @@ class YumoriHeroBackdrop extends StatelessWidget {
       valueListenable: YumoriHeroBus.current,
       builder: (context, it, _) {
         if (it == null) return const SizedBox.expand();
+        final posterOnly = it.backdrop.isEmpty &&
+            !YumoriHeroArt.hasBackdrop(it) &&
+            it.poster.isNotEmpty;
         final art = _YumoriHomeHeroState._sharp(YumoriHeroArt.backdrop(it));
         return ValueListenableBuilder<double>(
           valueListenable: YumoriHeroBus.offset,
@@ -100,7 +107,7 @@ class YumoriHeroBackdrop extends StatelessWidget {
               duration: const Duration(milliseconds: 700),
               child: SizedBox.expand(
                 key: ValueKey(it.key),
-                child: AnymeXImage(
+                child: posterOnly ? _PosterBackdrop(url: it.poster) : AnymeXImage(
                   imageUrl: art,
                   radius: 0,
                   fit: BoxFit.cover,
@@ -401,7 +408,11 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
               child: Text(it.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: YumoriText.title(size: 56).copyWith(height: 1.05)),
+                  style: YumoriText.title(
+                          size: it.title.length <= 24
+                              ? 56
+                              : (it.title.length <= 40 ? 44 : 36))
+                      .copyWith(height: 1.05)),
             ),
             if (it.overview.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -634,5 +645,43 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
         ],
       ),
     );
+  }
+}
+
+
+/// Art that only exists as a tall poster (most manga): a blurred, dimmed copy
+/// fills the screen and the sharp poster sits on the right at its own shape,
+/// instead of being stretched across the whole window.
+class _PosterBackdrop extends StatelessWidget {
+  final String url;
+  const _PosterBackdrop({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      final h = c.maxHeight * 0.72;
+      return Stack(fit: StackFit.expand, children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 38, sigmaY: 38),
+          child: Transform.scale(
+            scale: 1.25,
+            child: AnymeXImage(imageUrl: url, radius: 0, fit: BoxFit.cover),
+          ),
+        ),
+        ColoredBox(color: const Color(0xFF0D0A16).withOpacity(0.35)),
+        Align(
+          alignment: const Alignment(0.78, -0.1),
+          child: SizedBox(
+            height: h,
+            width: h * 0.7,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: AnymeXImage(
+                  imageUrl: url, radius: 0, fit: BoxFit.cover),
+            ),
+          ),
+        ),
+      ]);
+    });
   }
 }
