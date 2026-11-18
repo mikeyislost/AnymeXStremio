@@ -258,7 +258,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: colors.surfaceContainerHighest.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(99),
               border: Border.all(color: colors.outline.withOpacity(0.1)),
             ),
             child: Stack(children: [
@@ -272,7 +272,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: colors.secondary,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(99),
                       boxShadow: [
                         BoxShadow(
                             color: colors.secondary.withOpacity(0.3),
@@ -363,7 +363,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: colors.surfaceContainerHighest.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(color: colors.outline.withOpacity(0.1)),
             ),
             child: Stack(children: [
@@ -564,7 +564,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
               height: 72,
               decoration: BoxDecoration(
                 color: colors.errorContainer.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(
                 Icons.warning_amber_rounded,
@@ -687,7 +687,7 @@ class _SettingsExtensionsState extends State<SettingsExtensions> {
       child: Container(
         decoration: BoxDecoration(
           color: colors.surfaceContainerLow.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(color: colors.outlineVariant.withOpacity(0.5)),
         ),
         child: Padding(

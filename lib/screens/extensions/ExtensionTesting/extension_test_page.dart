@@ -132,7 +132,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
           color: isSelected
               ? theme.primary.withValues(alpha: 0.3)
               : theme.surfaceContainer.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
                 ? theme.primary.withValues(alpha: 0.5)
@@ -198,7 +198,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
           color: isSelected
               ? theme.primary.withValues(alpha: 0.3)
               : theme.surfaceContainer.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
                 ? theme.primary.withValues(alpha: 0.5)
@@ -239,7 +239,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: theme.surfaceContainer.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: TextField(
             controller: searchController,
@@ -313,7 +313,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: theme.surfaceContainer.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
                 child: AnymeXText(
@@ -329,7 +329,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
           return Container(
             decoration: BoxDecoration(
               color: theme.surfaceContainer.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
               children: extensions.map((source) {
@@ -346,7 +346,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
     final isSelected = controller.selectedExtensions.contains(source.name);
     return InkWell(
       onTap: () => controller.toggleExtension(source.name ?? '', !isSelected),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
@@ -428,7 +428,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
               disabledForegroundColor: theme.onSurface.withValues(alpha: 0.3),
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
               ),
               elevation: 0,
             ),
@@ -451,7 +451,7 @@ class _ExtensionTestPageState extends State<ExtensionTestPage> {
           padding: const EdgeInsets.all(48),
           decoration: BoxDecoration(
             color: theme.surfaceContainer.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Center(
             child: Column(

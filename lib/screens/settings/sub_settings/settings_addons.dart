@@ -147,7 +147,7 @@ class _SettingsAddonsState extends State<SettingsAddons> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.surfaceContainer.opaque(0.35),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: theme.outlineVariant.opaque(0.3),
         ),
@@ -267,7 +267,7 @@ class _SettingsAddonsState extends State<SettingsAddons> {
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: theme.surfaceContainerHighest.opaque(0.3),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(22),
                   border: Border.all(
                     color: theme.outlineVariant.opaque(0.2),
                   ),
@@ -334,7 +334,7 @@ class _SettingsAddonsState extends State<SettingsAddons> {
                     foregroundColor: theme.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(22),
                     ),
                     elevation: 0,
                   ),
@@ -366,7 +366,7 @@ class _SettingsAddonsState extends State<SettingsAddons> {
                     foregroundColor: theme.onTertiary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(22),
                     ),
                     elevation: 0,
                   ),
@@ -445,7 +445,7 @@ class _SettingsAddonsState extends State<SettingsAddons> {
                     foregroundColor: theme.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(22),
                     ),
                     elevation: 0,
                   ),
@@ -476,7 +476,7 @@ class _SettingsAddonsState extends State<SettingsAddons> {
                     side: BorderSide(color: theme.error.opaque(0.4)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(22),
                     ),
                   ),
                   child: Row(
