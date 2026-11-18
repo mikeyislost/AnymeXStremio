@@ -106,11 +106,21 @@ class _MangaHomePageState extends State<MangaHomePage> {
           CustomAnimatedAppBar(
             isVisible: _isAppBarVisibleExternally,
             scrollController: _scrollController,
+            // iPhone with the Featured hero (AniList): no title pill, like Home.
             headerContent: Header(
-              title: serviceHandler.serviceType.value == ServicesType.simkl
-                  ? 'Series'
-                  : 'Manga',
-              subtitleWidget: const HeaderGreetingSubtitle(),
+              plain: !isDesktop && PlusPageRows.appliesTo(serviceHandler),
+              leading: (!isDesktop && PlusPageRows.appliesTo(serviceHandler))
+                  ? const HeaderWordmarkButton()
+                  : null,
+              title: (!isDesktop && PlusPageRows.appliesTo(serviceHandler))
+                  ? null
+                  : (serviceHandler.serviceType.value == ServicesType.simkl
+                      ? 'Series'
+                      : 'Manga'),
+              subtitleWidget:
+                  (!isDesktop && PlusPageRows.appliesTo(serviceHandler))
+                      ? null
+                      : const HeaderGreetingSubtitle(),
               actions: [
                 HeaderActionButton(
                   icon: IconlyLight.search,
@@ -141,6 +151,10 @@ class _MangaHomePageState extends State<MangaHomePage> {
                     }
                   },
                 ),
+                if (!isDesktop && PlusPageRows.appliesTo(serviceHandler)) ...[
+                  const SizedBox(width: 8),
+                  const HeaderProfileAvatar(),
+                ],
               ],
             ),
             visibleStatusBarStyle: SystemUiOverlayStyle(
