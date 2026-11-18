@@ -810,10 +810,16 @@ class _FilterScreenState extends State<FilterScreen> {
               ];
               final validIndex =
                   _selectedIndex.clamp(0, desktopRoutes.length - 1);
-              final onHome = validIndex > 0 &&
-                  navTabs[validIndex - 1].toString().toLowerCase() == 'home';
-              WidgetsBinding.instance.addPostFrameCallback(
-                  (_) => YumoriHeroBus.active.value = onHome);
+              final curTab = validIndex > 0
+                  ? navTabs[validIndex - 1].toString().toLowerCase()
+                  : '';
+              final heroScope = curTab == 'home'
+                  ? 'home'
+                  : (curTab == 'manga' ? 'manga' : null);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                YumoriHeroBus.scope.value = heroScope;
+                YumoriHeroBus.active.value = heroScope != null;
+              });
               return LazyIndexedStack(
                 index: validIndex,
                 children: desktopRoutes,

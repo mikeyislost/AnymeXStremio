@@ -40,7 +40,7 @@ const plusDiscoverRows = <(String, String)>[
 
 /// Row keys of the Manga tab's rows (AniList `mangaWidgets`).
 const plusMangaRows = <(String, String)>[
-  ('m:carousel', 'Trending banner'),
+  ('m:carousel', 'Featured'),
   ('m:trending', 'Trending Manga'),
   ('m:latest', 'Latest Manga'),
   ('m:popular', 'Popular Manga'),

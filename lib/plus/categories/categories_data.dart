@@ -14,7 +14,7 @@ import 'package:http/http.dart' as http;
 /// One card in a category: anime (AniList) or a movie / series (Stremio).
 class CatItem {
   final String id; // AniList id, or the Stremio / IMDb id
-  final String kind; // anime | movie | series
+  final String kind; // anime | manga | movie | series
   final String title;
   final String poster;
   final String rating;
@@ -38,7 +38,12 @@ class CatItem {
   bool get isAnime => kind == 'anime';
   String get key => '$kind:$id';
   String get kindLabel =>
-      switch (kind) { 'anime' => 'ANIME', 'movie' => 'MOVIE', _ => 'SERIES' };
+      switch (kind) {
+        'anime' => 'ANIME',
+        'manga' => 'MANGA',
+        'movie' => 'MOVIE',
+        _ => 'SERIES'
+      };
 
   factory CatItem.fromStremio(StremioMetaPreview p) => CatItem(
         id: p.id,
@@ -52,13 +57,13 @@ class CatItem {
         genre: p.genres.isEmpty ? '' : p.genres.first,
       );
 
-  factory CatItem.fromAnilistJson(Map m) {
+  factory CatItem.fromAnilistJson(Map m, {String kind = 'anime'}) {
     final t = (m['title'] as Map?) ?? const {};
     final cover = (m['coverImage'] as Map?) ?? const {};
     final score = (m['averageScore'] as num?)?.toInt();
     return CatItem(
       id: '${m['id']}',
-      kind: 'anime',
+      kind: kind,
       title: '${t['english'] ?? t['romaji'] ?? t['userPreferred'] ?? '?'}',
       poster: '${cover['extraLarge'] ?? cover['large'] ?? ''}',
       rating: score == null || score == 0 ? '' : (score / 10).toStringAsFixed(1),
@@ -83,9 +88,9 @@ class CatAnilist {
       'description(asHtml: false) averageScore seasonYear format episodes genres';
 
   static const _query = '''
-query (\$genres: [String], \$sort: [MediaSort], \$status: MediaStatus, \$season: MediaSeason, \$seasonYear: Int, \$search: String, \$page: Int) {
+query (\$type: MediaType, \$genres: [String], \$sort: [MediaSort], \$status: MediaStatus, \$season: MediaSeason, \$seasonYear: Int, \$search: String, \$page: Int) {
   Page(page: \$page, perPage: 40) {
-    media(type: ANIME, genre_in: \$genres, sort: \$sort, status: \$status, season: \$season, seasonYear: \$seasonYear, search: \$search, isAdult: false) {
+    media(type: \$type, genre_in: \$genres, sort: \$sort, status: \$status, season: \$season, seasonYear: \$seasonYear, search: \$search, isAdult: false) {
       $_fields
     }
   }
@@ -99,11 +104,16 @@ query (\$genres: [String], \$sort: [MediaSort], \$status: MediaStatus, \$season:
       final resp = await http
           .post(Uri.parse('https://graphql.anilist.co'),
               headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
-              body: jsonEncode({'query': _query, 'variables': vars}))
+              body: jsonEncode({'query': _query, 'variables': {'type': 'ANIME', ...vars}}))
           .timeout(const Duration(seconds: 20));
       if (resp.statusCode != 200) throw Exception('HTTP ${resp.statusCode}');
       final media = (jsonDecode(resp.body)['data']?['Page']?['media'] as List?) ?? const [];
-      final out = [for (final m in media) if (m is Map) CatItem.fromAnilistJson(m)];
+      final manga = vars['type'] == 'MANGA';
+      final out = [
+        for (final m in media)
+          if (m is Map)
+            CatItem.fromAnilistJson(m, kind: manga ? 'manga' : 'anime')
+      ];
       _cache[key] = (DateTime.now(), out);
       return out;
     } catch (e) {

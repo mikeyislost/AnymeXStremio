@@ -186,10 +186,12 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(() {
-      if (_scrollController.hasClients) {
+      if (_scrollController.hasClients &&
+          YumoriHeroBus.scope.value != 'manga') {
         YumoriHeroBus.offset.value = _scrollController.offset;
       }
     });
+    YumoriHeroBus.scope.addListener(_syncHeroOffset);
     YumoriHeroBus.offset.value = 0;
     final serviceHandler = Get.find<ServiceHandler>();
     _workers.add(ever(serviceHandler.serviceType, (_) {
@@ -198,6 +200,12 @@ class _HomePageState extends State<HomePage> {
     _workers.add(ever(serviceHandler.isLoggedIn, (_) {
       if (mounted) setState(() {});
     }));
+  }
+
+  void _syncHeroOffset() {
+    if (YumoriHeroBus.scope.value == 'home' && _scrollController.hasClients) {
+      YumoriHeroBus.offset.value = _scrollController.offset;
+    }
   }
 
   ScrollController get scrollController => _scrollController;
@@ -215,6 +223,7 @@ class _HomePageState extends State<HomePage> {
       w.dispose();
     }
     _workers.clear();
+    YumoriHeroBus.scope.removeListener(_syncHeroOffset);
     YumoriHeroBus.active.value = false;
     _scrollController.dispose();
     _isAppBarVisibleExternally.dispose();

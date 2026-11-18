@@ -62,6 +62,9 @@ class YumoriHeroBus {
   /// Home's scroll position, and whether Home is the page on screen.
   static final offset = ValueNotifier<double>(0);
   static final active = ValueNotifier<bool>(false);
+
+  /// Which page owns the full-screen picture: 'home', 'manga' or null.
+  static final scope = ValueNotifier<String?>(null);
 }
 
 /// PC / TV style: the art of the current Featured item fixed behind the
@@ -151,19 +154,23 @@ class YumoriHomeHero extends StatefulWidget {
   /// PC / TV: no art here (the backdrop behind the page shows it); big
   /// title on the left and a strip of small posters to pick from.
   final bool fullScreen;
+
+  /// 'home' (anime + movies/series) or 'manga' (trending manga).
+  final String scope;
   const YumoriHomeHero(
       {super.key,
       required this.topInset,
       this.height = 560,
-      this.fullScreen = false});
+      this.fullScreen = false,
+      this.scope = 'home'});
 
   @override
   State<YumoriHomeHero> createState() => _YumoriHomeHeroState();
 }
 
 class _YumoriHomeHeroState extends State<YumoriHomeHero> {
-  static List<CatItem>? _cache;
-  static DateTime? _at;
+  static final _cache = <String, List<CatItem>>{};
+  static final _at = <String, DateTime>{};
 
   final _page = PageController();
   List<CatItem> _items = const [];
@@ -175,11 +182,25 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
   @override
   void initState() {
     super.initState();
+    YumoriHeroBus.scope.addListener(_onScope);
     _load();
+  }
+
+  bool get _mine => YumoriHeroBus.scope.value == widget.scope;
+
+  void _publish(CatItem? it) {
+    if (_mine) YumoriHeroBus.current.value = it;
+  }
+
+  void _onScope() {
+    if (_mine && _items.isNotEmpty) {
+      YumoriHeroBus.current.value = _items[_index.clamp(0, _items.length - 1)];
+    }
   }
 
   @override
   void dispose() {
+    YumoriHeroBus.scope.removeListener(_onScope);
     _timer?.cancel();
     _retry?.cancel();
     _page.dispose();
@@ -187,10 +208,33 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
   }
 
   Future<void> _load() async {
-    if (_cache != null &&
-        _at != null &&
-        DateTime.now().difference(_at!) < const Duration(minutes: 30)) {
-      _set(_cache!);
+    final cached = _cache[widget.scope];
+    final at = _at[widget.scope];
+    if (cached != null &&
+        at != null &&
+        DateTime.now().difference(at) < const Duration(minutes: 30)) {
+      _set(cached);
+      return;
+    }
+    if (widget.scope == 'manga') {
+      final list = await CatAnilist.list({
+        'type': 'MANGA',
+        'sort': ['TRENDING_DESC'],
+        'page': 1
+      }).catchError((_) => <CatItem>[]);
+      final items = list
+          .where((i) => i.backdrop.isNotEmpty || i.poster.isNotEmpty)
+          .take(10)
+          .toList();
+      if (items.isNotEmpty) {
+        _set(items);
+        _cache['manga'] = items;
+        _at['manga'] = DateTime.now();
+      } else if (_tries < 5 && mounted) {
+        _tries++;
+        _retry?.cancel();
+        _retry = Timer(const Duration(seconds: 8), _load);
+      }
       return;
     }
     Future<List<CatItem>> safe(Future<List<CatItem>> f) =>
@@ -237,8 +281,8 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       _set(mixed);
       // Only remember a result that has every source in it.
       if (complete) {
-        _cache = mixed;
-        _at = DateTime.now();
+        _cache['home'] = mixed;
+        _at['home'] = DateTime.now();
       }
     }
     // A source that was not ready yet (network, Stremio setup): try again.
@@ -255,13 +299,13 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
       _items = items;
       if (_index >= items.length) _index = 0;
     });
-    YumoriHeroBus.current.value = items[_index];
+    _publish(items[_index]);
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 8), (_) {
       if (!mounted || _items.length < 2) return;
       if (widget.fullScreen) {
         setState(() => _index = (_index + 1) % _items.length);
-        YumoriHeroBus.current.value = _items[_index];
+        _publish(_items[_index]);
         return;
       }
       if (!_page.hasClients) return;
@@ -288,7 +332,7 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
             itemCount: _items.length,
             onPageChanged: (i) {
               setState(() => _index = i);
-              YumoriHeroBus.current.value = _items[i];
+              _publish(_items[i]);
             },
             itemBuilder: (context, i) =>
                 RepaintBoundary(child: _slide(context, _items[i], i)),
@@ -408,7 +452,7 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
                     onTap: () {
                       _timer?.cancel();
                       setState(() => _index = i);
-                      YumoriHeroBus.current.value = t;
+                      _publish(t);
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),

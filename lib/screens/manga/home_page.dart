@@ -1,6 +1,7 @@
 // ignore_for_file: invalid_use_of_protected_member
 
 import 'package:anymex/controllers/source/source_controller.dart';
+import 'package:anymex/plus/home/home_hero.dart';
 import 'package:anymex/plus/layout/home_layout.dart';
 import 'package:anymex/plus/layout/page_rows.dart';
 import 'package:anymex/widgets/header/header.dart';
@@ -38,10 +39,19 @@ class _MangaHomePageState extends State<MangaHomePage> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _scrollController.addListener(_syncOffset);
+    YumoriHeroBus.scope.addListener(_syncOffset);
+  }
+
+  void _syncOffset() {
+    if (YumoriHeroBus.scope.value == 'manga' && _scrollController.hasClients) {
+      YumoriHeroBus.offset.value = _scrollController.offset;
+    }
   }
 
   @override
   void dispose() {
+    YumoriHeroBus.scope.removeListener(_syncOffset);
     _scrollController.dispose();
     _isAppBarVisibleExternally.dispose();
     super.dispose();
@@ -67,8 +77,12 @@ class _MangaHomePageState extends State<MangaHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: statusBarHeight + appBarHeight),
-                const SizedBox(height: 10),
+                // Moonlit 4: the Featured hero fills the top (AniList layout).
+                Obx(() => PlusPageRows.appliesTo(serviceHandler)
+                    ? PlusMangaHero(
+                        topInset: statusBarHeight + appBarHeight,
+                        isDesktop: isDesktop)
+                    : SizedBox(height: statusBarHeight + appBarHeight + 10)),
                 Obx(() {
                   if (serviceHandler.serviceType.value ==
                       ServicesType.extensions) {

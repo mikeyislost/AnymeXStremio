@@ -14,6 +14,7 @@ import 'package:anymex/models/models_convertor/carousel/carousel_data.dart';
 import 'package:anymex/plus/categories/categories_data.dart';
 import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
 import 'package:anymex/screens/anime/details_page.dart';
+import 'package:anymex/screens/manga/details_page.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/utils/function.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
@@ -26,7 +27,22 @@ import 'package:anymex/screens/anime/misc/recommendation.dart';
 import 'package:anymex/widgets/common/title_bar_inset.dart';
 
 void openCatItem(CatItem it, String tag) {
-  if (it.isAnime) {
+  if (it.kind == 'manga') {
+    final media = Media.fromCarouselData(
+      CarouselData(
+        id: it.id,
+        title: it.title,
+        romajiTitle: it.title,
+        englishTitle: it.title,
+        poster: it.poster,
+        extraData: it.rating.isEmpty ? '?' : it.rating,
+        servicesType: ServicesType.anilist,
+        releasing: false,
+      ),
+      ItemType.manga,
+    );
+    navigateWithAnimation(() => MangaDetailsPage(media: media, tag: tag));
+  } else if (it.isAnime) {
     final media = Media.fromCarouselData(
       CarouselData(
         id: it.id,

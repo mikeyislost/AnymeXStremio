@@ -144,6 +144,42 @@ class PlusHomeHero extends StatelessWidget {
   }
 }
 
+/// The Featured hero at the top of the Manga tab: the same look as Home's,
+/// with trending manga. Follows the "Featured" row's show/hide setting.
+class PlusMangaHero extends StatelessWidget {
+  final double topInset;
+  final bool isDesktop;
+  const PlusMangaHero(
+      {super.key, required this.topInset, required this.isDesktop});
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Get.find<Settings>();
+    return Obx(() {
+      PlusLayoutStore.version.value;
+      settings.uiSettings.value;
+      final hidden = PlusPageRows.mangaRows()
+          .any((r) => r.key == 'm:carousel' && r.config.hidden);
+      if (hidden) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (YumoriHeroBus.scope.value == 'manga') {
+            YumoriHeroBus.current.value = null;
+          }
+        });
+        return SizedBox(height: topInset + 10);
+      }
+      return YumoriHomeHero(
+        scope: 'manga',
+        topInset: topInset,
+        fullScreen: isDesktop,
+        height: isDesktop
+            ? (MediaQuery.sizeOf(context).height - 250).clamp(420.0, 900.0)
+            : 560,
+      );
+    });
+  }
+}
+
 /// The Manga tab's rows, in your order.
 class PlusMangaLayout extends StatelessWidget {
   const PlusMangaLayout({super.key});
@@ -163,7 +199,7 @@ class PlusMangaLayout extends StatelessWidget {
         if (all.isEmpty) return null;
         switch (key) {
           case 'm:carousel':
-            return all[0];
+            return null; // the Featured hero above replaces the old banner
           case 'm:trending':
           case 'm:latest':
           case 'm:popular':
