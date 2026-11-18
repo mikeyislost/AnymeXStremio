@@ -165,10 +165,11 @@ class _ExtensionScreenState extends State<ExtensionScreen>
         ],
         const SizedBox(height: 12),
         const SizedBox(height: 0),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: _buildContentTypeBar(),
-        ),
+        if (kMangaEnabled)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: _buildContentTypeBar(),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildStatusBar(),

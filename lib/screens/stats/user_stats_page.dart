@@ -224,7 +224,9 @@ class _UserStatsPageState extends State<UserStatsPage> {
               headerContent: Header(
                 title: 'Stats',
                 subtitle: 'Your watch & read statistics',
-                bottom: isLegacy ? _buildStatsModeChips(context) : null,
+                bottom: (isLegacy && kMangaEnabled)
+                    ? _buildStatsModeChips(context)
+                    : null,
               ),
               visibleStatusBarStyle: SystemUiOverlayStyle(
                 statusBarIconBrightness:

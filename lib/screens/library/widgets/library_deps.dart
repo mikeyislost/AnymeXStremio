@@ -303,6 +303,8 @@ class ChipTabs extends StatelessWidget {
           final listName = list.listName ?? '';
           final itemCount = list.mediaIds?.length ?? 0;
           final isSelected = selectedIndex == i;
+          // "Everything" replaces the old Default list.
+          if (listName == 'Default') continue;
 
           if (!isUnified && itemCount == 0 && !isSelected) {
             continue;

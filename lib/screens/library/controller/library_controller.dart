@@ -88,6 +88,15 @@ class LibraryController extends GetxController {
       customLists.value = filteredLists;
       customListNames.value = filteredLists.map((l) => l.listName ?? '').toList();
       
+      // The old "Default" list is gone: Everything is the default now.
+      final sel = selectedListIndex.value;
+      if (type.value == ItemType.anime &&
+          sel >= 0 &&
+          sel < customListNames.length &&
+          customListNames[sel] == 'Default') {
+        showStremio.value = true;
+      }
+
       if (selectedListIndex.value != -1) {
         if (customListNames.isEmpty) {
           selectedListIndex.value = 0;

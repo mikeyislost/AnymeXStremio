@@ -545,7 +545,7 @@ class _FilterScreenState extends State<FilterScreen> {
           mediaModeController.animeHistory.isNotEmpty) {
         subWidget = const HomeContinueWatchingBar();
       }
-    } else if (!settings.useLegacyNavbar) {
+    } else if (!settings.useLegacyNavbar && kMangaEnabled) {
       if (tabKey == 'Discover') {
         subWidget = MediaModeSelector(
           isVertical: isDesktop,

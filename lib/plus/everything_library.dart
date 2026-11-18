@@ -3,6 +3,10 @@
 // Paused, Dropped, Planning) and a kind filter (Anime / Movies / Series).
 // Shown by the "Everything" chip in AnymeX's Library tab.
 
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart' show ItemType;
+import 'package:anymex/database/isar_models/offline_media.dart';
+import 'package:anymex/database/isar_models/custom_list.dart';
+import 'package:anymex/controllers/offline/offline_storage_controller.dart';
 import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/database/kv_helper.dart';
@@ -77,13 +81,17 @@ PlusLibStatus plusStremioStatus(StremioLibraryItem i) {
 class PlusLibEntry {
   final TrackedMedia? anime;
   final StremioLibraryItem? stremio;
+
+  /// A Movies & TV title kept in one of your local custom lists.
+  final StremioMetaPreview? preview;
   final PlusLibStatus? status;
   final PlusLibKind kind;
   final DateTime when;
   final String title;
 
   PlusLibEntry._(this.anime, this.stremio, this.status, this.kind, this.when,
-      this.title);
+      this.title,
+      {this.preview});
 
   factory PlusLibEntry.fromAnime(TrackedMedia a) => PlusLibEntry._(
         a,
@@ -95,6 +103,39 @@ class PlusLibEntry {
             : DateTime.fromMillisecondsSinceEpoch(0),
         a.displayTitle,
       );
+
+  /// A title from a local custom list (same store for AniList and Movies &
+  /// TV titles; a non-numeric id is a Stremio / IMDb id).
+  factory PlusLibEntry.fromLocal(OfflineMedia m) {
+    final id = m.mediaId ?? '';
+    final title = m.name ?? m.english ?? '?';
+    if (int.tryParse(id) != null) {
+      return PlusLibEntry._(
+        TrackedMedia(
+          id: id,
+          title: title,
+          poster: m.poster,
+          servicesType: ServicesType.anilist,
+        ),
+        null,
+        null,
+        PlusLibKind.anime,
+        DateTime.fromMillisecondsSinceEpoch(0),
+        title,
+      );
+    }
+    final movie = m.type == 'movie';
+    return PlusLibEntry._(
+      null,
+      null,
+      null,
+      movie ? PlusLibKind.movie : PlusLibKind.series,
+      DateTime.fromMillisecondsSinceEpoch(0),
+      title,
+      preview: StremioMetaPreview(
+          id: id, type: movie ? 'movie' : 'series', name: title, poster: m.poster),
+    );
+  }
 
   factory PlusLibEntry.fromStremio(StremioLibraryItem i) => PlusLibEntry._(
         null,
@@ -110,7 +151,8 @@ class PlusLibEntry {
 /// first. A Stremio item that is one of your anime (its synced Stremio
 /// entry, [syncedIds], or the same title) shows once, as the anime.
 List<PlusLibEntry> plusMergeLibrary(List<TrackedMedia> anime,
-    List<StremioLibraryItem> stremio, Set<String> syncedIds) {
+    List<StremioLibraryItem> stremio, Set<String> syncedIds,
+    [List<OfflineMedia> local = const []]) {
   final titles = <String>{};
   final out = <PlusLibEntry>[];
   final seenAnime = <String>{};
@@ -128,6 +170,16 @@ List<PlusLibEntry> plusMergeLibrary(List<TrackedMedia> anime,
     if (syncedIds.contains(i.id)) continue;
     if (titles.contains(normalizeTitle(i.name))) continue;
     out.add(PlusLibEntry.fromStremio(i));
+  }
+  // Titles from your local custom lists that aren't already shown.
+  final seenLocal = <String>{};
+  for (final m in local) {
+    final id = m.mediaId ?? '';
+    if (id.isEmpty || !seenLocal.add(id)) continue;
+    if (seenAnime.contains(id) || seenStremio.contains(id)) continue;
+    if (syncedIds.contains(id)) continue;
+    if (titles.contains(normalizeTitle(m.name ?? ''))) continue;
+    out.add(PlusLibEntry.fromLocal(m));
   }
   out.sort((x, y) => y.when.compareTo(x.when));
   return out;
@@ -169,10 +221,13 @@ class _PlusEverythingLibrarySliverState
 
   PlusLibStatus? _status;
   PlusLibKind? _kind;
+  late final Stream<List<CustomList>> _lists;
 
   @override
   void initState() {
     super.initState();
+    _lists = Get.find<OfflineStorageController>()
+        .watchCustomLists(ItemType.anime);
     final s = KvHelper.get<int>(_kStatus, defaultVal: -1);
     final k = KvHelper.get<int>(_kKind, defaultVal: -1);
     if (s >= 0 && s < PlusLibStatus.values.length) {
@@ -201,7 +256,17 @@ class _PlusEverythingLibrarySliverState
   Widget build(BuildContext context) {
     final handler = Get.find<ServiceHandler>();
     final hasStremio = Get.isRegistered<StremioService>();
-    return Obx(() {
+    return StreamBuilder<List<CustomList>>(
+        stream: _lists,
+        builder: (context, snap) => Obx(() {
+      final storage = Get.find<OfflineStorageController>();
+      final local = <OfflineMedia>[
+        for (final id in {
+          for (final l in snap.data ?? const <CustomList>[])
+            ...(l.mediaIds ?? const <String>[])
+        })
+          if (storage.getMediaById(id) != null) storage.getMediaById(id)!
+      ];
       final anime = handler.animeList.toList();
       var stremio = const <StremioLibraryItem>[];
       var synced = const <String>{};
@@ -217,7 +282,7 @@ class _PlusEverythingLibrarySliverState
               anime.map((a) => a.id).whereType<String>());
         }
       }
-      final all = plusMergeLibrary(anime, stremio, synced);
+      final all = plusMergeLibrary(anime, stremio, synced, local);
       final byKind = plusFilterLibrary(all, kind: _kind);
       final items = plusFilterLibrary(byKind,
           status: _status, query: widget.searchQuery);
@@ -286,7 +351,8 @@ class _PlusEverythingLibrarySliverState
                     );
                   }
                   return StremioGridCard(
-                    item: stremioPreviewFromLibraryItem(e.stremio!),
+                    item: e.preview ??
+                        stremioPreviewFromLibraryItem(e.stremio!),
                     tagPrefix: 'everything',
                   );
                 },
@@ -294,7 +360,7 @@ class _PlusEverythingLibrarySliverState
             ),
         ],
       );
-    });
+    }));
   }
 
   Widget _chipRow(BuildContext context, List<Widget> chips) =>
@@ -344,7 +410,7 @@ class _PlusEverythingLibrarySliverState
 /// The Library's "Everything" chip state, remembered between launches.
 RxBool plusEverythingChipFlag() {
   const key = 'anymexplus_everything_chip';
-  final flag = KvHelper.get<bool>(key, defaultVal: false).obs;
+  final flag = KvHelper.get<bool>(key, defaultVal: true).obs;
   ever<bool>(flag, (v) => KvHelper.set(key, v));
   return flag;
 }

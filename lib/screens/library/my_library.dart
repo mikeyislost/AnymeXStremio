@@ -1,3 +1,5 @@
+import 'package:anymex/plus/stremio/ui/stremio_widgets.dart';
+import 'package:anymex/utils/feature_flags.dart';
 import 'package:anymex/plus/everything_library.dart';
 import 'dart:math' as math;
 
@@ -139,8 +141,10 @@ class _MyLibraryState extends State<MyLibrary>
                       ? Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            LibrarySegmentedControl(controller: controller),
-                            const SizedBox(height: 2),
+                            if (kMangaEnabled) ...[
+                              LibrarySegmentedControl(controller: controller),
+                              const SizedBox(height: 2),
+                            ],
                             ChipTabs(controller: controller),
                           ],
                         )
@@ -344,7 +348,14 @@ class _LibraryContent extends StatelessWidget {
 
   void _handleItemTap(BuildContext context, OfflineMedia item,
       List<OfflineMedia> items, int index, String tag) {
-    if (controller.type.value.isAnime) {
+    final sid = item.mediaId ?? '';
+    if (controller.type.value.isAnime &&
+        sid.isNotEmpty &&
+        int.tryParse(sid) == null) {
+      // A Movies & TV title kept in a custom list.
+      openStremioDetails(item.type == 'movie' ? 'movie' : 'series', sid,
+          tag: tag, title: item.name, poster: item.poster);
+    } else if (controller.type.value.isAnime) {
       navigateWithAnimation(() => AnimeDetailsPage(
           media: Media.fromOfflineMedia(item, ItemType.anime), tag: tag));
     } else if (controller.type.value.isManga) {

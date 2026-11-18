@@ -2,6 +2,8 @@
 // page: MediaHeader, the Info/Watch bottom bar, the continue button, the
 // user's episode card style and AnymeX's section panels.
 
+import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart' show ItemType;
+import 'package:anymex/screens/anime/widgets/custom_list_dialog.dart';
 import 'dart:io';
 
 import 'package:anymex/widgets/details/details_shell.dart';
@@ -293,6 +295,13 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
         ? PlusTasteButtons(id: meta.id, type: meta.type)
         : null;
     // AnymeX+: the trailer (Cinemeta lists them) plays in YouTube.
+    // Same custom-list picker AniList titles use (local lists).
+    final listBtn = _actionButton(
+      context,
+      icon: Icons.playlist_add_rounded,
+      label: 'Lists',
+      onTap: () => showCustomListDialog(context, _listMedia(meta)),
+    );
     final trailers = stremioTrailerIds(meta.raw);
     final trailer = trailers.isEmpty
         ? null
@@ -304,13 +313,15 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
           );
     return Obx(() {
       if (!_service.isLoggedIn.value) {
-        if (taste == null && trailer == null) return const SizedBox.shrink();
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Row(children: [
-            if (trailer != null) Expanded(child: trailer),
-            if (trailer != null && taste != null) const SizedBox(width: 10),
-            if (taste != null) taste,
+            Expanded(child: listBtn),
+            if (trailer != null) ...[
+              const SizedBox(width: 10),
+              Expanded(child: trailer),
+            ],
+            if (taste != null) ...[const SizedBox(width: 10), taste],
           ]),
         );
       }
@@ -351,6 +362,8 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
                 },
               ),
             ),
+            const SizedBox(width: 10),
+            Expanded(child: listBtn),
             if (inCw) ...[
               const SizedBox(width: 10),
               Expanded(
@@ -384,6 +397,22 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
       );
     });
   }
+
+  /// A Media stand-in for a Movies & TV title, so the shared custom-list
+  /// code (the AniList anime path) can store it. Its id is the IMDb / Kitsu
+  /// id; `type` says movie or series.
+  Media _listMedia(StremioMeta meta) => Media(
+        id: meta.id,
+        title: meta.name,
+        romajiTitle: meta.name,
+        englishTitle: meta.name,
+        poster: meta.poster ?? '?',
+        cover: meta.background,
+        description: meta.description ?? '?',
+        type: meta.type == 'movie' ? 'movie' : 'series',
+        mediaType: ItemType.anime,
+        serviceType: ServicesType.anilist,
+      );
 
   /// Plays the first trailer; with several, asks which.
   Future<void> _playTrailer(List<(String, String)> trailers) async {
