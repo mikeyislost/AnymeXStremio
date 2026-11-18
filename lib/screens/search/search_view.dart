@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'package:anymex/plus/categories/categories_data.dart';
 import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/plus/search/cinemeta_search.dart';
@@ -222,8 +223,8 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   final Map<String, List<Media>> _singleSourceCache = {};
 
   ItemType get effectiveType {
-    if (_serviceHandler.serviceType.value == ServicesType.simkl) {
-      return ItemType.anime;
+    if (_serviceHandler.serviceType.value == ServicesType.simkl || !kMangaEnabled) {
+      return ItemType.anime; // manga/novel search is switched off for now
     }
     return widget.type ?? (widget.isManga ? ItemType.manga : ItemType.anime);
   }

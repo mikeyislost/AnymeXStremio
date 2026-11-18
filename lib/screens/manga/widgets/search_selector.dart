@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image_button.dart';
@@ -11,7 +12,7 @@ import 'package:get/get.dart';
 
 void searchTypeSheet(BuildContext context) {
   final isSimkl = serviceHandler.serviceType.value == ServicesType.simkl;
-  if (isSimkl) {
+  if (isSimkl || !kMangaEnabled) {
     navigate(() => const SearchPage(
           searchTerm: '',
           isManga: false,
