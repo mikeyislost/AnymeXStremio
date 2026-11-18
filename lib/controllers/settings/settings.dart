@@ -26,8 +26,8 @@ Settings get settingsController => Get.find<Settings>();
 class Settings extends GetxController {
   late Rx<UISettings> uiSettings;
   late Rx<PlayerSettings> playerSettings;
-  final RxString discordUrl = 'https://discord.gg/GKVvSyXDUD'.obs;
-  final RxString telegramUrl = 'https://t.me/AnymeX_Discussion'.obs;
+  final RxString discordUrl = ''.obs; // Yumori has no community link yet
+  final RxString telegramUrl = ''.obs; // Yumori has no community link yet
   final RxBool showJoinDialog = true.obs;
   bool linksFetched = false;
   VoidCallback? onLinksReady;
@@ -241,12 +241,6 @@ class Settings extends GetxController {
           'https://raw.githubusercontent.com/RyanYuuki/AnymeX/main/github_assets/links.json'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['discord'] != null) {
-          discordUrl.value = data['discord'];
-        }
-        if (data['telegram'] != null) {
-          telegramUrl.value = data['telegram'];
-        }
         final joinVal = data['showJoinDialog'];
         if (joinVal != null) {
           showJoinDialog.value = joinVal as bool;

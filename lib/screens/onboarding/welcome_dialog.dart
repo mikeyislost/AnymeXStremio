@@ -223,6 +223,8 @@ void showWelcomeDialogg(BuildContext context) {
                             },
                           ),
                           const SizedBox(height: 6),
+                          // Community links stay hidden until Yumori has its own.
+                          if (Get.find<Settings>().discordUrl.value.isNotEmpty) ...[
                           AnymeXTile(
                             icon: HugeIcons.strokeRoundedDiscord,
                             title: 'Join Discord Community',
@@ -236,6 +238,8 @@ void showWelcomeDialogg(BuildContext context) {
                             },
                           ),
                           const SizedBox(height: 6),
+                          ],
+                          if (Get.find<Settings>().telegramUrl.value.isNotEmpty) ...[
                           AnymeXTile(
                             icon: HugeIcons.strokeRoundedTelegram,
                             title: 'Join Telegram Channel',
@@ -248,6 +252,7 @@ void showWelcomeDialogg(BuildContext context) {
                             },
                           ),
                           const SizedBox(height: 6),
+                          ],
                           if (Platform.isAndroid) ...[
                             AnymeXTile.toggle(
                               icon: HugeIcons.strokeRoundedFolderSecurity,
