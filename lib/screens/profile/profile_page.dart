@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/screens/anime/misc/list_exporter.dart';
 import 'package:anymex/models/Anilist/anilist_activity.dart';
@@ -895,6 +896,7 @@ class _ProfilePageState extends State<ProfilePage>
                     label: const Text('Export anime list'),
                   ),
                 ),
+                if (kMangaEnabled) ...[
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
@@ -904,6 +906,7 @@ class _ProfilePageState extends State<ProfilePage>
                     label: const Text('Export manga list'),
                   ),
                 ),
+                ],
               ],
             ),
           ),

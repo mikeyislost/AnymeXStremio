@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'dart:async';
 import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/database/database.dart';
@@ -51,10 +52,12 @@ class _ExtensionScreenState extends State<ExtensionScreen>
   late final ScrollController _appBarScrollController;
   final ValueNotifier<bool> _isAppBarVisible = ValueNotifier<bool>(true);
 
-  static const _contentTabs = [
+  static final _contentTabs = [
     (label: 'Anime', icon: Icons.movie_creation_outlined, type: ItemType.anime),
-    (label: 'Manga', icon: Icons.menu_book_outlined, type: ItemType.manga),
-    (label: 'Novel', icon: Icons.auto_stories_outlined, type: ItemType.novel),
+    if (kMangaEnabled) ...[
+      (label: 'Manga', icon: Icons.menu_book_outlined, type: ItemType.manga),
+      (label: 'Novel', icon: Icons.auto_stories_outlined, type: ItemType.novel),
+    ],
   ];
 
   @override
@@ -241,7 +244,7 @@ class _ExtensionScreenState extends State<ExtensionScreen>
   Widget _buildContentTypeBar() {
     return Obx(() {
       final selected = _selectedContentType.value;
-      const tabs = _contentTabs;
+      final tabs = _contentTabs;
       final selectedIndex = tabs.indexWhere((t) => t.type == selected);
 
       return AnymeXTabBar(

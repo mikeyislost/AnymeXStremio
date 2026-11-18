@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'package:anymex/controllers/media_mode_controller.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -376,10 +377,12 @@ class MediaModeSelector extends StatelessWidget {
         );
       }
     
-      const options = [
-        MapEntry('Anime', ItemType.anime),
-        MapEntry('Manga', ItemType.manga),
-        MapEntry('Novel', ItemType.novel),
+      final options = [
+        const MapEntry('Anime', ItemType.anime),
+        if (kMangaEnabled) ...[
+          const MapEntry('Manga', ItemType.manga),
+          const MapEntry('Novel', ItemType.novel),
+        ],
       ];
       final int itemCount = options.length;
     

@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/database/isar_models/daily_activity.dart';
 import 'package:anymex/database/isar_models/media_stats.dart';
@@ -254,11 +255,11 @@ class _UserStatsPageState extends State<UserStatsPage> {
       );
 
   Widget _buildStatsModeChips(BuildContext context) {
-    const options = [
+    final options = [
       ('All', Icons.grid_view_rounded),
       ('Anime', Icons.movie_filter_rounded),
-      ('Manga', Iconsax.book),
-      ('Novel', Icons.auto_stories_rounded),
+      if (kMangaEnabled) ('Manga', Iconsax.book),
+      if (kMangaEnabled) ('Novel', Icons.auto_stories_rounded),
     ];
 
     return Obx(() {

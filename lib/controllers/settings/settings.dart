@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -525,7 +526,11 @@ class Settings extends GetxController {
     return 'navigationTabOrder_${mode}_$service';
   }
 
-  List<String> get navigationTabOrder {
+  List<String> get navigationTabOrder => kMangaEnabled
+      ? _rawNavigationTabOrder
+      : _rawNavigationTabOrder.where((t) => t != 'Manga').toList();
+
+  List<String> get _rawNavigationTabOrder {
     final raw = KvHelper.get<String>(_currentTabOrderKey, defaultVal: '');
     final isDesktop =
         Get.context != null && MediaQuery.of(Get.context!).size.width > 600;

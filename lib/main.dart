@@ -1,3 +1,4 @@
+import 'package:anymex/utils/feature_flags.dart';
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/home/home_hero.dart';
 import 'package:anymex/plus/launch_timer.dart';
@@ -568,7 +569,9 @@ class _FilterScreenState extends State<FilterScreen> {
             : Get.put(UserStatsController());
         subWidget = Obx(() => MediaModeSelector(
               isVertical: isDesktop,
-              customOptions: const ['All', 'Anime', 'Manga', 'Novel'],
+              customOptions: kMangaEnabled
+                  ? const ['All', 'Anime', 'Manga', 'Novel']
+                  : const ['All', 'Anime'],
               selectedOption: statsController.activeFilter.value,
               onOptionSelected: (val) =>
                   statsController.activeFilter.value = val,
