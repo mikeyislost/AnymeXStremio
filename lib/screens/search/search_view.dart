@@ -1,5 +1,4 @@
 import 'package:anymex/plus/categories/categories_data.dart';
-import 'package:anymex/plus/categories/categories_page.dart' show openCatItem;
 import 'package:anymex/plus/search/cinemeta_search.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
@@ -101,14 +100,14 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
       effectiveType == ItemType.anime &&
       serviceHandler.serviceType.value != ServicesType.simkl;
 
-  int _movieSkip = 0, _seriesSkip = 0;
+  int _moviePage = 2, _seriesPage = 2; // next page to fetch
   bool _movieMore = true, _seriesMore = true;
   bool _plusLoadingMore = false;
 
   void _resetPlus() {
     _plusItems = [];
     _plusQuery = '';
-    _movieSkip = _seriesSkip = 0;
+    _moviePage = _seriesPage = 2;
     _movieMore = _seriesMore = true;
     _plusLoadingMore = false;
   }
@@ -124,10 +123,8 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     ]);
     if (!mounted || _plusQuery != q) return;
     setState(() {
-      _movieSkip = res[0].raw;
-      _seriesSkip = res[1].raw;
-      _movieMore = res[0].raw > 0;
-      _seriesMore = res[1].raw > 0;
+      _movieMore = res[0].hasMore;
+      _seriesMore = res[1].hasMore;
       _plusItems = _interleave(res[0].items, res[1].items);
     });
   }
@@ -164,11 +161,11 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     setState(() => _plusLoadingMore = true);
     final res = await Future.wait([
       movie
-          ? CinemetaSearch.fetch('movie', q, skip: _movieSkip)
-          : Future.value((items: <CatItem>[], raw: 0)),
+          ? CinemetaSearch.fetch('movie', q, page: _moviePage)
+          : Future.value((items: <CatItem>[], hasMore: false)),
       series
-          ? CinemetaSearch.fetch('series', q, skip: _seriesSkip)
-          : Future.value((items: <CatItem>[], raw: 0)),
+          ? CinemetaSearch.fetch('series', q, page: _seriesPage)
+          : Future.value((items: <CatItem>[], hasMore: false)),
     ]);
     if (!mounted || _plusQuery != q) return;
     final have = _plusItems.map((e) => e.key).toSet();
@@ -177,12 +174,12 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     setState(() {
       _plusLoadingMore = false;
       if (movie) {
-        _movieSkip += res[0].raw;
-        _movieMore = res[0].raw > 0 && freshMovies.isNotEmpty;
+        _moviePage++;
+        _movieMore = res[0].hasMore;
       }
       if (series) {
-        _seriesSkip += res[1].raw;
-        _seriesMore = res[1].raw > 0 && freshSeries.isNotEmpty;
+        _seriesPage++;
+        _seriesMore = res[1].hasMore;
       }
       _plusItems = [..._plusItems, ..._interleave(freshMovies, freshSeries)];
     });
@@ -973,7 +970,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           rating: it.rating,
           year: it.year,
           kind: it.kind,
-          onTap: () => openCatItem(it, 'search-${it.key}'),
+          onTap: () => CinemetaSearch.open(it, 'search-${it.key}'),
         ));
       }
     }

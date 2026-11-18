@@ -95,8 +95,9 @@ class MyHttpoverrides extends HttpOverrides {
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
+        // No mouse: dragging with a mouse must not scroll chip rows, tab
+        // strips and the like out of place on desktop (wheel still works).
         PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
         PointerDeviceKind.trackpad,
         PointerDeviceKind.stylus
       };
