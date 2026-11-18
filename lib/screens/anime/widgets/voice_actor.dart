@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/models/Media/character.dart';
 import 'package:anymex/models/Media/staff.dart';
@@ -38,7 +39,7 @@ class CharactersCarousel extends StatelessWidget {
         const SizedBox(height: 15),
         SizedBox(
           height: isDesktop ? 290 : 210,
-          child: ListView.builder(
+          child: MediaRowDrag(child: ListView.builder(
             key: ObjectKey(characters),
             itemCount: characters.length,
             scrollDirection: Axis.horizontal,
@@ -138,7 +139,7 @@ class CharactersCarousel extends StatelessWidget {
                 ),
               );
             },
-          ),
+          )),
         ),
         if (!isManga) ...[
           Padding(
@@ -152,7 +153,7 @@ class CharactersCarousel extends StatelessWidget {
           const SizedBox(height: 15),
           SizedBox(
             height: isDesktop ? 290 : 230,
-            child: ListView.builder(
+            child: MediaRowDrag(child: ListView.builder(
               key: ValueKey('VoiceActors-${characters.hashCode}'),
               itemCount: characters.length,
               scrollDirection: Axis.horizontal,
@@ -273,7 +274,7 @@ class CharactersCarousel extends StatelessWidget {
                   ),
                 );
               },
-            ),
+            )),
           ),
         ]
       ],
@@ -304,7 +305,7 @@ class StaffCarousel extends StatelessWidget {
         const SizedBox(height: 15),
         SizedBox(
           height: isDesktop ? 290 : 210,
-          child: ListView.builder(
+          child: MediaRowDrag(child: ListView.builder(
             key: ObjectKey(staff),
             itemCount: staff.length,
             scrollDirection: Axis.horizontal,
@@ -407,7 +408,7 @@ class StaffCarousel extends StatelessWidget {
                 ),
               );
             },
-          ),
+          )),
         ),
       ],
     );

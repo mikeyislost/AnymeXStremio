@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/models/Anilist/anilist_profile.dart';
 import 'package:anymex/models/Media/media.dart';
@@ -176,7 +177,7 @@ class FavoritesSection extends StatelessWidget {
   ) {
     return SizedBox(
       height: 190,
-      child: ListView.builder(
+      child: MediaRowDrag(child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -184,7 +185,7 @@ class FavoritesSection extends StatelessWidget {
           final item = items[index];
           return _buildMediaCard(context, item, isAnime);
         },
-      ),
+      )),
     );
   }
 
@@ -291,7 +292,7 @@ class FavoritesSection extends StatelessWidget {
   ) {
     return SizedBox(
       height: 108,
-      child: ListView.builder(
+      child: MediaRowDrag(child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -305,7 +306,7 @@ class FavoritesSection extends StatelessWidget {
             isCharacter,
           );
         },
-      ),
+      )),
     );
   }
 

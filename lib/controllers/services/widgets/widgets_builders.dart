@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/community_service.dart';
 import 'package:anymex/controllers/settings/settings.dart';
@@ -208,7 +209,7 @@ class _UnderratedCarousel extends StatelessWidget {
                 settingsController.cardStyle, getPlatform(context));
             return SizedBox(
               height: cardHeight + 15,
-              child: ListView.builder(
+              child: MediaRowDrag(child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.only(left: 15, top: 5, bottom: 10),
                 itemCount: data.length,
@@ -219,7 +220,7 @@ class _UnderratedCarousel extends StatelessWidget {
                     type: type,
                   );
                 },
-              ),
+              )),
             );
           }),
         ],

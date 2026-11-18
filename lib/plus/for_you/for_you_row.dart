@@ -2,6 +2,7 @@
 // page. Normal AnymeX cards with a short "Because you loved X" line under
 // each; long-press for "Not interested".
 
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/models/Media/media.dart';
@@ -240,7 +241,7 @@ class PlusForYouRow extends StatelessWidget {
           const SizedBox(height: 10),
           SizedBox(
             height: h + 15,
-            child: ListView.builder(
+            child: MediaRowDrag(child: ListView.builder(
               key: PageStorageKey<String>('foryou-$title-${picks.first.kind}'),
               itemCount: picks.length,
               scrollDirection: Axis.horizontal,
@@ -266,7 +267,7 @@ class PlusForYouRow extends StatelessWidget {
                   ),
                 );
               },
-            ),
+            )),
           ),
         ],
       ),

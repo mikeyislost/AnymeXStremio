@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'dart:math' as math;
 
 import 'package:anymex/controllers/offline/offline_storage_controller.dart';
@@ -135,7 +136,7 @@ class _HomePageState extends State<HomePage> {
         child: SizedBox(
           height: 110,
           child: RepaintBoundary(
-            child: ListView.builder(
+            child: MediaRowDrag(child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: entries.length,
               itemBuilder: (context, i) => NewEpisodeReleaseCard(
@@ -144,7 +145,7 @@ class _HomePageState extends State<HomePage> {
                 latestReleasedEpisode: entries[i].$3,
                 releaseDate: entries[i].$4,
               ),
-            ),
+            )),
           ),
         ),
       );

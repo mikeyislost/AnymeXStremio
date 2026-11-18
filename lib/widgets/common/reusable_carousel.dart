@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'package:anymex/widgets/anymex_widgets/yumori_skeleton.dart';
 import 'package:anymex/controllers/settings/methods.dart';
 import 'package:anymex/controllers/settings/settings.dart';
@@ -186,14 +187,14 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
       if (widget.landscape) {
         return SizedBox(
           height: 112 + 8 + 18 + 16 + 14,
-          child: ListView.builder(
+          child: MediaRowDrag(child: ListView.builder(
             key: PageStorageKey<String>('carousel-${widget.title}'),
             itemCount: processedData.length,
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(left: 20, top: 5, bottom: 10),
             itemBuilder: (context, index) => _buildCarouselItem(
                 processedData[index], false, index, cardStyleIndex),
-          ),
+          )),
         );
       }
 
@@ -201,14 +202,14 @@ class _ReusableCarouselState extends State<ReusableCarousel> {
         height: getCardHeight(cardStyleIndex, getPlatform(context)) *
                 (scope?.style.size ?? 1.0) +
             15,
-        child: ListView.builder(
+        child: MediaRowDrag(child: ListView.builder(
           key: PageStorageKey<String>('carousel-${widget.title}'),
           itemCount: processedData.length,
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.only(left: 15, top: 5, bottom: 10),
           itemBuilder: (context, index) => _buildCarouselItem(
               processedData[index], enableAnimation, index, cardStyleIndex),
-        ),
+        )),
       );
     });
   }

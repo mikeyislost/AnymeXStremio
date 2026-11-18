@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/screens/profile/user_profile_page.dart';
@@ -24,7 +25,7 @@ class SocialSection extends StatelessWidget {
       children: [
         SizedBox(
           height: 160,
-          child: ListView.separated(
+          child: MediaRowDrag(child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             scrollDirection: Axis.horizontal,
             itemCount: friends.length,
@@ -33,7 +34,7 @@ class SocialSection extends StatelessWidget {
               final user = friends[index];
               return _buildFriendItem(user, theme);
             },
-          ),
+          )),
         ),
       ],
     );

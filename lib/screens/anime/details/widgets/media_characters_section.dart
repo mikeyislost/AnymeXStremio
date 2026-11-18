@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/media_row_drag.dart';
 import 'package:anymex/models/Media/character.dart';
 import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/screens/anime/widgets/character_staff_sheet.dart';
@@ -25,7 +26,7 @@ Widget buildCharactersSection(BuildContext context, Media media) {
       ),
       SizedBox(
         height: 110,
-        child: ListView.builder(
+        child: MediaRowDrag(child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: characters.length,
@@ -34,7 +35,7 @@ Widget buildCharactersSection(BuildContext context, Media media) {
           itemBuilder: (context, index) {
             return buildCharacterCard(context, characters[index]);
           },
-        ),
+        )),
       ),
     ],
   ).bottomSpacing(16);
