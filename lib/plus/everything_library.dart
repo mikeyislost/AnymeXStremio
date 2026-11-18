@@ -3,6 +3,7 @@
 // Paused, Dropped, Planning) and a kind filter (Anime / Movies / Series).
 // Shown by the "Everything" chip in AnymeX's Library tab.
 
+import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/controllers/service_handler/service_handler.dart';
 import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/models/Anilist/anilist_media_user.dart';
@@ -300,11 +301,11 @@ class _PlusEverythingLibrarySliverState
       SliverToBoxAdapter(
         child: SizedBox(
           height: 42,
-          child: ListView(
+          child: NoMouseDrag(child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             children: chips,
-          ),
+          )),
         ),
       );
 

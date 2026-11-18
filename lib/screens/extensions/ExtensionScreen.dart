@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/database/database.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:anymex/controllers/source/source_controller.dart';
@@ -495,7 +496,7 @@ class _ExtensionScreenState extends State<ExtensionScreen>
       return Container(
         height: 38,
         margin: const EdgeInsets.only(top: 8, bottom: 8),
-        child: ListView.builder(
+        child: NoMouseDrag(child: ListView.builder(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -527,7 +528,7 @@ class _ExtensionScreenState extends State<ExtensionScreen>
               ),
             );
           },
-        ),
+        )),
       );
     });
   }

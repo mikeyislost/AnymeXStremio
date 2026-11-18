@@ -1,4 +1,5 @@
 import 'package:anymex/plus/categories/categories_data.dart';
+import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/plus/search/cinemeta_search.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/controllers/service_handler/params.dart';
@@ -889,7 +890,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: SingleChildScrollView(
+      child: NoMouseDrag(child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
@@ -935,7 +936,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
               ),
           ],
         ),
-      ),
+      )),
     );
   }
 

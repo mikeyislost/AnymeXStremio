@@ -1,3 +1,4 @@
+import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/utils/theme_extensions.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_text.dart';
@@ -157,12 +158,12 @@ class AnymeXPills extends StatelessWidget {
 
     if (expandEqually || !scrollable) return row;
 
-    return SingleChildScrollView(
+    return NoMouseDrag(child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
       padding: scrollPadding,
       child: row,
-    );
+    ));
   }
 }
 

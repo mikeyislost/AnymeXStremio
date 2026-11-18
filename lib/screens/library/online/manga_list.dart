@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'dart:ui';
 
 import 'package:anymex/controllers/service_handler/service_handler.dart';
@@ -646,7 +647,7 @@ class _AnilistMangaListState extends State<AnilistMangaList>
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedTabIndex,
         builder: (context, currentSelected, _) {
-          return ListView.separated(
+          return NoMouseDrag(child: ListView.separated(
             controller: _tabScrollController,
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -669,7 +670,7 @@ class _AnilistMangaListState extends State<AnilistMangaList>
                 ),
               );
             },
-          );
+          ));
         },
       ),
     );

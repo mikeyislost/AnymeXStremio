@@ -1,4 +1,5 @@
 import 'package:anymex/utils/language.dart';
+import 'package:anymex/widgets/common/no_mouse_drag.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_bottomsheet.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_tabbar.dart';
@@ -800,7 +801,7 @@ class _LangSubPicker extends StatelessWidget {
           const SizedBox(height: 8),
           SizedBox(
             height: 34,
-            child: ListView.separated(
+            child: NoMouseDrag(child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: langs.length,
               separatorBuilder: (_, __) => const SizedBox(width: 6),
@@ -838,7 +839,7 @@ class _LangSubPicker extends StatelessWidget {
                   ),
                 );
               },
-            ),
+            )),
           ),
         ],
       ),
