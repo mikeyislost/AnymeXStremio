@@ -311,7 +311,7 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
             label: 'Trailer',
             onTap: () => _playTrailer(trailers),
           );
-    return Obx(() {
+    final actions = Obx(() {
       if (!_service.isLoggedIn.value) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -321,7 +321,6 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
               const SizedBox(width: 10),
               Expanded(child: trailer),
             ],
-            if (taste != null) ...[const SizedBox(width: 10), taste],
           ]),
         );
       }
@@ -388,14 +387,22 @@ class _StremioDetailsPageState extends State<StremioDetailsPage> {
               const SizedBox(width: 10),
               Expanded(child: trailer),
             ],
-            if (taste != null) ...[
-              const SizedBox(width: 10),
-              taste,
-            ],
           ],
         ),
       );
     });
+    if (taste == null) return actions;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        actions,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: taste,
+        ),
+      ],
+    );
   }
 
   /// A Media stand-in for a Movies & TV title, so the shared custom-list

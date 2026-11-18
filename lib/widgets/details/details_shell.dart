@@ -256,19 +256,45 @@ class _DetailsShellState extends State<DetailsShell> {
                         0, 0, brightness, 0, 0,
                         0, 0, 0, 1, 0,
                       ]),
-                      child: ImageFiltered(
-                        imageFilter: ImageFilter.blur(
-                            sigmaX: blurAmount, sigmaY: blurAmount),
-                        child: AnymeXImage(
-                          imageUrl: blurSourceUrl,
-                          errorImage: blurFallbackUrl,
-                          radius: 0,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: height ?? double.infinity,
-                          color: blurColor,
-                        ),
-                      ),
+                      // Blur a quarter-size copy and scale it up: the result
+                      // looks the same but costs ~16x less GPU, which is what
+                      // made opening several titles in a row heat the phone.
+                      child: LayoutBuilder(builder: (_, c) {
+                        const k = 4.0;
+                        final w = c.maxWidth.isFinite
+                            ? c.maxWidth
+                            : MediaQuery.sizeOf(ctx).width;
+                        final h = height ??
+                            (c.maxHeight.isFinite
+                                ? c.maxHeight
+                                : MediaQuery.sizeOf(ctx).height);
+                        return ClipRect(
+                          child: Transform.scale(
+                            scale: k,
+                            alignment: Alignment.topLeft,
+                            filterQuality: FilterQuality.low,
+                            child: SizedBox(
+                              width: w / k,
+                              height: h / k,
+                              child: ImageFiltered(
+                                imageFilter: ImageFilter.blur(
+                                    sigmaX: blurAmount / k,
+                                    sigmaY: blurAmount / k,
+                                    tileMode: TileMode.clamp),
+                                child: AnymeXImage(
+                                  imageUrl: blurSourceUrl,
+                                  errorImage: blurFallbackUrl,
+                                  radius: 0,
+                                  fit: BoxFit.cover,
+                                  width: w / k,
+                                  height: h / k,
+                                  color: blurColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
                     );
             }
 

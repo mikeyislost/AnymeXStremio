@@ -94,7 +94,7 @@ class _MyLibraryState extends State<MyLibrary>
       final isLegacy = settings.useLegacyNavbar;
       final double extraHeight = isDesktop
           ? 100.0
-          : (isLegacy ? 96.0 : 60.0);
+          : (isLegacy ? (kMangaEnabled ? 96.0 : 56.0) : 60.0);
       final double topOffset = statusBarHeight + appBarHeight + extraHeight;
 
       return Scaffold(

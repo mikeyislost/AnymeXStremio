@@ -232,13 +232,17 @@ class MediaHeader extends StatelessWidget {
                         final kind = switch (data?.mediaType) {
                           ItemType.manga => 'MANGA',
                           ItemType.novel => 'NOVEL',
-                          _ => 'ANIME',
+                          _ => (data?.type == 'movie')
+                              ? 'MOVIE'
+                              : (data?.type == 'series')
+                                  ? 'SERIES'
+                                  : 'ANIME',
                         };
                         final fmt = (data?.format ?? '')
                             .replaceAll('_', ' ')
                             .trim()
                             .toUpperCase();
-                        final label = (fmt.isEmpty || fmt == '?')
+                        final label = (fmt.isEmpty || fmt == '?' || kind == 'MOVIE' || kind == 'SERIES')
                             ? kind
                             : '$kind · $fmt';
                         return Padding(

@@ -188,7 +188,7 @@ class _UserStatsPageState extends State<UserStatsPage> {
                   child: SizedBox(
                       height: statusBarHeight +
                           appBarHeight +
-                          (isLegacy ? 76 : 10)),
+                          (isLegacy ? (kMangaEnabled ? 76 : 14) : 10)),
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
