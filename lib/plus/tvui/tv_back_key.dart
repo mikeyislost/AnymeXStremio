@@ -3,7 +3,7 @@ import 'package:anymex/plus/webos.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// The remote's Back button on the TV (test).
+/// The remote's Back button on the TV.
 ///
 /// LG's SDK doesn't hand Back to Flutter apps yet (webOS shows its own "exit
 /// app?" popup instead). The TV runner (tv_runner/main.cc) asks webOS for

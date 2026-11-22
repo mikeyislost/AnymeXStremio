@@ -335,10 +335,10 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
           ValueListenableBuilder<String>(
             valueListenable: TvBackKey.status,
             builder: (context, status, _) => _row(
-              'The Back button (test)',
-              "LG doesn't pass Back to Flutter apps yet, so this build asks webOS for it. "
-              'On: Back should close pages and open the menu, and the key shows under Last remote keys. '
-              "Off: the TV's exit popup, as before. Left at the left edge still goes back either way.\n"
+              'The Back button',
+              "LG's SDK doesn't pass Back to Flutter apps yet, so the app asks webOS for it. "
+              'On: Back closes pages, opens the menu, then asks before leaving. '
+              "Off: the TV's own exit popup. Left at the left edge also goes back.\n"
               'Now: $status',
               trailing: TvButton(
                 label: TvBackKey.enabled ? 'On' : 'Off',
