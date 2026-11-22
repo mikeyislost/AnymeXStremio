@@ -25,6 +25,7 @@ import 'package:anymex/models/Media/media.dart';
 import 'package:anymex/widgets/media_items/media_item.dart';
 import 'package:anymex_extension_runtime_bridge/anymex_extension_runtime_bridge.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:anymex/plus/home/home_hero.dart';
 import 'package:flutter_iconly/flutter_iconly.dart';
@@ -60,6 +61,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late ScrollController _scrollController;
+  Timer? _heroFallback;
   final ValueNotifier<bool> _isAppBarVisibleExternally =
       ValueNotifier<bool>(true);
   final List<Worker> _workers = [];
@@ -193,6 +195,13 @@ class _HomePageState extends State<HomePage> {
     });
     YumoriHeroBus.scope.addListener(_syncHeroOffset);
     YumoriHeroBus.offset.value = 0;
+    // Hold Home's content until the Featured hero has its first picture, but
+    // never longer than 7 s (a slow network shows the page anyway).
+    if (!YumoriHeroBus.ready.value) {
+      _heroFallback = Timer(const Duration(seconds: 7), () {
+        YumoriHeroBus.ready.value = true;
+      });
+    }
     final serviceHandler = Get.find<ServiceHandler>();
     _workers.add(ever(serviceHandler.serviceType, (_) {
       if (mounted) setState(() {});
@@ -219,6 +228,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _heroFallback?.cancel();
     for (final w in _workers) {
       w.dispose();
     }
@@ -257,7 +267,17 @@ class _HomePageState extends State<HomePage> {
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
-            CustomScrollView(
+            ValueListenableBuilder<bool>(
+              valueListenable: YumoriHeroBus.ready,
+              builder: (context, ready, child) => IgnorePointer(
+                ignoring: !ready,
+                child: AnimatedOpacity(
+                  opacity: ready ? 1 : 0,
+                  duration: const Duration(milliseconds: 350),
+                  child: child,
+                ),
+              ),
+              child: CustomScrollView(
               controller: _scrollController,
               cacheExtent: 1200.0, // AnymeX+: nearby rows stay built
               slivers: [
@@ -341,6 +361,7 @@ class _HomePageState extends State<HomePage> {
                   child: SizedBox(height: bottomNavBarHeight + 150),
                 ),
               ],
+            ),
             ),
             if (!isDesktop)
               CustomAnimatedAppBar(

@@ -12,6 +12,7 @@ import 'package:get/get.dart';
 import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:anymex/widgets/anymex_widgets/anymex_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -69,6 +70,10 @@ class YumoriHeroBus {
 
   /// Which page owns the full-screen picture: 'home', 'manga' or null.
   static final scope = ValueNotifier<String?>(null);
+
+  /// True once Home can show its first Featured picture (or Featured is off).
+  /// Home's content waits for this so the picture doesn't pop in last.
+  static final ready = ValueNotifier<bool>(false);
 }
 
 /// PC / TV style: the art of the current Featured item fixed behind the
@@ -285,6 +290,8 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
     final complete = parts.every((p) => p.isNotEmpty);
     await Future.wait(mixed.map(YumoriHeroArt.resolve));
     if (mixed.isNotEmpty) {
+      await _warm(mixed.first);
+      if (!mounted) return;
       _set(mixed);
       // Only remember a result that has every source in it.
       if (complete) {
@@ -300,12 +307,29 @@ class _YumoriHomeHeroState extends State<YumoriHomeHero> {
     }
   }
 
+  /// Downloads the first slide's picture into the disk cache, so the hero
+  /// draws it as soon as it shows (it would otherwise load after the page).
+  Future<void> _warm(CatItem it) async {
+    final url = widget.fullScreen
+        ? _sharp(YumoriHeroArt.backdrop(it))
+        : YumoriHeroArt.poster(it);
+    if (url.isEmpty || !isNetworkImageUrl(url)) return;
+    try {
+      await DefaultCacheManager()
+          .getSingleFile(url)
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
   void _set(List<CatItem> items) {
     if (!mounted) return;
     setState(() {
       _items = items;
       if (_index >= items.length) _index = 0;
     });
+    if (widget.scope == 'home' && items.isNotEmpty) {
+      YumoriHeroBus.ready.value = true;
+    }
     _publish(items[_index]);
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 8), (_) {

@@ -129,8 +129,10 @@ class PlusHomeHero extends StatelessWidget {
       final hidden = PlusPageRows.homeRows(discoverByDefault: discoverByDefault)
           .any((r) => r.key == 'disc:carousel' && r.config.hidden);
       if (hidden) {
-        WidgetsBinding.instance.addPostFrameCallback(
-            (_) => YumoriHeroBus.current.value = null);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          YumoriHeroBus.current.value = null;
+          YumoriHeroBus.ready.value = true;
+        });
         return const SizedBox.shrink();
       }
       return YumoriHomeHero(
