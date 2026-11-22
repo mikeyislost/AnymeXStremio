@@ -21,6 +21,13 @@
 #include <flutter_plugin_registrar.h>
 #include <flutter_window.h>
 
+// The C messenger functions live in libflutter_common.so, which LG's embedder
+// loads but the runner isn't linked against. Weak references link anyway and
+// are filled in when the app starts; Messaging() checks they were found.
+#pragma weak FlutterDesktopPluginRegistrarGetMessenger
+#pragma weak FlutterDesktopMessengerSetCallback
+#pragma weak FlutterDesktopMessengerSendResponse
+
 #include <ctime>
 #include <memory>
 #include <string>
@@ -44,6 +51,12 @@ void AddLog(const std::string& line) {
   auto& lines = Log();
   lines.push_back(std::string(stamp) + "  " + line);
   if (lines.size() > 20) lines.erase(lines.begin());
+}
+
+bool Messaging() {
+  return &FlutterDesktopPluginRegistrarGetMessenger != nullptr &&
+         &FlutterDesktopMessengerSetCallback != nullptr &&
+         &FlutterDesktopMessengerSendResponse != nullptr;
 }
 
 std::string Join(const std::vector<std::string>& lines) {
@@ -102,6 +115,10 @@ class App : public FlutterWindow {
   void StartChannel() {
     if (!controller_ || !controller_->engine()) {
       AddLog("no engine: channel not started");
+      return;
+    }
+    if (!Messaging()) {
+      AddLog("messenger functions not found: channel not started");
       return;
     }
     FlutterDesktopPluginRegistrarRef registrar =
