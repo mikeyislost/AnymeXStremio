@@ -13,20 +13,14 @@
 // - A channel, "yumori/webos", so the app can set it again later (on/off from
 //   Settings) and read what the runner did. Plain UTF-8 text both ways (Dart
 //   side: BasicMessageChannel with StringCodec), on LG's C messenger API (the
-//   C++ channel/codec helpers aren't linked into the runner):
+//   C++ channel/codec helpers aren't linked into the runner; user_build.cmake
+//   links libflutter_common.so, which has the C API):
 //     "set\n<name>\n<value>" -> "ok" | "no window"
 //     "log"                   -> the runner's notes, one per line
 
 #include <flutter_messenger.h>
 #include <flutter_plugin_registrar.h>
 #include <flutter_window.h>
-
-// The C messenger functions live in libflutter_common.so, which LG's embedder
-// loads but the runner isn't linked against. Weak references link anyway and
-// are filled in when the app starts; Messaging() checks they were found.
-#pragma weak FlutterDesktopPluginRegistrarGetMessenger
-#pragma weak FlutterDesktopMessengerSetCallback
-#pragma weak FlutterDesktopMessengerSendResponse
 
 #include <ctime>
 #include <memory>
@@ -51,12 +45,6 @@ void AddLog(const std::string& line) {
   auto& lines = Log();
   lines.push_back(std::string(stamp) + "  " + line);
   if (lines.size() > 20) lines.erase(lines.begin());
-}
-
-bool Messaging() {
-  return &FlutterDesktopPluginRegistrarGetMessenger != nullptr &&
-         &FlutterDesktopMessengerSetCallback != nullptr &&
-         &FlutterDesktopMessengerSendResponse != nullptr;
 }
 
 std::string Join(const std::vector<std::string>& lines) {
@@ -115,10 +103,6 @@ class App : public FlutterWindow {
   void StartChannel() {
     if (!controller_ || !controller_->engine()) {
       AddLog("no engine: channel not started");
-      return;
-    }
-    if (!Messaging()) {
-      AddLog("messenger functions not found: channel not started");
       return;
     }
     FlutterDesktopPluginRegistrarRef registrar =

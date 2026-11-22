@@ -128,7 +128,9 @@ jobs:
           fi
           tail -5 webos/CMakeLists.txt
           # Our runner (Back button) replaces LG's template main.cc.
-          if [ -f tv_runner/main.cc ]; then cp tv_runner/main.cc webos/runner/main.cc && echo "runner: tv_runner/main.cc"; fi
+          for f in main.cc user_build.cmake; do
+            if [ -f "tv_runner/$f" ]; then cp "tv_runner/$f" "webos/runner/$f" && echo "runner: tv_runner/$f"; fi
+          done
           python3 - webos/meta/appinfo.json <<'PY'
           import json, sys
           info = json.load(open(sys.argv[1]))
