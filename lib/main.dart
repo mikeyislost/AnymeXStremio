@@ -6,6 +6,7 @@ import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
 import 'package:anymex/plus/tv/flutter_tv_pair.dart';
 import 'package:anymex/plus/tv/tv_link.dart';
 import 'package:anymex/plus/tvui/tv_pair.dart';
+import 'package:anymex/plus/tvui/tv_back_key.dart';
 import 'package:anymex/plus/webos.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'dart:async';
@@ -397,6 +398,7 @@ class _MainAppState extends State<MainApp> {
         PlusTvLink.autoStart(); // AnymeX+: a PC is the TV app's anime source
         if (PlusWebos.isTv) {
           PlusTvPair.instance.start(); // AnymeX+: logins from the phone
+          TvBackKey.apply(); // AnymeX+: ask webOS for the remote's Back button (test)
         } else {
           PlusFlutterTvPair.autoPush(); // AnymeX+: fresh logins for paired TVs
         }

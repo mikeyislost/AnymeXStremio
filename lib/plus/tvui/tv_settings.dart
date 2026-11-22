@@ -5,6 +5,7 @@ import 'package:anymex/controllers/services/mal/mal_service.dart';
 import 'package:anymex/controllers/services/simkl/simkl_service.dart';
 import 'package:anymex/plus/tvui/tv_ext.dart';
 import 'package:anymex/plus/tvui/tv_pair.dart';
+import 'package:anymex/plus/tvui/tv_back_key.dart';
 import 'package:anymex/main.dart' show FilterScreen;
 import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
@@ -29,6 +30,7 @@ class TvSettingsPage extends StatefulWidget {
 }
 
 class _TvSettingsPageState extends State<TvSettingsPage> {
+  int _runnerLogAsk = 0; // Refresh on About this TV asks the runner again
   int _cat = 0;
   static const _cats = ['Accounts', 'Home rows', 'Addons', 'Player', 'Appearance', 'Layout', 'About this TV'];
   final _removing = <String>{}; // addons waiting for a second press
@@ -330,9 +332,33 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
         valueListenable: PlusTvUi.keyLog,
         builder: (context, keys, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _row('AnymeX+ (Flutter, test build)', AppChannel.isBeta ? 'Beta channel' : 'Stable channel'),
-          _row('The Back button',
-              "LG doesn't pass the remote's Back button to Flutter apps yet (the TV asks to exit instead; LG plans to change this). "
-              'Until then, Left at the left edge goes back: it closes a page or opens the menu.'),
+          ValueListenableBuilder<String>(
+            valueListenable: TvBackKey.status,
+            builder: (context, status, _) => _row(
+              'The Back button (test)',
+              "LG doesn't pass Back to Flutter apps yet, so this build asks webOS for it. "
+              'On: Back should close pages and open the menu, and the key shows under Last remote keys. '
+              "Off: the TV's exit popup, as before. Left at the left edge still goes back either way.\n"
+              'Now: $status',
+              trailing: TvButton(
+                label: TvBackKey.enabled ? 'On' : 'Off',
+                primary: TvBackKey.enabled,
+                onSelect: () async {
+                  await TvBackKey.setEnabled(!TvBackKey.enabled);
+                  if (mounted) setState(() {});
+                },
+              ),
+            ),
+          ),
+          FutureBuilder<List<String>>(
+            key: ValueKey(_runnerLogAsk),
+            future: TvBackKey.nativeLog(),
+            builder: (context, snap) => _row(
+              'What the TV runner did',
+              snap.hasData ? (snap.data!.isEmpty ? 'Nothing yet' : snap.data!.join('\n')) : 'Asking…',
+              trailing: TvButton(label: 'Refresh', onSelect: () => setState(() => _runnerLogAsk++)),
+            ),
+          ),
           _row('Last remote keys', keys.isEmpty ? 'Press a few buttons on the remote' : keys.join('\n')),
           if (TvPlayerDebug.lastSourceInfo.isNotEmpty)
             _row('Last video: what the TV reported',

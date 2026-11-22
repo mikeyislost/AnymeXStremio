@@ -21,6 +21,10 @@ jobs:
     timeout-minutes: 90
     env:
       NDK_DIR: /home/runner/starfish-sdk
+      # wip/tv-flutter-back*: a separate test app next to the normal one.
+      TV_APP_ID: ${{ startsWith(github.ref_name, 'wip/tv-flutter-back') && 'com.mikeyislost.anymexplus.fluttertv.back' || 'com.mikeyislost.anymexplus.fluttertv' }}
+      TV_APP_TITLE: ${{ startsWith(github.ref_name, 'wip/tv-flutter-back') && 'AnymeX+ (Back test)' || 'AnymeX+ (Flutter)' }}
+      TV_APP_FILE: ${{ startsWith(github.ref_name, 'wip/tv-flutter-back') && 'AnymeX-Plus-Flutter-TV-back.ipk' || 'AnymeX-Plus-Flutter-TV.ipk' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -123,10 +127,12 @@ jobs:
             done
           fi
           tail -5 webos/CMakeLists.txt
+          # Our runner (Back button) replaces LG's template main.cc.
+          if [ -f tv_runner/main.cc ]; then cp tv_runner/main.cc webos/runner/main.cc && echo "runner: tv_runner/main.cc"; fi
           python3 - webos/meta/appinfo.json <<'PY'
           import json, sys
           info = json.load(open(sys.argv[1]))
-          info.update({"id": "com.mikeyislost.anymexplus.fluttertv", "title": "AnymeX+ (Flutter)",
+          info.update({"id": "${{ env.TV_APP_ID }}", "title": "${{ env.TV_APP_TITLE }}",
                        "version": "1.0.${{ github.run_number }}", "vendor": "mikeyislost"})
           json.dump(info, open(sys.argv[1], "w"), indent=4)
           PY
@@ -182,14 +188,14 @@ jobs:
           ar t "$IPK" && ar p "$IPK" data.tar.gz | tar tz | grep -E "lib/|appinfo" | head -30
           TAG=tv-flutter-test
           BASE="https://github.com/$REPO/releases/download/$TAG"
-          NAME=AnymeX-Plus-Flutter-TV.ipk
+          NAME="$TV_APP_FILE"
           cp "$IPK" "$NAME"
           gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1 || \
             gh api -X POST "repos/$REPO/releases" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" -f name="TV Flutter test" -F prerelease=true >/dev/null
           REL_ID=$(gh api "repos/$REPO/releases/tags/$TAG" --jq .id)
           curl -fsSL "$BASE/webos-flutter-test.json" -o repo.json || echo '{"packages": []}' > repo.json
-          python3 scripts/tv_flutter_repo.py repo.json "$NAME" "$BASE/$NAME" com.mikeyislost.anymexplus.fluttertv \
-            "AnymeX+ (Flutter)" "1.0.${{ github.run_number }}" "https://raw.githubusercontent.com/$REPO/main/tv/largeIcon.png" \
+          python3 scripts/tv_flutter_repo.py repo.json "$NAME" "$BASE/$NAME" "$TV_APP_ID" \
+            "$TV_APP_TITLE" "1.0.${{ github.run_number }}" "https://raw.githubusercontent.com/$REPO/main/tv/largeIcon.png" \
             "The whole AnymeX+ app built for the TV with Flutter. Early test: things will be missing."
           cp repo.json webos-flutter-test.json
           for f in "$NAME" webos-flutter-test.json; do
