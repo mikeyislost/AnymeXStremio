@@ -396,7 +396,7 @@ class _TvHomePageState extends State<TvHomePage> {
     return Stack(children: [
       Positioned.fill(child: _Banner(hero: _hero)),
       Positioned.fill(
-        top: 600,
+        top: 460,
         child: Obx(() {
           final data = Get.find<ServiceHandler>().anilistService;
           final cw = _continue();
@@ -450,7 +450,7 @@ class _TvHomePageState extends State<TvHomePage> {
           return ListView(
             // Rows next to the highlighted one must exist for Up / Down.
             cacheExtent: 2400,
-            padding: const EdgeInsets.only(top: 40, bottom: 400),
+            padding: const EdgeInsets.only(top: 0, bottom: 400),
             // Rows scrolled up must not draw over the banner.
             clipBehavior: Clip.hardEdge,
             children: rows,
