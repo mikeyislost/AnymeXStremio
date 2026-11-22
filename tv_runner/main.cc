@@ -11,16 +11,16 @@
 //   can set window properties, so the runner sets it as soon as the window
 //   exists.
 // - A channel, "yumori/webos", so the app can set it again later (on/off from
-//   Settings) and read what the runner did:
-//     setWindowProperty {name, value} -> true
-//     log -> [String]
+//   Settings) and read what the runner did. Plain UTF-8 text both ways (Dart
+//   side: BasicMessageChannel with StringCodec), on LG's C messenger API (the
+//   C++ channel/codec helpers aren't linked into the runner):
+//     "set\n<name>\n<value>" -> "ok" | "no window"
+//     "log"                   -> the runner's notes, one per line
 
+#include <flutter_messenger.h>
+#include <flutter_plugin_registrar.h>
 #include <flutter_window.h>
-#include <flutter/encodable_value.h>
-#include <flutter/method_channel.h>
-#include <flutter/standard_method_codec.h>
 
-#include <chrono>
 #include <ctime>
 #include <memory>
 #include <string>
@@ -46,11 +46,13 @@ void AddLog(const std::string& line) {
   if (lines.size() > 20) lines.erase(lines.begin());
 }
 
-const std::string* StringArg(const flutter::EncodableMap& args,
-                             const char* key) {
-  auto it = args.find(flutter::EncodableValue(key));
-  if (it == args.end()) return nullptr;
-  return std::get_if<std::string>(&it->second);
+std::string Join(const std::vector<std::string>& lines) {
+  std::string out;
+  for (const auto& l : lines) {
+    if (!out.empty()) out += "\n";
+    out += l;
+  }
+  return out;
 }
 
 }  // namespace
@@ -66,7 +68,11 @@ class App : public FlutterWindow {
   }
 
   void OnDestroy() override {
-    channel_.reset();
+    if (messenger_) {
+      FlutterDesktopMessengerSetCallback(messenger_, "yumori/webos", nullptr,
+                                         nullptr);
+      messenger_ = nullptr;
+    }
     controller_ = nullptr;
     FlutterWindow::OnDestroy();
   }
@@ -98,39 +104,51 @@ class App : public FlutterWindow {
       AddLog("no engine: channel not started");
       return;
     }
-    channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-        controller_->engine()->messenger(), "yumori/webos",
-        &flutter::StandardMethodCodec::GetInstance());
-    channel_->SetMethodCallHandler(
-        [this](const flutter::MethodCall<flutter::EncodableValue>& call,
-               std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
-                   result) {
-          if (call.method_name() == "setWindowProperty") {
-            const auto* args =
-                std::get_if<flutter::EncodableMap>(call.arguments());
-            const std::string* name = args ? StringArg(*args, "name") : nullptr;
-            const std::string* value =
-                args ? StringArg(*args, "value") : nullptr;
-            if (!name || !value) {
-              result->Error("args", "name and value (strings) are needed");
-              return;
-            }
-            result->Success(flutter::EncodableValue(SetProperty(*name, *value)));
-            return;
-          }
-          if (call.method_name() == "log") {
-            flutter::EncodableList list;
-            for (const auto& line : Log()) list.emplace_back(line);
-            result->Success(flutter::EncodableValue(list));
-            return;
-          }
-          result->NotImplemented();
-        });
+    FlutterDesktopPluginRegistrarRef registrar =
+        controller_->engine()->GetRegistrarForPlugin("YumoriWebos");
+    messenger_ =
+        registrar ? FlutterDesktopPluginRegistrarGetMessenger(registrar) : nullptr;
+    if (!messenger_) {
+      AddLog("no messenger: channel not started");
+      return;
+    }
+    FlutterDesktopMessengerSetCallback(messenger_, "yumori/webos", &App::OnMessage,
+                                       this);
     AddLog("channel yumori/webos ready");
   }
 
+  static void OnMessage(FlutterDesktopMessengerRef messenger,
+                        const FlutterDesktopMessage* message, void* user_data) {
+    auto* self = static_cast<App*>(user_data);
+    std::string text;
+    if (message->message && message->message_size > 0) {
+      text.assign(reinterpret_cast<const char*>(message->message),
+                  message->message_size);
+    }
+    std::string reply;
+    if (text == "log") {
+      reply = Join(Log());
+    } else if (text.rfind("set\n", 0) == 0) {
+      const auto nl = text.find('\n', 4);
+      if (nl == std::string::npos) {
+        reply = "bad message";
+      } else {
+        const std::string name = text.substr(4, nl - 4);
+        const std::string value = text.substr(nl + 1);
+        reply = self->SetProperty(name, value) ? "ok" : "no window";
+      }
+    } else {
+      reply = "unknown";
+    }
+    if (message->response_handle) {
+      FlutterDesktopMessengerSendResponse(
+          messenger, message->response_handle,
+          reinterpret_cast<const uint8_t*>(reply.data()), reply.size());
+    }
+  }
+
   flutter::FlutterViewController* controller_ = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
+  FlutterDesktopMessengerRef messenger_ = nullptr;
 };
 
 int main(int argc, char** argv) {

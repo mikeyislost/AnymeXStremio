@@ -13,7 +13,8 @@ import 'package:flutter/services.dart';
 class TvBackKey {
   TvBackKey._();
 
-  static const _channel = MethodChannel('yumori/webos');
+  // Plain text both ways (the runner speaks LG's C messenger API).
+  static const _channel = BasicMessageChannel<String>('yumori/webos', StringCodec());
   static const _kOn = 'plus_tv_back_key';
   static const property = '_WEBOS_ACCESS_POLICY_KEYS_BACK';
 
@@ -40,12 +41,13 @@ class TvBackKey {
     if (!PlusWebos.isTv) return;
     final on = enabled;
     try {
-      final ok = await _channel.invokeMethod<bool>('setWindowProperty', {'name': property, 'value': on ? 'true' : 'false'});
-      status.value = ok == true
-          ? (on ? 'Asked the TV for Back' : 'Back left to the TV (exit popup)')
-          : 'The runner had no window to set it on';
-    } on MissingPluginException {
-      status.value = "This build's runner can't ask for Back";
+      final r = await _channel.send('set\n$property\n${on ? 'true' : 'false'}');
+      status.value = switch (r) {
+        'ok' => on ? 'Asked the TV for Back' : 'Back left to the TV (exit popup)',
+        null => "This build's runner can't ask for Back",
+        'no window' => 'The runner had no window to set it on',
+        _ => 'The runner said: $r',
+      };
     } catch (e) {
       status.value = 'Asking failed: $e';
     }
@@ -55,10 +57,9 @@ class TvBackKey {
   static Future<List<String>> nativeLog() async {
     if (!PlusWebos.isTv) return const [];
     try {
-      final l = await _channel.invokeListMethod<String>('log');
-      return l ?? const [];
-    } on MissingPluginException {
-      return const ['(no runner channel in this build)'];
+      final r = await _channel.send('log');
+      if (r == null) return const ['(no runner channel in this build)'];
+      return r.isEmpty ? const [] : r.split('\n');
     } catch (e) {
       return ['(log failed: $e)'];
     }
