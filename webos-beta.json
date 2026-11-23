@@ -8,25 +8,25 @@
   "packages": [
     {
       "id": "com.mikeyislost.anymexplus.tv",
-      "title": "AnymeX+ TV",
-      "iconUri": "https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/tv-icon.png",
+      "title": "Yumori TV",
+      "iconUri": "https://raw.githubusercontent.com/mikeyislost/Yumori/feather/tv-icon.png",
       "manifest": {
         "id": "com.mikeyislost.anymexplus.tv",
-        "version": "1.1.101",
+        "version": "2.0.203",
         "type": "web",
-        "title": "AnymeX+ TV",
-        "appDescription": "AnymeX+ on the TV: pairs with AnymeX+ on your phone, which works as its remote. Test build.",
-        "iconUri": "https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/feather/tv-icon.png",
-        "sourceUrl": "https://github.com/mikeyislost/AnymeXStremio",
+        "title": "Yumori TV",
+        "appDescription": "Yumori on the TV: pairs with Yumori on your phone, which works as its remote. Test build.",
+        "iconUri": "https://raw.githubusercontent.com/mikeyislost/Yumori/feather/tv-icon.png",
+        "sourceUrl": "https://github.com/mikeyislost/Yumori",
         "rootRequired": false,
-        "ipkUrl": "https://github.com/mikeyislost/AnymeXStremio/releases/download/v1.1.4-beta%2B3/AnymeX-Plus-TV-v1.1.4-beta.3.ipk",
+        "ipkUrl": "https://github.com/mikeyislost/Yumori/releases/download/v2.0.0-beta%2B1/Yumori-TV-Web-v2.0.0-beta.1.ipk",
         "ipkHash": {
-          "sha256": "31278e668726bb938e7226ef9f8d2e64c507cc654d1b5d1bcb7de0855941e520"
+          "sha256": "7edf1e37ceac0542c7f9c4817626f546e3a8cb1e00499df9ff4817469fd40d80"
         },
-        "ipkSize": 65068
+        "ipkSize": 91928
       },
       "pool": "main",
-      "shortDescription": "AnymeX+ on the TV: pairs with AnymeX+ on your phone, which works as its remote. Test build."
+      "shortDescription": "Yumori on the TV: pairs with Yumori on your phone, which works as its remote. Test build."
     }
   ]
 }
