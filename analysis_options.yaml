@@ -12,3 +12,4 @@ analyzer:
     - macos/**
     - linux/**
     - packages/**
+    - tv_flutter/**

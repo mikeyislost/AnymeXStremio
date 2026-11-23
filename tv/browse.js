@@ -807,12 +807,20 @@ window.AXBrowse = function (A) {
     var imdbOk = map.i && (movie || map.e) && streamTakes(movie ? 'movie' : 'series', movie ? map.i : map.i + ':1:1');
     if (kitsu && (kitsuOk || !imdbOk)) {
       return { type: movie ? 'movie' : 'series', id: kitsu, kitsu: true, start: movie ? '' : kitsu + ':' + next, season: 0,
-        metaTypes: movie ? ['movie', 'series', 'anime'] : ['series', 'anime', 'movie'] };
+        metaTypes: movie ? ['movie', 'series', 'anime'] : ['series', 'anime', 'movie'], a: c.a, card: c, map: map };
     }
     if (!map.i) return null;
     var first = imdbEpisode(map, 1), at = imdbEpisode(map, next);
     return { type: movie ? 'movie' : 'series', id: map.i, kitsu: false, season: movie ? 0 : first[0],
-      start: movie ? '' : map.i + ':' + at[0] + ':' + at[1], metaTypes: [movie ? 'movie' : 'series'] };
+      start: movie ? '' : map.i + ':' + at[0] + ':' + at[1], metaTypes: [movie ? 'movie' : 'series'], a: c.a, card: c, map: map };
+  }
+
+  // An anime no Stremio id is known for: it is played from your anime
+  // extensions only (through the phone or PC), by its AniList id.
+  function alTarget(c) {
+    var id = 'anilist:' + c.a, movie = c.fmt === 'MOVIE';
+    return { type: movie ? 'movie' : 'series', id: id, kitsu: false, al: true, season: 0,
+      start: movie ? '' : id + ':' + ((c.watched || 0) + 1), metaTypes: [], a: c.a, card: c, map: null };
   }
 
   function openAnime(c) {
@@ -832,8 +840,9 @@ window.AXBrowse = function (A) {
     animeMapping(c.a, function (map) {
       if (token !== detToken) return;
       var t = map && animeTarget(c, map);
+      if (!t && A.connected()) t = alTarget(c);
       if (!t) {
-        text($('dmsg'), "Couldn't match this anime to an id your Stremio addons use. Try Search: it may be listed under Movies or Series.");
+        text($('dmsg'), "Couldn't match this anime to an id your Stremio addons use. Open AnymeX+ on your phone or PC to play it from your anime extensions, or try Search.");
         return;
       }
       openDetails(t.type, t.id, c, t);
@@ -942,6 +951,7 @@ window.AXBrowse = function (A) {
   // An anime by its Kitsu id: every episode AniList counts gets a place,
   // also the ones the addon doesn't list (yet).
   function fillAnimeVideos(d, c) {
+    if (d.anime.al) { if (!d.videos.length) alVideos(d, c, null); askEpisodes(d); return; }
     if (!d.anime.kitsu) return;
     var have = {}, max = 0, i;
     for (i = 0; i < d.videos.length; i++) {
@@ -957,6 +967,49 @@ window.AXBrowse = function (A) {
       if (!have[i]) d.videos.push({ id: d.id + ':' + i, title: '', season: 1, episode: i, released: NaN, thumb: '', overview: '' });
     }
     d.videos.sort(function (a, b) { return a.episode - b.episode; });
+  }
+
+  // Episodes of an extension-only anime: from the extension's list when it
+  // came, else 1 … the AniList count.
+  function alVideos(d, c, eps) {
+    var out = [], i;
+    if (eps && eps.length) {
+      for (i = 0; i < eps.length; i++) {
+        var n = Number(eps[i].n);
+        if (!(n > 0)) continue;
+        out.push({ id: d.id + ':' + eps[i].n, title: String(eps[i].title || ''), season: 1, episode: n, released: NaN,
+          thumb: String(eps[i].thumb || ''), overview: '' });
+      }
+    }
+    if (!out.length) {
+      var count = Math.max((c && c.eps) || 0, ((c && c.watched) || 0) + 1);
+      for (i = 1; i <= count && i <= 3000; i++) out.push({ id: d.id + ':' + i, title: '', season: 1, episode: i, released: NaN, thumb: '', overview: '' });
+    }
+    out.sort(function (a, b) { return a.episode - b.episode; });
+    d.videos = out;
+  }
+
+  var epsAsk = null;   // {q, det}
+
+  function askEpisodes(d) {
+    if (!A.connected() || !d.anime || !d.anime.a) return;
+    var c = d.anime.card || {};
+    epsAsk = { q: 'e' + Date.now(), det: d };
+    A.send({ t: 'anime', cmd: 'eps', q: epsAsk.q, id: String(d.anime.a), name: c.name || '', romaji: c.romaji || '', poster: c.poster || '' });
+  }
+
+  function onAnimeEps(m) {
+    if (!epsAsk || m.q !== epsAsk.q) return;
+    var d = epsAsk.det;
+    if (d !== det) return;
+    if (!m.ok || !m.eps || !m.eps.length) {
+      if (m.err && A.screen() === 'details' && !panelOpen) text($('dmsg'), String(m.err));
+      return;
+    }
+    var focusId = null, f = A.focused();
+    if (f && f._video) focusId = f._video.id;
+    alVideos(d, d.anime.card, m.eps);
+    if (A.screen() === 'details' && !panelOpen) renderDetails(focusId);
   }
 
   function isSeries() { return det && det.type !== 'movie' && det.videos.length > 0; }
@@ -1157,23 +1210,103 @@ window.AXBrowse = function (A) {
     return true;
   }
 
-  // Asks every stream addon; each(list, addonName) per answer, done() at the end.
+  // ---- anime from your extensions (phase 2): the phone or PC finds the
+  // servers and passes the video on, with the headers the site wants.
+
+  var extAsks = {};   // q -> {each, done, seen, timer}
+
+  // AniList show and episode number for [videoId], when it is an anime.
+  function extTarget(type, videoId) {
+    var an = null, id = '';
+    if (det && det.anime && videoId.indexOf(det.id) === 0) { an = det.anime; id = det.id; }
+    else if (cur && cur.anime && videoId.indexOf(cur.id) === 0) { an = cur.anime; id = cur.id; }
+    if (!an || !an.a) return null;
+    var n = '';
+    if (type === 'movie' || videoId === id) n = '1';
+    else if (an.kitsu || an.al) n = videoId.substring(id.length + 1);
+    else {
+      var m = /:(\d+):(\d+)$/.exec(videoId);
+      if (!m) return null;
+      var se = Number(m[1]), ep = Number(m[2]);
+      for (var k = 1; k <= 3000 && !n; k++) {
+        var at = an.map ? imdbEpisode(an.map, k) : [1, k];
+        if (at[0] === se && at[1] === ep) n = String(k);
+      }
+    }
+    if (!/^\d+(\.\d+)?$/.test(n)) return null;
+    var c = an.card || {};
+    return { a: String(an.a), n: n, name: c.name || '', romaji: c.romaji || '', poster: c.poster || '' };
+  }
+
+  function extName(source) {
+    return 'From ' + (A.peer() || 'phone') + (source ? '  ·  ' + source : '');
+  }
+
+  // A server from the phone / PC as a Stremio-style stream.
+  function extStream(e, source) {
+    var ext = { hls: 'm3u8', mkv: 'mkv', webm: 'webm', ts: 'ts', mp4: 'mp4' }[e.kind] || '';
+    var subs = [];
+    for (var i = 0; e.subs && i < e.subs.length; i++) if (e.subs[i] && e.subs[i].url) subs.push({ url: e.subs[i].url, lang: e.subs[i].lang || '?' });
+    return { url: String(e.url), name: String(e.name || 'Server'), title: extName(source),
+      behaviorHints: ext ? { filename: 'video.' + ext } : {}, subtitles: subs };
+  }
+
+  function onExtServers(m) {
+    var w = extAsks[m.q];
+    if (!w) return;
+    var fresh = [], list = m.list || [];
+    for (var i = 0; i < list.length; i++) {
+      if (!list[i] || !list[i].url || w.seen[list[i].url]) continue;
+      w.seen[list[i].url] = 1;
+      fresh.push(extStream(list[i], m.source));
+    }
+    if (fresh.length) w.each(fresh, 'ext:' + (m.source || ''));
+    if (m.err) w.err = String(m.err);
+    if (m.done) finishExt(m.q);
+  }
+
+  function finishExt(q) {
+    var w = extAsks[q];
+    if (!w) return;
+    delete extAsks[q];
+    clearTimeout(w.timer);
+    w.done(w.err || '');
+  }
+
+  // Asks the phone / PC; each(streams, addonName), done(problem) at the end.
+  function askExt(t, each, done) {
+    var q = 'x' + Date.now() + Math.floor(Math.random() * 1000);
+    extAsks[q] = { each: each, done: done, seen: {}, err: '', timer: setTimeout(function () { finishExt(q); }, 75000) };
+    A.send({ t: 'ext', cmd: 'servers', q: q, a: t.a, n: t.n, name: t.name, romaji: t.romaji, poster: t.poster });
+  }
+
+  // Asks every stream addon (and for anime the phone / PC's extensions);
+  // each(list, addonName) per answer, done(asked) at the end.
   function collectStreams(type, videoId, each, done) {
     var list = addons(), todo = [];
     for (var i = 0; i < list.length; i++) {
       if (supports(list[i], 'stream', type, videoId) || supports(list[i], 'stream', 'anime', videoId)) todo.push(list[i]);
     }
-    var left = todo.length;
+    var ext = A.connected() ? extTarget(type, videoId) : null;
+    var left = todo.length + (ext ? 1 : 0);
     if (!left) { done(0); return; }
+    if (ext) {
+      askExt(ext, each, function (why) {
+        if (why) lastExtProblem = why;
+        if (--left === 0) done(todo.length + 1);
+      });
+    }
     for (var j = 0; j < todo.length; j++) {
       (function (addon) {
         getJson(resourceUrl(baseOf(addon), 'stream', type, videoId), function (r) {
           each((r && r.streams) || [], String((addon.manifest && addon.manifest.name) || 'Addon'));
-          if (--left === 0) done(todo.length);
+          if (--left === 0) done(todo.length + (ext ? 1 : 0));
         }, 25000);
       })(todo[j]);
     }
   }
+
+  var lastExtProblem = '';
 
   function streamInfo(s, addonName) {
     var hints = s.behaviorHints || {};
@@ -1199,7 +1332,8 @@ window.AXBrowse = function (A) {
     hide($('spanel'), false);
     A.setFocus(null);
     text($('sptitle'), isSeries() ? epLabel(video) + (video.title ? '  ·  ' + video.title : '') : (det.meta.name || ''));
-    text($('spmsg'), 'Finding streams…');
+    text($('spmsg'), extTarget(det.type, video.id) && A.connected() ? 'Finding streams (your ' + (A.peer() || 'phone') + ' is checking your anime extensions)…' : 'Finding streams…');
+    lastExtProblem = '';
     var hidden = 0, count = 0;
     var from = start < 0 ? startFor(video.id) : start;
     collectStreams(det.type, video.id, function (streams, addonName) {
@@ -1224,8 +1358,8 @@ window.AXBrowse = function (A) {
       if (token !== streamToken) return;
       if (count) return;
       if (!asked) text($('spmsg'), 'No stream addons for this yet. Add them in AnymeX+ on your phone; they sync to the TV by themselves.');
-      else if (hidden) text($('spmsg'), 'Nothing the TV can play by itself (' + hidden + ' torrent-only streams). Debrid and direct links work here.');
-      else text($('spmsg'), 'No streams found.');
+      else if (hidden) text($('spmsg'), 'Nothing the TV can play by itself (' + hidden + ' torrent-only streams). Debrid and direct links work here.' + (lastExtProblem ? '\n' + lastExtProblem : ''));
+      else text($('spmsg'), lastExtProblem || 'No streams found.');
     });
   }
 
@@ -1252,7 +1386,7 @@ window.AXBrowse = function (A) {
     closeTracks();
     cur = {
       type: det.type, id: det.id, videoId: video.id, video: video, meta: det.meta, videos: det.videos,
-      binge: s.binge, addon: s.addon, name: s.name, lastPos: Math.round((s.start || 0) * 1000), lastAt: Date.now(),
+      binge: s.binge, addon: s.addon, name: s.name, anime: det.anime || null, lastPos: Math.round((s.start || 0) * 1000), lastAt: Date.now(),
       lastSave: Date.now(), sentWatched: false, subs: [], emb: -1, aud: 0, delay: keep ? keep.delay || 0 : 0
     };
     var i;
@@ -1414,7 +1548,7 @@ window.AXBrowse = function (A) {
     save(K_RESUME, resume);
 
     var key = authKey();
-    if (!key) {
+    if (!key || c.id.indexOf('anilist:') === 0) {
       if (pos > dur * watchedPoint()) queueWatched(c);
       return;
     }
@@ -2243,7 +2377,7 @@ window.AXBrowse = function (A) {
       lines.push('Addons       ' + addons().length);
       lines.push('Rows         ' + ((bundle.rows && bundle.rows.length) || 0));
       lines.push('TMDB rows    ' + (tmdbKey() ? 'yes' : 'no'));
-      lines.push('Anime rows   ' + (bundle.anime ? 'yes (streams from your Stremio addons)' : 'update AnymeX+ on the phone'));
+      lines.push('Anime rows   ' + (bundle.anime ? 'yes (streams from your Stremio addons, and your extensions through the phone or PC)' : 'update AnymeX+ on the phone'));
     } else {
       lines.push('Synced       nothing yet');
     }
@@ -2288,7 +2422,9 @@ window.AXBrowse = function (A) {
   function onMessage(m) {
     if (m.t === 'sync') { onSync(m); return true; }
     if (m.t === 'search') { searchFromPhone(m.q); return true; }
-    if (m.t === 'animeEps' || m.t === 'animePlay') return true;   // older idea: episodes from the phone
+    if (m.t === 'animeEps') { onAnimeEps(m); return true; }
+    if (m.t === 'extServers') { onExtServers(m); return true; }
+    if (m.t === 'animePlay') return true;   // older idea: the phone played it
     if (m.t === 'servers') {
       srv = { id: m.id, list: m.list || [], on: Number(m.on) };
       setHint('');
@@ -2312,13 +2448,14 @@ window.AXBrowse = function (A) {
   }
 
   function onDisconnected() {
+    for (var q in extAsks) if (extAsks.hasOwnProperty(q)) { extAsks[q].err = 'Your ' + (A.peer() || 'phone') + ' went away.'; finishExt(q); }
     updateStatus();
     if (A.screen() === 'settings') showSettings();
   }
 
   function helloExtra() {
     var p = A.phone();
-    return { sync: true, anime: true, hasKey: !!(p && p.key), have: bundleHash };
+    return { sync: true, anime: true, ext: true, hasKey: !!(p && p.key), have: bundleHash, from: (bundle && bundle.from) || '' };
   }
 
   function start() {
@@ -2340,7 +2477,8 @@ window.AXBrowse = function (A) {
     onMessage: onMessage, onConnected: onConnected, onDisconnected: onDisconnected, helloExtra: helloExtra,
     tick: tick, ended: ended, leftPlayer: leftPlayer, playerKey: playerKey, wake: wake, drawPlayer: drawPlayer,
     // for tests
-    _test: { parts: parts, mappingFromAniZip: mappingFromAniZip, imdbEpisode: imdbEpisode, shownRows: shownRows },
+    _test: { parts: parts, mappingFromAniZip: mappingFromAniZip, imdbEpisode: imdbEpisode, shownRows: shownRows,
+      extTarget: extTarget, alTarget: alTarget, setDet: function (d) { det = d; } },
     _mergeContinue: mergeContinue, _cleanText: cleanText, _watchedLine: watchedLine,
     _supports: supports, _applyProgress: applyProgress, _baseOf: baseOf
   };

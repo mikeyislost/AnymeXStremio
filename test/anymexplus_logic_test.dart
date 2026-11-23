@@ -12,7 +12,13 @@ import 'package:anymex/plus/app_channel.dart';
 import 'package:anymex/plus/tv/tv_link.dart' show PlusTvLink;
 import 'package:anymex/plus/tv/tv_play.dart' show PlusTvPlay;
 import 'package:anymex/plus/tv/tv_sync.dart' show PlusTvSync;
+import 'package:anymex/plus/tv/flutter_tv_pair.dart' show PlusFlutterTvPair;
+import 'package:anymex/plus/tvui/tv_list_editor.dart' show TvListRules;
+import 'package:anymex/plus/tvui/tv_ext.dart' show TvExt, TvExtDevice;
+import 'package:anymex/plus/tvui/tv_data.dart' show TvEpisodeArt;
+import 'package:anymex/plus/tvui/tv_home_rows.dart' show TvHomeRow, TvHomeRows;
 import 'package:anymex/plus/tv/tv_anime.dart' show PlusTvAnime;
+import 'package:anymex/plus/tv/tv_proxy.dart';
 import 'package:anymex/plus/tv/subtitle_vtt.dart';
 import 'package:anymex/plus/episode_hold.dart';
 import 'package:anymex/plus/episode_order.dart';
@@ -1206,6 +1212,233 @@ void main() {
       final r2 = <String>['tracks', 'volume'];
       plusAddVolumeButtonIds(<String>[], r2, ['brightness']);
       expect(r2, PlusDesktopVolume.supported ? ['tracks', 'volume'] : ['tracks']);
+    });
+  });
+
+  group('TV phase 2: extension video through this device', () {
+    String route(String kind, String url) => '<$kind:$url>';
+
+    test('a media playlist given straight away: segments stay segments', () {
+      const text = '#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n'
+          '#EXT-X-MAP:URI="init.mp4"\n#EXTINF:10,\nseg1.ts\n#EXTINF:10,\nhttps://cdn.example/seg2.jpg\n#EXT-X-ENDLIST\n';
+      final out = PlusTvProxy.rewritePlaylist(text, Uri.parse('https://a.example/hls/index.m3u8?t=1'), route);
+      expect(out, contains('URI="<key:https://a.example/hls/key.bin>"'));
+      expect(out, contains('URI="<segment:https://a.example/hls/init.mp4>"'));
+      expect(out, contains('<segment:https://a.example/hls/seg1.ts>'));
+      expect(out, contains('<segment:https://cdn.example/seg2.jpg>'));
+      expect(out, isNot(contains('<playlist:')));
+      expect(out, contains('#EXT-X-ENDLIST'));
+    });
+
+    test('a master playlist: variants, audio groups and i-frames are playlists', () {
+      const text = '#EXTM3U\r\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="Japanese",URI="audio/ja.m3u8"\r\n'
+          '#EXT-X-STREAM-INF:BANDWIDTH=1,AUDIO="a"\r\n1080/index.m3u8\r\n'
+          '#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1,URI="iframe.m3u8"\r\n#EXT-X-SESSION-KEY:METHOD=SAMPLE-AES,URI="skd://x"\r\n';
+      final out = PlusTvProxy.rewritePlaylist(text, Uri.parse('https://a.example/m/master.m3u8'), route);
+      expect(out, contains('URI="<playlist:https://a.example/m/audio/ja.m3u8>"'));
+      expect(out, contains('<playlist:https://a.example/m/1080/index.m3u8>'));
+      expect(out, contains('URI="<playlist:https://a.example/m/iframe.m3u8>"'));
+      expect(out, contains('URI="skd://x"'));
+    });
+
+    test('what a link is, from its first bytes', () {
+      td.Uint8List b(List<int> x) => td.Uint8List.fromList(x);
+      expect(PlusTvProxy.sniff(b([0xEF, 0xBB, 0xBF, ...utf8.encode('\n#EXTM3U\n')]), ''), 'hls');
+      expect(PlusTvProxy.sniff(b([0x1A, 0x45, 0xDF, 0xA3, ...utf8.encode('....matroska')]), ''), 'mkv');
+      expect(PlusTvProxy.sniff(b([0x1A, 0x45, 0xDF, 0xA3, ...utf8.encode('....webm')]), ''), 'webm');
+      expect(PlusTvProxy.sniff(b([0, 0, 0, 0x20, ...utf8.encode('ftypisom')]), ''), 'mp4');
+      expect(PlusTvProxy.sniff(b(utf8.encode('<html>')), 'application/x-mpegURL'), 'hls');
+      expect(PlusTvProxy.sniff(b(utf8.encode('<html>')), 'text/html'), '');
+      expect(PlusTvProxy.guessFromUrl('https://x/a/master.m3u8?x=1'), 'hls');
+      expect(PlusTvProxy.guessFromUrl('https://x/a/play?file=1'), '');
+    });
+
+    test('TS hidden behind a picture header is found', () {
+      final bytes = td.Uint8List(8 + 188 * 4);
+      bytes.setAll(0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+      for (var i = 0; i < 4; i++) {
+        bytes[8 + i * 188] = 0x47;
+      }
+      expect(PlusTvProxy.tsStart(bytes), 8);
+      expect(PlusTvProxy.sniff(bytes, 'image/png'), 'ts');
+      expect(PlusTvProxy.tsStart(td.Uint8List(600)), -1);
+    });
+
+    test('links in addresses survive the trip', () {
+      const u = 'https://a.example/x?y=1&z=ä/é==';
+      expect(PlusTvProxy.dec(PlusTvProxy.enc(u)), u);
+      expect(PlusTvProxy.enc(u).contains('='), isFalse);
+    });
+
+    test('the same link and headers keep their key', () {
+      final p = PlusTvProxy.instance;
+      final k1 = p.register('https://v.example/1.m3u8', {'Referer': 'https://site/'});
+      expect(p.register('https://v.example/1.m3u8', {'Referer': 'https://site/'}), k1);
+      expect(p.register('https://v.example/1.m3u8', {'Referer': 'https://other/'}), isNot(k1));
+    });
+
+    test('servers that did not answer are hidden unless none did', () {
+      final a = PlusTvAnime.serverEntry(name: 'A', url: 'u1', kind: 'hls');
+      final b = PlusTvAnime.serverEntry(name: 'B', url: 'u2', kind: '', dead: true);
+      expect(PlusTvAnime.shownServers([a, null, b]).map((e) => e['name']), ['A']);
+      expect(PlusTvAnime.shownServers([b]).map((e) => e['name']), ['B']);
+      expect(PlusTvAnime.serverEntry(name: '', url: 'u', kind: 'mp4')['name'], 'Server');
+    });
+
+    test('episode numbers match however they are written', () {
+      expect(PlusTvAnime.sameEpisode('4', '4'), isTrue);
+      expect(PlusTvAnime.sameEpisode('04', '4'), isTrue);
+      expect(PlusTvAnime.sameEpisode('4.0', '4'), isTrue);
+      expect(PlusTvAnime.sameEpisode('4.5', '4'), isFalse);
+    });
+
+    test('a PC leaves the sync from your phone alone', () {
+      expect(PlusTvSync.keepsOtherSync(isComputer: true, have: 'h', from: 'iPhone', me: 'PC'), isTrue);
+      expect(PlusTvSync.keepsOtherSync(isComputer: true, have: '', from: '', me: 'PC'), isFalse);
+      expect(PlusTvSync.keepsOtherSync(isComputer: true, have: 'h', from: 'PC', me: 'PC'), isFalse);
+      expect(PlusTvSync.keepsOtherSync(isComputer: false, have: 'h', from: 'iPhone', me: 'iPad'), isFalse);
+    });
+  });
+
+  group('Flutter TV: logins from the phone', () {
+    test('both sides get the same lock key, and it opens what was locked', () {
+      final (phone, phonePub) = PlusFlutterTvPair.newKeys();
+      final (tv, tvPub) = PlusFlutterTvPair.newKeys();
+      final salt = PlusFlutterTvPair.newSalt();
+      final a = PlusFlutterTvPair.lockKey(phone, tvPub, '123456', salt);
+      final b = PlusFlutterTvPair.lockKey(tv, phonePub, '123456', salt);
+      expect(a, b);
+      expect(a.length, 64);
+      final sealed = PlusTvSync.seal(a, utf8.encode('{"anilist":"x"}'));
+      expect(utf8.decode(PlusFlutterTvPair.open(b, sealed.$1, sealed.$2)), '{"anilist":"x"}');
+    });
+
+    test('a wrong code cannot open it', () {
+      final (phone, phonePub) = PlusFlutterTvPair.newKeys();
+      final (tv, tvPub) = PlusFlutterTvPair.newKeys();
+      final a = PlusFlutterTvPair.lockKey(phone, tvPub, '123456', 's');
+      final wrong = PlusFlutterTvPair.lockKey(tv, phonePub, '123457', 's');
+      final sealed = PlusTvSync.seal(a, utf8.encode('secret'));
+      expect(() => PlusFlutterTvPair.open(wrong, sealed.$1, sealed.$2), throwsA(anything));
+    });
+
+    test('codes are 6 digits; saved-key ids show nothing of the key', () {
+      expect(RegExp(r'^\d{6}$').hasMatch(PlusFlutterTvPair.newCode()), isTrue);
+      final key = 'ab' * 32;
+      final id = PlusFlutterTvPair.idFor(key);
+      expect(id.length, 16);
+      expect(key.contains(id), isFalse);
+    });
+
+    test('carried names what was sent', () {
+      expect(PlusFlutterTvPair.carried({'anilist': 't', 'simkl': '', 'stremio': 'k'}), ['AniList', 'Stremio']);
+    });
+  });
+
+  group('Flutter TV: changing your AniList list', () {
+    test('episodes stay within 0…total', () {
+      expect(TvListRules.step(0, -1, 12), 0);
+      expect(TvListRules.step(11, 5, 12), 12);
+      expect(TvListRules.step(3, 1, 0), 4); // total unknown
+    });
+
+    test('status follows progress', () {
+      expect(TvListRules.statusFor('PLANNING', 1, 12), 'CURRENT');
+      expect(TvListRules.statusFor('', 1, 12), 'CURRENT');
+      expect(TvListRules.statusFor('CURRENT', 12, 12), 'COMPLETED');
+      expect(TvListRules.statusFor('COMPLETED', 5, 12), 'CURRENT');
+      expect(TvListRules.statusFor('DROPPED', 12, 12), 'DROPPED');
+      expect(TvListRules.statusFor('PAUSED', 4, 12), 'PAUSED');
+      expect(TvListRules.progressFor('COMPLETED', 3, 12), 12);
+      expect(TvListRules.progressFor('COMPLETED', 3, 0), 3);
+    });
+
+    test('marking an episode watched / not watched', () {
+      expect(TvListRules.markEpisode('CURRENT', 3, 12, 7, true), ('CURRENT', 7));
+      expect(TvListRules.markEpisode('CURRENT', 9, 12, 7, true), ('CURRENT', 9));
+      expect(TvListRules.markEpisode('CURRENT', 9, 12, 7, false), ('CURRENT', 6));
+      expect(TvListRules.markEpisode('CURRENT', 3, 12, 7, false), ('CURRENT', 3));
+      expect(TvListRules.markEpisode('', 0, 12, 1, true), ('CURRENT', 1));
+      expect(TvListRules.markEpisode('CURRENT', 11, 12, 12, true), ('COMPLETED', 12));
+      expect(TvListRules.markEpisode('COMPLETED', 12, 12, 12, false), ('CURRENT', 11));
+    });
+
+    test('score steps and labels', () {
+      expect(TvListRules.stepScore(0, -1), 0);
+      expect(TvListRules.stepScore(70, 1), 75);
+      expect(TvListRules.stepScore(100, 1), 100);
+      expect(TvListRules.scoreLabel(0), 'No score');
+      expect(TvListRules.scoreLabel(70), '7 / 10');
+      expect(TvListRules.scoreLabel(75), '7.5 / 10');
+    });
+  });
+
+  group('Flutter TV: extensions through the phone', () {
+    test('a server from the phone becomes a playable stream', () {
+      final s = TvExt.toStream({
+        'name': 'Vidstreaming 1080p',
+        'url': 'http://192.168.1.20:41733/x/abc/v.m3u8',
+        'kind': 'm3u8',
+        'subs': [
+          {'lang': 'English', 'url': 'http://192.168.1.20:41733/x/abc/sub.vtt?u=x'},
+          {'lang': 'x', 'url': ''},
+        ],
+      }, 'HiAnime', 'iPhone');
+      expect(s.addonName, 'Extension · HiAnime');
+      expect(s.name, 'Vidstreaming 1080p');
+      expect(s.title, 'From iPhone');
+      expect(s.bingeGroup, 'ext|Vidstreaming 1080p');
+      expect(s.filename, 'video.m3u8');
+      expect(s.subtitles.length, 1);
+      expect(s.url, startsWith('http://'));
+      expect(TvExt.toStream({'name': '', 'url': 'http://h/v.mp4', 'dead': true}, '', 'PC').title, 'From PC · may not work');
+    });
+
+    test('devices need a host, port and token', () {
+      expect(TvExtDevice.fromJson({'host': '192.168.1.20', 'port': 41733, 'token': 't', 'name': 'iPhone'})?.name, 'iPhone');
+      expect(TvExtDevice.fromJson({'host': '', 'port': 41733, 'token': 't'}), isNull);
+      expect(TvExtDevice.fromJson({'host': 'h', 'port': 0, 'token': 't'}), isNull);
+      expect(TvExtDevice.fromJson('nope'), isNull);
+      expect(TvExt.extVideoId('21', '5'), 'anilist:21:5');
+    });
+  });
+
+  test('Flutter TV: anime episode pictures from ani.zip', () {
+    final art = TvEpisodeArt.parse({
+      'episodes': {
+        '1': {'title': {'en': 'The Beginning', 'x-jat': 'Hajimari'}, 'image': 'https://img/1.jpg'},
+        '2': {'title': {'x-jat': 'Futatsume'}, 'image': null},
+        'S1': {'title': {'en': 'Special'}, 'image': 'https://img/s1.jpg'},
+      }
+    });
+    expect(art[1], ('The Beginning', 'https://img/1.jpg'));
+    expect(art[2], ('Futatsume', ''));
+    expect(art.length, 2);
+    expect(TvEpisodeArt.parse({'episodes': []}), isEmpty);
+    expect(TvEpisodeArt.parse(null), isEmpty);
+  });
+
+  group('Flutter TV: Home rows layout', () {
+    List<String> keys(List<TvHomeRow> l) => [for (final r in l) r.key];
+    test('saved order kept, unknown rows dropped, new rows slot in after their neighbour', () {
+      final out = TvHomeRows.merge(
+        const [TvHomeRow('c', true), TvHomeRow('gone', true), TvHomeRow('a', false)],
+        ['a', 'b', 'c', 'd'],
+      );
+      expect(keys(out), ['c', 'd', 'a', 'b']); // d follows c, b follows a, as by default
+      expect(out.firstWhere((r) => r.key == 'a').on, isFalse);
+      expect(out.firstWhere((r) => r.key == 'b').on, isTrue);
+    });
+
+    test('nothing saved = the defaults', () {
+      expect(keys(TvHomeRows.merge(const [], ['x', 'y'])), ['x', 'y']);
+    });
+
+    test('moving rows', () {
+      const rows = [TvHomeRow('a', true), TvHomeRow('b', true), TvHomeRow('c', true)];
+      expect(keys(TvHomeRows.move(rows, 2, -1)), ['a', 'c', 'b']);
+      expect(keys(TvHomeRows.move(rows, 0, -1)), ['a', 'b', 'c']);
+      expect(keys(TvHomeRows.move(rows, 2, 1)), ['a', 'b', 'c']);
     });
   });
 }

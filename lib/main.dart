@@ -6,6 +6,12 @@ import 'package:anymex/plus/splash_gate.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/categories/categories_page.dart';
 import 'package:anymex/plus/stremio/ui/stremio_home_page.dart';
+import 'package:anymex/plus/tv/flutter_tv_pair.dart';
+import 'package:anymex/plus/tv/tv_link.dart';
+import 'package:anymex/plus/tvui/tv_pair.dart';
+import 'package:anymex/plus/tvui/tv_back_key.dart';
+import 'package:anymex/plus/webos.dart';
+import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
@@ -162,7 +168,7 @@ Future<void> safeCall(FutureOr<void> Function() function,
   }
 }
 
-void main(List<String> args) async {
+void main([List<String> args = const []]) async { // AnymeX+: optional (the TV's runner passes none)
   LaunchTimer.start();
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -174,7 +180,9 @@ void main(List<String> args) async {
     await Future.wait([
       safeCall(() => ExternalFontLoader.loadStartupFonts(),
           errorMessage: 'Failed to load app fonts'),
-      safeCall(() => Rhttp.init(), errorMessage: 'Failed to initialize Rhttp'),
+      safeCall(() => Rhttp.init(libraryPath: PlusWebos.isTv ? PlusWebos.lib('librhttp.so') : null), // AnymeX+: TV
+          errorMessage: 'Failed to initialize Rhttp'),
+      safeCall(() => PlusWebos.initNative(), errorMessage: 'Failed to load the TV libraries'),
       safeCall(() => dotenv.load(fileName: ".env"),
           errorMessage: 'Failed to load .env file'),
       safeCall(() => initializeDateFormatting(),
@@ -183,7 +191,7 @@ void main(List<String> args) async {
           errorMessage: 'Failed to initialize MediaKit'),
     ]);
 
-    if (Platform.isWindows || Platform.isLinux) {
+    if (Platform.isWindows || (Platform.isLinux && !PlusWebos.isTv)) {
       await safeCall(() {
         [
           'dar',
@@ -209,7 +217,9 @@ void main(List<String> args) async {
         errorMessage: 'Failed to initialize deep link listener');
 
     await safeCall(() async {
-      if (!Platform.isAndroid && !Platform.isIOS) {
+      if (PlusWebos.isTv) {
+        // AnymeX+: the TV has no windows to manage.
+      } else if (!Platform.isAndroid && !Platform.isIOS) {
         await windowManager.ensureInitialized();
         await AnymeXTitleBar.initialize();
       } else {
@@ -388,6 +398,13 @@ class _MainAppState extends State<MainApp> {
         });
         WidgetsBinding.instance
             .addPostFrameCallback((_) => LaunchTimer.markHome());
+        PlusTvLink.autoStart(); // AnymeX+: a PC is the TV app's anime source
+        if (PlusWebos.isTv) {
+          PlusTvPair.instance.start(); // AnymeX+: logins from the phone
+          TvBackKey.apply(); // AnymeX+: ask webOS for the remote's Back button (test)
+        } else {
+          PlusFlutterTvPair.autoPush(); // AnymeX+: fresh logins for paired TVs
+        }
       }
     });
   }
@@ -418,10 +435,15 @@ class _MainAppState extends State<MainApp> {
                 ? ThemeMode.light
                 : ThemeMode.dark,
         // AnymeX+: a short fade, since the splash can now end mid-animation.
-        home: AnimatedSwitcher(
+        home: PlusWebos.isTv && PlusTvUi.enabled
+            // AnymeX+: the TV keeps the splash until Home's pictures are in.
+            ? TvStartGate(showMain: _showMainApp, splash: const AnymeXSplashScreen())
+            : AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           child: _showMainApp
-              ? const FilterScreen(key: ValueKey('home'))
+              ? (PlusWebos.isTv && PlusTvUi.enabled // AnymeX+: the TV layout
+                  ? const PlusTvShell(key: ValueKey('tv'))
+                  : const FilterScreen(key: ValueKey('home')))
               : const AnymeXSplashScreen(key: ValueKey('splash')),
         ),
         builder: (context, child) {

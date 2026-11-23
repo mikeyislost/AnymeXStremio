@@ -6,14 +6,18 @@ import 'package:rhttp/src/model/request.dart';
 import 'package:rhttp/src/model/response.dart';
 import 'package:rhttp/src/model/settings.dart';
 import 'package:rhttp/src/request.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart' show ExternalLibrary;
 import 'package:rhttp/src/rust/frb_generated.dart';
 
 class Rhttp {
   const Rhttp._();
 
   /// Initializes the Rust library.
-  static Future<void> init() async {
+  /// [libraryPath]: where the Rust library is, when it isn't found the usual
+  /// way (AnymeX+ on an LG TV).
+  static Future<void> init({String? libraryPath}) async {
     await RustLib.init(
+      externalLibrary: libraryPath == null ? null : ExternalLibrary.open(libraryPath),
       // Reduce the probably of dependency hell.
       // Projects using rhttp may use frb for other purposes as well.
       forceSameCodegenVersion: false,

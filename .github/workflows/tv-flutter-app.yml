@@ -1,0 +1,234 @@
+# AnymeX+ for the LG TV in Flutter: feasibility check (TV app phase 2).
+# Builds the whole app for webOS with LG's flutter-webOS SDK and keeps the
+# logs, to find what has to change. Run by hand or by pushing to wip/tv-flutter*.
+name: TV Flutter app (check)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['wip/tv-flutter*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tv-flutter-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      NDK_DIR: /home/runner/starfish-sdk
+    steps:
+      # Which TV app this branch builds. Test branches get their own app id so
+      # they install next to the normal one.
+      - name: Which TV app
+        run: |
+          case "$GITHUB_REF_NAME" in
+            wip/tv-flutter-yumori*)
+              ID=com.mikeyislost.yumori.tv; TITLE=Yumori; FILE=Yumori-TV.ipk
+              ICON=tv_runner/yumori-icon-130.png
+              ABOUT="Yumori for the TV (test build): the whole app in the new look." ;;
+            wip/tv-flutter-back*)
+              ID=com.mikeyislost.anymexplus.fluttertv.back; TITLE="AnymeX+ (Back test)"; FILE=AnymeX-Plus-Flutter-TV-back.ipk
+              ICON=tv/largeIcon.png; ABOUT="Back button test." ;;
+            *)
+              ID=com.mikeyislost.anymexplus.fluttertv; TITLE="AnymeX+ (Flutter)"; FILE=AnymeX-Plus-Flutter-TV.ipk
+              ICON=tv/largeIcon.png
+              ABOUT="The whole AnymeX+ app built for the TV with Flutter. Early test: things will be missing." ;;
+          esac
+          {
+            echo "TV_APP_ID=$ID"; echo "TV_APP_TITLE=$TITLE"; echo "TV_APP_FILE=$FILE"
+            echo "TV_APP_ICON=$ICON"; echo "TV_APP_ABOUT=$ABOUT"
+          } >> "$GITHUB_ENV"
+          echo "$TITLE ($ID) -> $FILE"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Linux packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl unzip cmake pkg-config file libgtk-3-0 libgtk-3-dev git ninja-build clang libclang-dev git-lfs
+          git config --global user.name "AnymeX+ CI"
+          git config --global user.email "ci@users.noreply.github.com"
+
+      - name: Rust (for rhttp)
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add armv7-unknown-linux-gnueabihf arm-unknown-linux-gnueabi armv7-unknown-linux-gnueabi || true
+
+      - name: webOS CLI, flutter-webOS SDK, NDK
+        run: |
+          npm install -g @webos-tools/cli
+          git clone --depth 1 https://github.com/lg-flutter-webos/flutter-webos.git "$HOME/flutter-webos"
+          echo "$HOME/flutter-webos/bin" >> "$GITHUB_PATH"
+          mkdir -p "$HOME/ndk" && cd "$HOME/ndk"
+          curl -fL --retry 3 -o ndk.sh https://github.com/lg-flutter-webos/ndk/releases/download/11.2.0/webos-ndk-flutter-starfish-x86_64-ca9v1-11.2.0.sh
+          chmod +x ndk.sh && ./ndk.sh -y -d "$NDK_DIR" && rm ndk.sh
+          echo "WEBOS_FLUTTER_NDK_ENV=$NDK_DIR/environment-setup-ca9v1-webosmllib32-linux-gnueabi" >> "$GITHUB_ENV"
+
+      - name: Engine
+        run: flutter-webos --version && flutter-webos precache
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/rhttp/rust/target
+          key: webos-rust-${{ hashFiles('packages/rhttp/rust/Cargo.lock') }}
+
+      - name: Peek at LG's embedder (Back key)
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          {
+            echo "== embedder files"
+            find "$HOME" -path "$HOME/.pub-cache" -prune -o \( -name "flutter_window.h" -o -name "flutter_elinux*.h" -o -name "*.so" \) -print 2>/dev/null | grep -iE "elinux|webos|embedder|flutter_window|libflutter" | grep -v starfish-sdk | head -40
+            for f in $(find "$HOME" -path "$HOME/.pub-cache" -prune -o -name "*.so" -print 2>/dev/null | grep -iE "elinux|embedder|libflutter_" | grep -v starfish-sdk | head -4); do
+              echo "-- strings $f"
+              strings "$f" | grep -E "KEYS_BACK|ACCESS_POLICY|webos_shell|_WEBOS_|appLifecycleState|screenSaverStatus|visibilityStatus|KEY_BACK|keyBack|BackKey|backKey|412|exitApp|com\.webos\.app\.alert|disableBack" | sort -u | head -80
+            done
+            for h in $(find "$HOME" -path "$HOME/.pub-cache" -prune -o \( -name "flutter_window.h" -o -name "flutter_elinux.h" -o -name "flutter_platform_views.h" -o -name "*view_properties*.h" \) -print 2>/dev/null | head -6); do echo "-- $h"; cat "$h"; done
+          } > logs/peek.txt 2>&1
+          wc -l logs/peek.txt; head -400 logs/peek.txt
+
+      - name: Native libraries for the TV (Isar, rhttp)
+        continue-on-error: true
+        run: |
+          mkdir -p logs
+          bash scripts/tv_flutter_native.sh native > logs/native.txt 2>&1 || echo NATIVE FAILED
+          grep -nE "^error|error\[|cannot find|undefined reference|NATIVE FAILED|Rust target|^CC=|CFLAGS=" logs/native.txt | head -60
+          tail -40 logs/native.txt
+
+      - name: Setup environment
+        env:
+          AL_CLIENT_ID: ${{ secrets.AL_CLIENT_ID }}
+          AL_CLIENT_SECRET: ${{ secrets.AL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+          MAL_CLIENT_SECRET: ${{ secrets.MAL_CLIENT_SECRET }}
+          CALLBACK_SCHEME: ${{ secrets.CALLBACK_SCHEME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          COMMENTS_BASE_URL: ${{ secrets.COMMENTS_BASE_URL }}
+        run: |
+          cat > .env << EOF
+          AL_CLIENT_ID=$AL_CLIENT_ID
+          AL_CLIENT_SECRET=$AL_CLIENT_SECRET
+          SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID
+          SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET
+          MAL_CLIENT_ID=$MAL_CLIENT_ID
+          MAL_CLIENT_SECRET=$MAL_CLIENT_SECRET
+          CALLBACK_SCHEME=${CALLBACK_SCHEME:-anymex://callback}
+          TMDB_API_KEY=$TMDB_API_KEY
+          COMMENTS_BASE_URL=${COMMENTS_BASE_URL:-http://anymex.duckdns.org:8000/functions/v1}
+          APP_CHANNEL=beta
+          APP_VERSION_TAG=tv-flutter
+          EOF
+
+      - name: Add the webOS platform
+        run: |
+          mkdir -p logs
+          python3 scripts/tv_flutter_prepare.py 2>&1 | tee logs/prepare.txt
+          flutter-webos create --platforms webos --project-name anymex . 2>&1 | tee logs/create.txt
+          git status --short | head -50 | tee -a logs/create.txt
+          # The TV's own libraries go into the app's lib folder.
+          if ls native/*.so >/dev/null 2>&1; then
+            for f in native/*.so; do
+              echo "install(FILES \"\${CMAKE_CURRENT_SOURCE_DIR}/../$f\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/lib\" COMPONENT Runtime)" >> webos/CMakeLists.txt
+            done
+          fi
+          tail -5 webos/CMakeLists.txt
+          # Our runner (Back button) replaces LG's template main.cc.
+          for f in main.cc user_build.cmake; do
+            if [ -f "tv_runner/$f" ]; then cp "tv_runner/$f" "webos/runner/$f" && echo "runner: tv_runner/$f"; fi
+          done
+          python3 - webos/meta/appinfo.json <<'PY'
+          import json, sys
+          info = json.load(open(sys.argv[1]))
+          info.update({"id": "${{ env.TV_APP_ID }}", "title": "${{ env.TV_APP_TITLE }}",
+                       "version": "1.0.${{ github.run_number }}", "vendor": "mikeyislost"})
+          json.dump(info, open(sys.argv[1], "w"), indent=4)
+          PY
+          cp "$TV_APP_ICON" webos/meta/icon.png || true
+
+      - name: pub get
+        run: |
+          flutter-webos pub get 2>&1 | tee logs/pub.txt
+          flutter-webos pub deps --style=compact 2>/dev/null | head -400 > logs/deps.txt || true
+
+      - name: Where native parts come from
+        continue-on-error: true
+        run: |
+          P=$HOME/.pub-cache/hosted/pub.dev
+          for d in $P/isar_community-* $P/isar_community_flutter_libs-*; do echo "== $d"; grep -E "^(version|repository|homepage)" $d/pubspec.yaml; done
+          cat $P/isar_community_flutter_libs-*/linux/CMakeLists.txt | head -60
+          grep -rn "version" $P/isar_community-*/lib/src/isar.dart | head -5
+
+      - name: Analyze with the webOS Flutter (3.38)
+        continue-on-error: true
+        run: |
+          flutter-webos analyze --no-fatal-infos --no-fatal-warnings lib > logs/analyze.txt 2>&1 || true
+          grep -E "^\s*error" logs/analyze.txt | head -200 > logs/analyze-errors.txt || true
+          echo "errors: $(wc -l < logs/analyze-errors.txt)"; head -150 logs/analyze-errors.txt
+
+      - name: Build for webOS
+        continue-on-error: true
+        run: |
+          flutter-webos build webos --release --dart-define=ANYMEX_WEBOS=true -v > logs/build.txt 2>&1 || echo BUILD FAILED
+          grep -nE "error|Error|FAILED|failed|undefined reference|No such file" logs/build.txt | grep -v "^.*\[ *[0-9]*ms\] *$" | head -150
+          tail -80 logs/build.txt
+          find build/webos -name '*.ipk' -exec cp {} logs/ \; 2>/dev/null || true
+
+      - name: Which plugins have a webOS part
+        if: always()
+        run: |
+          cat .flutter-plugins-dependencies 2>/dev/null | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['plugins']
+          for k in sorted(d): print(k, ':', ', '.join(sorted(p['name'] for p in d[k])))
+          " > logs/plugins.txt || true
+          cat logs/plugins.txt
+
+      - name: Publish for Homebrew Channel (tv-flutter-test pre-release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          IPK=$(find build/webos -name '*.ipk' | head -n 1)
+          test -n "$IPK"
+          unzip -l "$IPK" >/dev/null 2>&1 || true
+          ar t "$IPK" && ar p "$IPK" data.tar.gz | tar tz | grep -E "lib/|appinfo" | head -30
+          TAG=tv-flutter-test
+          BASE="https://github.com/$REPO/releases/download/$TAG"
+          NAME="$TV_APP_FILE"
+          cp "$IPK" "$NAME"
+          gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1 || \
+            gh api -X POST "repos/$REPO/releases" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" -f name="TV Flutter test" -F prerelease=true >/dev/null
+          REL_ID=$(gh api "repos/$REPO/releases/tags/$TAG" --jq .id)
+          curl -fsSL "$BASE/webos-flutter-test.json" -o repo.json || echo '{"packages": []}' > repo.json
+          python3 scripts/tv_flutter_repo.py repo.json "$NAME" "$BASE/$NAME" "$TV_APP_ID" \
+            "$TV_APP_TITLE" "1.0.${{ github.run_number }}" "https://raw.githubusercontent.com/$REPO/$GITHUB_SHA/$TV_APP_ICON" \
+            "$TV_APP_ABOUT"
+          cp repo.json webos-flutter-test.json
+          for f in "$NAME" webos-flutter-test.json; do
+            OLD=$(gh api "repos/$REPO/releases/$REL_ID/assets" --jq ".[] | select(.name == \"$f\") | .id")
+            if [ -n "$OLD" ]; then gh api -X DELETE "repos/$REPO/releases/assets/$OLD"; fi
+            curl -fsS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Content-Type: application/octet-stream" \
+              --data-binary @"$f" "https://uploads.github.com/repos/$REPO/releases/$REL_ID/assets?name=$f" >/dev/null
+          done
+          echo "published $NAME ($(stat -c %s "$NAME") bytes)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tv-flutter-app-logs
+          path: logs/

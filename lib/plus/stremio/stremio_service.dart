@@ -554,6 +554,12 @@ class StremioService extends GetxController {
     await _completeLogin(res.authKey, res.user);
   }
 
+  /// AnymeX+: signs in with a key another device handed over (TV pairing).
+  Future<void> loginWithAuthKey(String key) async {
+    final user = await api.getUser(key);
+    await _completeLogin(key, user);
+  }
+
   Future<StremioLinkCode> createLinkCode() => api.createLinkCode();
 
   /// Polls a link code until the user confirms it on stremio.com/link.
@@ -720,6 +726,17 @@ class StremioService extends GetxController {
     list.add(addon);
     await _saveAddons(list);
     return addon;
+  }
+
+  /// AnymeX+ TV: moves [addon] up (by −1) or down (+1) in your addon
+  /// order (saved to your Stremio account like a reorder in Stremio).
+  Future<void> moveAddon(StremioAddon addon, int by) async {
+    final list = List<StremioAddon>.from(addons);
+    final i = list.indexWhere((a) => a.transportUrl == addon.transportUrl);
+    final j = i + by;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    list.insert(j, list.removeAt(i));
+    await _saveAddons(list);
   }
 
   Future<void> uninstallAddon(StremioAddon addon) async {

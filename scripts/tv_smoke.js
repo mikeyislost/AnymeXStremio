@@ -604,6 +604,30 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   const aw = last('watched');
   check('the phone is told, so AniList follows', aw && aw.id === 'kitsu:46474' && aw.videoId === 'kitsu:46474:4', aw);
   check('back on the episodes', screenNow() === 'details' && /^S1 E4/.test(focusName()), focusName());
+
+  // Phase 2: the same episode from your anime extensions, through the phone.
+  press(KEY.ok);
+  await wait(60);
+  const ask = last('ext');
+  check('streams also ask the phone for extension servers (AniList id, episode)', ask && ask.cmd === 'servers' && ask.a === '101' &&
+    ask.n === '4' && ask.name === 'Frieren', ask);
+  check('the panel says the phone is checking', /checking your anime extensions/.test($('spmsg').textContent) || $('splist').childNodes.length > 0);
+  fromPhone({ t: 'extServers', q: ask.q, a: '101', n: '4', source: 'AnimePahe', done: false,
+    list: [{ name: 'Kwik · 1080p', url: 'http://192.168.1.23:41733/x/ab12/v.m3u8', kind: 'hls',
+      subs: [{ lang: 'English', url: 'http://192.168.1.23:41733/x/ab12/sub.vtt?u=abc' }] }] });
+  fromPhone({ t: 'extServers', q: ask.q, a: '101', n: '4', source: 'AnimePahe', done: true,
+    list: [{ name: 'Kwik · 1080p', url: 'http://192.168.1.23:41733/x/ab12/v.m3u8', kind: 'hls' },
+      { name: 'Kwik · 720p', url: 'http://192.168.1.23:41733/x/cd34/v.mp4', kind: 'mp4' }] });
+  const sl = $('splist').childNodes;
+  check('extension servers are listed with the addon streams, no doubles', sl.length === 3 &&
+    sl[1]._stream.name === 'Kwik · 1080p' && /From iPhone/.test(sl[1]._stream.desc) && /AnimePahe/.test(sl[1]._stream.desc),
+    sl.map(x => x._stream && x._stream.name));
+  press(KEY.down); press(KEY.ok);
+  await wait();
+  check('an extension server plays in the TV player through the phone', screenNow() === 'player' &&
+    video.src === 'http://192.168.1.23:41733/x/ab12/v.m3u8', video.src);
+  press(KEY.back); press(KEY.back);
+  await wait(80);
   press(KEY.back);
 
   // A long show: 50 episodes at a time. And one only known by its IMDb id.
@@ -647,6 +671,33 @@ const focusName = () => { const f = body.all([]).find(e => e.cls.includes('focus
   check('search has an Anime row first', $('srows').childNodes[0].childNodes[0].textContent === 'Anime' &&
     $('srows').childNodes[0]._strip.childNodes.map(c => c._card.name).join('|') === 'Other Anime');
   check('adult titles are left out', !$('srows').childNodes[0]._strip.childNodes.some(c => c._card.name === 'Adult One'));
+
+  // Anime with no Stremio id: AniList id + extension only.
+  const at = BT.alTarget({ a: '55', watched: 2, eps: 12, name: 'X' });
+  check('an anime without Stremio ids is played by its AniList id', at.id === 'anilist:55' && at.start === 'anilist:55:3' && at.al);
+  BT.setDet({ id: 'anilist:55', type: 'series', anime: at, videos: [] });
+  check('episode number of an AniList video', BT.extTarget('series', 'anilist:55:7').n === '7' && BT.extTarget('series', 'anilist:55:7').a === '55');
+  BT.setDet({ id: 'tt7654321', type: 'series', anime: { a: '202', map: { e: { '1': [2, 1], '2': [2, 2] } }, card: { name: 'O' } }, videos: [] });
+  check('IMDb season/episode back to the anime episode', BT.extTarget('series', 'tt7654321:2:2').n === '2' &&
+    BT.extTarget('series', 'tt7654321:2:9').n === '9', BT.extTarget('series', 'tt7654321:2:9'));
+  check('other titles are not anime', BT.extTarget('series', 'tt0000001:1:1') === null);
+  BT.setDet({ id: 'kitsu:9', type: 'movie', anime: { a: '9', kitsu: true, card: {} }, videos: [] });
+  check('an anime film is episode 1', BT.extTarget('movie', 'kitsu:9').n === '1');
+  BT.setDet(null);
+
+  // A PC that connected once takes over while the phone is away.
+  docFire('webOSLaunch', { detail: { host: '192.168.1.50', port: 41733, token: 'pctok', key: KEYHEX } });
+  sock.readyState = 1; sock.onopen();
+  check('hello tells the PC where the sync came from', last('hello').from !== undefined && last('hello').ext === true, last('hello'));
+  fromPhone({ t: 'welcome', name: 'GAMING-PC', token: 'pctok', pc: true });
+  const peers = JSON.parse(store.get('anymexplus_tv_peers'));
+  check('both devices are remembered', peers.length >= 2 && peers[0].host === '192.168.1.50' && peers[0].pc === true &&
+    peers.some(x => x.host === '192.168.1.23'), peers);
+  sock.onclose();                         // the PC closes
+  await wait(3100); sock.onclose();       // not there (1)
+  await wait(3100); sock.onclose();       // not there (2) → the next device
+  await wait(3100);
+  check('after two misses the TV tries the other device', /192\.168\.1\.23/.test(sock.url), sock.url);
 
   console.log(failed ? '\n' + failed + ' check(s) failed' : '\nAll TV checks passed');
   process.exit(failed ? 1 : 0);

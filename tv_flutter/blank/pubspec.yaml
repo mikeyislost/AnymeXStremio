@@ -1,0 +1,14 @@
+name: anymexplus_flutter_blank
+description: AnymeX+ Flutter test 1 for LG webOS (does Flutter draw?).
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

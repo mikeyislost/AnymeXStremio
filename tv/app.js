@@ -154,6 +154,38 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(phone)); } catch (e) { /* ignore */ }
   }
 
+  // Every device that has connected before (your phone, a PC with AnymeX+
+  // open). When the one in use can't be reached, the next one is tried, so
+  // a PC that is always on takes over while the phone sleeps.
+  var PEERS_KEY = 'anymexplus_tv_peers';
+  var fails = 0;
+
+  function loadPeers() {
+    try {
+      var l = JSON.parse(localStorage.getItem(PEERS_KEY) || '[]');
+      if (l && l.length) return l;
+    } catch (e) { /* ignore */ }
+    return [];
+  }
+
+  function samePeer(a, b) {
+    return a && b && a.host === b.host && (a.port || DEFAULT_PORT) === (b.port || DEFAULT_PORT);
+  }
+
+  function rememberPeer(p) {
+    var l = loadPeers(), out = [p];
+    for (var i = 0; i < l.length && out.length < 4; i++) if (!samePeer(l[i], p)) out.push(l[i]);
+    try { localStorage.setItem(PEERS_KEY, JSON.stringify(out)); } catch (e) { /* ignore */ }
+  }
+
+  // The device to try after [p].
+  function nextPeer(p) {
+    var l = loadPeers();
+    if (l.length < 2) return null;
+    for (var i = 0; i < l.length; i++) if (samePeer(l[i], p)) return l[(i + 1) % l.length];
+    return l[0];
+  }
+
   function setStatus(s) { text($('status'), s); }
 
   function send(msg) {
@@ -199,6 +231,11 @@
       } else {
         setStatus('Waiting for AnymeX+ on ' + phone.host + '. Open TV Remote on the phone.');
       }
+      // Not there twice in a row: try the next device that has connected before.
+      if (!was && ++fails >= 2) {
+        var other = nextPeer(phone);
+        if (other && !samePeer(other, phone)) { phone = other; fails = 0; }
+      }
       retryTimer = setTimeout(function () { connect('Reconnecting'); }, 3000);
     };
     sock.onerror = function () { /* onclose follows */ };
@@ -208,9 +245,13 @@
     switch (m.t) {
       case 'welcome':
         connected = true;
+        fails = 0;
         peerName = m.name || 'phone';
         if (m.token) phone.token = m.token;
+        phone.name = peerName;
+        phone.pc = !!m.pc;
         savePhone();
+        rememberPeer(phone);
         setNote('');
         if (screen === 'pair') B.home();
         B.onConnected();
@@ -248,6 +289,7 @@
         key: String(p.key || '') };
       savePhone();
       connected = false;
+      fails = 0;
       connect('Connecting');
     } else if (same && p.key && phone.key !== String(p.key)) {
       phone.key = String(p.key);
@@ -332,7 +374,7 @@
   }
 
   function forgetPhone() {
-    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(PEERS_KEY); } catch (e) { /* ignore */ }
     phone = null;
     clearTimeout(retryTimer);
     if (ws) { try { ws.onclose = null; ws.close(); } catch (e2) { /* ignore */ } ws = null; }

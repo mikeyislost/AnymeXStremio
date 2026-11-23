@@ -6,7 +6,7 @@ import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
 import 'package:anymex/controllers/settings/settings.dart';
 import 'package:anymex/plus/custom_lists.dart';
 import 'package:anymex/plus/for_you/for_you_row.dart';
-import 'package:anymex/plus/layout/layout_editor.dart';
+import 'package:anymex/plus/layout/layout_live.dart';
 import 'package:anymex/plus/layout/layout_model.dart';
 import 'package:anymex/plus/layout/layout_store.dart';
 import 'package:anymex/plus/layout/page_rows.dart';
@@ -39,10 +39,11 @@ class PlusHomeLayoutSliver extends StatelessWidget {
       PlusLayoutStore.version.value;
       settings.uiSettings.value;
       PlusCustomLists.lists.length;
+      final editing = PlusLayoutLive.isEditing(PlusLayoutPage.home);
       final loggedIn = Get.find<AnilistAuth>().isLoggedIn.value;
       // The trending banner is the hero above the greeting (PlusHomeHero).
       final rows = PlusPageRows.homeRows(discoverByDefault: discoverByDefault)
-          .where((r) => !r.config.hidden &&
+          .where((r) => (editing || !r.config.hidden) &&
               r.key != 'disc:carousel' &&
               r.key != 'buttons' &&
               r.key != 'newEpisodes')
@@ -90,16 +91,26 @@ class PlusHomeLayoutSliver extends StatelessWidget {
         } else if (k.startsWith(plusHomeMoviesPrefix)) {
           w = PlusPageRows.homeMoviesRow(k);
         }
+        if (editing) {
+          final i = rows.indexOf(r);
+          return PlusLayoutLive.frame(context, PlusLayoutPage.home, r, w == null ? null : PlusPageRows.scoped(r, w),
+              first: i == 0, last: i == rows.length - 1);
+        }
         if (w == null) return const SizedBox.shrink();
         return PlusPageRows.scoped(r, w);
       }
 
+      if (editing) {
+        return SliverList.builder(
+          itemCount: rows.length + 1,
+          itemBuilder: (context, i) =>
+              i == 0 ? PlusLayoutLive.bar(context, PlusLayoutPage.home) : rowWidget(rows[i - 1]),
+        );
+      }
       return SliverList.builder(
         itemCount: rows.length + 1,
         itemBuilder: (context, i) => i == rows.length
-            ? PlusPageRows.editButton(context,
-                () => navigate(() => const PlusLayoutEditorPage(
-                    page: PlusLayoutPage.home)))
+            ? PlusPageRows.editButton(context, () => PlusLayoutLive.start(PlusLayoutPage.home))
             : rowWidget(rows[i]),
       );
     });
@@ -193,8 +204,10 @@ class PlusMangaLayout extends StatelessWidget {
     return Obx(() {
       PlusLayoutStore.version.value;
       settings.uiSettings.value;
-      final rows =
-          PlusPageRows.mangaRows().where((r) => !r.config.hidden).toList();
+      final editing = PlusLayoutLive.isEditing(PlusLayoutPage.manga);
+      final rows = PlusPageRows.mangaRows()
+          .where((r) => editing || !r.config.hidden)
+          .toList();
       final all = handler.anilistService.mangaWidgets(context);
       // [banner, 4 rows, …novel rows…, community]
       Widget? at(String key) {
@@ -219,6 +232,7 @@ class PlusMangaLayout extends StatelessWidget {
 
       return Column(
         children: [
+          if (editing) PlusLayoutLive.bar(context, PlusLayoutPage.manga),
           for (final r in rows)
             () {
               Widget? w;
@@ -229,14 +243,19 @@ class PlusMangaLayout extends StatelessWidget {
               } else {
                 w = at(r.key);
               }
+              if (editing) {
+                final i = rows.indexOf(r);
+                return PlusLayoutLive.frame(
+                    context, PlusLayoutPage.manga, r, w == null ? null : PlusPageRows.scoped(r, w),
+                    first: i == 0, last: i == rows.length - 1);
+              }
               return w == null
                   ? const SizedBox.shrink()
                   : PlusPageRows.scoped(r, w);
             }(),
-          PlusPageRows.editButton(
-              context,
-              () => navigate(() =>
-                  const PlusLayoutEditorPage(page: PlusLayoutPage.manga))),
+          if (!editing)
+            PlusPageRows.editButton(
+                context, () => PlusLayoutLive.start(PlusLayoutPage.manga)),
         ],
       );
     });
