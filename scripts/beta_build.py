@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Turn this checkout into the AnymeX+ beta app before building.
+"""Turn this checkout into the Yumori beta app before building.
 
-The beta is a separate app ("AnymeX+ β") so it installs next to the stable
+The beta is a separate app ("Yumori β") so it installs next to the stable
 one, like AnymeX's own beta builds:
-  - iOS: bundle ID com.mikeyislost.anymexstremio.beta, name "AnymeX+ β"
+  - iOS: bundle ID com.mikeyislost.anymexstremio.beta, name "Yumori β"
   - Windows: own installer ID and folder, own window title (so opening it
     doesn't just focus a running stable app) and own settings folder
-  - orange icons with a BETA tag (made by scripts/make_beta_icons.py)
+  - Yumori icons with a cream BETA tag (made by scripts/make_beta_icons.py)
 
 Only CI runs this, on beta builds. Usage: python3 scripts/beta_build.py ios|windows
 """
@@ -20,11 +20,11 @@ BETA = os.path.join(ROOT, "beta")
 
 STABLE_ID = "com.mikeyislost.anymexstremio"
 BETA_ID = STABLE_ID + ".beta"
-BETA_NAME = "AnymeX+ β"  # AnymeX+ β
-BETA_WINDOW_TITLE = "AnymeX+ Beta"
+BETA_NAME = "Yumori β"
+BETA_WINDOW_TITLE = "Yumori Beta"
 STABLE_INSTALLER_ID = "4bc2c476-2234-43cd-a41b-c76863664520"
 BETA_INSTALLER_ID = "2cbdd350-22f0-44df-9146-68d9df9efc63"
-BETA_INSTALLER_NAME = "AnymeXStremio Beta"
+BETA_INSTALLER_NAME = "Yumori Beta"
 
 
 def edit(rel, pattern, repl, count_expected=None):
@@ -63,17 +63,17 @@ def ios():
 def windows():
     # Window title: also what a second launch looks for to focus the
     # running app, so the beta must not share the stable title.
-    edit("windows/runner/main.cpp", r'L"AnymeX"', f'L"{BETA_WINDOW_TITLE}"', 2)
+    edit("windows/runner/main.cpp", r'L"Yumori"', f'L"{BETA_WINDOW_TITLE}"', 2)
     # Sign-in browser data folder in %LOCALAPPDATA%.
     edit("windows/runner/main.cpp", r'L"AnymeXStremio"', 'L"AnymeXStremio Beta"', 1)
     # ProductName decides the app's settings folder in %APPDATA%.
     edit("windows/runner/Runner.rc", r'VALUE "ProductName", "anymex"',
          'VALUE "ProductName", "anymex_beta"', 1)
-    edit("windows/runner/Runner.rc", r'VALUE "FileDescription", "anymex"',
+    edit("windows/runner/Runner.rc", r'VALUE "FileDescription", "Yumori"',
          f'VALUE "FileDescription", "{BETA_WINDOW_TITLE}"', 1)
     # Installer: a different ID and name install it separately.
     edit("pubspec.yaml", re.escape(STABLE_INSTALLER_ID), BETA_INSTALLER_ID, 1)
-    edit("pubspec.yaml", r"(\n[ \t]+name: )AnymeXStremio\n", r"\g<1>" + BETA_INSTALLER_NAME + "\n", 1)
+    edit("pubspec.yaml", r"(\n[ \t]+name: )Yumori\n", r"\g<1>" + BETA_INSTALLER_NAME + "\n", 1)
     copy_tree("windows/runner/resources/app_icon.ico")
     copy_tree("anymex.ico")
 

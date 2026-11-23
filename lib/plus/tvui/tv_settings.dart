@@ -572,7 +572,7 @@ class _TvPhoneLoginsState extends State<TvPhoneLogins> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Get logins from your phone', style: TextStyle(fontSize: 52, fontWeight: FontWeight.w800, color: Colors.white)),
         const SizedBox(height: 30),
-        const Text('On your phone or PC, open Yumori (or AnymeX+) → Settings → TV Remote → Send logins to the Flutter TV app,',
+        const Text('On your phone or PC, open Yumori → Settings → TV Remote → Send logins to the Flutter TV app,',
             style: TextStyle(fontSize: 26, color: TvStyle.text2)),
         const SizedBox(height: 8),
         ValueListenableBuilder<String>(

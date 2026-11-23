@@ -1,5 +1,5 @@
 name: anymex
-description: "An Multiservice Tracking Client"
+description: "Yumori: anime, movies and shows in one place."
 publish_to: "https://github.com/RyanYuuki/AnymeX"
 version: 1.0.0+1
 
@@ -225,7 +225,7 @@ flutter:
 inno_bundle:
     id: 4bc2c476-2234-43cd-a41b-c76863664520
     publisher: mikeyislost
-    name: AnymeXStremio
+    name: Yumori
     version: 1.0.0
     admin: auto
     installer_icon: ./anymex.ico

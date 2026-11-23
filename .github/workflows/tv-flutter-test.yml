@@ -125,7 +125,7 @@ jobs:
               manifest = {
                   "id": app_id, "version": version, "type": "native", "title": title,
                   "appDescription": desc, "iconUri": icon,
-                  "sourceUrl": "https://github.com/mikeyislost/AnymeXStremio",
+                  "sourceUrl": "https://github.com/mikeyislost/Yumori",
                   "rootRequired": False,
                   "ipkUrl": "%s/AnymeX-Plus-Flutter-test-%s.ipk" % (base, name),
                   "ipkHash": {"sha256": hashlib.sha256(data).hexdigest()},

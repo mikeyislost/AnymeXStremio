@@ -4,7 +4,7 @@ name: Build & Release
 # (vX.Y.Z) containing the IPA, the Windows installer + portable zip, the
 # Feather source file and a changelog of what changed since the last release.
 #
-# Pushes to `beta` build "AnymeX+ β" instead: a GitHub pre-release tagged
+# Pushes to `beta` build "Yumori β" instead: a GitHub pre-release tagged
 # v1.1.2-beta, then v1.1.2-beta+1, v1.1.2-beta+2, ..., with its own
 # app ID, icon and data so it installs next to the stable app, and its own
 # Feather source (feather branch). Shipping a beta = merging beta into main
@@ -119,7 +119,7 @@ jobs:
       - name: Analyze (errors fail the build)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      # Unit tests for AnymeX+ logic (episode labels, ids, versions,
+      # Unit tests for Yumori logic (episode labels, ids, versions,
       # rotation). A failing test stops the release.
       - name: Unit tests
         run: |
@@ -197,7 +197,7 @@ jobs:
           APP_VERSION_TAG=$TAG
           EOF
 
-      - name: Make the beta app (AnymeX+ β)
+      - name: Make the beta app (Yumori β)
         if: env.RELEASE_CHANNEL == 'beta'
         run: python3 scripts/beta_build.py ios
 
@@ -222,7 +222,7 @@ jobs:
             --build-name "$VERSION" --build-number "$BUILD"
           mkdir -p build/ios/iphoneos/Payload dist
           cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
-          (cd build/ios/iphoneos && zip -qr "../../../dist/AnymeX-Stremio-v$FILE_VER.ipa" Payload)
+          (cd build/ios/iphoneos && zip -qr "../../../dist/Yumori-v$FILE_VER.ipa" Payload)
 
       - uses: actions/upload-artifact@v4
         with:
@@ -321,7 +321,7 @@ jobs:
           sed -i -E "s/^version: .*/version: $VERSION+$BUILD/" pubspec.yaml
           sed -i -E "s/^    version: [0-9.]+$/    version: $VERSION/" pubspec.yaml
 
-      - name: Make the beta app (AnymeX+ β)
+      - name: Make the beta app (Yumori β)
         if: env.RELEASE_CHANNEL == 'beta'
         shell: bash
         run: python scripts/beta_build.py windows
@@ -365,7 +365,7 @@ jobs:
           $content = Get-Content $issFile -Raw
           $content = $content -replace '.*Icelandic\.isl.*\r?\n', ''
           # In-app updates run the installer silently: open the app again when it is done.
-          # inno_bundle installs the app under its own name ("AnymeXStremio Beta.exe"), not
+          # inno_bundle installs the app under its own name ("Yumori Beta.exe"), not
           # anymex.exe: take the name from the script's shortcuts.
           $exeMatch = [regex]::Matches($content, '\{app\}\\([^"\\]+\.exe)') | Where-Object { $_.Groups[1].Value -notmatch '^unins' } | Select-Object -First 1
           if (-not $exeMatch) { Write-Error "App exe not found in $issFile"; exit 1 }
@@ -376,8 +376,8 @@ jobs:
           & iscc $issFile
           if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup failed ($LASTEXITCODE)"; exit 1 }
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Get-ChildItem build\windows\x64\installer\Release\*.exe | Select-Object -First 1 | Copy-Item -Destination "dist\AnymeX-Stremio-v$env:FILE_VER-Windows-Setup.exe"
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\AnymeX-Stremio-v$env:FILE_VER-Windows-Portable.zip"
+          Get-ChildItem build\windows\x64\installer\Release\*.exe | Select-Object -First 1 | Copy-Item -Destination "dist\Yumori-v$env:FILE_VER-Windows-Setup.exe"
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\Yumori-v$env:FILE_VER-Windows-Portable.zip"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -399,10 +399,10 @@ jobs:
       - name: Install LG's packaging tool
         run: npm install -g @webos-tools/cli
 
-      - name: Package AnymeX+ TV
+      - name: Package Yumori TV (web app)
         run: |
           node --check tv/app.js
-          scripts/build_tv.sh "${{ needs.version.outputs.tv_version }}" "${{ needs.version.outputs.tag }}" dist "AnymeX-Plus-TV-v${{ needs.version.outputs.file_ver }}.ipk"
+          scripts/build_tv.sh "${{ needs.version.outputs.tv_version }}" "${{ needs.version.outputs.tag }}" dist "Yumori-TV-Web-v${{ needs.version.outputs.file_ver }}.ipk"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -445,7 +445,7 @@ jobs:
           fi
           {
             if [ "$RELEASE_CHANNEL" = beta ]; then
-              echo "> **Beta build.** Installs next to AnymeX+ as a separate app, **AnymeX+ β**, with its own sign-ins and library. It may have bugs; once it's ready it ships as **v$VERSION**."
+              echo "> **Beta build.** Installs next to Yumori as a separate app, **Yumori β**, with its own sign-ins and library. It may have bugs; once it's ready it ships as **v$VERSION**."
               echo
             fi
             echo "## What's new"
@@ -457,16 +457,16 @@ jobs:
             echo
             echo "## Install"
             if [ "$RELEASE_CHANNEL" = beta ]; then
-              echo "- **iPhone (Feather):** add the beta source \`https://raw.githubusercontent.com/$REPO/feather/source-beta.json\` and install **AnymeX+ β**, or download the \`.ipa\` below."
-              echo "- **Windows:** run the \`Setup.exe\` (installs **AnymeXStremio Beta** next to the normal app), or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
+              echo "- **iPhone (Feather):** add the beta source \`https://raw.githubusercontent.com/$REPO/feather/source-beta.json\` and install **Yumori β**, or download the \`.ipa\` below."
+              echo "- **Windows:** run the \`Setup.exe\` (installs **Yumori Beta** next to the normal app), or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
               if ls dist/*.ipk >/dev/null 2>&1; then
-                echo "- **LG TV (webOS):** in Homebrew Channel, Settings → Add repository: \`https://raw.githubusercontent.com/$REPO/feather/webos-beta.json\`, then install **AnymeX+ TV**. Or install the \`.ipk\` below with webOS Dev Manager."
+                echo "- **LG TV (webOS):** in Homebrew Channel, Settings → Add repository: \`https://raw.githubusercontent.com/$REPO/feather/webos-beta.json\`, then install **Yumori TV**. Or install the \`.ipk\` below with webOS Dev Manager."
               fi
             else
-              echo "- **iPhone (Feather):** add the source \`https://github.com/$REPO/releases/latest/download/source.json\` and update **AnymeX+**, or download the \`.ipa\` below."
+              echo "- **iPhone (Feather):** add the source \`https://github.com/$REPO/releases/latest/download/source.json\` and update **Yumori** (it updates AnymeX+ in place), or download the \`.ipa\` below."
               echo "- **Windows:** run the \`Setup.exe\`, or unzip the \`Portable.zip\` and open \`anymex.exe\`. If SmartScreen warns, choose **More info → Run anyway**."
               if ls dist/*.ipk >/dev/null 2>&1; then
-                echo "- **LG TV (webOS):** in Homebrew Channel, Settings → Add repository: \`https://github.com/$REPO/releases/latest/download/webos.json\`, then install **AnymeX+ TV**. Or install the \`.ipk\` below with webOS Dev Manager."
+                echo "- **LG TV (webOS):** in Homebrew Channel, Settings → Add repository: \`https://github.com/$REPO/releases/latest/download/webos.json\`, then install **Yumori TV**. Or install the \`.ipk\` below with webOS Dev Manager."
               fi
             fi
             echo
@@ -481,7 +481,7 @@ jobs:
           import json, os, subprocess, datetime
           repo, version, build = os.environ["REPO"], os.environ["VERSION"], os.environ["BUILD"]
           owner = repo.split("/")[0]
-          ipa_name = f"AnymeX-Stremio-v{version}.ipa"
+          ipa_name = f"Yumori-v{version}.ipa"
           size = os.path.getsize(f"dist/{ipa_name}")
           now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
           notes = open("notes.md").read().split("## Install")[0].replace("## What's new", "").strip()
@@ -517,20 +517,19 @@ jobs:
           except Exception as e:
               print("Could not list older releases:", e)
           icon = f"https://raw.githubusercontent.com/{repo}/main/logo.png"
-          desc = ("AnymeX (anime & manga tracker/player) with Stremio built in: "
-                  "Stremio login and addons, a Movies & TV tab, and watch "
-                  "progress synced to Stremio. AniList, MAL, Simkl and Discord "
-                  "status included.")
+          desc = ("Yumori: anime, movies and shows in one place. Built on AnymeX "
+                  "with Stremio inside: Stremio login and addons, AniList, MAL "
+                  "and Simkl tracking, and watch progress synced everywhere.")
           source = {
-            "name": "AnymeX+ (Stremio)",
+            "name": "Yumori",
             "identifier": "com.mikeyislost.anymexstremio.source",
-            "subtitle": "Personal AnymeX + Stremio build",
+            "subtitle": "Anime, movies and shows in one place",
             "description": desc, "iconURL": icon,
-            "website": f"https://github.com/{repo}", "tintColor": "#7C4DFF",
+            "website": f"https://github.com/{repo}", "tintColor": "#A786E2",
             "apps": [{
-              "name": "AnymeX+", "bundleIdentifier": "com.mikeyislost.anymexstremio",
-              "developerName": owner, "subtitle": "AnymeX with Stremio built in",
-              "localizedDescription": desc, "iconURL": icon, "tintColor": "#7C4DFF",
+              "name": "Yumori", "bundleIdentifier": "com.mikeyislost.anymexstremio",
+              "developerName": owner, "subtitle": "Anime, movies and shows in one place",
+              "localizedDescription": desc, "iconURL": icon, "tintColor": "#A786E2",
               "category": "entertainment",
               "version": version, "versionDate": now,
               "versionDescription": versions[0]["localizedDescription"],
@@ -561,7 +560,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
-          name: AnymeX+ v${{ env.VERSION }}
+          name: Yumori v${{ env.VERSION }}
           body_path: notes.md
           make_latest: true
           files: dist/*
@@ -572,7 +571,7 @@ jobs:
         with:
           tag_name: v${{ env.TAG }}
           target_commitish: ${{ github.sha }}
-          name: AnymeX+ β v${{ env.TAG }}
+          name: Yumori β v${{ env.TAG }}
           body_path: notes.md
           prerelease: true
           make_latest: false
@@ -593,13 +592,13 @@ jobs:
           notes = open("notes.md").read().split("## What's new")[-1].split("## Install")[0].strip()
           notes = f"Beta v{tag}\n\n{notes}"
           icon = f"https://raw.githubusercontent.com/{repo}/feather/beta-logo.png"
-          desc = ("Beta builds of AnymeX+ (AnymeX with Stremio built in). Installs "
-                  "next to the normal app as AnymeX+ \u03b2, with its own sign-ins "
+          desc = ("Beta builds of Yumori. Installs "
+                  "next to the normal app as Yumori \u03b2, with its own sign-ins "
                   "and library. New fixes land here first.")
           app = {
-            "name": "AnymeX+ \u03b2", "bundleIdentifier": "com.mikeyislost.anymexstremio.beta",
-            "developerName": repo.split("/")[0], "subtitle": "AnymeX+ beta builds",
-            "localizedDescription": desc, "iconURL": icon, "tintColor": "#FF6B35",
+            "name": "Yumori \u03b2", "bundleIdentifier": "com.mikeyislost.anymexstremio.beta",
+            "developerName": repo.split("/")[0], "subtitle": "Yumori beta builds",
+            "localizedDescription": desc, "iconURL": icon, "tintColor": "#A786E2",
             "category": "entertainment", "beta": True,
             "version": version, "buildVersion": build, "versionDate": now,
             "versionDescription": notes, "downloadURL": ipa["url"], "size": ipa["size"],
@@ -611,9 +610,9 @@ jobs:
             }],
           }
           source = {
-            "name": "AnymeX+ \u03b2 (Beta)", "identifier": "com.mikeyislost.anymexstremio.beta.source",
-            "subtitle": "AnymeX+ beta builds", "description": desc, "iconURL": icon,
-            "website": f"https://github.com/{repo}", "tintColor": "#FF6B35",
+            "name": "Yumori \u03b2 (Beta)", "identifier": "com.mikeyislost.anymexstremio.beta.source",
+            "subtitle": "Yumori beta builds", "description": desc, "iconURL": icon,
+            "website": f"https://github.com/{repo}", "tintColor": "#A786E2",
             "apps": [app], "news": [],
           }
           json.dump(source, open("source-beta.json", "w"), indent=2)
@@ -638,7 +637,7 @@ jobs:
               "https://raw.githubusercontent.com/$REPO/feather/tv-icon.png" /tmp/feather/webos-beta.json
           fi
           cp beta/logo.png /tmp/feather/beta-logo.png
-          printf '# Feather source for AnymeX+ betas\n\nUpdated automatically by every beta build. Add this source in Feather:\n\nhttps://raw.githubusercontent.com/%s/feather/source-beta.json\n' "$REPO" > /tmp/feather/README.md
+          printf '# Feather source for Yumori betas\n\nUpdated automatically by every beta build. Add this source in Feather:\n\nhttps://raw.githubusercontent.com/%s/feather/source-beta.json\n' "$REPO" > /tmp/feather/README.md
           cd /tmp/feather
           git add -A
           git commit -qm "Beta source: v$TAG [skip ci]" || { echo "Source unchanged"; exit 0; }

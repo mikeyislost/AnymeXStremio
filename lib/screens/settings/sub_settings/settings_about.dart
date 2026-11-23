@@ -50,7 +50,7 @@ class _ForkInfo {
 
 // The project's home. After the repo is renamed to Yumori, GitHub redirects
 // the old address, so this can be switched to .../Yumori at any time.
-const String _yumoriRepo = 'https://github.com/mikeyislost/AnymeXStremio';
+const String _yumoriRepo = 'https://github.com/mikeyislost/Yumori';
 
 const List<_ForkInfo> _forks = [
   _ForkInfo(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Make the AnymeX+ beta icons (orange logo + a BETA tag) into beta/.
+"""Make the Yumori beta icons (the normal icon + a cream BETA tag) into beta/.
 
 Run once after changing the normal icons:  python3 scripts/make_beta_icons.py
 CI copies beta/ over the normal icons for beta builds (scripts/beta_build.sh).
@@ -10,8 +10,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "beta")
-ORANGE_TOP = (255, 140, 66)
-ORANGE_BOTTOM = (255, 94, 40)
+# Yumori: the tag is cream with night text; the artwork keeps its colours.
+TAG = (253, 228, 202)
+TAG_TEXT = (26, 20, 38)
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/google-fonts/Poppins-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -19,18 +20,8 @@ FONT_CANDIDATES = [
 
 
 def recolor(im: Image.Image) -> Image.Image:
-    """White/grey artwork becomes an orange gradient; black stays black."""
-    im = im.convert("RGBA")
-    w, h = im.size
-    px = im.load()
-    for y in range(h):
-        t = y / max(h - 1, 1)
-        top = [ORANGE_TOP[i] + (ORANGE_BOTTOM[i] - ORANGE_TOP[i]) * t for i in range(3)]
-        for x in range(w):
-            r, g, b, a = px[x, y]
-            lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-            px[x, y] = tuple(int(c * lum) for c in top) + (a,)
-    return im
+    """Yumori keeps the artwork as it is (AnymeX+ used to turn it orange)."""
+    return im.convert("RGBA")
 
 
 def badge(im: Image.Image) -> Image.Image:
@@ -48,8 +39,8 @@ def badge(im: Image.Image) -> Image.Image:
     pad_x, pad_y = int(size * 0.55), int(size * 0.32)
     cx, cy = w / 2, h * 0.835
     box = (cx - tw / 2 - pad_x, cy - th / 2 - pad_y, cx + tw / 2 + pad_x, cy + th / 2 + pad_y)
-    d.rounded_rectangle(box, radius=(box[3] - box[1]) / 2, fill=ORANGE_BOTTOM + (255,))
-    d.text((cx - tw / 2 - l, cy - th / 2 - t), text, font=font, fill=(0, 0, 0, 255))
+    d.rounded_rectangle(box, radius=(box[3] - box[1]) / 2, fill=TAG + (255,))
+    d.text((cx - tw / 2 - l, cy - th / 2 - t), text, font=font, fill=TAG_TEXT + (255,))
     return im
 
 
@@ -83,8 +74,7 @@ def main() -> None:
     dst = os.path.join(OUT, "windows/runner/resources/app_icon.ico")
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     big.save(dst, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-    small = recolor(Image.open(os.path.join(ROOT, "anymex.ico")))
-    small.save(os.path.join(OUT, "anymex.ico"), sizes=[(16, 16), (32, 32)])
+    big.save(os.path.join(OUT, "anymex.ico"), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 
     # Logo used by the beta Feather source.
     beta_png(os.path.join(ROOT, "logo.png"), os.path.join(OUT, "logo.png"), keep_rgb=True)

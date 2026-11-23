@@ -1302,7 +1302,7 @@ class DiscordRPCController extends GetxController with WidgetsBindingObserver {
   }
 
   String _getAppIconUrl() {
-    return 'https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/main/logo.png';
+    return 'https://raw.githubusercontent.com/mikeyislost/Yumori/main/logo.png';
   }
 
   Future<void> pause() async {

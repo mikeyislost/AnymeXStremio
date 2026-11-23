@@ -451,7 +451,7 @@ class PlusTvLink {
   String report() => buildReport(tvInfo, tvState, tvAddress.value);
 
   static String buildReport(Map<String, dynamic> info, Map<String, dynamic> state, String address) {
-    final b = StringBuffer('AnymeX+ TV report\n');
+    final b = StringBuffer('Yumori TV report\n');
     b.writeln('TV address: $address');
     for (final k in const [
       'app', 'model', 'sdkVersion', 'platformVersion', 'firmware', 'chrome', 'screen', 'window',

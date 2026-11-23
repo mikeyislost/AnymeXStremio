@@ -1,4 +1,4 @@
-/* AnymeX+ TV: opens what the phone sends locked (AES-256-GCM).
+/* Yumori TV: opens what the phone sends locked (AES-256-GCM).
  *
  * The phone locks your logins and addons with a key it hands to the TV
  * through LG's own (encrypted) phone link, so nothing private crosses the

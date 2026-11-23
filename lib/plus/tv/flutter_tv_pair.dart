@@ -140,7 +140,7 @@ class PlusFlutterTvPair {
     try {
       ws = await WebSocket.connect('ws://${host.trim()}:$port$path').timeout(const Duration(seconds: 6));
     } catch (_) {
-      throw Exception("Couldn't reach AnymeX+ (Flutter) on that TV. Is it open on the TV's Accounts page?");
+      throw Exception("Couldn't reach Yumori on that TV. Is it open on the TV's Accounts page?");
     }
     final (priv, pub) = newKeys();
     final replies = StreamController<Map<String, dynamic>>();

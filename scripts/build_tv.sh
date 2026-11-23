@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages the AnymeX+ TV app (tv/) into an .ipk for LG webOS.
+# Packages the Yumori TV app (tv/) into an .ipk for LG webOS.
 #
 #   scripts/build_tv.sh <tv version x.y.z> <label shown in the app> <output folder> <file name>
 #

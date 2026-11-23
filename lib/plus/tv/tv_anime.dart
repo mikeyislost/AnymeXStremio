@@ -384,7 +384,7 @@ class PlusTvAnime {
     if (c.isLoading.value) return 'Your phone is still looking for this show. Try again in a moment.';
     switch (c.errorType.value) {
       case 'no_source':
-        return 'No anime extension is set up in AnymeX+ on your phone.';
+        return 'No anime extension is set up in Yumori on your phone.';
       case 'no_match':
         return "Your phone's extension (${c.activeSource.value?.name ?? '?'}) doesn't have this show. "
             'Open it on the phone to pick another source or match it by hand.';
@@ -551,7 +551,7 @@ class PlusTvAnime {
       final sources = Get.find<SourceController>();
       final source = c.activeSource.value ?? sources.activeSource.value;
       if (source == null) {
-        say('fail', 'No anime extension is set up in AnymeX+ on your phone.');
+        say('fail', 'No anime extension is set up in Yumori on your phone.');
         return;
       }
       // The player looks up the next episode with the app's active source.
@@ -561,7 +561,7 @@ class PlusTvAnime {
       // yourself is yours.
       if (Get.isRegistered<PlayerController>()) {
         if (!await PlusTvPlay.instance.closeTvPlayer()) {
-          say('fail', 'A video is open in AnymeX+ on your phone. Close it there first.');
+          say('fail', 'A video is open in Yumori on your phone. Close it there first.');
           return;
         }
       }
@@ -594,7 +594,7 @@ class PlusTvAnime {
       }
       final context = Get.context;
       if (context == null) {
-        say('fail', 'Open AnymeX+ on your phone and try again.');
+        say('fail', 'Open Yumori on your phone and try again.');
         return;
       }
       say('opening', 'Starting episode $n…');
@@ -676,7 +676,7 @@ class PlusTvAnime {
       }
       final source = c.activeSource.value ?? Get.find<SourceController>().activeSource.value;
       if (source == null) {
-        send(const [], true, 'No anime extension is set up in AnymeX+.');
+        send(const [], true, 'No anime extension is set up in Yumori.');
         return;
       }
       sourceName = source.name ?? sourceName;

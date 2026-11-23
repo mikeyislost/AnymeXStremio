@@ -640,7 +640,7 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
       final title =
           epTitle.isNotEmpty ? 'Ep $epNum: $epTitle' : 'Episode $epNum';
       final artworkUrl = isOffline.value
-          ? 'https://raw.githubusercontent.com/mikeyislost/AnymeXStremio/main/logo.png'
+          ? 'https://raw.githubusercontent.com/mikeyislost/Yumori/main/logo.png'
           : (anilistData.cover ?? anilistData.poster);
 
       await FlutterMediaSessionPlatform.instance.updateMetadata(

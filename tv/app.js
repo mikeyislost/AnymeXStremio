@@ -1,6 +1,6 @@
-/* AnymeX+ TV.
+/* Yumori TV.
  *
- * A small web app for LG webOS. It connects out to AnymeX+ on the phone
+ * A small web app for LG webOS. It connects out to Yumori on the phone
  * (the phone runs a little server), takes remote presses and "play this"
  * requests from it, plays video with the TV's own player and reports back
  * what it is doing, so the phone can keep your watch progress.
@@ -154,7 +154,7 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(phone)); } catch (e) { /* ignore */ }
   }
 
-  // Every device that has connected before (your phone, a PC with AnymeX+
+  // Every device that has connected before (your phone, a PC with Yumori
   // open). When the one in use can't be reached, the next one is tried, so
   // a PC that is always on takes over while the phone sleeps.
   var PEERS_KEY = 'anymexplus_tv_peers';
@@ -229,7 +229,7 @@
         // The TV carries on by itself; the phone joins again when it's back.
         B.onDisconnected();
       } else {
-        setStatus('Waiting for AnymeX+ on ' + phone.host + '. Open TV Remote on the phone.');
+        setStatus('Waiting for Yumori on ' + phone.host + '. Open TV Remote on the phone.');
       }
       // Not there twice in a row: try the next device that has connected before.
       if (!was && ++fails >= 2) {

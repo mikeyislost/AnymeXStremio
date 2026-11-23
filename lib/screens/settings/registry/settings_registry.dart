@@ -1366,7 +1366,7 @@ abstract final class SettingsRegistry {
       id: 'tv_remote',
       groupTitle: 'Accounts & Sync',
       title: 'TV Remote',
-      description: 'Connect to AnymeX+ TV on an LG TV and use this device as its remote',
+      description: 'Connect to Yumori TV on an LG TV and use this device as its remote',
       icon: Icons.settings_remote_rounded,
       destination: () => const PlusTvRemotePage(),
       items: [

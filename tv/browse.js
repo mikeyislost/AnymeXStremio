@@ -1,4 +1,4 @@
-/* AnymeX+ TV: browsing on the TV itself (Movies & TV, and anime).
+/* Yumori TV: browsing on the TV itself (Movies & TV, and anime).
  *
  * The phone sends over what it knows (Stremio login, addons, the rows of
  * its Movies & TV page, the TMDB key). With that the TV can show rows,
@@ -318,7 +318,7 @@ window.AXBrowse = function (A) {
     else if (playerAct(act, f)) { /* player buttons and menus */ }
     else if (act === 'sub') pickSub(f._sub);
     else if (act === 'audio') pickAudio(f._audio);
-    else if (act === 'resync') { A.send({ t: 'need' }); setSettingsNote(A.connected() ? 'Asked the phone…' : 'The phone is not connected. Open AnymeX+ on it.'); }
+    else if (act === 'resync') { A.send({ t: 'need' }); setSettingsNote(A.connected() ? 'Asked the phone…' : 'The phone is not connected. Open Yumori on it.'); }
     else if (act === 'pairscreen') { stack = []; A.show('pair'); }
     else if (act === 'clear') clearBundle();
     else if (act === 'forget') { stack = []; A.forget(); }
@@ -842,7 +842,7 @@ window.AXBrowse = function (A) {
       var t = map && animeTarget(c, map);
       if (!t && A.connected()) t = alTarget(c);
       if (!t) {
-        text($('dmsg'), "Couldn't match this anime to an id your Stremio addons use. Open AnymeX+ on your phone or PC to play it from your anime extensions, or try Search.");
+        text($('dmsg'), "Couldn't match this anime to an id your Stremio addons use. Open Yumori on your phone or PC to play it from your anime extensions, or try Search.");
         return;
       }
       openDetails(t.type, t.id, c, t);
@@ -1357,7 +1357,7 @@ window.AXBrowse = function (A) {
     }, function (asked) {
       if (token !== streamToken) return;
       if (count) return;
-      if (!asked) text($('spmsg'), 'No stream addons for this yet. Add them in AnymeX+ on your phone; they sync to the TV by themselves.');
+      if (!asked) text($('spmsg'), 'No stream addons for this yet. Add them in Yumori on your phone; they sync to the TV by themselves.');
       else if (hidden) text($('spmsg'), 'Nothing the TV can play by itself (' + hidden + ' torrent-only streams). Debrid and direct links work here.' + (lastExtProblem ? '\n' + lastExtProblem : ''));
       else text($('spmsg'), lastExtProblem || 'No streams found.');
     });
@@ -2164,7 +2164,7 @@ window.AXBrowse = function (A) {
     }
     function msg(asked) {
       if (count) { text($('tpmsg'), same ? 'Picking one keeps your place' : ''); return; }
-      if (!asked) text($('tpmsg'), 'No stream addons for this yet. Add them in AnymeX+ on your phone.');
+      if (!asked) text($('tpmsg'), 'No stream addons for this yet. Add them in Yumori on your phone.');
       else if (hidden) text($('tpmsg'), 'Nothing the TV can play by itself (' + hidden + ' torrent-only streams).');
       else text($('tpmsg'), 'No streams found.');
     }
@@ -2315,7 +2315,7 @@ window.AXBrowse = function (A) {
     var box = $('srows');
     clear(box);
     box.scrollTop = 0;
-    if (q.length < 2) { text($('shint'), 'Press OK to type. You can also type the name in AnymeX+ on your phone (Settings → TV Remote).'); return; }
+    if (q.length < 2) { text($('shint'), 'Press OK to type. You can also type the name in Yumori on your phone (Settings → TV Remote).'); return; }
     text($('shint'), 'Searching for "' + q + '"…');
     var sources = searchSources(), left = sources.length, found = 0;
     if (bundle && bundle.anime) {
@@ -2377,7 +2377,7 @@ window.AXBrowse = function (A) {
       lines.push('Addons       ' + addons().length);
       lines.push('Rows         ' + ((bundle.rows && bundle.rows.length) || 0));
       lines.push('TMDB rows    ' + (tmdbKey() ? 'yes' : 'no'));
-      lines.push('Anime rows   ' + (bundle.anime ? 'yes (streams from your Stremio addons, and your extensions through the phone or PC)' : 'update AnymeX+ on the phone'));
+      lines.push('Anime rows   ' + (bundle.anime ? 'yes (streams from your Stremio addons, and your extensions through the phone or PC)' : 'update Yumori on the phone'));
     } else {
       lines.push('Synced       nothing yet');
     }

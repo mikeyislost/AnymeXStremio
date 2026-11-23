@@ -6,7 +6,8 @@ name: TV Flutter app (check)
 on:
   workflow_dispatch:
   push:
-    branches: ['wip/tv-flutter*']
+    # beta: the Yumori TV app ships with every beta (same Homebrew list).
+    branches: ['wip/tv-flutter*', 'beta']
 
 permissions:
   contents: write
@@ -22,23 +23,14 @@ jobs:
     env:
       NDK_DIR: /home/runner/starfish-sdk
     steps:
-      # Which TV app this branch builds. Test branches get their own app id so
-      # they install next to the normal one.
+      # Which TV app this builds (one place to change its id, name and icon).
       - name: Which TV app
         run: |
-          case "$GITHUB_REF_NAME" in
-            wip/tv-flutter-yumori*)
-              ID=com.mikeyislost.yumori.tv; TITLE=Yumori; FILE=Yumori-TV.ipk
-              ICON=tv_runner/yumori-icon-130.png
-              ABOUT="Yumori for the TV (test build): the whole app in the new look." ;;
-            wip/tv-flutter-back*)
-              ID=com.mikeyislost.anymexplus.fluttertv.back; TITLE="AnymeX+ (Back test)"; FILE=AnymeX-Plus-Flutter-TV-back.ipk
-              ICON=tv/largeIcon.png; ABOUT="Back button test." ;;
-            *)
-              ID=com.mikeyislost.anymexplus.fluttertv; TITLE="AnymeX+ (Flutter)"; FILE=AnymeX-Plus-Flutter-TV.ipk
-              ICON=tv/largeIcon.png
-              ABOUT="The whole AnymeX+ app built for the TV with Flutter. Early test: things will be missing." ;;
-          esac
+          # Yumori took over the AnymeX+ (Flutter) app id (Nov 2026), so the
+          # TV updates it in place and keeps its pairing and settings.
+          ID=com.mikeyislost.anymexplus.fluttertv; TITLE=Yumori; FILE=Yumori-TV.ipk
+          ICON=tv_runner/yumori-icon-130.png
+          ABOUT="Yumori for LG TVs: anime, movies and shows, with your phone or PC for logins and extensions."
           {
             echo "TV_APP_ID=$ID"; echo "TV_APP_TITLE=$TITLE"; echo "TV_APP_FILE=$FILE"
             echo "TV_APP_ICON=$ICON"; echo "TV_APP_ABOUT=$ABOUT"

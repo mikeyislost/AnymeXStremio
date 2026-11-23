@@ -56,7 +56,7 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Connect this TV?'),
-        content: Text('A TV at $tvIp wants to connect to AnymeX+. Only allow it if you just typed this '
+        content: Text('A TV at $tvIp wants to connect to Yumori. Only allow it if you just typed this '
             "device's address on your own TV."),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
@@ -83,10 +83,10 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
     setState(() => _opening = host);
     try {
       await link.openOnTv(host, onPrompt: () => snackBar('Look at the TV and choose Allow', duration: 6000));
-      snackBar('Opening AnymeX+ TV…');
+      snackBar('Opening Yumori TV…');
     } catch (e) {
       final msg = '$e'.replaceFirst('Exception: ', '');
-      snackBar("Couldn't open AnymeX+ TV there. Is the TV on and the TV app installed? ($msg)",
+      snackBar("Couldn't open Yumori TV there. Is the TV on and the TV app installed? ($msg)",
           duration: 6000, maxLines: 4);
     } finally {
       if (mounted) setState(() => _opening = '');
@@ -121,7 +121,7 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
         leading: const Icon(Icons.key_rounded),
         title: const Text('Send logins to the Flutter TV app'),
         subtitle: Text(paired.isEmpty
-            ? 'AniList, Simkl, MyAnimeList and Stremio, for "AnymeX+ (Flutter)" on your TV. '
+            ? 'AniList, Simkl, MyAnimeList and Stremio, for "Yumori" on your TV. '
                 'On the TV: Settings → Accounts → Get logins from your phone.'
             : 'Paired with ${paired.map((p) => p['host']).join(', ')}. Fresh logins go to it each time this app starts.'),
         isThreeLine: true,
@@ -174,7 +174,7 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
           return AlertDialog(
             title: const Text('Send logins to the TV'),
             content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('On the TV, open AnymeX+ (Flutter) → Settings → Accounts → Get logins from your phone.'),
+              const Text('On the TV, open Yumori → Settings → Accounts → Get logins from your phone.'),
               const SizedBox(height: 12),
               if (_tvs.isNotEmpty)
                 Wrap(spacing: 6, children: [
@@ -270,7 +270,7 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
                     connected
                         ? '${link.tvAddress.value}${system == '' ? '' : ' · system $system'} · '
                             'TV app ${info['app'] ?? '?'}'
-                        : 'Open AnymeX+ TV on your TV, or tap your TV below to open it from here.',
+                        : 'Open Yumori TV on your TV, or tap your TV below to open it from here.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -340,7 +340,7 @@ class _PlusTvRemotePageState extends State<PlusTvRemotePage> {
         ip.isEmpty
             ? "This device isn't on a home network, so a TV can't reach it."
             : usualPort
-                ? 'Open AnymeX+ TV on the TV, type this address there and choose Connect:'
+                ? 'Open Yumori TV on the TV, type this address there and choose Connect:'
                 : 'Typing the address on the TV is not available right now (another app is using the '
                     'port). Tap your TV above instead.',
         style: text.bodyMedium,
@@ -605,7 +605,7 @@ class _PcSourceSwitchState extends State<_PcSourceSwitch> {
         child: SwitchListTile(
           value: on,
           title: const Text('Anime source for the TV'),
-          subtitle: const Text('While AnymeX+ is open on this PC, the TV app can play anime from your '
+          subtitle: const Text('While Yumori is open on this PC, the TV app can play anime from your '
               'extensions through it, also when your phone is asleep. Open the TV app from this PC once '
               '(tap your TV above) so the TV knows this PC.'),
           onChanged: (v) {

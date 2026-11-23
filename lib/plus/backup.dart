@@ -24,9 +24,9 @@ class PlusBackup {
       if (Get.isRegistered<StremioService>()) {
         StremioService.to.reloadSettings();
       }
-      Logger.i('AnymeX+ settings restored');
+      Logger.i('Yumori settings restored');
     } catch (e) {
-      Logger.i('AnymeX+ settings restore: $e');
+      Logger.i('Yumori settings restore: $e');
     }
   }
 }

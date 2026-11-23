@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Writes a Homebrew Channel repository file for the AnymeX+ TV app.
+"""Writes a Homebrew Channel repository file for the Yumori TV app.
 
     tv_repo.py <ipk file> <ipk download url> <tv version> <icon url> <output json>
 
 Adding that file's link in Homebrew Channel (Settings -> Add repository) lets
-the TV install and update AnymeX+ TV by itself.
+the TV install and update Yumori TV by itself.
 """
 import hashlib
 import json
@@ -14,16 +14,16 @@ import sys
 
 def build(ipk_path, ipk_url, version, icon_url):
     data = open(ipk_path, "rb").read()
-    desc = ("AnymeX+ on the TV: pairs with AnymeX+ on your phone, which works as its "
+    desc = ("Yumori on the TV: pairs with Yumori on your phone, which works as its "
             "remote. Test build.")
     manifest = {
         "id": "com.mikeyislost.anymexplus.tv",
         "version": version,
         "type": "web",
-        "title": "AnymeX+ TV",
+        "title": "Yumori TV",
         "appDescription": desc,
         "iconUri": icon_url,
-        "sourceUrl": "https://github.com/mikeyislost/AnymeXStremio",
+        "sourceUrl": "https://github.com/mikeyislost/Yumori",
         "rootRequired": False,
         "ipkUrl": ipk_url,
         "ipkHash": {"sha256": hashlib.sha256(data).hexdigest()},

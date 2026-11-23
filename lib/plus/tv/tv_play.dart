@@ -582,11 +582,11 @@ class PlusTvPlayRow extends StatelessWidget {
         child: Icon(Icons.connected_tv_rounded, color: theme.colorScheme.primary, size: 22),
       ),
       title: const AnymeXText(
-        'AnymeX+ TV',
+        'Yumori TV',
         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
       ),
       subtitle: AnymeXText(
-        "Plays in the AnymeX+ app on your LG TV. This player becomes the remote and your progress is kept.",
+        "Plays in the Yumori app on your LG TV. This player becomes the remote and your progress is kept.",
         size: 12,
         color: theme.colorScheme.onSurfaceVariant,
       ),
@@ -623,7 +623,7 @@ class PlusTvPlayRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AnymeXText('Playing on AnymeX+ TV', variant: TextVariant.bold, size: 14),
+                    const AnymeXText('Playing on Yumori TV', variant: TextVariant.bold, size: 14),
                     AnymeXText(line, size: 11, color: theme.colorScheme.onSurfaceVariant),
                   ],
                 ),

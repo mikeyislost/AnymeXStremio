@@ -10,7 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 class AppChannel {
   AppChannel._();
 
-  static const String repo = 'mikeyislost/AnymeXStremio';
+  static const String repo = 'mikeyislost/Yumori';
 
   /// Feather source for beta builds (kept on the `feather` branch, because
   /// GitHub's "latest release" link never points at a pre-release).
