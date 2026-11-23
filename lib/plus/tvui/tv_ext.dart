@@ -134,7 +134,7 @@ class TvExt {
           'app': 'anymexplus-tv',
           'token': d.token,
           'flutter': true,
-          'info': {'app': 'AnymeX+ (Flutter)', 'model': 'LG TV'},
+          'info': {'app': 'Yumori (TV)', 'model': 'LG TV'},
         }));
         final ok = await welcome.future.timeout(const Duration(seconds: 6), onTimeout: () => false);
         if (!ok) {
@@ -197,7 +197,7 @@ class TvExt {
   /// The servers of episode [n], as they arrive (the last one has done).
   Stream<TvExtServers> servers(TvItem item, int n) async* {
     if (!await connect()) {
-      yield const TvExtServers([], true, "Your phone or PC isn't reachable. Open AnymeX+ on it.", '');
+      yield const TvExtServers([], true, "Your phone or PC isn't reachable. Open the app on it.", '');
       return;
     }
     final q = _q();

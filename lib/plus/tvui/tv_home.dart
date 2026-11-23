@@ -493,7 +493,7 @@ class _Banner extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xF2000000), Color(0xB3000000), Color(0x00000000)],
+                  colors: [Color(0xF20D0A16), Color(0xB30D0A16), Color(0x000D0A16)],
                   stops: [0.0, 0.36, 0.72],
                 ),
               ),
@@ -506,7 +506,7 @@ class _Banner extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x00000000), Color(0x00000000), Color(0xCC000000), Color(0xFF000000)],
+                  colors: [Color(0x000D0A16), Color(0x000D0A16), Color(0xCC0D0A16), Color(0xFF0D0A16)],
                   stops: [0.0, 0.42, 0.72, 1.0],
                 ),
               ),

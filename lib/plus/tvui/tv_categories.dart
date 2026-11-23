@@ -59,7 +59,7 @@ class TvCategoriesPage extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         const Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('Categories', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white)),
+          Text('Browse', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white)),
           SizedBox(width: 24),
           Padding(
             padding: EdgeInsets.only(bottom: 8),
@@ -124,7 +124,7 @@ class _TvCategoryPageState extends State<TvCategoryPage> {
     final kinds = {for (final i in _items ?? const <TvItem>[]) i.kind};
     return TvGrid(
         header: [
-          const Text('Categories ›', style: TextStyle(fontSize: 20, color: TvStyle.dim)),
+          const Text('Browse ›', style: TextStyle(fontSize: 20, color: TvStyle.dim)),
           Text(c.name, style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w800, color: Colors.white)),
           const SizedBox(height: 20),
           if (kinds.length > 1)

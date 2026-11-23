@@ -430,7 +430,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
       const Positioned.fill(
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.black, Color(0xE0000000), Color(0x33000000)], stops: [0.0, 0.4, 0.8]),
+            gradient: LinearGradient(colors: [Color(0xFF0D0A16), Color(0xE00D0A16), Color(0x330D0A16)], stops: [0.0, 0.4, 0.8]),
           ),
         ),
       ),
@@ -442,7 +442,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-                begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black, Colors.black, Color(0x00000000)], stops: [0.0, 0.45, 1.0]),
+                begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Color(0xFF0D0A16), Color(0xFF0D0A16), Color(0x000D0A16)], stops: [0.0, 0.45, 1.0]),
           ),
         ),
       ),
@@ -506,7 +506,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                       onSelect: () => tvToast(
                           context,
                           TvExt.instance.hasDevices
-                              ? 'Your extension\'s servers show first in the sources, found by your phone or PC while AnymeX+ is open on it.'
+                              ? 'Your extension\'s servers show first in the sources, found by your phone or PC while the app is open on it.'
                               : 'Settings → Accounts → Get logins from your phone: then your phone or PC finds anime in your extensions for the TV.'),
                     ),
                   ),

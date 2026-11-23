@@ -4,17 +4,21 @@ import 'package:anymex/constants/contants.dart' show colorList;
 import 'package:anymex/database/data_keys/keys.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart' show PlusTvUi;
+import 'package:anymex/theme/yumori_tokens.dart';
+import 'package:anymex/widgets/common/cards/yumori_continue_card.dart' show YumoriProgressLine;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// AnymeX+ TV: colours and sizes (OLED black, no blur or shadows).
 class TvStyle {
-  static const bg = Color(0xFF000000);
-  static const panel = Color(0xFF111111);
-  static const chip = Color(0xFF1A1A1A);
-  static const button = Color(0xFF1D1D1D);
-  static const dim = Color(0xFF8D8D8D);
-  static const text2 = Color(0xFFBDBDBD);
+  // Yumori (Moonlit): night purple instead of OLED black.
+  static const bg = YumoriColors.background;
+  static const panel = YumoriColors.surface;
+  static const chip = YumoriColors.card;
+  static const button = YumoriColors.card;
+  static const line = Color(0x29FFFFFF); // outlines on buttons and chips
+  static const dim = Color(0xFF9C95B0);
+  static const text2 = Color(0xFFC9C3D8);
   static const railW = 112.0;
   static const railOpenW = 360.0;
   static const pad = 72.0;
@@ -24,15 +28,15 @@ class TvStyle {
   /// Your accent colour at full strength. The dark theme's "primary" is a
   /// pale tint of it, which almost vanished next to white on the TV, so
   /// the TV uses the colour you picked, kept bright and saturated.
-  /// Settings → Appearance → Palette: 'default' (your accent colour) or
-  /// 'yumori' (test: the Yumori sheet's lavender + cream).
+  /// Settings → Appearance → Palette: 'yumori' (lavender, the default) or
+  /// 'default' (your accent colour from the app's theme).
   static final palette = ValueNotifier<String>(_loadPalette());
   static const _kPalette = 'plus_tv_palette';
   static String _loadPalette() {
     try {
-      return KvHelper.get<String>(_kPalette, defaultVal: 'default');
+      return KvHelper.get<String>(_kPalette, defaultVal: 'yumori');
     } catch (_) {
-      return 'default';
+      return 'yumori';
     }
   }
 
@@ -45,12 +49,12 @@ class TvStyle {
 
   static bool get yumori => palette.value == 'yumori';
 
-  // The Yumori sheet's colours.
-  static const yNight = Color(0xFF18122C);
-  static const yPurple = Color(0xFF3D296D);
-  static const yLavender = Color(0xFFA786E2);
+  // Yumori colours (the app's tokens; cream stays the ring's second glint).
+  static const yLavender = YumoriColors.lavender;
   static const yCream = Color(0xFFFDE4CA);
-  static const ySage = Color(0xFF48625C);
+
+  /// Text on a lavender (or other light accent) fill.
+  static const onAccent = YumoriColors.onLavender;
 
   static Color vivid(BuildContext c) {
     var seed = Theme.of(c).colorScheme.primary;
@@ -80,8 +84,8 @@ class TvStyle {
   }
 
   static const placeholders = [
-    Color(0xFF2A2140), Color(0xFF1D2B3A), Color(0xFF3A2228), Color(0xFF203628),
-    Color(0xFF33301C), Color(0xFF2B2B2B), Color(0xFF24203A), Color(0xFF1E3236),
+    Color(0xFF221A36), Color(0xFF1C1830), Color(0xFF261C33), Color(0xFF1E1A2E),
+    Color(0xFF241D38), Color(0xFF1B152A), Color(0xFF221B31), Color(0xFF1F1830),
   ];
   static Color placeholder(String key) => placeholders[key.hashCode.abs() % placeholders.length];
 }
@@ -312,7 +316,7 @@ class TvImage extends StatelessWidget {
   final BoxFit fit;
   const TvImage({super.key, required this.url, required this.width, required this.height, this.seed = '', this.fit = BoxFit.cover});
 
-  static const empty = Color(0xFF151515);
+  static const empty = Color(0xFF17121F);
 
   /// The picture as [TvImage] loads it (same size, so a warmed one is
   /// already in memory when the card shows).
@@ -384,7 +388,6 @@ class TvCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = wide ? wideW : posterW;
     final h = wide ? wideH : posterH;
-    final accent = TvStyle.accent(context);
     return TvFocusable(
       autofocus: autofocus,
       focusNode: focusNode,
@@ -425,22 +428,35 @@ class TvCard extends StatelessWidget {
                           top: 8,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(8)),
-                            child: Text(item.kindLabel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                            decoration: BoxDecoration(color: TvStyle.bg.withValues(alpha: 0.78), borderRadius: BorderRadius.circular(999)),
+                            child: Text(item.kindLabel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: YumoriColors.lavender)),
                           ),
                         ),
-                      if (item.progress > 0)
+                      if (item.progress > 0) ...[
+                        // Yumori: a soft shade under the line, then the
+                        // lavender line with a firefly at its tip.
                         Positioned(
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          child: Container(
-                            height: 6,
-                            color: const Color(0xFF333333),
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(widthFactor: item.progress, child: Container(color: accent)),
+                          height: 40,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.transparent, TvStyle.bg.withValues(alpha: 0.7)],
+                              ),
+                            ),
                           ),
                         ),
+                        Positioned(
+                          left: 10,
+                          right: 10,
+                          bottom: 10,
+                          child: YumoriProgressLine(progress: item.progress.clamp(0.0, 1.0)),
+                        ),
+                      ],
                     ]),
                   ),
                 ),
@@ -450,7 +466,7 @@ class TvCard extends StatelessWidget {
                   Text(item.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: wide ? 21 : 19, fontWeight: FontWeight.w600, color: focused ? Colors.white : const Color(0xFFBDBDBD))),
+                      style: TextStyle(fontSize: wide ? 21 : 19, fontWeight: FontWeight.w600, color: focused ? YumoriColors.text : TvStyle.text2)),
                   if (item.sub.isNotEmpty)
                     Text(item.sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, color: TvStyle.dim)),
                 ],
@@ -722,20 +738,23 @@ class TvButton extends StatelessWidget {
         duration: const Duration(milliseconds: 120),
         child: TvRing(
           on: f,
-          radius: 14,
+          radius: 32,
           gap: 4,
           width: 3,
           child: Container(
           height: 64,
           padding: const EdgeInsets.symmetric(horizontal: 30),
+          // Yumori: lavender pill for the main action and the highlight,
+          // an outlined pill otherwise.
           decoration: BoxDecoration(
-            color: f || primary ? Colors.white : TvStyle.button,
-            borderRadius: BorderRadius.circular(14),
+            color: f || primary ? TvStyle.accent(context) : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: f || primary ? Colors.transparent : TvStyle.line, width: 1.5),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (icon != null) ...[Icon(icon, size: 26, color: f || primary ? Colors.black : Colors.white), const SizedBox(width: 12)],
+            if (icon != null) ...[Icon(icon, size: 26, color: f || primary ? TvStyle.onAccent : YumoriColors.text), const SizedBox(width: 12)],
             Text(label,
-                style: TextStyle(fontSize: 22, fontWeight: primary ? FontWeight.w700 : FontWeight.w600, color: f || primary ? Colors.black : Colors.white)),
+                style: TextStyle(fontSize: 22, fontWeight: primary ? FontWeight.w700 : FontWeight.w600, color: f || primary ? TvStyle.onAccent : YumoriColors.text)),
           ]),
         ),
         ),
@@ -762,11 +781,12 @@ class TvChip extends StatelessWidget {
       builder: (context, f) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         decoration: BoxDecoration(
-          color: f ? Colors.white : (on ? accent.withValues(alpha: 0.22) : TvStyle.chip),
+          color: f || on ? accent : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: f ? Colors.white : (on ? Colors.transparent : TvStyle.line), width: f ? 3 : 1.5),
         ),
         child: Text(label,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: f ? Colors.black : (on ? accent : const Color(0xFFCFCFCF)))),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: f || on ? TvStyle.onAccent : TvStyle.text2)),
       ),
     );
   }
@@ -779,7 +799,7 @@ void tvToast(BuildContext context, String text) {
   m.hideCurrentSnackBar();
   m.showSnackBar(SnackBar(
     content: Text(text, style: const TextStyle(fontSize: 20, color: Colors.white)),
-    backgroundColor: const Color(0xFF1D1D1D),
+    backgroundColor: YumoriColors.card,
     behavior: SnackBarBehavior.floating,
     width: 900,
     duration: const Duration(seconds: 3),

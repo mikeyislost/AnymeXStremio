@@ -10,9 +10,11 @@ import 'package:anymex/plus/tvui/tv_settings.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// AnymeX+ on the TV: the TV layout (left tab rail, OLED black, remote
-/// first). Built on the same app underneath; only the screens differ.
+/// Yumori on the TV: the TV layout (left tab rail, Moonlit night purple,
+/// remote first). Built on the same app underneath; only the screens differ.
 class PlusTvUi {
   PlusTvUi._();
   static const _kLayout = 'plus_tv_layout';
@@ -59,6 +61,9 @@ class PlusTvUi {
   static ThemeData theme(BuildContext context) {
     final base = Theme.of(context);
     final accent = TvStyle.yumori ? TvStyle.yLavender : base.colorScheme.primary;
+    // Yumori: Urbanist everywhere on the TV (text styles without their own
+    // font pick it up from here).
+    final text = GoogleFonts.urbanistTextTheme(base.textTheme).apply(bodyColor: YumoriColors.text, displayColor: YumoriColors.text);
     return base.copyWith(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: TvStyle.bg,
@@ -66,13 +71,15 @@ class PlusTvUi {
       colorScheme: base.colorScheme.copyWith(
         brightness: Brightness.dark,
         surface: TvStyle.bg,
-        onSurface: Colors.white,
+        onSurface: YumoriColors.text,
         primary: accent,
+        onPrimary: TvStyle.onAccent,
       ),
       focusColor: Colors.transparent,
       hoverColor: Colors.transparent,
       splashFactory: NoSplash.splashFactory,
-      textTheme: base.textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
+      textTheme: text,
+      primaryTextTheme: text,
     );
   }
 }
@@ -133,14 +140,22 @@ class _PlusTvShellState extends State<PlusTvShell> {
 
   static const _tabs = [
     _Tab('Home', Icons.home_rounded),
-    _Tab('Categories', Icons.grid_view_rounded),
-    _Tab('Library', Icons.video_library_rounded),
+    _Tab('Browse', Icons.explore_outlined),
+    _Tab('Library', Icons.layers_outlined),
     _Tab('Search', Icons.search_rounded),
-    _Tab('Settings', Icons.settings_rounded),
+    _Tab('Settings', Icons.tune_rounded),
   ];
 
   int _tab = 0;
   bool _railOpen = false;
+
+  // The clock at the bottom of the rail.
+  Timer? _clockTimer;
+  String _clock = _now();
+  static String _now() {
+    final t = DateTime.now();
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
   final _railNodes = List.generate(_tabs.length, (_) => FocusNode());
   final _railScope = FocusScopeNode(debugLabel: 'tv rail');
   final _contentScope = FocusScopeNode(debugLabel: 'tv content');
@@ -152,11 +167,16 @@ class _PlusTvShellState extends State<PlusTvShell> {
     HardwareKeyboard.instance.addHandler(_logKey);
     FocusManager.instance.addListener(_watchFocus);
     TvNav.openMenu = _toRail;
+    _clockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      final n = _now();
+      if (n != _clock && mounted) setState(() => _clock = n);
+    });
   }
 
   @override
   void dispose() {
     TvStyle.palette.removeListener(_paletteChanged);
+    _clockTimer?.cancel();
     HardwareKeyboard.instance.removeHandler(_logKey);
     FocusManager.instance.removeListener(_watchFocus);
     for (final n in _railNodes) {
@@ -288,7 +308,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
               child: Padding(
                 padding: const EdgeInsets.all(48),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('Leave AnymeX+?', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white)),
+                  const Text('Leave Yumori?', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: YumoriColors.text)),
                   const SizedBox(height: 32),
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     TvButton(label: 'Stay', autofocus: true, onSelect: () => Navigator.of(ctx).pop(false)),
@@ -324,7 +344,6 @@ class _PlusTvShellState extends State<PlusTvShell> {
 
   @override
   Widget build(BuildContext context) {
-    final accent = TvStyle.accent(context);
     return Theme(
       data: PlusTvUi.theme(context),
       child: PopScope(
@@ -370,7 +389,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
                 child: FocusScope(node: _contentScope, child: FocusTraversalGroup(child: _page())),
               ),
               if (_railOpen)
-                Positioned.fill(left: TvStyle.railW, child: IgnorePointer(child: Container(color: Colors.black.withValues(alpha: 0.6)))),
+                Positioned.fill(left: TvStyle.railW, child: IgnorePointer(child: Container(color: TvStyle.bg.withValues(alpha: 0.7)))),
               Positioned(
                 left: 0,
                 top: 0,
@@ -384,28 +403,42 @@ class _PlusTvShellState extends State<PlusTvShell> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 140),
                         width: _railOpen ? TvStyle.railOpenW : TvStyle.railW,
-                        decoration: const BoxDecoration(
-                          color: TvStyle.bg,
-                          border: Border(right: BorderSide(color: Color(0xFF161616))),
+                        // Yumori: no outline; the open rail fades into the page.
+                        decoration: BoxDecoration(
+                          color: _railOpen ? null : TvStyle.bg,
+                          gradient: _railOpen
+                              ? const LinearGradient(
+                                  colors: [TvStyle.bg, TvStyle.bg, Color(0x000D0A16)],
+                                  stops: [0, 0.8, 1],
+                                )
+                              : null,
                         ),
                         padding: EdgeInsets.fromLTRB(_railOpen ? 24 : 24, 40, _railOpen ? 24 : 24, 48),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Yumori: the tree mark; the wordmark joins it when
+                            // the rail opens.
                             Padding(
-                              padding: EdgeInsets.only(left: _railOpen ? 18 : 8, bottom: 48),
-                              child: Text.rich(
-                                TextSpan(children: [
-                                  TextSpan(text: _railOpen ? 'AnymeX' : 'A'),
-                                  TextSpan(text: '+', style: TextStyle(color: accent)),
-                                ]),
-                                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white),
-                                maxLines: 1,
-                              ),
+                              padding: EdgeInsets.only(left: _railOpen ? 10 : 2, bottom: 40),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Image.asset('assets/images/yumori/tree.png', width: 60, height: 60, cacheWidth: 120, filterQuality: FilterQuality.medium),
+                                if (_railOpen) ...[
+                                  const SizedBox(width: 14),
+                                  Image.asset('assets/images/yumori/wordmark.png', height: 40, cacheHeight: 80, filterQuality: FilterQuality.medium),
+                                ],
+                              ]),
                             ),
                             for (var i = 0; i < _tabs.length - 1; i++) ...[_railItem(i), const SizedBox(height: 14)],
                             const Spacer(),
                             _railItem(_tabs.length - 1),
+                            const SizedBox(height: 22),
+                            SizedBox(
+                              width: _railOpen ? TvStyle.railOpenW - 48 : 64,
+                              child: Text(_clock,
+                                  textAlign: _railOpen ? TextAlign.start : TextAlign.center,
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: TvStyle.text2)),
+                            ),
                           ],
                         ),
                       ),
@@ -429,15 +462,15 @@ class _PlusTvShellState extends State<PlusTvShell> {
         focusNode: _railNodes[i],
         onSelect: () => _openTab(i),
         builder: (context, f) {
-          final fg = f ? Colors.black : (current ? accent : const Color(0xFF8A8A8A));
+          final fg = f ? TvStyle.onAccent : (current ? accent : TvStyle.dim);
           return AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             height: _railOpen ? 72 : 64,
             width: _railOpen ? TvStyle.railOpenW - 48 : 64,
             padding: EdgeInsets.symmetric(horizontal: _railOpen ? 22 : 0),
             decoration: BoxDecoration(
-              color: f ? Colors.white : (current ? accent.withValues(alpha: 0.18) : Colors.transparent),
-              borderRadius: BorderRadius.circular(18),
+              color: f ? accent : (current ? accent.withValues(alpha: 0.16) : Colors.transparent),
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Row(
               mainAxisAlignment: _railOpen ? MainAxisAlignment.start : MainAxisAlignment.center,
@@ -449,7 +482,7 @@ class _PlusTvShellState extends State<PlusTvShell> {
                     child: Text(t.label,
                         maxLines: 1,
                         overflow: TextOverflow.clip,
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: f ? Colors.black : (current ? Colors.white : const Color(0xFF9A9A9A)))),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: f ? TvStyle.onAccent : (current ? YumoriColors.text : TvStyle.dim))),
                   ),
                 ],
               ],

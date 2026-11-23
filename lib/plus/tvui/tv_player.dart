@@ -15,6 +15,7 @@ import 'package:anymex/plus/tvui/tv_sources.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:anymex/utils/aniskip.dart' as aniskip;
 import 'package:anymex/utils/logger.dart';
+import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -762,13 +763,13 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
           if (_status.isNotEmpty || (!ready && _error.isEmpty))
             Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(width: 64, height: 64, child: CircularProgressIndicator(strokeWidth: 5, color: accent)),
+                const YumoriLoader(size: 140, tree: true), // Yumori: the tree and its fireflies
                 const SizedBox(height: 26),
                 Text(_status.isEmpty ? 'Loading…' : _status, style: const TextStyle(fontSize: 24, color: TvStyle.text2)),
               ]),
             )
           else if (ready && v!.isBuffering)
-            Center(child: SizedBox(width: 64, height: 64, child: CircularProgressIndicator(strokeWidth: 5, color: accent))),
+            const Center(child: YumoriLoader(size: 80)), // buffering: just the fireflies
           if (showUi) ...[
             Positioned(
               left: 80,

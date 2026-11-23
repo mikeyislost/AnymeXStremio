@@ -256,20 +256,20 @@ class _SourceTile extends StatelessWidget {
         builder: (context, f) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
           decoration: BoxDecoration(
-            color: f ? Colors.white : TvStyle.panel,
+            color: f ? TvStyle.accent(context) : TvStyle.panel,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SizedBox(
               width: 300,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: f ? Colors.black : Colors.white)),
+                Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: f ? TvStyle.onAccent : Colors.white)),
                 const SizedBox(height: 4),
-                Text(s.addonName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 17, color: f ? Colors.black54 : TvStyle.dim)),
+                Text(s.addonName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 17, color: f ? TvStyle.onAccent.withValues(alpha: 0.7) : TvStyle.dim)),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 6, children: [
-                  if (preferred) _badge('Your usual', f ? Colors.black : accent, f),
-                  if (q.isNotEmpty) _badge(q, f ? Colors.black : Colors.white, f),
+                  if (preferred) _badge('Your usual', f ? TvStyle.onAccent : accent, f),
+                  if (q.isNotEmpty) _badge(q, f ? TvStyle.onAccent : Colors.white, f),
                   if (tvNoSound(s)) _badge('DTS: no sound on LG', f ? Colors.red.shade900 : Colors.orangeAccent, f),
                 ]),
               ]),
@@ -277,7 +277,7 @@ class _SourceTile extends StatelessWidget {
             const SizedBox(width: 28),
             Expanded(
               child: Text(lines,
-                  maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 18, height: 1.4, color: f ? Colors.black87 : const Color(0xFFA9A9A9))),
+                  maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 18, height: 1.4, color: f ? TvStyle.onAccent.withValues(alpha: 0.85) : const Color(0xFFA9A9A9))),
             ),
           ]),
         ),

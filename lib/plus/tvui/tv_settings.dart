@@ -18,6 +18,7 @@ import 'package:anymex/database/data_keys/keys.dart';
 import 'package:provider/provider.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -78,7 +79,7 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
                   'Extensions',
                   list.isEmpty
                       ? 'Not paired: your phone or PC runs your extensions for the TV once you get logins from it.'
-                      : '${list.map((d) => d.name + (d.name == dev ? ' (connected)' : '')).join(', ')} · works while AnymeX+ is open there',
+                      : '${list.map((d) => d.name + (d.name == dev ? ' (connected)' : '')).join(', ')} · works while the app is open there',
                   trailing: list.isEmpty
                       ? null
                       : TvButton(
@@ -247,12 +248,12 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
           builder: (context, p, _) => _row(
               'Palette',
               p == 'yumori'
-                  ? 'Yumori (test): lavender accent, cream glints, from the Yumori sheet. Accent colour below is ignored.'
-                  : 'Default: your accent colour below.',
+                  ? 'Yumori: lavender highlights with cream glints. The accent colour below is ignored.'
+                  : 'Your colour: the accent colour below.',
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(width: 150, child: TvButton(label: 'Default', primary: p != 'yumori', onSelect: () => TvStyle.setPalette('default'))),
+                SizedBox(width: 170, child: TvButton(label: 'Yumori', primary: p == 'yumori', onSelect: () => TvStyle.setPalette('yumori'))),
                 const SizedBox(width: 14),
-                SizedBox(width: 190, child: TvButton(label: 'Yumori (test)', primary: p == 'yumori', onSelect: () => TvStyle.setPalette('yumori'))),
+                SizedBox(width: 200, child: TvButton(label: 'Your colour', primary: p != 'yumori', onSelect: () => TvStyle.setPalette('default'))),
               ])),
         ),
         ValueListenableBuilder<double>(
@@ -331,7 +332,7 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
   Widget _about() => ValueListenableBuilder<List<String>>(
         valueListenable: PlusTvUi.keyLog,
         builder: (context, keys, _) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _row('AnymeX+ (Flutter, test build)', AppChannel.isBeta ? 'Beta channel' : 'Stable channel'),
+          _row('Yumori for TV (test build)', AppChannel.isBeta ? 'Beta channel' : 'Stable channel'),
           ValueListenableBuilder<String>(
             valueListenable: TvBackKey.status,
             builder: (context, status, _) => _row(
@@ -394,11 +395,11 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       alignment: Alignment.centerLeft,
                       decoration: BoxDecoration(
-                        color: f ? Colors.white : (i == _cat ? accent.withValues(alpha: 0.18) : Colors.transparent),
-                        borderRadius: BorderRadius.circular(14),
+                        color: f ? accent : (i == _cat ? accent.withValues(alpha: 0.16) : Colors.transparent),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(_cats[i],
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: f ? Colors.black : (i == _cat ? Colors.white : const Color(0xFF9A9A9A)))),
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: f ? TvStyle.onAccent : (i == _cat ? YumoriColors.text : TvStyle.dim))),
                     ),
                   ),
                 ),
@@ -571,7 +572,7 @@ class _TvPhoneLoginsState extends State<TvPhoneLogins> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Get logins from your phone', style: TextStyle(fontSize: 52, fontWeight: FontWeight.w800, color: Colors.white)),
         const SizedBox(height: 30),
-        const Text('On your phone or PC, open AnymeX+ → Settings → TV Remote → Send logins to the Flutter TV app,',
+        const Text('On your phone or PC, open Yumori (or AnymeX+) → Settings → TV Remote → Send logins to the Flutter TV app,',
             style: TextStyle(fontSize: 26, color: TvStyle.text2)),
         const SizedBox(height: 8),
         ValueListenableBuilder<String>(
