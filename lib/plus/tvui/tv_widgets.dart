@@ -370,6 +370,9 @@ class TvCard extends StatelessWidget {
   final FocusNode? focusNode;
   final bool autoScroll;
 
+  /// Home: small cards with no title under them (the banner shows it).
+  final bool compact;
+
   const TvCard({
     super.key,
     required this.item,
@@ -380,14 +383,22 @@ class TvCard extends StatelessWidget {
     this.autofocus = false,
     this.focusNode,
     this.autoScroll = true,
+    this.compact = false,
   });
 
   static const posterW = 168.0, posterH = 252.0, wideW = 320.0, wideH = 180.0;
+  // Home's short rows (compact).
+  static const smallW = 132.0, smallH = 186.0, smallWideW = 248.0, smallWideH = 140.0;
+
+  static double widthFor({required bool wide, required bool compact}) =>
+      compact ? (wide ? smallWideW : smallW) : (wide ? wideW : posterW);
+  static double heightFor({required bool wide, required bool compact}) =>
+      compact ? (wide ? smallWideH : smallH) : (wide ? wideH : posterH);
 
   @override
   Widget build(BuildContext context) {
-    final w = wide ? wideW : posterW;
-    final h = wide ? wideH : posterH;
+    final w = widthFor(wide: wide, compact: compact);
+    final h = heightFor(wide: wide, compact: compact);
     return TvFocusable(
       autofocus: autofocus,
       focusNode: focusNode,
@@ -398,9 +409,9 @@ class TvCard extends StatelessWidget {
       },
       builder: (context, focused) => RepaintBoundary(
         child: AnimatedScale(
-          scale: focused ? 1.06 : 1.0,
+          scale: focused ? (compact ? 1.08 : 1.06) : 1.0,
           duration: const Duration(milliseconds: 120),
-          alignment: Alignment.topCenter,
+          alignment: compact ? Alignment.center : Alignment.topCenter,
           child: SizedBox(
             width: w,
             child: Column(
@@ -461,7 +472,7 @@ class TvCard extends StatelessWidget {
                   ),
                 ),
                 ),
-                ...[
+                if (!compact) ...[
                   const SizedBox(height: 10),
                   Text(item.title,
                       maxLines: 1,
@@ -495,6 +506,9 @@ class TvRow extends StatefulWidget {
   final bool Function()? onUp;
   final bool Function()? onDown;
 
+  /// Home's short rows: small cards, no titles, a slider under the row.
+  final bool compact;
+
   const TvRow({
     super.key,
     required this.title,
@@ -506,6 +520,7 @@ class TvRow extends StatefulWidget {
     this.autofocusFirst = false,
     this.onUp,
     this.onDown,
+    this.compact = false,
   });
 
   @override
@@ -517,7 +532,12 @@ class TvRowState extends State<TvRow> {
   final _scroll = ScrollController();
   int _index = 0;
 
-  double get _step => (widget.wide ? TvCard.wideW : TvCard.posterW) + 24;
+  double get _step => TvCard.widthFor(wide: widget.wide, compact: widget.compact) + _gap;
+  double get _gap => widget.compact ? 18 : 24;
+
+  /// Compact rows: where you are in the row (the slider under it).
+  final _at = ValueNotifier<int>(0);
+  final _hasFocus = ValueNotifier<bool>(false);
 
   /// Highlights card [i]; a card scrolled far out of view isn't built, so the
   /// row jumps there first.
@@ -579,6 +599,8 @@ class TvRowState extends State<TvRow> {
       n.dispose();
     }
     _scroll.dispose();
+    _at.dispose();
+    _hasFocus.dispose();
     super.dispose();
   }
 
@@ -619,35 +641,39 @@ class TvRowState extends State<TvRow> {
     final items = widget.items;
     if (items.isEmpty) return const SizedBox.shrink();
     final wide = widget.wide;
-    final h = (wide ? TvCard.wideH : TvCard.posterH) + 78;
+    final compact = widget.compact;
+    final h = TvCard.heightFor(wide: wide, compact: compact) + (compact ? 22 : 78);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 28),
+      padding: EdgeInsets.only(bottom: compact ? 14 : 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: TvStyle.pad, bottom: 14),
-            child: Text(widget.title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+            padding: EdgeInsets.only(left: TvStyle.pad, bottom: compact ? 6 : 14),
+            child: Text(widget.title,
+                style: TextStyle(fontSize: compact ? 23 : 28, fontWeight: FontWeight.w700, color: YumoriColors.text)),
           ),
           SizedBox(
             height: h,
             child: Focus(
               canRequestFocus: false,
               skipTraversal: true,
+              onFocusChange: (f) => _hasFocus.value = f,
               onKeyEvent: _key,
               child: ListView.separated(
                 controller: _scroll,
                 cacheExtent: 1600,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
-                padding: const EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: compact ? 11 : 6),
                 itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 24),
+                separatorBuilder: (_, __) => SizedBox(width: _gap),
                 itemBuilder: (context, i) => TvKeepFocused(
                   node: _nodes[i],
                   child: TvCard(
                     item: items[i],
                     wide: wide,
+                    compact: compact,
                     showKind: widget.showKind,
                     focusNode: _nodes[i],
                     autoScroll: false,
@@ -655,6 +681,7 @@ class TvRowState extends State<TvRow> {
                     onSelect: () => widget.onOpen(items[i]),
                     onFocusItem: (it) {
                       _index = i;
+                      _at.value = i;
                       _reveal(i);
                       widget.onFocusItem?.call(it);
                     },
@@ -663,7 +690,52 @@ class TvRowState extends State<TvRow> {
               ),
             ),
           ),
+          if (compact) _slider(items.length),
         ],
+      ),
+    );
+  }
+
+  /// A short track under the row with your place in it (shown while the
+  /// row has the highlight).
+  Widget _slider(int count) {
+    const trackW = 110.0;
+    return Padding(
+      padding: const EdgeInsets.only(left: TvStyle.pad, top: 2),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _hasFocus,
+        builder: (context, on, _) => AnimatedOpacity(
+          opacity: on && count > 1 ? 1 : 0,
+          duration: const Duration(milliseconds: 160),
+          child: ValueListenableBuilder<int>(
+            valueListenable: _at,
+            builder: (context, at, _) {
+              final seg = (trackW / count).clamp(18.0, trackW);
+              final x = count <= 1 ? 0.0 : (trackW - seg) * (at / (count - 1));
+              return SizedBox(
+                width: trackW,
+                height: 4,
+                child: Stack(children: [
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 140),
+                    left: x,
+                    top: 0,
+                    bottom: 0,
+                    width: seg,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(color: TvStyle.accent(context), borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                ]),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

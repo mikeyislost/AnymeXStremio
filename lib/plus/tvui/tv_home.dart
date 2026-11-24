@@ -15,6 +15,7 @@ import 'package:anymex/plus/tvui/tv_shell.dart';
 import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:get/get.dart';
 
 /// Opens a card's details page.
@@ -43,6 +44,11 @@ class _TvHomePageState extends State<TvHomePage> {
   final _born = DateTime.now();
   bool _warming = false;
   final _startTimers = <Timer>[];
+
+  // The banner's buttons (Watch now, Details): Up from the first row.
+  final _watchNode = FocusNode(debugLabel: 'home watch');
+  final _infoNode = FocusNode(debugLabel: 'home details');
+  GlobalKey<TvRowState>? _firstRow;
 
 
   @override
@@ -94,6 +100,8 @@ class _TvHomePageState extends State<TvHomePage> {
       t.cancel();
     }
     _hero.dispose();
+    _watchNode.dispose();
+    _infoNode.dispose();
     super.dispose();
   }
 
@@ -109,7 +117,7 @@ class _TvHomePageState extends State<TvHomePage> {
     pics.add((first.backdrop.isNotEmpty ? first.backdrop : first.poster, 1920));
     for (final r in specs.take(2)) {
       for (final it in r.$2.take(8)) {
-        pics.add((r.$3 && it.backdrop.isNotEmpty ? it.backdrop : it.poster, r.$3 ? TvCard.wideW : TvCard.posterW));
+        pics.add((r.$3 && it.backdrop.isNotEmpty ? it.backdrop : it.poster, r.$3 ? TvCard.smallWideW : TvCard.smallW));
       }
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -394,9 +402,18 @@ class _TvHomePageState extends State<TvHomePage> {
       });
     }
     return Stack(children: [
-      Positioned.fill(child: _Banner(hero: _hero)),
       Positioned.fill(
-        top: 460,
+        child: _Banner(
+          hero: _hero,
+          watchNode: _watchNode,
+          infoNode: _infoNode,
+          onWatch: (i) => Navigator.of(context).push(tvRoute(TvDetailsPage(item: i, autoPlay: true))),
+          onInfo: (i) => tvOpen(context, i),
+          onDown: () => _firstRow?.currentState?.focus() ?? false,
+        ),
+      ),
+      Positioned.fill(
+        top: 600,
         child: Obx(() {
           final data = Get.find<ServiceHandler>().anilistService;
           final cw = _continue();
@@ -420,7 +437,13 @@ class _TvHomePageState extends State<TvHomePage> {
               if (r.on) (TvHomeRows.title(r.key), itemsFor(r.key), r.key == 'continue', r.key == 'forYou'),
           ].where((r) => r.$2.isNotEmpty).toList();
           final keys = [for (final r in specs) _rowKeys.putIfAbsent(r.$1, () => GlobalKey<TvRowState>())];
+          _firstRow = keys.isEmpty ? null : keys.first;
           bool move(int from, int step) {
+            // Up from the first row: the banner's buttons.
+            if (from == 0 && step < 0) {
+              if (_hero.value != null && _watchNode.context != null) _watchNode.requestFocus();
+              return true;
+            }
             for (var j = from + step; j >= 0 && j < keys.length; j += step) {
               if (keys[j].currentState?.focus() == true) return true;
             }
@@ -435,6 +458,7 @@ class _TvHomePageState extends State<TvHomePage> {
                 items: specs[r].$2,
                 wide: specs[r].$3,
                 showKind: specs[r].$4,
+                compact: true,
                 autofocusFirst: r == 0,
                 onOpen: (i) => tvOpen(context, i),
                 onFocusItem: _focus,
@@ -463,7 +487,36 @@ class _TvHomePageState extends State<TvHomePage> {
 
 class _Banner extends StatelessWidget {
   final ValueNotifier<TvItem?> hero;
-  const _Banner({required this.hero});
+  final FocusNode watchNode;
+  final FocusNode infoNode;
+  final ValueChanged<TvItem> onWatch;
+  final ValueChanged<TvItem> onInfo;
+  final bool Function() onDown;
+  const _Banner({
+    required this.hero,
+    required this.watchNode,
+    required this.infoNode,
+    required this.onWatch,
+    required this.onInfo,
+    required this.onDown,
+  });
+
+  /// Down from the buttons goes to the rows; Left/Right between the two.
+  KeyEventResult _key(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    if (k == LogicalKeyboardKey.arrowDown) return onDown() ? KeyEventResult.handled : KeyEventResult.ignored;
+    if (k == LogicalKeyboardKey.arrowUp) return KeyEventResult.handled;
+    if (k == LogicalKeyboardKey.arrowRight && node == watchNode) {
+      infoNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.arrowLeft && node == infoNode) {
+      watchNode.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -473,13 +526,17 @@ class _Banner extends StatelessWidget {
       builder: (context, item, _) {
         if (item == null) return const SizedBox.shrink();
         final pic = item.backdrop.isNotEmpty ? item.backdrop : item.poster;
+        // Small lavender line above the title: why it's here, or its kind and genres.
+        final eyebrow = item.sub.isNotEmpty
+            ? item.sub
+            : [item.kindLabel, if (item.genres.isNotEmpty) item.genres.take(2).join(', ')].join('  ·  ');
         final meta = <String>[
           if (item.year.isNotEmpty) item.year,
-          item.kindLabel,
           if (item.episodes.isNotEmpty && item.kind != 'movie') '${item.episodes} episodes',
           if (item.rating.isNotEmpty) '★ ${item.rating}',
-          if (item.genres.isNotEmpty) item.genres.take(3).join(', '),
+          if (item.sub.isNotEmpty && item.genres.isNotEmpty) item.genres.take(3).join(', '),
         ];
+        final resume = item.progress > 0;
         return Stack(children: [
           // The picture fills the whole screen behind everything.
           Positioned.fill(
@@ -488,54 +545,82 @@ class _Banner extends StatelessWidget {
               child: TvImage(key: ValueKey(pic), url: pic, width: 1920, height: 1080, seed: item.key),
             ),
           ),
-          // Dark on the left (text) ...
+          // Night on the left (text) ...
           const Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xF20D0A16), Color(0xB30D0A16), Color(0x000D0A16)],
-                  stops: [0.0, 0.36, 0.72],
+                  colors: [Color(0xF20D0A16), Color(0xC00D0A16), Color(0x330D0A16), Color(0x000D0A16)],
+                  stops: [0.0, 0.32, 0.6, 0.78],
                 ),
               ),
             ),
           ),
-          // ... and at the bottom (rows), so the picture melts into black.
+          // ... and at the bottom (rows), so the picture melts into the page.
           const Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x000D0A16), Color(0x000D0A16), Color(0xCC0D0A16), Color(0xFF0D0A16)],
-                  stops: [0.0, 0.42, 0.72, 1.0],
+                  colors: [Color(0x000D0A16), Color(0x000D0A16), Color(0xB30D0A16), Color(0xF20D0A16)],
+                  stops: [0.0, 0.45, 0.7, 1.0],
                 ),
               ),
             ),
           ),
           Positioned(
             left: TvStyle.pad,
-            top: 88,
-            width: 880,
+            top: 96,
+            width: 900,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (item.sub.isNotEmpty)
-                  Text(item.sub.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 3, color: accent)),
+                Text(eyebrow.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 3, color: accent)),
                 const SizedBox(height: 14),
                 Text(item.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 64, height: 1.05, fontWeight: FontWeight.w800, color: Colors.white)),
+                    style: const TextStyle(fontSize: 78, height: 1.0, fontWeight: FontWeight.w800, letterSpacing: -1.5, color: YumoriColors.text)),
                 const SizedBox(height: 18),
-                Text(meta.join('   •   '), style: const TextStyle(fontSize: 22, color: Color(0xFFCFCFCF))),
-                const SizedBox(height: 16),
+                if (meta.isNotEmpty) ...[
+                  Text(meta.join('   ·   '), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: TvStyle.text2)),
+                  const SizedBox(height: 12),
+                ],
                 Text(item.description,
-                    maxLines: 3,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 22, height: 1.5, color: Color(0xFFA9A9A9))),
+                    style: const TextStyle(fontSize: 21, height: 1.5, color: TvStyle.dim)),
+                const SizedBox(height: 26),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Focus(
+                    canRequestFocus: false,
+                    skipTraversal: true,
+                    onKeyEvent: (_, e) => _key(watchNode, e),
+                    child: TvButton(
+                      label: resume ? 'Resume' : 'Watch now',
+                      icon: Icons.play_arrow_rounded,
+                      primary: true,
+                      focusNode: watchNode,
+                      onSelect: () => onWatch(item),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Focus(
+                    canRequestFocus: false,
+                    skipTraversal: true,
+                    onKeyEvent: (_, e) => _key(infoNode, e),
+                    child: TvButton(
+                      label: 'Details',
+                      icon: Icons.info_outline_rounded,
+                      focusNode: infoNode,
+                      onSelect: () => onInfo(item),
+                    ),
+                  ),
+                ]),
               ],
             ),
           ),

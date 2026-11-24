@@ -28,7 +28,10 @@ class _Ep {
 /// Details of an anime, film or series: banner, info, buttons and episodes.
 class TvDetailsPage extends StatefulWidget {
   final TvItem item;
-  const TvDetailsPage({super.key, required this.item});
+
+  /// Home's Watch now: start playing (your usual source) once loaded.
+  final bool autoPlay;
+  const TvDetailsPage({super.key, required this.item, this.autoPlay = false});
 
   @override
   State<TvDetailsPage> createState() => _TvDetailsPageState();
@@ -111,6 +114,11 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     _parts = _split(_eps);
     _goToCurrent();
     setState(() => _loading = false);
+    if (widget.autoPlay) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _play();
+      });
+    }
   }
 
   ScrollController _epScroll = ScrollController();

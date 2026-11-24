@@ -16,6 +16,7 @@ import 'package:anymex/plus/tvui/tv_widgets.dart';
 import 'package:anymex/utils/aniskip.dart' as aniskip;
 import 'package:anymex/utils/logger.dart';
 import 'package:anymex/widgets/anymex_widgets/yumori_loader.dart';
+import 'package:anymex/theme/yumori_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -810,11 +811,15 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 30),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: f ? Colors.white : Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: f ? 1 : 0.5), width: 2),
+                    color: f ? accent : const Color(0xB313101C),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: f ? Colors.white : Colors.white.withValues(alpha: 0.35), width: f ? 3 : 1.5),
                   ),
-                  child: Text(_controls ? skip.$1 : '${skip.$1}  (OK)', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w600, color: f ? Colors.black : Colors.white)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_controls ? skip.$1 : '${skip.$1}  (OK)', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w600, color: f ? TvStyle.onAccent : YumoriColors.text)),
+                    const SizedBox(width: 6),
+                    Icon(Icons.chevron_right_rounded, size: 26, color: f ? TvStyle.onAccent : YumoriColors.text),
+                  ]),
                 ),
               ),
             ),
@@ -848,13 +853,13 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                   child: Row(children: [
                     _round(),
                     const SizedBox(width: 14),
-                    if (_next != null) _btn('Next episode', () => unawaited(_playEp(_next!))),
-                    _btn(_sub >= 0 ? 'Subtitles: ${_subs[_sub].label.split(' · ').first}' : 'Subtitles', () => _openPanel(_Panel.subs)),
-                    if (_audios.length > 1) _btn('Audio', () => _openPanel(_Panel.audio)),
-                    _btn(_error.isNotEmpty ? 'Try another source' : 'Source', () => unawaited(_pickSource())),
-                    if (!p.isMovie) _btn('Episodes', () => _openPanel(_Panel.eps)),
-                    _btn('Speed ${_speed == 1.0 ? '1' : _speed}×', () => _openPanel(_Panel.speed)),
-                    _btn('Close', () => unawaited(_close())),
+                    if (_next != null) _btn('Next episode', () => unawaited(_playEp(_next!)), Icons.skip_next_rounded),
+                    _btn(_sub >= 0 ? 'Subtitles: ${_subs[_sub].label.split(' · ').first}' : 'Subtitles', () => _openPanel(_Panel.subs), Icons.closed_caption_outlined),
+                    if (_audios.length > 1) _btn('Audio', () => _openPanel(_Panel.audio), Icons.graphic_eq_rounded),
+                    _btn(_error.isNotEmpty ? 'Try another source' : 'Source', () => unawaited(_pickSource()), Icons.swap_horiz_rounded),
+                    if (!p.isMovie) _btn('Episodes', () => _openPanel(_Panel.eps), Icons.format_list_bulleted_rounded),
+                    _btn('Speed ${_speed == 1.0 ? '1' : _speed}×', () => _openPanel(_Panel.speed), Icons.speed_rounded),
+                    _btn('Close', () => unawaited(_close()), Icons.close_rounded),
                   ]),
                 ),
               ]),
@@ -884,15 +889,21 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
               final w = box.maxWidth;
               final h = f ? 10.0 : 8.0;
               return Stack(clipBehavior: Clip.none, alignment: Alignment.centerLeft, children: [
-                Container(height: h, decoration: BoxDecoration(color: const Color(0xFF3A3A3A), borderRadius: BorderRadius.circular(5))),
-                Container(width: w * buffered, height: h, decoration: BoxDecoration(color: const Color(0xFF6B6B6B), borderRadius: BorderRadius.circular(5))),
+                // Yumori: lavender line, cream firefly for the knob.
+                Container(height: h, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(5))),
+                Container(width: w * buffered, height: h, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.32), borderRadius: BorderRadius.circular(5))),
                 Container(width: w * played, height: h, decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(5))),
                 Positioned(
-                  left: w * played - (f ? 14 : 10),
+                  left: w * played - (f ? 15 : 11),
                   child: Container(
-                    width: f ? 28 : 20,
-                    height: f ? 28 : 20,
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    width: f ? 30 : 22,
+                    height: f ? 30 : 22,
+                    decoration: BoxDecoration(
+                      color: TvStyle.yCream,
+                      shape: BoxShape.circle,
+                      border: f ? Border.all(color: Colors.white, width: 3) : null,
+                      boxShadow: [BoxShadow(color: TvStyle.yCream.withValues(alpha: f ? 0.75 : 0.5), blurRadius: f ? 22 : 14)],
+                    ),
                   ),
                 ),
               ]);
@@ -918,26 +929,42 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
         scale: f ? 1.08 : 1,
         duration: const Duration(milliseconds: 120),
         child: Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(color: f ? Colors.white : const Color(0xE6282828), shape: BoxShape.circle),
-          child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 42, color: f ? Colors.black : Colors.white),
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: TvStyle.accent(context),
+            shape: BoxShape.circle,
+            border: Border.all(color: f ? Colors.white : Colors.transparent, width: 3),
+            boxShadow: [if (f) BoxShadow(color: TvStyle.accent(context).withValues(alpha: 0.6), blurRadius: 24)],
+          ),
+          child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 44, color: TvStyle.onAccent),
         ),
       ),
     );
   }
 
-  Widget _btn(String label, VoidCallback onSelect) => Padding(
-        padding: const EdgeInsets.only(right: 14),
+  /// Yumori: pills with an icon; lavender when highlighted.
+  Widget _btn(String label, VoidCallback onSelect, [IconData? icon]) => Padding(
+        padding: const EdgeInsets.only(right: 12),
         child: TvFocusable(
           autoScroll: false,
           onSelect: onSelect,
           builder: (context, f) => Container(
             height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 22),
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: f ? Colors.white : const Color(0xE6282828), borderRadius: BorderRadius.circular(14)),
-            child: Text(label, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: f ? Colors.black : Colors.white)),
+            decoration: BoxDecoration(
+              color: f ? TvStyle.accent(context) : const Color(0xB313101C),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: f ? Colors.white : Colors.white.withValues(alpha: 0.16), width: f ? 3 : 1.5),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (icon != null) ...[
+                Icon(icon, size: 24, color: f ? TvStyle.onAccent : YumoriColors.text),
+                const SizedBox(width: 10),
+              ],
+              Text(label, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: f ? TvStyle.onAccent : YumoriColors.text)),
+            ]),
           ),
         ),
       );
@@ -997,10 +1024,10 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
           return KeyEventResult.ignored;
         },
         child: Container(
-          color: const Color(0xF2101010),
+          color: const Color(0xF213101C), // Yumori surface
           padding: const EdgeInsets.fromLTRB(40, 60, 40, 0),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text(title, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: YumoriColors.text)),
             const SizedBox(height: 8),
             Text(_panel == _Panel.subs && _subs.isEmpty ? 'No subtitles from your addons for this one.' : 'Left closes this',
                 style: const TextStyle(fontSize: 18, color: TvStyle.dim)),
@@ -1022,15 +1049,15 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 22),
                         alignment: Alignment.centerLeft,
                         decoration: BoxDecoration(
-                          color: f ? Colors.white : (on ? TvStyle.accent(context).withValues(alpha: 0.2) : Colors.transparent),
-                          borderRadius: BorderRadius.circular(12),
+                          color: f ? TvStyle.accent(context) : (on ? TvStyle.accent(context).withValues(alpha: 0.18) : Colors.transparent),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         child: Row(children: [
                           Expanded(
                             child: Text(label,
-                                maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 21, fontWeight: FontWeight.w600, color: f ? Colors.black : Colors.white)),
+                                maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 21, fontWeight: FontWeight.w600, color: f ? TvStyle.onAccent : YumoriColors.text)),
                           ),
-                          if (on) Icon(Icons.check_rounded, size: 26, color: f ? Colors.black : Colors.white),
+                          if (on) Icon(Icons.check_rounded, size: 26, color: f ? TvStyle.onAccent : TvStyle.accent(context)),
                         ]),
                       ),
                     ),
