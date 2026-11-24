@@ -143,16 +143,23 @@ jobs:
             if [ -f "tv_runner/$f" ]; then cp "tv_runner/$f" "webos/runner/$f" && echo "runner: tv_runner/$f"; fi
           done
           python3 - webos/meta/appinfo.json <<'PY'
-          import json, sys
+          import json, os, sys
           info = json.load(open(sys.argv[1]))
           info.update({"id": "${{ env.TV_APP_ID }}", "title": "${{ env.TV_APP_TITLE }}",
                        "version": "1.0.${{ github.run_number }}", "vendor": "mikeyislost",
                        # Tile colour behind the icon (LG's template has white,
                        # which showed as a white border).
-                       "iconColor": "#0D0A16"})
+                       "iconColor": "#0D0A16",
+                       # The TV's launcher caches tile pictures by file path, so
+                       # a new icon needs a new file name (icon.png kept the
+                       # old AnymeX logo even after a reinstall). Rename the
+                       # icon file whenever the icon changes.
+                       "icon": os.path.basename("${{ env.TV_APP_ICON }}"),
+                       "largeIcon": os.path.basename("${{ env.TV_APP_ICON }}")})
           json.dump(info, open(sys.argv[1], "w"), indent=4)
           PY
           cp "$TV_APP_ICON" webos/meta/icon.png || true
+          cp "$TV_APP_ICON" "webos/meta/$(basename "$TV_APP_ICON")"
 
       - name: pub get
         run: |

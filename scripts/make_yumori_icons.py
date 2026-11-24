@@ -49,7 +49,7 @@ def main() -> None:
     c = round(w * 0.07)
     tile = logo.crop((c, c, w - c, w - c))
     for name, n in (("tv_runner/yumori-icon-130.png", 130), ("tv_runner/yumori-icon-80.png", 80),
-                    ("tv/largeIcon.png", 130), ("tv/icon.png", 80)):
+                    ("tv/yumori-icon-130.png", 130), ("tv/yumori-icon-80.png", 80)):
         tile.resize((n, n), Image.LANCZOS).save(os.path.join(ROOT, name), optimize=True)
     print("Yumori icons written")
 

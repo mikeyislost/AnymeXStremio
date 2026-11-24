@@ -82,7 +82,7 @@ jobs:
           json.dump(info, open(path, "w"), indent=4)
           print(json.dumps(info, indent=2))
           PY
-            if [ -f tv/icon.png ]; then cp tv/largeIcon.png "work/$name/webos/meta/icon.png" || true; fi
+            if [ -f tv/yumori-icon-130.png ]; then cp tv/yumori-icon-130.png "work/$name/webos/meta/icon.png" || true; fi
             ( cd "work/$name" && flutter-webos pub get && flutter-webos build webos --release )
             local ipk
             ipk=$(find "work/$name/build/webos" -name '*.ipk' | head -n 1)
@@ -109,7 +109,7 @@ jobs:
           set -e
           TAG=tv-flutter-test
           BASE="https://github.com/$REPO/releases/download/$TAG"
-          python3 - "$BASE" "1.0.${{ github.run_number }}" "https://raw.githubusercontent.com/$REPO/main/tv/largeIcon.png" <<'PY'
+          python3 - "$BASE" "1.0.${{ github.run_number }}" "https://raw.githubusercontent.com/$REPO/main/tv/yumori-icon-130.png" <<'PY'
           import hashlib, json, sys
           base, version, icon = sys.argv[1:4]
           tests = [

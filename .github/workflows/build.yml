@@ -552,7 +552,7 @@ jobs:
           if [ -z "$IPK" ]; then echo "No TV app in this build"; exit 0; fi
           python3 scripts/tv_repo.py "$IPK" \
             "https://github.com/$REPO/releases/download/v$VERSION/$(basename "$IPK")" \
-            "$TV_VERSION" "https://raw.githubusercontent.com/$REPO/main/tv/largeIcon.png" dist/webos.json
+            "$TV_VERSION" "https://raw.githubusercontent.com/$REPO/$GITHUB_SHA/tv/yumori-icon-130.png" dist/webos.json
 
       - name: Publish release v${{ env.VERSION }}
         if: env.RELEASE_CHANNEL == 'stable'
@@ -632,7 +632,7 @@ jobs:
           IPK=$(ls dist/*.ipk 2>/dev/null | head -n 1 || true)
           if [ -n "$IPK" ]; then
             IPK_URL=$(python3 -c "import json; print(next(a['url'] for a in json.load(open('beta_release.json'))['assets'] if a['name'].endswith('.ipk')))")
-            cp tv/largeIcon.png /tmp/feather/tv-icon.png
+            cp tv/yumori-icon-130.png /tmp/feather/tv-icon.png
             python3 scripts/tv_repo.py "$IPK" "$IPK_URL" "$TV_VERSION" \
               "https://raw.githubusercontent.com/$REPO/feather/tv-icon.png" /tmp/feather/webos-beta.json
           fi
