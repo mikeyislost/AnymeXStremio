@@ -537,6 +537,31 @@ void main() {
       expect(PlusSkipTimes.fromIntroDbJson({'intro': []}, 100), isNull);
     });
 
+    test('SkipDB: only times fitted to this length are used', () {
+      final t = PlusSkipTimes.fromSkipDbJson({
+        'imdb_id': 'tt9737326',
+        'segments': {
+          'intro': {'start_ms': 332000, 'end_ms': 405500, 'match': 'shifted', 'offset_ms': -20000},
+          'recap': null,
+          'outro': {'start_ms': 2766000, 'end_ms': null, 'match': 'exact'},
+          'preview': {'start_ms': 2800000, 'end_ms': 2830000, 'match': 'out-of-range'},
+        },
+      }, 2830)!;
+      expect(t.op!.start, 332);
+      expect(t.op!.end, 406);
+      expect(t.ed!.start, 2766);
+      expect(t.ed!.end, 2830);
+      expect(t.recap, isNull);
+      // Every segment timed on another release: nothing (TheIntroDB next).
+      expect(
+          PlusSkipTimes.fromSkipDbJson({
+            'segments': {
+              'intro': {'start_ms': 299700, 'end_ms': 381700, 'match': 'out-of-range'},
+            },
+          }, 2850),
+          isNull);
+    });
+
     test('chapter names become skip times', () {
       expect(PlusSkipTimes.chapterKind('Opening Credits'), 'intro');
       expect(PlusSkipTimes.chapterKind('Previously On'), 'recap');

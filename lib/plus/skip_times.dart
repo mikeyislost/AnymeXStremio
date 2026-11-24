@@ -1,6 +1,8 @@
-// AnymeX+: skip intros, recaps and credits on Movies & TV. Times come from
-// TheIntroDB (free, community-run; looked up by IMDb id + season/episode),
-// or else from the video's own chapter marks. They fill the same skip
+// Yumori: skip intros, recaps and credits on Movies & TV. Times come from
+// SkipDB when it can fit them to the video's length (it shifts a timing
+// recorded on a slightly different release), else TheIntroDB (free,
+// community-run; looked up by IMDb id + season/episode), or else from the
+// video's own chapter marks. They fill the same skip
 // times AniSkip fills for anime, so the player's Skip button and auto-skip
 // settings work unchanged.
 
@@ -23,6 +25,7 @@ class PlusSkipTimes {
   PlusSkipTimes._();
 
   static const _api = 'https://api.theintrodb.org/v4/media';
+  static const _skipDb = 'https://api.skipdb.tv/api/segments';
   static final Map<String, aniskip.EpisodeSkipTimes?> _cache = {};
 
   /// The IMDb title (and episode) behind a Stremio playback, or null when
@@ -43,14 +46,22 @@ class PlusSkipTimes {
     return (imdb: parts[0], season: null, episode: null);
   }
 
-  /// Skip times for [target]: TheIntroDB first, then [chapters].
+  /// Skip times for [target]: SkipDB when it fits them to this length,
+  /// then TheIntroDB, then [chapters].
   static Future<aniskip.EpisodeSkipTimes?> load(
     PlusSkipTarget target, {
     int durationMs = 0,
     Future<List<PlusChapter>> Function()? chapters,
   }) async {
-    final key = '${target.imdb}:${target.season}:${target.episode}';
+    // The length is part of the key: another source of the same episode
+    // can be a different release with different times.
+    final key = '${target.imdb}:${target.season}:${target.episode}:${durationMs ~/ 1000}';
     if (_cache.containsKey(key) && _cache[key] != null) return _cache[key];
+    final fitted = await _fromSkipDb(target, durationMs);
+    if (fitted != null) {
+      _cache[key] = fitted;
+      return fitted;
+    }
     final fromDb = await _fromIntroDb(target, durationMs);
     if (fromDb != null) {
       _cache[key] = fromDb;
@@ -63,6 +74,53 @@ class PlusSkipTimes {
       Logger.i('Skip times: chapters unreadable: $e');
       return null;
     }
+  }
+
+  static Future<aniskip.EpisodeSkipTimes?> _fromSkipDb(
+      PlusSkipTarget t, int durationMs) async {
+    if (durationMs <= 0) return null; // only useful when it can fit the times
+    final q = <String, String>{
+      'imdb_id': t.imdb,
+      if (t.season != null) 'season': '${t.season}',
+      if (t.episode != null) 'episode': '${t.episode}',
+      'duration': '${durationMs ~/ 1000}',
+    };
+    try {
+      final r = await http
+          .get(Uri.parse(_skipDb).replace(queryParameters: q))
+          .timeout(const Duration(seconds: 8));
+      if (r.statusCode != 200) return null;
+      return fromSkipDbJson(jsonDecode(r.body), durationMs ~/ 1000);
+    } catch (e) {
+      Logger.i('Skip times: SkipDB failed: $e');
+      return null;
+    }
+  }
+
+  /// SkipDB's answer → skip times, keeping only segments it matched to this
+  /// video's length ("exact", or "shifted" to fit); "out-of-range" ones were
+  /// timed on a different release and are left out.
+  static aniskip.EpisodeSkipTimes? fromSkipDbJson(dynamic body, int durationSec) {
+    if (body is! Map) return null;
+    final segs = body['segments'] is Map ? body['segments'] as Map : body;
+    aniskip.SkipIntervals? pick(String name) {
+      final v = segs[name];
+      if (v is! Map) return null;
+      final match = '${v['match'] ?? ''}';
+      if (match != 'exact' && match != 'shifted') return null;
+      final startMs = (v['start_ms'] as num?)?.toInt() ?? 0;
+      final endMs = (v['end_ms'] as num?)?.toInt();
+      final start = startMs ~/ 1000;
+      final end = endMs != null ? (endMs / 1000).ceil() : (durationSec > 0 ? durationSec : null);
+      if (end == null || end <= start) return null;
+      return aniskip.SkipIntervals(start: start, end: end);
+    }
+
+    final op = pick('intro');
+    final recap = pick('recap');
+    final ed = pick('outro') ?? pick('credits');
+    if (op == null && recap == null && ed == null) return null;
+    return aniskip.EpisodeSkipTimes(op: op, ed: ed, recap: recap);
   }
 
   static Future<aniskip.EpisodeSkipTimes?> _fromIntroDb(
