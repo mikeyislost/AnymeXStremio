@@ -413,7 +413,7 @@ class _TvHomePageState extends State<TvHomePage> {
         ),
       ),
       Positioned.fill(
-        top: 600,
+        top: 580,
         child: Obx(() {
           final data = Get.find<ServiceHandler>().anilistService;
           final cw = _continue();
@@ -571,7 +571,7 @@ class _Banner extends StatelessWidget {
           ),
           Positioned(
             left: TvStyle.pad,
-            top: 96,
+            top: 80,
             width: 900,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -388,7 +388,7 @@ class TvCard extends StatelessWidget {
 
   static const posterW = 168.0, posterH = 252.0, wideW = 320.0, wideH = 180.0;
   // Home's short rows (compact).
-  static const smallW = 132.0, smallH = 186.0, smallWideW = 248.0, smallWideH = 140.0;
+  static const smallW = 156.0, smallH = 228.0, smallWideW = 288.0, smallWideH = 162.0;
 
   static double widthFor({required bool wide, required bool compact}) =>
       compact ? (wide ? smallWideW : smallW) : (wide ? wideW : posterW);
