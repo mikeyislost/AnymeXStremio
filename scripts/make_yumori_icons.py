@@ -42,6 +42,15 @@ def main() -> None:
     ico.save(os.path.join(ROOT, "anymex.ico"), sizes=ICO_SIZES)
 
     logo.resize((1024, 1024), Image.LANCZOS).save(os.path.join(ROOT, "logo.png"), optimize=True)
+
+    # TV tiles: crop ~7% so the art's glassy rim and dark rounded corners go
+    # (on the TV they looked like a white border and the icon didn't fill).
+    w = logo.size[0]
+    c = round(w * 0.07)
+    tile = logo.crop((c, c, w - c, w - c))
+    for name, n in (("tv_runner/yumori-icon-130.png", 130), ("tv_runner/yumori-icon-80.png", 80),
+                    ("tv/largeIcon.png", 130), ("tv/icon.png", 80)):
+        tile.resize((n, n), Image.LANCZOS).save(os.path.join(ROOT, name), optimize=True)
     print("Yumori icons written")
 
 

@@ -146,7 +146,10 @@ jobs:
           import json, sys
           info = json.load(open(sys.argv[1]))
           info.update({"id": "${{ env.TV_APP_ID }}", "title": "${{ env.TV_APP_TITLE }}",
-                       "version": "1.0.${{ github.run_number }}", "vendor": "mikeyislost"})
+                       "version": "1.0.${{ github.run_number }}", "vendor": "mikeyislost",
+                       # Tile colour behind the icon (LG's template has white,
+                       # which showed as a white border).
+                       "iconColor": "#0D0A16"})
           json.dump(info, open(sys.argv[1], "w"), indent=4)
           PY
           cp "$TV_APP_ICON" webos/meta/icon.png || true

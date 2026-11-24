@@ -417,17 +417,29 @@ class _PlusTvShellState extends State<PlusTvShell> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Yumori: the tree mark; the wordmark joins it when
-                            // the rail opens.
+                            // Yumori: the tree mark when closed; it fades into
+                            // the wordmark when the rail opens (never both).
                             Padding(
-                              padding: EdgeInsets.only(left: _railOpen ? 10 : 2, bottom: 40),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Image.asset('assets/images/yumori/tree.png', width: 60, height: 60, cacheWidth: 120, filterQuality: FilterQuality.medium),
-                                if (_railOpen) ...[
-                                  const SizedBox(width: 14),
-                                  Image.asset('assets/images/yumori/wordmark.png', height: 40, cacheHeight: 80, filterQuality: FilterQuality.medium),
-                                ],
-                              ]),
+                              padding: const EdgeInsets.only(left: 2, bottom: 40),
+                              child: SizedBox(
+                                height: 60,
+                                width: _railOpen ? TvStyle.railOpenW - 48 : 64,
+                                child: Stack(alignment: Alignment.centerLeft, children: [
+                                  AnimatedOpacity(
+                                    opacity: _railOpen ? 0 : 1,
+                                    duration: const Duration(milliseconds: 220),
+                                    child: Image.asset('assets/images/yumori/tree.png', width: 60, height: 60, cacheWidth: 120, filterQuality: FilterQuality.medium),
+                                  ),
+                                  AnimatedOpacity(
+                                    opacity: _railOpen ? 1 : 0,
+                                    duration: const Duration(milliseconds: 220),
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Image.asset('assets/images/yumori/wordmark.png', height: 44, cacheHeight: 88, filterQuality: FilterQuality.medium),
+                                    ),
+                                  ),
+                                ]),
+                              ),
                             ),
                             for (var i = 0; i < _tabs.length - 1; i++) ...[_railItem(i), const SizedBox(height: 14)],
                             const Spacer(),
