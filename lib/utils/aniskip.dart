@@ -23,30 +23,19 @@ class AniSkipApi {
 
       final skipData = jsonDecode(response.body);
       if (skipData['found'] == true) {
-        final results = skipData['results'] as List<dynamic>;
-
-        SkipIntervals? op;
-        SkipIntervals? ed;
-        SkipIntervals? recap;
-
-        for (final element in results) {
-          final String type = element['skipType'] as String? ?? '';
+        final results = <SkipResult>[];
+        for (final element in skipData['results'] as List<dynamic>) {
           final interval = element['interval'];
-          final SkipIntervals parsed = SkipIntervals(
-            start: (interval['startTime'] as num).toInt(),
-            end: (interval['endTime'] as num).toInt(),
-          );
-
-          if (type == 'op' || type == 'mixed-op') {
-            op ??= parsed;
-          } else if (type == 'ed' || type == 'mixed-ed') {
-            ed ??= parsed;
-          } else if (type == 'recap') {
-            recap ??= parsed;
-          }
+          if (interval == null) continue;
+          results.add(SkipResult(
+            type: element['skipType'] as String? ?? '',
+            start: (interval['startTime'] as num).toDouble(),
+            end: (interval['endTime'] as num).toDouble(),
+            length: (element['episodeLength'] as num?)?.toDouble() ?? 0,
+          ));
         }
-
-        return EpisodeSkipTimes(op: op, ed: ed, recap: recap);
+        if (results.isEmpty) return null;
+        return EpisodeSkipTimes.fromResults(results, episodeLength);
       } else {
         return null;
       }
@@ -61,7 +50,66 @@ class EpisodeSkipTimes {
   final SkipIntervals? ed;
   final SkipIntervals? recap;
 
-  EpisodeSkipTimes({this.op, this.ed, this.recap});
+  /// Every AniSkip submission, kept so the times can be picked again once
+  /// the video's real length is known ([fittedTo]).
+  final List<SkipResult> results;
+
+  /// The video length (seconds) these times were picked for; 0 = unknown.
+  final int fittedTo;
+
+  EpisodeSkipTimes({this.op, this.ed, this.recap, this.results = const [], this.fittedTo = 0});
+
+  /// Picks, for each kind, the submission made on the release closest in
+  /// length to the video ([lengthSec]). Endings line up with the end of the
+  /// video, so an ending is moved by the difference in length; openings and
+  /// recaps stay as submitted. With no length known, the first one wins.
+  factory EpisodeSkipTimes.fromResults(List<SkipResult> results, int lengthSec) {
+    SkipIntervals? pick(bool Function(String) isType, {bool fromEnd = false}) {
+      final list = results.where((r) => isType(r.type)).toList();
+      if (list.isEmpty) return null;
+      var best = list.first;
+      if (lengthSec > 0) {
+        for (final r in list) {
+          if (r.length > 0 && (best.length <= 0 || (r.length - lengthSec).abs() < (best.length - lengthSec).abs())) best = r;
+        }
+      }
+      var shift = 0.0;
+      // Only for small differences (a few seconds of logos or a different
+      // cut); a big one means another version of the episode entirely.
+      if (fromEnd && lengthSec > 0 && best.length > 0 && (lengthSec - best.length).abs() <= 90) {
+        shift = lengthSec - best.length;
+      }
+      final start = (best.start + shift).round();
+      final end = (best.end + shift).round();
+      if (end <= start) return null;
+      return SkipIntervals(start: start < 0 ? 0 : start, end: end);
+    }
+
+    return EpisodeSkipTimes(
+      op: pick((t) => t == 'op' || t == 'mixed-op'),
+      ed: pick((t) => t == 'ed' || t == 'mixed-ed', fromEnd: true),
+      recap: pick((t) => t == 'recap'),
+      results: results,
+      fittedTo: lengthSec,
+    );
+  }
+
+  /// The same times picked again for a video [lengthSec] long (no change if
+  /// already fitted to it or there's nothing to pick from).
+  EpisodeSkipTimes fittedFor(int lengthSec) {
+    if (lengthSec <= 0 || lengthSec == fittedTo || results.isEmpty) return this;
+    return EpisodeSkipTimes.fromResults(results, lengthSec);
+  }
+}
+
+/// One AniSkip submission: where it is, and how long the episode it was
+/// timed on was (seconds).
+class SkipResult {
+  final String type;
+  final double start;
+  final double end;
+  final double length;
+  const SkipResult({required this.type, required this.start, required this.end, required this.length});
 }
 
 class SkipIntervals {

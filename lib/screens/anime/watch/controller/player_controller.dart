@@ -969,6 +969,12 @@ class PlayerController extends GetxController with WidgetsBindingObserver {
 
   void _updateSkipUiState() {
     if (skipTimes == null) return;
+    // Yumori: the times were asked for before the video's length was known;
+    // pick them again for the real length (see EpisodeSkipTimes.fittedFor).
+    final lengthSec = episodeDuration.value.inSeconds;
+    if (lengthSec > 0 && skipTimes!.fittedTo != lengthSec) {
+      skipTimes = skipTimes!.fittedFor(lengthSec);
+    }
 
     final currentSec = currentPosition.value.inSeconds;
     aniskip.SkipIntervals? foundInterval;

@@ -559,7 +559,13 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
     _hide?.cancel();
     _hide = Timer(const Duration(seconds: 5), () {
       final c = _c;
-      if (!mounted || _panel != _Panel.none || _error.isNotEmpty || c == null || !c.value.isPlaying) return;
+      if (!mounted || _panel != _Panel.none || _error.isNotEmpty || c == null) return;
+      // Paused, starting or buffering: look again later instead of giving up
+      // (the controls used to stay up for good if the first check missed).
+      if (!c.value.isPlaying) {
+        _armHide();
+        return;
+      }
       setState(() => _controls = false);
       _root.requestFocus();
     });
@@ -850,17 +856,23 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                     }
                     return KeyEventResult.ignored;
                   },
-                  child: Row(children: [
+                  // Scrolls sideways if the buttons don't fit (the highlight
+                  // used to vanish off the right edge).
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.none,
+                    child: Row(children: [
                     _round(),
                     const SizedBox(width: 14),
                     if (_next != null) _btn('Next episode', () => unawaited(_playEp(_next!)), Icons.skip_next_rounded),
-                    _btn(_sub >= 0 ? 'Subtitles: ${_subs[_sub].label.split(' · ').first}' : 'Subtitles', () => _openPanel(_Panel.subs), Icons.closed_caption_outlined),
+                    _btn(_sub >= 0 ? _subs[_sub].label.split(' · ').first : 'Subtitles', () => _openPanel(_Panel.subs), Icons.closed_caption_outlined),
                     if (_audios.length > 1) _btn('Audio', () => _openPanel(_Panel.audio), Icons.graphic_eq_rounded),
                     _btn(_error.isNotEmpty ? 'Try another source' : 'Source', () => unawaited(_pickSource()), Icons.swap_horiz_rounded),
                     if (!p.isMovie) _btn('Episodes', () => _openPanel(_Panel.eps), Icons.format_list_bulleted_rounded),
                     _btn('Speed ${_speed == 1.0 ? '1' : _speed}×', () => _openPanel(_Panel.speed), Icons.speed_rounded),
-                    _btn('Close', () => unawaited(_close()), Icons.close_rounded),
+                    _btn('', () => unawaited(_close()), Icons.close_rounded), // Close
                   ]),
+                  ),
                 ),
               ]),
             ),
@@ -947,11 +959,12 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
   Widget _btn(String label, VoidCallback onSelect, [IconData? icon]) => Padding(
         padding: const EdgeInsets.only(right: 12),
         child: TvFocusable(
-          autoScroll: false,
+          autoScroll: true, // the row scrolls if the pills don't fit
           onSelect: onSelect,
           builder: (context, f) => Container(
             height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: 22),
+            padding: EdgeInsets.symmetric(horizontal: label.isEmpty ? 0 : 18),
+            width: label.isEmpty ? 60 : null,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: f ? TvStyle.accent(context) : const Color(0xB313101C),
@@ -959,11 +972,9 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
               border: Border.all(color: f ? Colors.white : Colors.white.withValues(alpha: 0.16), width: f ? 3 : 1.5),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (icon != null) ...[
-                Icon(icon, size: 24, color: f ? TvStyle.onAccent : YumoriColors.text),
-                const SizedBox(width: 10),
-              ],
-              Text(label, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: f ? TvStyle.onAccent : YumoriColors.text)),
+              if (icon != null) Icon(icon, size: label.isEmpty ? 28 : 22, color: f ? TvStyle.onAccent : YumoriColors.text),
+              if (icon != null && label.isNotEmpty) const SizedBox(width: 8),
+              if (label.isNotEmpty) Text(label, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: f ? TvStyle.onAccent : YumoriColors.text)),
             ]),
           ),
         ),
