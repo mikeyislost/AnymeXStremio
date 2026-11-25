@@ -93,6 +93,9 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
   int _audio = 0;
   List<_Sub> _subs = const [];
   int _sub = -1;
+  // Subtitles inside the video (the TV draws them itself): (label, language).
+  List<(String, String)> _embedded = const [];
+  int _emb = -1;
   aniskip.EpisodeSkipTimes? _skip;
   final _autoSkipped = <String>{}; // this episode: intro / recap already skipped
 
@@ -278,6 +281,8 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       _marked = false;
       _sub = -1;
       _subs = const [];
+      _emb = -1;
+      _embedded = const [];
       _audios = const [];
       _audio = 0;
     });
@@ -317,7 +322,10 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
     setState(() {
       _audios = list;
       _audio = 0;
+      _embedded = _parseEmbeddedSubs(raw);
     });
+    // Embedded subtitles stay off until picked (no doubles with addon ones).
+    if (_emb < 0 && _embedded.isNotEmpty) unawaited(_tvSubs(false));
     final want = KvHelper.get<String>(_kAudioLang, defaultVal: '');
     if (want.isNotEmpty && list.length > 1 && list.first.$2 != want) {
       final i = list.indexWhere((a) => a.$2 == want);
@@ -354,6 +362,78 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
     } catch (_) {
       return const [];
     }
+  }
+
+  /// Subtitle tracks inside the video, from the same sourceInfo report.
+  static List<(String, String)> _parseEmbeddedSubs(String raw) {
+    try {
+      final j = jsonDecode(raw);
+      final src = (j is Map ? j['sourceInfo'] : null) as Map? ?? const {};
+      final progs = src['programInfo'] as List? ?? const [];
+      final p0 = progs.isEmpty ? const {} : progs.first as Map;
+      final n = (p0['numSubtitleTracks'] as num? ?? p0['numTextTracks'] as num?)?.toInt() ?? 0;
+      final info = (p0['subtitleTrackInfo'] ??
+              p0['subtitleTracks'] ??
+              p0['textTrackInfo'] ??
+              src['subtitleTrackInfo'] ??
+              src['textTrackInfo']) as List? ??
+          const [];
+      final count = n > info.length ? n : info.length;
+      return [
+        for (var i = 0; i < count; i++)
+          () {
+            final t = i < info.length && info[i] is Map ? info[i] as Map : const {};
+            final lang = '${t['language'] ?? t['lang'] ?? ''}'.toLowerCase();
+            final kind = '${t['type'] ?? t['codec'] ?? t['format'] ?? ''}';
+            final name = lang.isNotEmpty && lang != 'und' && lang != 'null' ? _langName(lang) : 'Track ${i + 1}';
+            return ([name, if (kind.isNotEmpty && kind != 'null') kind.toUpperCase()].join(' · '), lang);
+          }(),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// The TV's own subtitle drawing (embedded tracks) on or off.
+  Future<bool> _tvSubs(bool on) async {
+    final c = _c;
+    if (c == null) return false;
+    try {
+      return await _aux.invokeMethod<bool>('subtitles', {'textureId': c.playerId, 'enable': on}) ?? false;
+    } catch (e) {
+      Logger.i('TV subtitles ${on ? 'on' : 'off'}: $e');
+      return false;
+    }
+  }
+
+  /// Shows embedded subtitle track [i] (drawn by the TV), turning addon
+  /// subtitles off.
+  Future<void> _setEmbedded(int i) async {
+    final c = _c;
+    if (c == null) return;
+    setState(() {
+      _emb = i;
+      _sub = -1;
+      _panel = _Panel.none;
+    });
+    await c.setClosedCaptionFile(null);
+    var ok = false;
+    try {
+      // LG's docs call the type "subtitle"; webOS's media server says "text".
+      for (final type in const ['text', 'subtitle']) {
+        ok = await _aux.invokeMethod<bool>('selectTrack', {'textureId': c.playerId, 'type': type, 'index': i}) ?? false;
+        if (ok) break;
+      }
+    } catch (e) {
+      Logger.i('TV embedded subtitle: $e');
+    }
+    final shown = await _tvSubs(true);
+    if (!mounted) return;
+    if (!ok && !shown) {
+      setState(() => _emb = -1);
+      tvToast(context, "The TV couldn't show that subtitle track.");
+    }
+    _closePanel();
   }
 
   Future<void> _setAudio(int i, {bool remember = true}) async {
@@ -417,10 +497,14 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
   Future<void> _setSub(int i, {bool remember = true}) async {
     final c = _c;
     if (c == null) return;
+    final hadEmbedded = _emb >= 0;
     setState(() {
       _sub = i;
+      _emb = -1;
       _panel = _Panel.none;
     });
+    // Addon subtitles (or Off): the TV's own embedded ones go away.
+    if (hadEmbedded || i < 0) unawaited(_tvSubs(false));
     if (i < 0) {
       await c.setClosedCaptionFile(null);
       if (remember) KvHelper.set(_kSubLang, '');
@@ -865,7 +949,12 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                     _round(),
                     const SizedBox(width: 14),
                     if (_next != null) _btn('Next episode', () => unawaited(_playEp(_next!)), Icons.skip_next_rounded),
-                    _btn(_sub >= 0 ? _subs[_sub].label.split(' · ').first : 'Subtitles', () => _openPanel(_Panel.subs), Icons.closed_caption_outlined),
+                    _btn(
+                        _emb >= 0 && _emb < _embedded.length
+                            ? _embedded[_emb].$1.split(' · ').first
+                            : (_sub >= 0 ? _subs[_sub].label.split(' · ').first : 'Subtitles'),
+                        () => _openPanel(_Panel.subs),
+                        Icons.closed_caption_outlined),
                     if (_audios.length > 1) _btn('Audio', () => _openPanel(_Panel.audio), Icons.graphic_eq_rounded),
                     _btn(_error.isNotEmpty ? 'Try another source' : 'Source', () => unawaited(_pickSource()), Icons.swap_horiz_rounded),
                     if (!p.isMovie) _btn('Episodes', () => _openPanel(_Panel.eps), Icons.format_list_bulleted_rounded),
@@ -981,12 +1070,20 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
       );
 
   Widget _panelView() {
-    final items = <(String, bool, VoidCallback)>[];
+    // A row with no action is a section heading.
+    final items = <(String, bool, VoidCallback?)>[];
     var title = '';
     switch (_panel) {
       case _Panel.subs:
         title = 'Subtitles';
-        items.add(('Off', _sub < 0, () => unawaited(_setSub(-1))));
+        items.add(('Off', _sub < 0 && _emb < 0, () => unawaited(_setSub(-1))));
+        items.add(('In the video', false, null));
+        if (_embedded.isEmpty) items.add(('None found in this video', false, null));
+        for (var i = 0; i < _embedded.length; i++) {
+          items.add((_embedded[i].$1, _emb == i, () => unawaited(_setEmbedded(i))));
+        }
+        items.add(('From addons', false, null));
+        if (_subs.isEmpty) items.add(('None from your addons', false, null));
         for (var i = 0; i < _subs.length; i++) {
           items.add((_subs[i].label, _sub == i, () => unawaited(_setSub(i))));
         }
@@ -1040,7 +1137,7 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: YumoriColors.text)),
             const SizedBox(height: 8),
-            Text(_panel == _Panel.subs && _subs.isEmpty ? 'No subtitles from your addons for this one.' : 'Left closes this',
+            Text('Left closes this',
                 style: const TextStyle(fontSize: 18, color: TvStyle.dim)),
             const SizedBox(height: 22),
             Expanded(
@@ -1049,6 +1146,16 @@ class _TvPlayerPageState extends State<TvPlayerPage> {
                 itemCount: items.length,
                 itemBuilder: (context, i) {
                   final (label, on, go) = items[i];
+                  if (go == null) {
+                    final heading = label == 'In the video' || label == 'From addons';
+                    return Padding(
+                      padding: EdgeInsets.fromLTRB(22, heading ? 18 : 0, 22, 10),
+                      child: Text(heading ? label.toUpperCase() : label,
+                          style: heading
+                              ? TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 2.5, color: TvStyle.accent(context))
+                              : const TextStyle(fontSize: 19, color: TvStyle.dim)),
+                    );
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: TvFocusable(

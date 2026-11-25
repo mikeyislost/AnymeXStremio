@@ -159,6 +159,12 @@ void VideoPlayerPlugin::handleAuxChannel(
     int64_t index = LookupEncodableMapLong(arguments, "index");
     VideoPlayer* player = getVideoPlayer(texture_id);
     result->Success(flutter::EncodableValue(player ? player->SelectTrack(type, static_cast<int>(index)) : false));
+  } else if (method.compare("subtitles") == 0) {
+    // Yumori: the TV's own subtitle drawing (embedded tracks) on or off.
+    int64_t texture_id = LookupEncodableMapLong(arguments, "textureId");
+    bool enable = LookupEncodableMap<bool>(arguments, "enable");
+    VideoPlayer* player = getVideoPlayer(texture_id);
+    result->Success(flutter::EncodableValue(player ? player->SetSubtitles(enable) : false));
   } else {
     LogWarn(TAG) << "unexpected method is called: " << method;
     result->NotImplemented();

@@ -422,6 +422,18 @@ bool WebOSPlayer::selectTrack(const std::string& type, int index) {
   return true;
 }
 
+bool WebOSPlayer::setSubtitles(bool enable) {
+  if (state_ == UNLOADED || state_ == IN_LOADING || state_ == REMOVED || slot_ < 0) {
+    return false;
+  }
+  if (NDL_MediaSetPlayer(slot_) != 0 || NDL_MediaSetSubtitleEnable(enable) != 0) {
+    LogWarn(TAG) << "NDL_MediaSetSubtitleEnable(" << enable << ") failed";
+    return false;
+  }
+  LogInfo(TAG) << "NDL_MediaSetSubtitleEnable(" << enable << ")";
+  return true;
+}
+
 bool WebOSPlayer::play() {
   if (state_ == UNLOADED ||
       state_ == IN_LOADING ||

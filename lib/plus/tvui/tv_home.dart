@@ -413,7 +413,7 @@ class _TvHomePageState extends State<TvHomePage> {
         ),
       ),
       Positioned.fill(
-        top: 580,
+        top: 430,
         child: Obx(() {
           final data = Get.find<ServiceHandler>().anilistService;
           final cw = _continue();
@@ -571,8 +571,8 @@ class _Banner extends StatelessWidget {
           ),
           Positioned(
             left: TvStyle.pad,
-            top: 80,
-            width: 900,
+            top: 56,
+            width: 980,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -580,21 +580,21 @@ class _Banner extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 3, color: accent)),
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 Text(item.title,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 78, height: 1.0, fontWeight: FontWeight.w800, letterSpacing: -1.5, color: YumoriColors.text)),
-                const SizedBox(height: 18),
+                    style: const TextStyle(fontSize: 64, height: 1.05, fontWeight: FontWeight.w800, letterSpacing: -1.2, color: YumoriColors.text)),
+                const SizedBox(height: 10),
                 if (meta.isNotEmpty) ...[
-                  Text(meta.join('   ·   '), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: TvStyle.text2)),
-                  const SizedBox(height: 12),
+                  Text(meta.join('   ·   '), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w600, color: TvStyle.text2)),
+                  const SizedBox(height: 8),
                 ],
                 Text(item.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 21, height: 1.5, color: TvStyle.dim)),
-                const SizedBox(height: 26),
+                    style: const TextStyle(fontSize: 20, height: 1.4, color: TvStyle.dim)),
+                const SizedBox(height: 18),
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   Focus(
                     canRequestFocus: false,

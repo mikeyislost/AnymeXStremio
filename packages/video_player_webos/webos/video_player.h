@@ -46,6 +46,7 @@ public:
   int64_t GetPosition();
   std::string GetSourceInfo() { return player_.getSourceInfo(); }
   bool SelectTrack(const std::string& type, int index) { return player_.selectTrack(type, index); }
+  bool SetSubtitles(bool enable) { return player_.setSubtitles(enable); }
   void Dispose(const DisposedCallback disposed_cb);
 
   void SetVisibility(bool visibility);

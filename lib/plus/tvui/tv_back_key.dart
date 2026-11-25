@@ -21,6 +21,11 @@ class TvBackKey {
   /// What happened the last time the app asked: shown in Settings.
   static final status = ValueNotifier<String>('Not asked yet');
 
+  /// True once the runner set the property with the setting on: the remote's
+  /// Back reaches the app, so Left at the edge only opens the menu.
+  static bool get working => _working;
+  static bool _working = false;
+
   static bool get enabled {
     try {
       return KvHelper.get<bool>(_kOn, defaultVal: true);
@@ -42,6 +47,7 @@ class TvBackKey {
     final on = enabled;
     try {
       final r = await _channel.send('set\n$property\n${on ? 'true' : 'false'}');
+      _working = on && r == 'ok';
       status.value = switch (r) {
         'ok' => on ? 'Asked the TV for Back' : 'Back left to the TV (exit popup)',
         null => "This build's runner can't ask for Back",
@@ -49,6 +55,7 @@ class TvBackKey {
         _ => 'The runner said: $r',
       };
     } catch (e) {
+      _working = false;
       status.value = 'Asking failed: $e';
     }
   }

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:anymex/controllers/services/anilist/anilist_auth.dart';
+import 'package:anymex/plus/for_you/taste.dart';
+import 'package:anymex/plus/for_you/taste_buttons.dart' show PlusTasteButtons;
 import 'package:anymex/plus/stremio/stremio_models.dart';
 import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/plus/stremio/watched_bitfield.dart';
@@ -51,6 +53,15 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
   String _error = '';
   TvPlayable? _playable;
   StremioMeta? _meta;
+
+  /// The id Like / Love / Dislike are kept under (as on the phone): the
+  /// anime's AniList key, or the Stremio id of a movie or show.
+  String? get _tasteId {
+    final it = _item;
+    if (it.isAnime) return PlusTaste.animeKey(it.id);
+    final id = _meta?.id ?? it.id;
+    return id.startsWith('tt') ? id : null;
+  }
   String _resumeVideo = ''; // Stremio: the episode you're on
   bool _inLibrary = false; // Stremio: saved in your library
   bool _matching = false;
@@ -504,6 +515,9 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                   ),
                 if (!it.isAnime)
                   TvButton(label: _inLibrary ? 'In library ✓' : 'Add to library', onSelect: _toggleLibrary),
+                // Like / Love / Dislike (For you leans on these; movies and
+                // shows also rate on Simkl), the same marks as the phone.
+                if (_tasteId != null) _TasteButtons(id: _tasteId!, type: it.kind, title: it.title, genres: it.genres),
                 if (it.isAnime)
                   ValueListenableBuilder<String>(
                     valueListenable: TvExt.instance.using,
@@ -646,5 +660,67 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
         ],
       ),
     ]);
+  }
+}
+
+/// Like / Love / Dislike as round buttons (pressing the current one clears it).
+class _TasteButtons extends StatelessWidget {
+  final String id;
+  final String type;
+  final String title;
+  final List<String> genres;
+  const _TasteButtons({required this.id, required this.type, required this.title, required this.genres});
+
+  void _press(BuildContext context, TasteMark tapped) {
+    final next = PlusTaste.markFor(id) == tapped ? TasteMark.none : tapped;
+    PlusTaste.setMark(id, next, title: title, genres: genres);
+    tvToast(context, switch (next) {
+      TasteMark.love => 'Loved. For you will lean into this',
+      TasteMark.like => 'Liked. For you will show more like this',
+      TasteMark.dislike => 'Disliked. For you will show less like this',
+      TasteMark.none => 'Cleared',
+    });
+    if (type != 'anime') {
+      unawaited(StremioService.to.sendSimklRating(id, type, PlusTasteButtons.simklRatingFor(next)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    PlusTaste.ensureLoaded();
+    return Obx(() {
+      final mark = PlusTaste.marks[id] ?? TasteMark.none;
+      Widget b(TasteMark m, IconData on, IconData off, String label) => Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TvFocusable(
+              onSelect: () => _press(context, m),
+              builder: (context, f) {
+                final picked = mark == m;
+                final accent = TvStyle.accent(context);
+                return TvRing(
+                  on: f,
+                  radius: 34,
+                  gap: 4,
+                  width: 3,
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: picked ? accent : (f ? accent.withValues(alpha: 0.22) : Colors.transparent),
+                      border: Border.all(color: picked ? Colors.transparent : TvStyle.line, width: 1.5),
+                    ),
+                    child: Icon(picked ? on : off, size: 30, semanticLabel: label, color: picked ? TvStyle.onAccent : Colors.white),
+                  ),
+                );
+              },
+            ),
+          );
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        b(TasteMark.like, Icons.thumb_up_alt_rounded, Icons.thumb_up_alt_outlined, 'Like'),
+        b(TasteMark.love, Icons.favorite_rounded, Icons.favorite_border_rounded, 'Love'),
+        b(TasteMark.dislike, Icons.thumb_down_alt_rounded, Icons.thumb_down_alt_outlined, 'Dislike'),
+      ]);
+    });
   }
 }

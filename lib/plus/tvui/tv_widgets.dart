@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:anymex/database/kv_helper.dart';
 import 'package:anymex/constants/contants.dart' show colorList;
 import 'package:anymex/database/data_keys/keys.dart';
+import 'package:anymex/plus/tvui/tv_back_key.dart';
 import 'package:anymex/plus/tvui/tv_data.dart';
 import 'package:anymex/plus/tvui/tv_shell.dart' show PlusTvUi;
 import 'package:anymex/theme/yumori_tokens.dart';
@@ -112,7 +113,9 @@ class TvNav {
   static bool edgeLeft(BuildContext context) {
     final route = ModalRoute.of(context);
     if (route != null && !route.isFirst) {
-      Navigator.of(context).maybePop();
+      // With the remote's Back working, Left no longer goes back (it was
+      // the stand-in while LG kept Back from the app).
+      if (!TvBackKey.working) Navigator.of(context).maybePop();
       return true;
     }
     if (openMenu != null) {
@@ -388,7 +391,7 @@ class TvCard extends StatelessWidget {
 
   static const posterW = 168.0, posterH = 252.0, wideW = 320.0, wideH = 180.0;
   // Home's short rows (compact).
-  static const smallW = 156.0, smallH = 228.0, smallWideW = 288.0, smallWideH = 162.0;
+  static const smallW = 260.0, smallH = 380.0, smallWideW = 440.0, smallWideH = 248.0;
 
   static double widthFor({required bool wide, required bool compact}) =>
       compact ? (wide ? smallWideW : smallW) : (wide ? wideW : posterW);
@@ -409,7 +412,7 @@ class TvCard extends StatelessWidget {
       },
       builder: (context, focused) => RepaintBoundary(
         child: AnimatedScale(
-          scale: focused ? (compact ? 1.08 : 1.06) : 1.0,
+          scale: focused ? (compact ? 1.05 : 1.06) : 1.0,
           duration: const Duration(milliseconds: 120),
           alignment: compact ? Alignment.center : Alignment.topCenter,
           child: SizedBox(
@@ -533,7 +536,7 @@ class TvRowState extends State<TvRow> {
   int _index = 0;
 
   double get _step => TvCard.widthFor(wide: widget.wide, compact: widget.compact) + _gap;
-  double get _gap => widget.compact ? 18 : 24;
+  double get _gap => widget.compact ? 22 : 24;
 
   /// Compact rows: where you are in the row (the slider under it).
   final _at = ValueNotifier<int>(0);
@@ -642,7 +645,7 @@ class TvRowState extends State<TvRow> {
     if (items.isEmpty) return const SizedBox.shrink();
     final wide = widget.wide;
     final compact = widget.compact;
-    final h = TvCard.heightFor(wide: wide, compact: compact) + (compact ? 22 : 78);
+    final h = TvCard.heightFor(wide: wide, compact: compact) + (compact ? 24 : 78);
     return Padding(
       padding: EdgeInsets.only(bottom: compact ? 14 : 28),
       child: Column(
@@ -651,7 +654,7 @@ class TvRowState extends State<TvRow> {
           Padding(
             padding: EdgeInsets.only(left: TvStyle.pad, bottom: compact ? 6 : 14),
             child: Text(widget.title,
-                style: TextStyle(fontSize: compact ? 23 : 28, fontWeight: FontWeight.w700, color: YumoriColors.text)),
+                style: TextStyle(fontSize: compact ? 26 : 28, fontWeight: FontWeight.w700, color: YumoriColors.text)),
           ),
           SizedBox(
             height: h,
@@ -665,7 +668,7 @@ class TvRowState extends State<TvRow> {
                 cacheExtent: 1600,
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
-                padding: EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: compact ? 11 : 6),
+                padding: EdgeInsets.symmetric(horizontal: TvStyle.pad, vertical: compact ? 12 : 6),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => SizedBox(width: _gap),
                 itemBuilder: (context, i) => TvKeepFocused(

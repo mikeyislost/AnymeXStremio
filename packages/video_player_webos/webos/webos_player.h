@@ -55,6 +55,7 @@ public:
   // JSON) and switching tracks (audio, video, subtitle).
   std::string getSourceInfo();
   bool selectTrack(const std::string& type, int index);
+  bool setSubtitles(bool enable);
 
   typedef int (*GMainLoopCallback)(void*);
   static GSource* attachToGMainLoop(GMainLoopCallback cb,void* data,int64_t delayed = 0);
