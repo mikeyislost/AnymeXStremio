@@ -435,7 +435,7 @@ class TvCard extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(wide ? 12 : 10),
                     child: Stack(children: [
-                      TvImage(url: wide && item.backdrop.isNotEmpty ? item.backdrop : item.poster, width: w, height: h, seed: item.key),
+                      TvImage(url: !wide ? item.poster : (item.still.isNotEmpty ? item.still : (item.backdrop.isNotEmpty ? item.backdrop : item.poster)), width: w, height: h, seed: item.key),
                       if (showKind)
                         Positioned(
                           left: 8,

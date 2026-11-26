@@ -1125,6 +1125,40 @@ class StremioService extends GetxController {
     }
   }
 
+  /// Yumori: marks a movie watched (or not) in the Stremio library, like
+  /// finishing it does: it leaves Continue Watching and goes to Simkl.
+  Future<void> setMovieWatched(StremioMeta meta, bool watched) async {
+    final key = _authKey;
+    if (key == null) return;
+    final item = await getLibraryItem(meta.id, refresh: true) ??
+        StremioLibraryItem.create(
+            id: meta.id, type: meta.type, name: meta.name, poster: meta.poster);
+    if (watched) {
+      item.flaggedWatched = 1;
+      if (item.timesWatched == 0) item.timesWatched = 1;
+      item.timeOffset = 0; // out of Continue Watching
+      item.lastWatched = DateTime.now();
+    } else {
+      item.flaggedWatched = 0;
+      item.timesWatched = 0;
+    }
+    item.touch();
+    _libraryCache[item.id] = item;
+    await _putOrQueue(key, item);
+    _updateContinueWatching(item);
+    libraryRevision.value++;
+    if (watched) {
+      final pb = StremioPlayback(
+          libraryId: meta.id,
+          type: meta.type,
+          name: meta.name,
+          poster: meta.poster,
+          videoId: meta.id);
+      unawaited(_syncToSimkl(pb));
+      unawaited(_syncToAnilist(pb));
+    }
+  }
+
   /// AnymeX+ TV: a movie or episode was watched on the TV by itself. The TV
   /// already saved the progress in the Stremio library; this adds the
   /// watched mark there (the TV can't build it) and tells AniList / Simkl.

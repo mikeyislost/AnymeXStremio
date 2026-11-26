@@ -64,6 +64,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
   }
   String _resumeVideo = ''; // Stremio: the episode you're on
   bool _inLibrary = false; // Stremio: saved in your library
+  bool _movieWatched = false; // Stremio movie: marked watched
   bool _matching = false;
 
   @override
@@ -154,6 +155,22 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
   }
 
+  /// Movies: mark watched / not watched (Stremio library, Simkl).
+  Future<void> _toggleMovieWatched() async {
+    final meta = _meta;
+    if (meta == null) return;
+    final next = !_movieWatched;
+    setState(() => _movieWatched = next);
+    try {
+      await StremioService.to.setMovieWatched(meta, next);
+      if (mounted) tvToast(context, next ? 'Marked watched' : 'Marked not watched');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _movieWatched = !next);
+      tvToast(context, "Couldn't change that. Check that you're signed in to Stremio.");
+    }
+  }
+
   @override
   void dispose() {
     _epScroll.dispose();
@@ -172,6 +189,7 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
       if (lib != null) bits = WatchedBitField.construct(lib.watchedField, WatchedBitField.orderedVideoIds(meta.videos));
     } catch (_) {}
     _inLibrary = lib?.isInLibrary ?? StremioService.to.isInLibrary(meta.id);
+    _movieWatched = (lib?.timesWatched ?? 0) > 0 || (lib?.flaggedWatched ?? 0) > 0;
     final at = lib?.videoId ?? widget.item.videoId;
     final progress = lib != null && lib.duration > 0 ? (lib.timeOffset / lib.duration).clamp(0.0, 1.0).toDouble() : widget.item.progress;
     _resumeVideo = (lib != null && lib.timeOffset > 0) || widget.item.videoId.isNotEmpty ? at : '';
@@ -515,6 +533,12 @@ class _TvDetailsPageState extends State<TvDetailsPage> {
                   ),
                 if (!it.isAnime)
                   TvButton(label: _inLibrary ? 'In library ✓' : 'Add to library', onSelect: _toggleLibrary),
+                if (it.kind == 'movie' && _meta != null)
+                  TvButton(
+                    label: _movieWatched ? 'Watched ✓' : 'Mark watched',
+                    icon: _movieWatched ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
+                    onSelect: _toggleMovieWatched,
+                  ),
                 // Like / Love / Dislike (For you leans on these; movies and
                 // shows also rate on Simkl), the same marks as the phone.
                 if (_tasteId != null) _TasteButtons(id: _tasteId!, type: it.kind, title: it.title, genres: it.genres),

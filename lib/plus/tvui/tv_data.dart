@@ -7,6 +7,7 @@ import 'package:anymex/plus/for_you/movies_for_you.dart';
 import 'package:anymex/plus/for_you/ranking.dart';
 import 'package:anymex/plus/stremio/builtin_rows.dart';
 import 'package:anymex/plus/stremio/stremio_models.dart';
+import 'package:anymex/plus/stremio/stremio_service.dart';
 import 'package:anymex/utils/logger.dart';
 import 'package:http/http.dart' as http;
 
@@ -26,6 +27,13 @@ class TvItem {
   final String sub; // a line under the card (progress, episode…)
   final double progress; // 0…1, for Continue Watching
   final String videoId; // Stremio: the video to resume
+
+  /// Continue Watching: the still of the episode you're on (or the next),
+  /// shown on the wide card instead of the show's backdrop.
+  final String still;
+
+  /// Anime on your AniList list: the next episode to watch (0 = unknown).
+  final int nextEpisode;
   final String idMal; // anime: MyAnimeList id (skip times, matching)
 
   const TvItem({
@@ -44,9 +52,32 @@ class TvItem {
     this.progress = 0,
     this.videoId = '',
     this.idMal = '',
+    this.still = '',
+    this.nextEpisode = 0,
   });
 
   bool get isAnime => kind == 'anime';
+
+  /// The same item with an episode still for its wide card.
+  TvItem withStill(String url) => TvItem(
+        id: id,
+        kind: kind,
+        title: title,
+        poster: poster,
+        backdrop: backdrop,
+        description: description,
+        year: year,
+        rating: rating,
+        format: format,
+        episodes: episodes,
+        genres: genres,
+        sub: sub,
+        progress: progress,
+        videoId: videoId,
+        idMal: idMal,
+        still: url,
+        nextEpisode: nextEpisode,
+      );
   String get key => '$kind:$id';
   String get kindLabel => switch (kind) { 'anime' => 'Anime', 'movie' => 'Movie', _ => 'Series' };
 
@@ -90,6 +121,7 @@ class TvItem {
         episodes: _ok(t.totalEpisodes),
         genres: t.genres,
         sub: t.formattedProgress,
+        nextEpisode: (int.tryParse(t.episodeCount ?? '') ?? 0) + 1,
         progress: () {
           final done = int.tryParse(t.episodeCount ?? '') ?? 0;
           final all = int.tryParse(t.totalEpisodes ?? '') ?? 0;
@@ -378,5 +410,37 @@ class TvEpisodeArt {
       Logger.i('TV episode art: $e');
       return const {};
     }
+  }
+}
+
+/// Continue Watching: the still of the episode you're on (Stremio series:
+/// the video to resume) or up next (anime: your AniList progress + 1).
+/// Movies have none. Cached; '' = none found.
+class TvContinueArt {
+  static final _cache = <String, String>{};
+
+  static String? cached(TvItem it) => _cache[it.key];
+
+  static Future<String> forItem(TvItem it) async {
+    final hit = _cache[it.key];
+    if (hit != null) return hit;
+    var url = '';
+    try {
+      if (it.isAnime) {
+        if (it.nextEpisode > 0) {
+          final art = await TvEpisodeArt.forAnime(it.id);
+          url = art[it.nextEpisode]?.$2 ?? art[it.nextEpisode - 1]?.$2 ?? '';
+        }
+      } else if (it.kind == 'series' && it.videoId.isNotEmpty) {
+        final meta = await StremioService.to.fetchMeta('series', it.id);
+        for (final v in meta?.videos ?? const <StremioVideo>[]) {
+          if (v.id == it.videoId) {
+            url = v.thumbnail ?? '';
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+    return _cache[it.key] = url;
   }
 }

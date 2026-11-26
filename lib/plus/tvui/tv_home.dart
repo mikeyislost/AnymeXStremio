@@ -100,6 +100,7 @@ class _TvHomePageState extends State<TvHomePage> {
       t.cancel();
     }
     _hero.dispose();
+    _stillRedraw?.cancel();
     _watchNode.dispose();
     _infoNode.dispose();
     super.dispose();
@@ -202,7 +203,29 @@ class _TvHomePageState extends State<TvHomePage> {
       }
     } catch (_) {}
     out.sort((a, b) => b.$1.compareTo(a.$1));
-    return [for (final e in out.take(30)) e.$2];
+    final list = [for (final e in out.take(30)) e.$2];
+    _warmStills(list);
+    // The episode you're on / up next, once its still is known.
+    return [
+      for (final it in list)
+        if ((TvContinueArt.cached(it) ?? '').isNotEmpty) it.withStill(TvContinueArt.cached(it)!) else it,
+    ];
+  }
+
+  // Continue Watching stills: look them up once each, then redraw the row.
+  final _stillAsked = <String>{};
+  Timer? _stillRedraw;
+  void _warmStills(List<TvItem> list) {
+    for (final it in list.take(15)) {
+      if (it.kind == 'movie' || !_stillAsked.add(it.key)) continue;
+      unawaited(TvContinueArt.forItem(it).then((url) {
+        if (url.isEmpty || !mounted) return;
+        _stillRedraw?.cancel();
+        _stillRedraw = Timer(const Duration(milliseconds: 250), () {
+          if (mounted) setState(() {});
+        });
+      }));
+    }
   }
 
   List<TvItem> _forYou() {
